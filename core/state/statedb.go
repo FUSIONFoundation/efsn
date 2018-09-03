@@ -244,6 +244,10 @@ func (self *StateDB) GetState(addr common.Address, bhash common.Hash) common.Has
 	return common.Hash{}
 }
 
+func (self *StateDB) GetData(addr common.Address, key []byte) []byte {
+	return nil
+}
+
 // Database retrieves the low level database supporting the lower level trie ops.
 func (self *StateDB) Database() Database {
 	return self.db
@@ -314,6 +318,10 @@ func (self *StateDB) SetState(addr common.Address, key, value common.Hash) {
 	if stateObject != nil {
 		stateObject.SetState(self.db, key, value)
 	}
+}
+
+func (self *StateDB) SetData(addr common.Address, key, value []byte) {
+
 }
 
 // Suicide marks the given account as suicided.
