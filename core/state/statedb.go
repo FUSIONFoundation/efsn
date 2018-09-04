@@ -245,6 +245,33 @@ func (self *StateDB) GetState(addr common.Address, bhash common.Hash) common.Has
 }
 
 func (self *StateDB) GetData(addr common.Address, key []byte) []byte {
+
+	if key == nil {
+		return nil
+	}
+	stateObject := self.GetOrNewStateObject(addr)
+	if stateObject != nil {
+		keyHash := crypto.Keccak256Hash(key)
+		keyIndex := new(big.Int)
+		keyIndex.SetBytes(keyHash[:])
+		info := stateObject.GetState(self.db, keyHash)
+		size := common.BytesToInt(info[0:4])
+		length := common.BytesToInt(info[common.HashLength/2 : common.HashLength/2+4])
+		data := make([]byte, size)
+		for i := 0; i < length; i++ {
+			tempIndex := big.NewInt(int64(i))
+			tempKey := crypto.Keccak256Hash(tempIndex.Add(tempIndex, keyIndex).Bytes()[:])
+			tempData := stateObject.GetState(self.db, tempKey)
+			start := i * common.HashLength
+			end := start + common.HashLength
+			if end > size {
+				end = size
+			}
+			copy(data[start:end], tempData[common.HashLength-end-start:])
+		}
+		return data
+	}
+
 	return nil
 }
 
@@ -321,7 +348,36 @@ func (self *StateDB) SetState(addr common.Address, key, value common.Hash) {
 }
 
 func (self *StateDB) SetData(addr common.Address, key, value []byte) {
-
+	if key == nil || value == nil {
+		return
+	}
+	stateObject := self.GetOrNewStateObject(addr)
+	if stateObject != nil {
+		size := len(value)
+		length := size / common.HashLength
+		if size%common.HashLength != 0 {
+			length++
+		}
+		info := common.Hash{}
+		copy(info[0:], common.IntToBytes(size))
+		copy(info[common.HashLength/2:], common.IntToBytes(length))
+		keyHash := crypto.Keccak256Hash(key)
+		keyIndex := new(big.Int)
+		keyIndex.SetBytes(keyHash[:])
+		stateObject.SetState(self.db, keyHash, info)
+		for i := 0; i < length; i++ {
+			tempIndex := big.NewInt(int64(i))
+			tempKey := crypto.Keccak256Hash(tempIndex.Add(tempIndex, keyIndex).Bytes()[:])
+			tempData := common.Hash{}
+			start := i * common.HashLength
+			end := start + common.HashLength
+			if end > size {
+				end = size
+			}
+			tempData.SetBytes(value[start:end])
+			stateObject.SetState(self.db, tempKey, tempData)
+		}
+	}
 }
 
 // Suicide marks the given account as suicided.
