@@ -31,6 +31,7 @@ var Modules = map[string]string{
 	"shh":        Shh_JS,
 	"swarmfs":    SWARMFS_JS,
 	"txpool":     TxPool_JS,
+	"fsn":        FsnJS,
 }
 
 const Chequebook_JS = `
@@ -671,6 +672,47 @@ web3._extend({
 				status.queued = web3._extend.utils.toDecimal(status.queued);
 				return status;
 			}
+		}),
+	]
+});
+`
+
+// FsnJS wacom
+const FsnJS = `
+web3._extend({
+	property: 'fsn',
+	methods: [
+		new web3._extend.Method({
+			name: 'getNotation',
+			call: 'fsn_getNotation',
+			params: 2,
+			inputFormatter: [
+				web3._extend.formatters.inputAddressFormatter,
+				web3._extend.formatters.inputDefaultBlockNumberFormatter
+			]
+		}),
+		new web3._extend.Method({
+			name: 'allNotation',
+			call: 'fsn_allNotation',
+			params: 1,
+			inputFormatter: [
+				web3._extend.formatters.inputDefaultBlockNumberFormatter
+			]
+		}),
+		new web3._extend.Method({
+			name: 'genNotation',
+			call: 'fsn_genNotation',
+			params: 2,
+			inputFormatter: [
+				web3._extend.formatters.inputTransactionFormatter,
+				null
+			]
+		})
+	],
+	properties:[
+		new web3._extend.Property({
+			name: 'coinbase',
+			getter: 'eth_coinbase'
 		}),
 	]
 });

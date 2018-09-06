@@ -97,6 +97,7 @@ func (s *stateObject) empty() bool {
 // These objects are stored in the main account trie.
 type Account struct {
 	Nonce    uint64
+	Notaion  uint64
 	Balance  *big.Int
 	Root     common.Hash // merkle root of the storage trie
 	CodeHash []byte
@@ -339,6 +340,18 @@ func (self *stateObject) setNonce(nonce uint64) {
 	self.data.Nonce = nonce
 }
 
+func (self *stateObject) SetNotation(notation uint64) {
+	self.db.journal.append(notationChange{
+		account: &self.address,
+		prev:    self.data.Notaion,
+	})
+	self.setNotation(notation)
+}
+
+func (self *stateObject) setNotation(notation uint64) {
+	self.data.Notaion = notation
+}
+
 func (self *stateObject) CodeHash() []byte {
 	return self.data.CodeHash
 }
@@ -349,6 +362,10 @@ func (self *stateObject) Balance() *big.Int {
 
 func (self *stateObject) Nonce() uint64 {
 	return self.data.Nonce
+}
+
+func (self *stateObject) Notation() uint64 {
+	return self.data.Notaion
 }
 
 // Never called, but must be present to allow stateObject to be used

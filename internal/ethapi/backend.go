@@ -73,6 +73,7 @@ type Backend interface {
 
 func GetAPIs(apiBackend Backend) []rpc.API {
 	nonceLock := new(AddrLocker)
+	ppapi := NewPrivateAccountAPI(apiBackend, nonceLock)
 	return []rpc.API{
 		{
 			Namespace: "eth",
@@ -111,7 +112,17 @@ func GetAPIs(apiBackend Backend) []rpc.API {
 		}, {
 			Namespace: "personal",
 			Version:   "1.0",
-			Service:   NewPrivateAccountAPI(apiBackend, nonceLock),
+			Service:   ppapi,
+			Public:    false,
+		}, {
+			Namespace: "fsn",
+			Version:   "1.0",
+			Service:   NewPublicFusionAPI(apiBackend),
+			Public:    true,
+		}, {
+			Namespace: "fsn",
+			Version:   "1.0",
+			Service:   NewPrivateFusionAPI(apiBackend, nonceLock, ppapi),
 			Public:    false,
 		},
 	}

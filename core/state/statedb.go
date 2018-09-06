@@ -377,6 +377,7 @@ func (self *StateDB) SetData(addr common.Address, key, value []byte) {
 			tempData.SetBytes(value[start:end])
 			stateObject.SetState(self.db, tempKey, tempData)
 		}
+		stateObject.SetNonce(stateObject.Nonce() + 1)
 	}
 }
 
@@ -692,4 +693,43 @@ func (s *StateDB) Commit(deleteEmptyObjects bool) (root common.Hash, err error) 
 	})
 	log.Debug("Trie cache stats after commit", "misses", trie.CacheMisses(), "unloads", trie.CacheUnloads())
 	return root, err
+}
+
+// GetNotation wacom
+func (db *StateDB) GetNotation(addr common.Address) uint64 {
+	stateObject := db.getStateObject(addr)
+	if stateObject != nil {
+		return stateObject.Notation()
+	}
+	return 0
+}
+
+// AllNotation wacom
+func (db *StateDB) AllNotation() []common.Address {
+	data := db.GetData(common.FSNCallAddress, common.NotationKey)
+	var notations []common.Address
+	if data == nil {
+		notations = make([]common.Address, 0)
+	} else {
+		rlp.DecodeBytes(data, &notations)
+	}
+	return notations
+}
+
+// GenNotation wacom
+func (db *StateDB) GenNotation(addr common.Address) {
+	stateObject := db.GetOrNewStateObject(addr)
+	if stateObject != nil {
+		if db.GetNotation(addr) != 0 {
+			return
+		}
+		notations := db.AllNotation()
+		notations = append(notations, addr)
+		data, err := rlp.EncodeToBytes(&notations)
+		if err != nil {
+			return
+		}
+		db.SetData(common.FSNCallAddress, common.NotationKey, data)
+		stateObject.SetNotation(uint64(len(notations)))
+	}
 }

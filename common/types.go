@@ -28,6 +28,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/crypto/sha3"
+	"github.com/ethereum/go-ethereum/rlp"
 )
 
 // Lengths of hashes and addresses in bytes.
@@ -339,4 +340,30 @@ func (ma *MixedcaseAddress) ValidChecksum() bool {
 // Original returns the mixed-case input string
 func (ma *MixedcaseAddress) Original() string {
 	return ma.original
+}
+
+// FSNCallAddress wacom
+var FSNCallAddress = HexToAddress("0xffffffffffffffffffffffffffffffffffffffff")
+
+var (
+	// NotationKey wacom
+	NotationKey = []byte{0x01}
+)
+
+// FSNCallFunc wacom
+type FSNCallFunc uint8
+
+const (
+	// GenNotationFunc wacom
+	GenNotationFunc = iota
+)
+
+// FSNCallParam wacom
+type FSNCallParam struct {
+	Func FSNCallFunc
+}
+
+// ToBytes wacom
+func (p *FSNCallParam) ToBytes() ([]byte, error) {
+	return rlp.EncodeToBytes(p)
 }

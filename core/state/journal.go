@@ -107,6 +107,10 @@ type (
 		account *common.Address
 		prev    uint64
 	}
+	notationChange struct {
+		account *common.Address
+		prev    uint64
+	}
 	storageChange struct {
 		account       *common.Address
 		key, prevalue common.Hash
@@ -184,6 +188,14 @@ func (ch nonceChange) revert(s *StateDB) {
 }
 
 func (ch nonceChange) dirtied() *common.Address {
+	return ch.account
+}
+
+func (ch notationChange) revert(s *StateDB) {
+	s.getStateObject(*ch.account).setNotation(ch.prev)
+}
+
+func (ch notationChange) dirtied() *common.Address {
 	return ch.account
 }
 
