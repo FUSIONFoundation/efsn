@@ -267,7 +267,7 @@ func (self *StateDB) GetData(addr common.Address, key []byte) []byte {
 			if end > size {
 				end = size
 			}
-			copy(data[start:end], tempData[common.HashLength-end-start:])
+			copy(data[start:end], tempData[common.HashLength-end+start:])
 		}
 		return data
 	}

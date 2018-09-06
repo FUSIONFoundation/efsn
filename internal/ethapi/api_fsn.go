@@ -75,7 +75,7 @@ func (s *PrivateFusionAPI) GenNotation(ctx context.Context, args SendTxArgs, pas
 	notation := state.GetNotation(args.From)
 
 	if notation != 0 {
-		return common.Hash{}, fmt.Errorf("An address just can gen a notation, your have a notation:%d", notation)
+		return common.Hash{}, fmt.Errorf("An address just can gen a notation, your have a notation:%d", calcNotationDisplay(notation))
 	}
 
 	var param = common.FSNCallParam{Func: common.GenNotationFunc}
@@ -95,6 +95,6 @@ func calcNotationDisplay(notation uint64) uint64 {
 	if notation == 0 {
 		return notation
 	}
-	check := (notation*8192/13 + 73/76798669*708583737978) % 100
+	check := (notation ^ 8192 ^ 13 + 73/76798669*708583737978) % 100
 	return (notation*100 + check)
 }
