@@ -90,7 +90,14 @@ type stateObject struct {
 
 // empty returns whether the account is considered empty.
 func (s *stateObject) empty() bool {
-	return s.data.Nonce == 0 && s.data.Balance.Sign() == 0 && bytes.Equal(s.data.CodeHash, emptyCodeHash)
+	var balanceEmpty = true
+	for _, v := range s.data.Balances {
+		balanceEmpty = balanceEmpty && v.Sign() == 0
+		if !balanceEmpty {
+			break
+		}
+	}
+	return s.data.Nonce == 0 && balanceEmpty && bytes.Equal(s.data.CodeHash, emptyCodeHash)
 }
 
 // Account is the Ethereum consensus representation of accounts.
@@ -98,16 +105,13 @@ func (s *stateObject) empty() bool {
 type Account struct {
 	Nonce    uint64
 	Notaion  uint64
-	Balance  *big.Int
+	Balances map[common.Hash]*big.Int
 	Root     common.Hash // merkle root of the storage trie
 	CodeHash []byte
 }
 
 // newObject creates a state object.
 func newObject(db *StateDB, address common.Address, data Account) *stateObject {
-	if data.Balance == nil {
-		data.Balance = new(big.Int)
-	}
 	if data.CodeHash == nil {
 		data.CodeHash = emptyCodeHash
 	}
@@ -236,38 +240,47 @@ func (self *stateObject) CommitTrie(db Database) error {
 
 // AddBalance removes amount from c's balance.
 // It is used to add funds to the destination account of a transfer.
-func (c *stateObject) AddBalance(amount *big.Int) {
+func (c *stateObject) AddBalance(assetID common.Hash, amount *big.Int) {
 	// EIP158: We must check emptiness for the objects such that the account
 	// clearing (0,0,0 objects) can take effect.
 	if amount.Sign() == 0 {
 		if c.empty() {
 			c.touch()
 		}
-
 		return
 	}
-	c.SetBalance(new(big.Int).Add(c.Balance(), amount))
+	if c.data.Balances[assetID] == nil {
+		c.data.Balances[assetID] = new(big.Int)
+	}
+	c.SetBalance(assetID, new(big.Int).Add(c.data.Balances[assetID], amount))
 }
 
 // SubBalance removes amount from c's balance.
 // It is used to remove funds from the origin account of a transfer.
-func (c *stateObject) SubBalance(amount *big.Int) {
+func (c *stateObject) SubBalance(assetID common.Hash, amount *big.Int) {
 	if amount.Sign() == 0 {
 		return
 	}
-	c.SetBalance(new(big.Int).Sub(c.Balance(), amount))
+	if c.data.Balances[assetID] == nil {
+		c.data.Balances[assetID] = new(big.Int)
+	}
+	c.SetBalance(assetID, new(big.Int).Sub(c.data.Balances[assetID], amount))
 }
 
-func (self *stateObject) SetBalance(amount *big.Int) {
+func (self *stateObject) SetBalance(assetID common.Hash, amount *big.Int) {
+	if self.data.Balances[assetID] == nil {
+		self.data.Balances[assetID] = new(big.Int)
+	}
 	self.db.journal.append(balanceChange{
 		account: &self.address,
-		prev:    new(big.Int).Set(self.data.Balance),
+		assetID: assetID,
+		prev:    new(big.Int).Set(self.data.Balances[assetID]),
 	})
-	self.setBalance(amount)
+	self.setBalance(assetID, amount)
 }
 
-func (self *stateObject) setBalance(amount *big.Int) {
-	self.data.Balance = amount
+func (self *stateObject) setBalance(assetID common.Hash, amount *big.Int) {
+	self.data.Balances[assetID] = amount
 }
 
 // Return the gas back to the origin. Used by the Virtual machine or Closures
@@ -356,8 +369,15 @@ func (self *stateObject) CodeHash() []byte {
 	return self.data.CodeHash
 }
 
-func (self *stateObject) Balance() *big.Int {
-	return self.data.Balance
+func (self *stateObject) Balances() map[common.Hash]*big.Int {
+	return self.data.Balances
+}
+
+func (self *stateObject) Balance(assetID common.Hash) *big.Int {
+	if self.data.Balances[assetID] == nil {
+		self.data.Balances[assetID] = new(big.Int)
+	}
+	return self.data.Balances[assetID]
 }
 
 func (self *stateObject) Nonce() uint64 {

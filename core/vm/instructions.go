@@ -392,7 +392,7 @@ func opAddress(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memo
 
 func opBalance(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory *Memory, stack *Stack) ([]byte, error) {
 	slot := stack.peek()
-	slot.Set(interpreter.evm.StateDB.GetBalance(common.BigToAddress(slot)))
+	slot.Set(interpreter.evm.StateDB.GetBalance(common.SystemAssetID, common.BigToAddress(slot)))
 	return nil, nil
 }
 
@@ -855,8 +855,8 @@ func opStop(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory 
 }
 
 func opSuicide(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory *Memory, stack *Stack) ([]byte, error) {
-	balance := interpreter.evm.StateDB.GetBalance(contract.Address())
-	interpreter.evm.StateDB.AddBalance(common.BigToAddress(stack.pop()), balance)
+	balance := interpreter.evm.StateDB.GetBalance(common.SystemAssetID, contract.Address())
+	interpreter.evm.StateDB.AddBalance(common.BigToAddress(stack.pop()), common.SystemAssetID, balance)
 
 	interpreter.evm.StateDB.Suicide(contract.Address())
 	return nil, nil
