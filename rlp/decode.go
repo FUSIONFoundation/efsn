@@ -449,7 +449,7 @@ func makeMapDecoder(typ reflect.Type, tag tags) (decoder, error) {
 		}
 		newval := val
 		if val.IsNil() {
-			newval = reflect.New(val.Type())
+			newval = reflect.MakeMap(val.Type())
 		}
 		for {
 			nk := reflect.New(ktype).Elem()
