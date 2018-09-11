@@ -370,7 +370,7 @@ func makeWriter(typ reflect.Type, ts tags) (writer, error) {
 	case kind == reflect.Slice || kind == reflect.Array:
 		return makeSliceWriter(typ, ts)
 	case kind == reflect.Map:
-		return makeMapWriter(typ, ts)
+		return makeMapWriter(typ)
 	case kind == reflect.Struct:
 		return makeStructWriter(typ)
 	case kind == reflect.Ptr:
@@ -526,7 +526,7 @@ func makeSliceWriter(typ reflect.Type, ts tags) (writer, error) {
 	return writer, nil
 }
 
-func makeMapWriter(typ reflect.Type, ts tags) (writer, error) {
+func makeMapWriter(typ reflect.Type) (writer, error) {
 	ktypeinfo, err := cachedTypeInfo1(typ.Key(), tags{})
 	if err != nil {
 		return nil, err
@@ -536,10 +536,10 @@ func makeMapWriter(typ reflect.Type, ts tags) (writer, error) {
 		return nil, err
 	}
 	writer := func(val reflect.Value, w *encbuf) error {
-		if !ts.tail {
-			defer w.listEnd(w.list())
-		}
+		lh := w.list()
 		keys := val.MapKeys()
+		size := uint64(len(keys))
+		writeUint(reflect.ValueOf(size), w)
 		for i := 0; i < len(keys); i++ {
 			if err := ktypeinfo.writer(keys[i], w); err != nil {
 				return err
@@ -548,6 +548,7 @@ func makeMapWriter(typ reflect.Type, ts tags) (writer, error) {
 				return err
 			}
 		}
+		w.listEnd(lh)
 		return nil
 	}
 	return writer, nil
