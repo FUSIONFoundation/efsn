@@ -273,6 +273,15 @@ func (st *StateTransition) handleFsnCall() error {
 		}
 		st.state.AddBalance(st.msg.From(), asset.ID, asset.Total)
 		return nil
+	case common.SendAsset:
+		sendAssetParam := common.SendAssetParam{}
+		rlp.DecodeBytes(param.Data, &sendAssetParam)
+		if st.state.GetBalance(sendAssetParam.AssetID, st.msg.From()).Cmp(sendAssetParam.Value) < 0 {
+			return fmt.Errorf("not enough asset")
+		}
+		st.state.SubBalance(st.msg.From(), sendAssetParam.AssetID, sendAssetParam.Value)
+		st.state.AddBalance(sendAssetParam.To, sendAssetParam.AssetID, sendAssetParam.Value)
+		return nil
 	}
 	return fmt.Errorf("Unsupport")
 }

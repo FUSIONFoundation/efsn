@@ -362,7 +362,9 @@ const (
 	// GenNotationFunc wacom
 	GenNotationFunc = iota
 	// GenAssetFunc wacom
-	GenAssetFunc = iota
+	GenAssetFunc
+	// SendAsset wacom
+	SendAsset
 )
 
 // FSNCallParam wacom
@@ -379,6 +381,13 @@ type GenAssetParam struct {
 	Total    *big.Int
 }
 
+// SendAssetParam wacom
+type SendAssetParam struct {
+	AssetID Hash
+	To      Address
+	Value   *big.Int
+}
+
 // ToBytes wacom
 func (p *FSNCallParam) ToBytes() ([]byte, error) {
 	return rlp.EncodeToBytes(p)
@@ -386,6 +395,11 @@ func (p *FSNCallParam) ToBytes() ([]byte, error) {
 
 // ToBytes wacom
 func (p *GenAssetParam) ToBytes() ([]byte, error) {
+	return rlp.EncodeToBytes(p)
+}
+
+// ToBytes wacom
+func (p *SendAssetParam) ToBytes() ([]byte, error) {
 	return rlp.EncodeToBytes(p)
 }
 

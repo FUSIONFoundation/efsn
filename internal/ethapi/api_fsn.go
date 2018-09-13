@@ -14,7 +14,6 @@ import (
 // FusionBaseArgs wacom
 type FusionBaseArgs struct {
 	From     common.Address  `json:"from"`
-	To       *common.Address `json:"to"`
 	Gas      *hexutil.Uint64 `json:"gas"`
 	GasPrice *hexutil.Big    `json:"gasPrice"`
 	Nonce    *hexutil.Uint64 `json:"nonce"`
@@ -29,14 +28,30 @@ type GenAssetArgs struct {
 	Total    *hexutil.Big `json:"total"`
 }
 
+// SendAssetArgs wacom
+type SendAssetArgs struct {
+	FusionBaseArgs
+	AssetID common.Hash    `json:"asset"`
+	To      common.Address `json:"to"`
+	Value   *hexutil.Big   `json:"value"`
+}
+
 func (args *FusionBaseArgs) toSendArgs() SendTxArgs {
 	return SendTxArgs{
 		From:     args.From,
-		To:       args.To,
 		Gas:      args.Gas,
 		GasPrice: args.GasPrice,
 		Nonce:    args.Nonce,
 	}
+}
+
+func (args *SendAssetArgs) toData() ([]byte, error) {
+	param := common.SendAssetParam{
+		AssetID: args.AssetID,
+		To:      args.To,
+		Value:   args.Value.ToInt(),
+	}
+	return param.ToBytes()
 }
 
 func (args *GenAssetArgs) toData() ([]byte, error) {
@@ -173,6 +188,33 @@ func (s *PrivateFusionAPI) GenAsset(ctx context.Context, args GenAssetArgs, pass
 		return common.Hash{}, err
 	}
 	var param = common.FSNCallParam{Func: common.GenAssetFunc, Data: funcData}
+	data, err := param.ToBytes()
+	if err != nil {
+		return common.Hash{}, err
+	}
+	var argsData = hexutil.Bytes(data)
+	sendArgs := args.toSendArgs()
+	sendArgs.To = &common.FSNCallAddress
+	sendArgs.Data = &argsData
+	return s.papi.SendTransaction(ctx, sendArgs, passwd)
+}
+
+// SendAsset ss
+func (s *PrivateFusionAPI) SendAsset(ctx context.Context, args SendAssetArgs, passwd string) (common.Hash, error) {
+	state, _, err := s.b.StateAndHeaderByNumber(ctx, rpc.LatestBlockNumber)
+	if state == nil || err != nil {
+		return common.Hash{}, err
+	}
+
+	if state.GetBalance(args.AssetID, args.From).Cmp(args.Value.ToInt()) < 0 {
+		return common.Hash{}, fmt.Errorf("not enough asset")
+	}
+
+	funcData, err := args.toData()
+	if err != nil {
+		return common.Hash{}, err
+	}
+	var param = common.FSNCallParam{Func: common.SendAsset, Data: funcData}
 	data, err := param.ToBytes()
 	if err != nil {
 		return common.Hash{}, err
