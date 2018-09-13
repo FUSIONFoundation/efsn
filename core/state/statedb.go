@@ -712,7 +712,7 @@ func (db *StateDB) GetNotation(addr common.Address) uint64 {
 func (db *StateDB) AllNotation() []common.Address {
 	data := db.GetData(common.FSNCallAddress, common.NotationKey)
 	var notations []common.Address
-	if data == nil {
+	if len(data) == 0 || data == nil {
 		notations = make([]common.Address, 0)
 	} else {
 		rlp.DecodeBytes(data, &notations)
@@ -721,19 +721,61 @@ func (db *StateDB) AllNotation() []common.Address {
 }
 
 // GenNotation wacom
-func (db *StateDB) GenNotation(addr common.Address) {
+func (db *StateDB) GenNotation(addr common.Address) error {
 	stateObject := db.GetOrNewStateObject(addr)
 	if stateObject != nil {
-		if db.GetNotation(addr) != 0 {
-			return
+		if n := db.GetNotation(addr); n != 0 {
+			return fmt.Errorf("Account %s has a notation:%d", addr.String(), n)
 		}
 		notations := db.AllNotation()
 		notations = append(notations, addr)
 		data, err := rlp.EncodeToBytes(&notations)
 		if err != nil {
-			return
+			return err
 		}
 		db.SetData(common.FSNCallAddress, common.NotationKey, data)
 		stateObject.SetNotation(uint64(len(notations)))
 	}
+	return nil
+}
+
+func (db *StateDB) updateAssets(assets map[common.Hash]common.Asset) error {
+	data, err := rlp.EncodeToBytes(&assets)
+	if err != nil {
+		return err
+	}
+	db.SetData(common.FSNCallAddress, common.AssetKey, data)
+	return nil
+}
+
+// AllAssets wacom
+func (db *StateDB) AllAssets() map[common.Hash]common.Asset {
+	data := db.GetData(common.FSNCallAddress, common.AssetKey)
+	var assets map[common.Hash]common.Asset
+	if len(data) == 0 || data == nil {
+		assets = make(map[common.Hash]common.Asset, 0)
+	} else {
+		rlp.DecodeBytes(data, &assets)
+	}
+	return assets
+}
+
+// GenAsset wacom
+func (db *StateDB) GenAsset(asset common.Asset) error {
+	assets := db.AllAssets()
+	if _, ok := assets[asset.ID]; ok {
+		return fmt.Errorf("%s Asset exists", asset.ID.String())
+	}
+	assets[asset.ID] = asset
+	return db.updateAssets(assets)
+}
+
+// UpdateAsset wacom
+func (db *StateDB) UpdateAsset(asset common.Asset) error {
+	assets := db.AllAssets()
+	if _, ok := assets[asset.ID]; !ok {
+		return fmt.Errorf("%s Asset not found", asset.ID.String())
+	}
+	assets[asset.ID] = asset
+	return db.updateAssets(assets)
 }

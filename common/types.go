@@ -351,6 +351,8 @@ var SystemAssetID = HexToHash("0xfffffffffffffffffffffffffffffffffffffffffffffff
 var (
 	// NotationKey wacom
 	NotationKey = []byte{0x01}
+	// AssetKey wacom
+	AssetKey = []byte{0x02}
 )
 
 // FSNCallFunc wacom
@@ -385,4 +387,32 @@ func (p *FSNCallParam) ToBytes() ([]byte, error) {
 // ToBytes wacom
 func (p *GenAssetParam) ToBytes() ([]byte, error) {
 	return rlp.EncodeToBytes(p)
+}
+
+// ToAsset wacom
+func (p *GenAssetParam) ToAsset() Asset {
+	return Asset{
+		Name:     p.Name,
+		Symbol:   p.Symbol,
+		Decimals: p.Decimals,
+		Total:    p.Total,
+	}
+}
+
+// Asset wacom
+type Asset struct {
+	ID       Hash
+	Name     string
+	Symbol   string
+	Decimals uint8
+	Total    *big.Int
+}
+
+// SystemAsset wacom
+var SystemAsset = Asset{
+	Name:     "Fusion",
+	Symbol:   "FSN",
+	Decimals: 18,
+	Total:    new(big.Int).Mul(big.NewInt(81920000), big.NewInt(1000000000000000000)),
+	ID:       SystemAssetID,
 }

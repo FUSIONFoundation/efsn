@@ -3,6 +3,7 @@ package ethapi
 import (
 	"context"
 	"fmt"
+	"math/big"
 
 	"github.com/ethereum/go-ethereum/accounts"
 	"github.com/ethereum/go-ethereum/common"
@@ -60,6 +61,16 @@ func NewPublicFusionAPI(b Backend) *PublicFusionAPI {
 	}
 }
 
+// GetBalance wacom
+func (s *PublicFusionAPI) GetBalance(ctx context.Context, assetID common.Hash, address common.Address, blockNr rpc.BlockNumber) (*big.Int, error) {
+	state, _, err := s.b.StateAndHeaderByNumber(ctx, blockNr)
+	if state == nil || err != nil {
+		return new(big.Int), err
+	}
+	b := state.GetBalance(assetID, address)
+	return b, state.Error()
+}
+
 // GetNotation wacom
 func (s *PublicFusionAPI) GetNotation(ctx context.Context, address common.Address, blockNr rpc.BlockNumber) (uint64, error) {
 	state, _, err := s.b.StateAndHeaderByNumber(ctx, blockNr)
@@ -99,6 +110,16 @@ func (s *PublicFusionAPI) AllNotation(ctx context.Context, blockNr rpc.BlockNumb
 		b[notations[i]] = calcNotationDisplay(uint64(i + 1))
 	}
 	return b, state.Error()
+}
+
+// AllAssets wacom
+func (s *PublicFusionAPI) AllAssets(ctx context.Context, blockNr rpc.BlockNumber) (map[common.Hash]common.Asset, error) {
+	state, _, err := s.b.StateAndHeaderByNumber(ctx, blockNr)
+	if state == nil || err != nil {
+		return nil, err
+	}
+	assets := state.AllAssets()
+	return assets, state.Error()
 }
 
 // PrivateFusionAPI ss

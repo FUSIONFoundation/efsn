@@ -24,6 +24,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/vm"
+	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/ethereum/go-ethereum/rlp"
@@ -261,7 +262,16 @@ func (st *StateTransition) handleFsnCall() error {
 	rlp.DecodeBytes(st.msg.Data(), &param)
 	switch param.Func {
 	case common.GenNotationFunc:
-		st.state.GenNotation(st.msg.From())
+		return st.state.GenNotation(st.msg.From())
+	case common.GenAssetFunc:
+		genAssetParam := common.GenAssetParam{}
+		rlp.DecodeBytes(param.Data, &genAssetParam)
+		asset := genAssetParam.ToAsset()
+		asset.ID = crypto.Keccak256Hash(param.Data)
+		if err := st.state.GenAsset(asset); err != nil {
+			return err
+		}
+		st.state.AddBalance(st.msg.From(), asset.ID, asset.Total)
 		return nil
 	}
 	return fmt.Errorf("Unsupport")

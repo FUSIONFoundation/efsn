@@ -62,8 +62,10 @@ type StateDB interface {
 
 	ForEachStorage(common.Address, func(common.Hash, common.Hash) bool)
 
-	GenNotation(common.Address)
+	GenNotation(common.Address) error
 	GetNotation(common.Address) uint64
+
+	GenAsset(common.Asset) error
 }
 
 // CallContext provides a basic interface for the EVM calling conventions. The EVM EVM

@@ -683,6 +683,16 @@ web3._extend({
 	property: 'fsn',
 	methods: [
 		new web3._extend.Method({
+			name: 'getBalance',
+			call: 'fsn_getBalance',
+			params: 3,
+			inputFormatter: [
+				null,
+				web3._extend.formatters.inputAddressFormatter,
+				web3._extend.formatters.inputDefaultBlockNumberFormatter
+			]
+		}),
+		new web3._extend.Method({
 			name: 'getNotation',
 			call: 'fsn_getNotation',
 			params: 2,
@@ -739,7 +749,15 @@ web3._extend({
 				},
 				null
 			]
-		})
+		}),
+		new web3._extend.Method({
+			name: 'allAssets',
+			call: 'fsn_allAssets',
+			params: 1,
+			inputFormatter: [
+				web3._extend.formatters.inputDefaultBlockNumberFormatter
+			]
+		}),
 	],
 	properties:[
 		new web3._extend.Property({
