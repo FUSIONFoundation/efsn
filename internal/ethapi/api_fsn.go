@@ -19,14 +19,33 @@ type FusionBaseArgs struct {
 	Nonce    *hexutil.Uint64 `json:"nonce"`
 }
 
-func (base *FusionBaseArgs) toSendArgs() SendTxArgs {
+// GenAssetArgs wacom
+type GenAssetArgs struct {
+	FusionBaseArgs
+	Name     string       `json:"name"`
+	Symbol   string       `json:"symbol"`
+	Decimals uint8        `json:"decimals"`
+	Total    *hexutil.Big `json:"total"`
+}
+
+func (args *FusionBaseArgs) toSendArgs() SendTxArgs {
 	return SendTxArgs{
-		From:     base.From,
-		To:       base.To,
-		Gas:      base.Gas,
-		GasPrice: base.GasPrice,
-		Nonce:    base.Nonce,
+		From:     args.From,
+		To:       args.To,
+		Gas:      args.Gas,
+		GasPrice: args.GasPrice,
+		Nonce:    args.Nonce,
 	}
+}
+
+func (args *GenAssetArgs) toData() ([]byte, error) {
+	param := common.GenAssetParam{
+		Name:     args.Name,
+		Symbol:   args.Symbol,
+		Decimals: args.Decimals,
+		Total:    args.Total.ToInt(),
+	}
+	return param.ToBytes()
 }
 
 // PublicFusionAPI ss
@@ -108,10 +127,6 @@ func (s *PrivateFusionAPI) GenNotation(ctx context.Context, args FusionBaseArgs,
 		return common.Hash{}, err
 	}
 
-	if state == nil || err != nil {
-		return common.Hash{}, err
-	}
-
 	notation := state.GetNotation(args.From)
 
 	if notation != 0 {
@@ -119,6 +134,24 @@ func (s *PrivateFusionAPI) GenNotation(ctx context.Context, args FusionBaseArgs,
 	}
 
 	var param = common.FSNCallParam{Func: common.GenNotationFunc}
+	data, err := param.ToBytes()
+	if err != nil {
+		return common.Hash{}, err
+	}
+	var argsData = hexutil.Bytes(data)
+	sendArgs := args.toSendArgs()
+	sendArgs.To = &common.FSNCallAddress
+	sendArgs.Data = &argsData
+	return s.papi.SendTransaction(ctx, sendArgs, passwd)
+}
+
+// GenAsset ss
+func (s *PrivateFusionAPI) GenAsset(ctx context.Context, args GenAssetArgs, passwd string) (common.Hash, error) {
+	funcData, err := args.toData()
+	if err != nil {
+		return common.Hash{}, err
+	}
+	var param = common.FSNCallParam{Func: common.GenAssetFunc, Data: funcData}
 	data, err := param.ToBytes()
 	if err != nil {
 		return common.Hash{}, err

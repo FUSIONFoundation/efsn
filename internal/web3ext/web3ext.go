@@ -716,6 +716,26 @@ web3._extend({
 				web3._extend.formatters.inputTransactionFormatter,
 				null
 			]
+		}),
+		new web3._extend.Method({
+			name: 'genAsset',
+			call: 'fsn_genAsset',
+			params: 2,
+			inputFormatter: [
+				function(options){					
+					if(options.name === undefined || !options.name){
+						throw new Error('invalid name');
+					}
+					if(options.symbol === undefined || !options.symbol){
+						throw new Error('invalid symbol');
+					}
+					if(options.decimals === undefined || options.decimals <= 0 || options.decimals > 255){
+						throw new Error('invalid decimals');
+					}
+					return web3._extend.formatters.inputTransactionFormatter(options)
+				},
+				null
+			]
 		})
 	],
 	properties:[

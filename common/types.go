@@ -359,14 +359,30 @@ type FSNCallFunc uint8
 const (
 	// GenNotationFunc wacom
 	GenNotationFunc = iota
+	// GenAssetFunc wacom
+	GenAssetFunc = iota
 )
 
 // FSNCallParam wacom
 type FSNCallParam struct {
 	Func FSNCallFunc
+	Data []byte
+}
+
+// GenAssetParam wacom
+type GenAssetParam struct {
+	Name     string
+	Symbol   string
+	Decimals uint8
+	Total    *big.Int
 }
 
 // ToBytes wacom
 func (p *FSNCallParam) ToBytes() ([]byte, error) {
+	return rlp.EncodeToBytes(p)
+}
+
+// ToBytes wacom
+func (p *GenAssetParam) ToBytes() ([]byte, error) {
 	return rlp.EncodeToBytes(p)
 }
