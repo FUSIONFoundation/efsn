@@ -692,6 +692,15 @@ web3._extend({
 			]
 		}),
 		new web3._extend.Method({
+			name: 'getAddressByNotation',
+			call: 'fsn_getAddressByNotation',
+			params: 2,
+			inputFormatter: [
+				null,
+				web3._extend.formatters.inputDefaultBlockNumberFormatter
+			]
+		}),
+		new web3._extend.Method({
 			name: 'allNotation',
 			call: 'fsn_allNotation',
 			params: 1,

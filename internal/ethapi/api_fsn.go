@@ -10,6 +10,25 @@ import (
 	"github.com/ethereum/go-ethereum/rpc"
 )
 
+// FusionBaseArgs wacom
+type FusionBaseArgs struct {
+	From     common.Address  `json:"from"`
+	To       *common.Address `json:"to"`
+	Gas      *hexutil.Uint64 `json:"gas"`
+	GasPrice *hexutil.Big    `json:"gasPrice"`
+	Nonce    *hexutil.Uint64 `json:"nonce"`
+}
+
+func (base *FusionBaseArgs) toSendArgs() SendTxArgs {
+	return SendTxArgs{
+		From:     base.From,
+		To:       base.To,
+		Gas:      base.Gas,
+		GasPrice: base.GasPrice,
+		Nonce:    base.Nonce,
+	}
+}
+
 // PublicFusionAPI ss
 type PublicFusionAPI struct {
 	b Backend
@@ -30,6 +49,23 @@ func (s *PublicFusionAPI) GetNotation(ctx context.Context, address common.Addres
 	}
 	b := calcNotationDisplay(state.GetNotation(address))
 	return b, state.Error()
+}
+
+// GetAddressByNotation wacom
+func (s *PublicFusionAPI) GetAddressByNotation(ctx context.Context, notation uint64, blockNr rpc.BlockNumber) (common.Address, error) {
+	state, _, err := s.b.StateAndHeaderByNumber(ctx, blockNr)
+	if state == nil || err != nil {
+		return common.Address{}, err
+	}
+	temp := notation / 100
+	notations := state.AllNotation()
+	if temp <= 0 || temp > uint64(len(notations)) {
+		return common.Address{}, fmt.Errorf("Notation Not Found")
+	}
+	if calcNotationDisplay(temp) != notation {
+		return common.Address{}, fmt.Errorf("Notation Check Error")
+	}
+	return notations[int(temp-1)], state.Error()
 }
 
 // AllNotation wacom
@@ -65,9 +101,13 @@ func NewPrivateFusionAPI(b Backend, nonceLock *AddrLocker, papi *PrivateAccountA
 }
 
 // GenNotation ss
-func (s *PrivateFusionAPI) GenNotation(ctx context.Context, args SendTxArgs, passwd string) (common.Hash, error) {
+func (s *PrivateFusionAPI) GenNotation(ctx context.Context, args FusionBaseArgs, passwd string) (common.Hash, error) {
 
 	state, _, err := s.b.StateAndHeaderByNumber(ctx, rpc.LatestBlockNumber)
+	if state == nil || err != nil {
+		return common.Hash{}, err
+	}
+
 	if state == nil || err != nil {
 		return common.Hash{}, err
 	}
@@ -84,11 +124,10 @@ func (s *PrivateFusionAPI) GenNotation(ctx context.Context, args SendTxArgs, pas
 		return common.Hash{}, err
 	}
 	var argsData = hexutil.Bytes(data)
-	args.To = &common.FSNCallAddress
-	args.Input = nil
-	args.Data = nil
-	args.Data = &argsData
-	return s.papi.SendTransaction(ctx, args, passwd)
+	sendArgs := args.toSendArgs()
+	sendArgs.To = &common.FSNCallAddress
+	sendArgs.Data = &argsData
+	return s.papi.SendTransaction(ctx, sendArgs, passwd)
 }
 
 func calcNotationDisplay(notation uint64) uint64 {
