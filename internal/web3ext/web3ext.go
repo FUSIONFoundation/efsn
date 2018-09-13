@@ -733,7 +733,7 @@ web3._extend({
 						throw new Error('invalid decimals');
 					}
 					if(options.total !== undefined){
-						options.total = utils.fromDecimal(options[key])
+						options.total = web3.fromDecimal(options.total)
 					}
 					return web3._extend.formatters.inputTransactionFormatter(options)
 				},
