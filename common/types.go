@@ -430,3 +430,33 @@ var SystemAsset = Asset{
 	Total:    new(big.Int).Mul(big.NewInt(81920000), big.NewInt(1000000000000000000)),
 	ID:       SystemAssetID,
 }
+
+// TimeLockItem wacom
+type TimeLockItem struct {
+	StartTime uint64
+	EndTime   uint64
+	Value     *big.Int
+}
+
+// TimeLock wacom
+type TimeLock []TimeLockItem
+
+// IsEmpty wacom
+func (z *TimeLock) IsEmpty() bool {
+	return len(*z) == 0
+}
+
+// Add wacom
+func (z *TimeLock) Add(x, y *TimeLock) *TimeLock {
+	return nil
+}
+
+// Sub wacom
+func (z *TimeLock) Sub(x, y *TimeLock) *TimeLock {
+	return nil
+}
+
+// Set wacom
+func (z *TimeLock) Set(x *TimeLock) *TimeLock {
+	return z
+}

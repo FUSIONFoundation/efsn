@@ -187,13 +187,36 @@ func (self *StateDB) Empty(addr common.Address) bool {
 	return so == nil || so.empty()
 }
 
-// Retrieve the balance from the given address or 0 if object not found
+func (self *StateDB) GetAllBalances(addr common.Address) map[common.Hash]*big.Int {
+	stateObject := self.getStateObject(addr)
+	if stateObject != nil {
+		return stateObject.Balances()
+	}
+	return make(map[common.Hash]*big.Int)
+}
+
 func (self *StateDB) GetBalance(assetID common.Hash, addr common.Address) *big.Int {
 	stateObject := self.getStateObject(addr)
 	if stateObject != nil {
 		return stateObject.Balance(assetID)
 	}
 	return common.Big0
+}
+
+func (self *StateDB) GetAllTimeLockBalances(addr common.Address) map[common.Hash]*common.TimeLock {
+	stateObject := self.getStateObject(addr)
+	if stateObject != nil {
+		return stateObject.TimeLockBalances()
+	}
+	return make(map[common.Hash]*common.TimeLock)
+}
+
+func (self *StateDB) GetTimeLockBalance(assetID common.Hash, addr common.Address) *common.TimeLock {
+	stateObject := self.getStateObject(addr)
+	if stateObject != nil {
+		return stateObject.TimeLockBalance(assetID)
+	}
+	return new(common.TimeLock)
 }
 
 func (self *StateDB) GetNonce(addr common.Address) uint64 {
@@ -326,6 +349,27 @@ func (self *StateDB) SetBalance(addr common.Address, assetID common.Hash, amount
 	}
 }
 
+func (self *StateDB) AddTimeLockBalance(addr common.Address, assetID common.Hash, amount *common.TimeLock) {
+	stateObject := self.GetOrNewStateObject(addr)
+	if stateObject != nil {
+		stateObject.AddTimeLockBalance(assetID, amount)
+	}
+}
+
+func (self *StateDB) SubTimeLockBalance(addr common.Address, assetID common.Hash, amount *common.TimeLock) {
+	stateObject := self.GetOrNewStateObject(addr)
+	if stateObject != nil {
+		stateObject.SubTimeLockBalance(assetID, amount)
+	}
+}
+
+func (self *StateDB) SetTimeLockBalance(addr common.Address, assetID common.Hash, amount *common.TimeLock) {
+	stateObject := self.GetOrNewStateObject(addr)
+	if stateObject != nil {
+		stateObject.SetTimeLockBalance(assetID, amount)
+	}
+}
+
 func (self *StateDB) SetNonce(addr common.Address, nonce uint64) {
 	stateObject := self.GetOrNewStateObject(addr)
 	if stateObject != nil {
@@ -393,13 +437,27 @@ func (self *StateDB) Suicide(addr common.Address) bool {
 	}
 	for k, v := range stateObject.data.Balances {
 		self.journal.append(suicideChange{
+			isTimeLock:  false,
 			account:     &addr,
 			prev:        stateObject.suicided,
 			assetID:     k,
 			prevbalance: new(big.Int).Set(v),
 		})
+		stateObject.suicided = true
 		stateObject.data.Balances[k] = new(big.Int)
 	}
+
+	for k, v := range stateObject.data.TimeLockBalances {
+		self.journal.append(suicideChange{
+			account:             &addr,
+			prev:                stateObject.suicided,
+			assetID:             k,
+			prevTimeLockBalance: new(common.TimeLock).Set(v),
+		})
+		stateObject.suicided = true
+		stateObject.data.TimeLockBalances[k] = new(common.TimeLock)
+	}
+
 	stateObject.markSuicided()
 	return true
 }
@@ -495,6 +553,9 @@ func (self *StateDB) CreateAccount(addr common.Address) {
 	if prev != nil {
 		for k, v := range prev.data.Balances {
 			new.setBalance(k, v)
+		}
+		for k, v := range prev.data.TimeLockBalances {
+			new.setTimeLockBalance(k, v)
 		}
 	}
 }

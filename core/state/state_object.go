@@ -103,17 +103,21 @@ func (s *stateObject) empty() bool {
 // Account is the Ethereum consensus representation of accounts.
 // These objects are stored in the main account trie.
 type Account struct {
-	Nonce    uint64
-	Notaion  uint64
-	Balances map[common.Hash]*big.Int
-	Root     common.Hash // merkle root of the storage trie
-	CodeHash []byte
+	Nonce            uint64
+	Notaion          uint64
+	Balances         map[common.Hash]*big.Int
+	TimeLockBalances map[common.Hash]*common.TimeLock
+	Root             common.Hash // merkle root of the storage trie
+	CodeHash         []byte
 }
 
 // newObject creates a state object.
 func newObject(db *StateDB, address common.Address, data Account) *stateObject {
 	if data.Balances == nil {
 		data.Balances = make(map[common.Hash]*big.Int)
+	}
+	if data.TimeLockBalances == nil {
+		data.TimeLockBalances = make(map[common.Hash]*common.TimeLock)
 	}
 	if data.CodeHash == nil {
 		data.CodeHash = emptyCodeHash
@@ -286,6 +290,47 @@ func (self *stateObject) setBalance(assetID common.Hash, amount *big.Int) {
 	self.data.Balances[assetID] = amount
 }
 
+// AddTimeLockBalance wacom
+func (s *stateObject) AddTimeLockBalance(assetID common.Hash, amount *common.TimeLock) {
+	if amount.IsEmpty() {
+		if s.empty() {
+			s.touch()
+		}
+		return
+	}
+	if s.data.TimeLockBalances[assetID] == nil {
+		s.data.TimeLockBalances[assetID] = new(common.TimeLock)
+	}
+	s.SetTimeLockBalance(assetID, new(common.TimeLock).Add(s.data.TimeLockBalances[assetID], amount))
+}
+
+// SubTimeLockBalance wacom
+func (s *stateObject) SubTimeLockBalance(assetID common.Hash, amount *common.TimeLock) {
+	if amount.IsEmpty() {
+		return
+	}
+	if s.data.TimeLockBalances[assetID] == nil {
+		s.data.TimeLockBalances[assetID] = new(common.TimeLock)
+	}
+	s.SetTimeLockBalance(assetID, new(common.TimeLock).Sub(s.data.TimeLockBalances[assetID], amount))
+}
+
+func (s *stateObject) SetTimeLockBalance(assetID common.Hash, amount *common.TimeLock) {
+	if s.data.TimeLockBalances[assetID] == nil {
+		s.data.TimeLockBalances[assetID] = new(common.TimeLock)
+	}
+	s.db.journal.append(timeLockBalanceChange{
+		account: &s.address,
+		assetID: assetID,
+		prev:    new(common.TimeLock).Set(s.data.TimeLockBalances[assetID]),
+	})
+	s.setTimeLockBalance(assetID, amount)
+}
+
+func (s *stateObject) setTimeLockBalance(assetID common.Hash, amount *common.TimeLock) {
+	s.data.TimeLockBalances[assetID] = amount
+}
+
 // Return the gas back to the origin. Used by the Virtual machine or Closures
 func (c *stateObject) ReturnGas(gas *big.Int) {}
 
@@ -381,6 +426,17 @@ func (self *stateObject) Balance(assetID common.Hash) *big.Int {
 		self.data.Balances[assetID] = new(big.Int)
 	}
 	return self.data.Balances[assetID]
+}
+
+func (self *stateObject) TimeLockBalances() map[common.Hash]*common.TimeLock {
+	return self.data.TimeLockBalances
+}
+
+func (self *stateObject) TimeLockBalance(assetID common.Hash) *common.TimeLock {
+	if self.data.TimeLockBalances[assetID] == nil {
+		self.data.TimeLockBalances[assetID] = new(common.TimeLock)
+	}
+	return self.data.TimeLockBalances[assetID]
 }
 
 func (self *stateObject) Nonce() uint64 {

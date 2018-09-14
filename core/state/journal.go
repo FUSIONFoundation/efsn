@@ -93,10 +93,12 @@ type (
 		prev *stateObject
 	}
 	suicideChange struct {
-		account     *common.Address
-		assetID     common.Hash
-		prev        bool // whether account had already suicided
-		prevbalance *big.Int
+		isTimeLock          bool
+		account             *common.Address
+		assetID             common.Hash
+		prev                bool // whether account had already suicided
+		prevbalance         *big.Int
+		prevTimeLockBalance *common.TimeLock
 	}
 
 	// Changes to individual accounts.
@@ -104,6 +106,11 @@ type (
 		account *common.Address
 		assetID common.Hash
 		prev    *big.Int
+	}
+	timeLockBalanceChange struct {
+		account *common.Address
+		assetID common.Hash
+		prev    *common.TimeLock
 	}
 	nonceChange struct {
 		account *common.Address
@@ -160,7 +167,11 @@ func (ch suicideChange) revert(s *StateDB) {
 	obj := s.getStateObject(*ch.account)
 	if obj != nil {
 		obj.suicided = ch.prev
-		obj.setBalance(ch.assetID, ch.prevbalance)
+		if ch.isTimeLock {
+			obj.setTimeLockBalance(ch.assetID, ch.prevTimeLockBalance)
+		} else {
+			obj.setBalance(ch.assetID, ch.prevbalance)
+		}
 	}
 }
 
@@ -182,6 +193,14 @@ func (ch balanceChange) revert(s *StateDB) {
 }
 
 func (ch balanceChange) dirtied() *common.Address {
+	return ch.account
+}
+
+func (ch timeLockBalanceChange) revert(s *StateDB) {
+	s.getStateObject(*ch.account).setTimeLockBalance(ch.assetID, ch.prev)
+}
+
+func (ch timeLockBalanceChange) dirtied() *common.Address {
 	return ch.account
 }
 
