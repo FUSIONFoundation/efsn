@@ -21,6 +21,7 @@ import (
 	"io"
 	"math/big"
 	"reflect"
+	"sort"
 	"sync"
 )
 
@@ -526,6 +527,32 @@ func makeSliceWriter(typ reflect.Type, ts tags) (writer, error) {
 	return writer, nil
 }
 
+func valueToBigInt(v reflect.Value, w writer) *big.Int {
+	eb := encbufPool.Get().(*encbuf)
+	defer encbufPool.Put(eb)
+	eb.reset()
+	ret := new(big.Int)
+	if err := w(v, eb); err != nil {
+		return ret
+	}
+	return ret.SetBytes(eb.toBytes())
+}
+
+type valueSlice struct {
+	w      writer
+	values []reflect.Value
+}
+
+func (slice valueSlice) Len() int {
+	return len(slice.values)
+}
+func (slice valueSlice) Swap(i, j int) {
+	slice.values[i], slice.values[j] = slice.values[j], slice.values[i]
+}
+func (slice valueSlice) Less(i, j int) bool {
+	return valueToBigInt(slice.values[i], slice.w).Cmp(valueToBigInt(slice.values[j], slice.w)) < 0
+}
+
 func makeMapWriter(typ reflect.Type) (writer, error) {
 	ktypeinfo, err := cachedTypeInfo1(typ.Key(), tags{})
 	if err != nil {
@@ -538,6 +565,7 @@ func makeMapWriter(typ reflect.Type) (writer, error) {
 	writer := func(val reflect.Value, w *encbuf) error {
 		lh := w.list()
 		keys := val.MapKeys()
+		sort.Sort(valueSlice{values: keys, w: ktypeinfo.writer})
 		size := uint64(len(keys))
 		writeUint(reflect.ValueOf(size), w)
 		for i := 0; i < len(keys); i++ {
