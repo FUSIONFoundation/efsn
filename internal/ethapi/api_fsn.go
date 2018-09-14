@@ -36,6 +36,13 @@ type SendAssetArgs struct {
 	Value   *hexutil.Big   `json:"value"`
 }
 
+// TimeLockArgs wacom
+type TimeLockArgs struct {
+	SendAssetArgs
+	StartTime uint64 `json:"start"`
+	EndTime   uint64 `json:"end"`
+}
+
 func (args *FusionBaseArgs) toSendArgs() SendTxArgs {
 	return SendTxArgs{
 		From:     args.From,
@@ -50,6 +57,18 @@ func (args *SendAssetArgs) toData() ([]byte, error) {
 		AssetID: args.AssetID,
 		To:      args.To,
 		Value:   args.Value.ToInt(),
+	}
+	return param.ToBytes()
+}
+
+func (args *TimeLockArgs) toData(typ common.TimeLockType) ([]byte, error) {
+	param := common.TimeLockParam{
+		Type:      typ,
+		AssetID:   args.AssetID,
+		To:        args.To,
+		StartTime: args.StartTime,
+		EndTime:   args.EndTime,
+		Value:     args.Value.ToInt(),
 	}
 	return param.ToBytes()
 }
@@ -83,6 +102,36 @@ func (s *PublicFusionAPI) GetBalance(ctx context.Context, assetID common.Hash, a
 		return new(big.Int), err
 	}
 	b := state.GetBalance(assetID, address)
+	return b, state.Error()
+}
+
+// GetAllBalances wacom
+func (s *PublicFusionAPI) GetAllBalances(ctx context.Context, address common.Address, blockNr rpc.BlockNumber) (map[common.Hash]*big.Int, error) {
+	state, _, err := s.b.StateAndHeaderByNumber(ctx, blockNr)
+	if state == nil || err != nil {
+		return make(map[common.Hash]*big.Int), err
+	}
+	b := state.GetAllBalances(address)
+	return b, state.Error()
+}
+
+// GetTimeLockBalance wacom
+func (s *PublicFusionAPI) GetTimeLockBalance(ctx context.Context, assetID common.Hash, address common.Address, blockNr rpc.BlockNumber) (*common.TimeLock, error) {
+	state, _, err := s.b.StateAndHeaderByNumber(ctx, blockNr)
+	if state == nil || err != nil {
+		return new(common.TimeLock), err
+	}
+	b := state.GetTimeLockBalance(assetID, address)
+	return b, state.Error()
+}
+
+// GetAllTimeLockBalances wacom
+func (s *PublicFusionAPI) GetAllTimeLockBalances(ctx context.Context, address common.Address, blockNr rpc.BlockNumber) (map[common.Hash]*common.TimeLock, error) {
+	state, _, err := s.b.StateAndHeaderByNumber(ctx, blockNr)
+	if state == nil || err != nil {
+		return make(map[common.Hash]*common.TimeLock), err
+	}
+	b := state.GetAllTimeLockBalances(address)
 	return b, state.Error()
 }
 
@@ -214,7 +263,101 @@ func (s *PrivateFusionAPI) SendAsset(ctx context.Context, args SendAssetArgs, pa
 	if err != nil {
 		return common.Hash{}, err
 	}
-	var param = common.FSNCallParam{Func: common.SendAsset, Data: funcData}
+	var param = common.FSNCallParam{Func: common.SendAssetFunc, Data: funcData}
+	data, err := param.ToBytes()
+	if err != nil {
+		return common.Hash{}, err
+	}
+	var argsData = hexutil.Bytes(data)
+	sendArgs := args.toSendArgs()
+	sendArgs.To = &common.FSNCallAddress
+	sendArgs.Data = &argsData
+	return s.papi.SendTransaction(ctx, sendArgs, passwd)
+}
+
+// AssetToTimeLock ss
+func (s *PrivateFusionAPI) AssetToTimeLock(ctx context.Context, args TimeLockArgs, passwd string) (common.Hash, error) {
+
+	state, _, err := s.b.StateAndHeaderByNumber(ctx, rpc.LatestBlockNumber)
+	if state == nil || err != nil {
+		return common.Hash{}, err
+	}
+
+	if state.GetBalance(args.AssetID, args.From).Cmp(args.Value.ToInt()) < 0 {
+		return common.Hash{}, fmt.Errorf("not enough asset")
+	}
+
+	funcData, err := args.toData(common.AssetToTimeLock)
+	if err != nil {
+		return common.Hash{}, err
+	}
+	var param = common.FSNCallParam{Func: common.TimeLockFunc, Data: funcData}
+	data, err := param.ToBytes()
+	if err != nil {
+		return common.Hash{}, err
+	}
+	var argsData = hexutil.Bytes(data)
+	sendArgs := args.toSendArgs()
+	sendArgs.To = &common.FSNCallAddress
+	sendArgs.Data = &argsData
+	return s.papi.SendTransaction(ctx, sendArgs, passwd)
+}
+
+// TimeLockToTimeLock ss
+func (s *PrivateFusionAPI) TimeLockToTimeLock(ctx context.Context, args TimeLockArgs, passwd string) (common.Hash, error) {
+
+	state, _, err := s.b.StateAndHeaderByNumber(ctx, rpc.LatestBlockNumber)
+	if state == nil || err != nil {
+		return common.Hash{}, err
+	}
+
+	needValue := common.NewTimeLock(common.TimeLockItem{
+		StartTime: args.StartTime,
+		EndTime:   args.EndTime,
+		Value:     args.Value.ToInt(),
+	})
+
+	if state.GetTimeLockBalance(args.AssetID, args.From).Cmp(needValue) < 0 {
+		return common.Hash{}, fmt.Errorf("not enough time lock balance")
+	}
+
+	funcData, err := args.toData(common.TimeLockToTimeLock)
+	if err != nil {
+		return common.Hash{}, err
+	}
+	var param = common.FSNCallParam{Func: common.TimeLockFunc, Data: funcData}
+	data, err := param.ToBytes()
+	if err != nil {
+		return common.Hash{}, err
+	}
+	var argsData = hexutil.Bytes(data)
+	sendArgs := args.toSendArgs()
+	sendArgs.To = &common.FSNCallAddress
+	sendArgs.Data = &argsData
+	return s.papi.SendTransaction(ctx, sendArgs, passwd)
+}
+
+// TimeLockToAsset ss
+func (s *PrivateFusionAPI) TimeLockToAsset(ctx context.Context, args TimeLockArgs, passwd string) (common.Hash, error) {
+	state, _, err := s.b.StateAndHeaderByNumber(ctx, rpc.LatestBlockNumber)
+	if state == nil || err != nil {
+		return common.Hash{}, err
+	}
+	args.StartTime = common.TimeLockNow
+	args.EndTime = common.TimeLockForever
+	needValue := common.NewTimeLock(common.TimeLockItem{
+		StartTime: args.StartTime,
+		EndTime:   args.EndTime,
+		Value:     args.Value.ToInt(),
+	})
+	if state.GetTimeLockBalance(args.AssetID, args.From).Cmp(needValue) < 0 {
+		return common.Hash{}, fmt.Errorf("not enough time lock balance")
+	}
+	funcData, err := args.toData(common.TimeLockToAsset)
+	if err != nil {
+		return common.Hash{}, err
+	}
+	var param = common.FSNCallParam{Func: common.TimeLockFunc, Data: funcData}
 	data, err := param.ToBytes()
 	if err != nil {
 		return common.Hash{}, err

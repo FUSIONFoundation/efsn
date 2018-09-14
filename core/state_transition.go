@@ -273,7 +273,7 @@ func (st *StateTransition) handleFsnCall() error {
 		}
 		st.state.AddBalance(st.msg.From(), asset.ID, asset.Total)
 		return nil
-	case common.SendAsset:
+	case common.SendAssetFunc:
 		sendAssetParam := common.SendAssetParam{}
 		rlp.DecodeBytes(param.Data, &sendAssetParam)
 		if st.state.GetBalance(sendAssetParam.AssetID, st.msg.From()).Cmp(sendAssetParam.Value) < 0 {
@@ -281,6 +281,46 @@ func (st *StateTransition) handleFsnCall() error {
 		}
 		st.state.SubBalance(st.msg.From(), sendAssetParam.AssetID, sendAssetParam.Value)
 		st.state.AddBalance(sendAssetParam.To, sendAssetParam.AssetID, sendAssetParam.Value)
+		return nil
+	case common.TimeLockFunc:
+		timeLockParam := common.TimeLockParam{}
+		rlp.DecodeBytes(param.Data, &timeLockParam)
+		if timeLockParam.Type == common.AssetToTimeLock {
+			timeLockParam.StartTime = common.TimeLockNow
+			timeLockParam.EndTime = common.TimeLockForever
+		}
+		needValue := common.NewTimeLock(common.TimeLockItem{
+			StartTime: timeLockParam.StartTime,
+			EndTime:   timeLockParam.EndTime,
+			Value:     timeLockParam.Value,
+		})
+		switch timeLockParam.Type {
+		case common.AssetToTimeLock:
+			if st.state.GetBalance(timeLockParam.AssetID, st.msg.From()).Cmp(timeLockParam.Value) < 0 {
+				return fmt.Errorf("not enough asset")
+			}
+			st.state.SubBalance(st.msg.From(), timeLockParam.AssetID, timeLockParam.Value)
+			totalValue := common.NewTimeLock(common.TimeLockItem{
+				StartTime: common.TimeLockNow,
+				EndTime:   common.TimeLockForever,
+				Value:     timeLockParam.Value,
+			})
+			st.state.AddTimeLockBalance(st.msg.From(), timeLockParam.AssetID, new(common.TimeLock).Sub(totalValue, needValue))
+			st.state.AddTimeLockBalance(timeLockParam.To, timeLockParam.AssetID, needValue)
+			return nil
+		case common.TimeLockToTimeLock:
+		case common.TimeLockToAsset:
+			if st.state.GetTimeLockBalance(timeLockParam.AssetID, st.msg.From()).Cmp(needValue) < 0 {
+				return fmt.Errorf("not enough time lock balance")
+			}
+			st.state.SubTimeLockBalance(st.msg.From(), timeLockParam.AssetID, needValue)
+			if timeLockParam.Type == common.TimeLockToTimeLock {
+				st.state.AddTimeLockBalance(timeLockParam.To, timeLockParam.AssetID, needValue)
+			} else {
+				st.state.AddBalance(timeLockParam.To, timeLockParam.AssetID, timeLockParam.Value)
+			}
+			return nil
+		}
 		return nil
 	}
 	return fmt.Errorf("Unsupport")

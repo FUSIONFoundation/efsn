@@ -693,6 +693,34 @@ web3._extend({
 			]
 		}),
 		new web3._extend.Method({
+			name: 'getAllBalances',
+			call: 'fsn_getAllBalances',
+			params: 2,
+			inputFormatter: [				
+				web3._extend.formatters.inputAddressFormatter,
+				web3._extend.formatters.inputDefaultBlockNumberFormatter
+			]
+		}),
+		new web3._extend.Method({
+			name: 'getTimeLockBalance',
+			call: 'fsn_getTimeLockBalance',
+			params: 3,
+			inputFormatter: [
+				null,
+				web3._extend.formatters.inputAddressFormatter,
+				web3._extend.formatters.inputDefaultBlockNumberFormatter
+			]
+		}),
+		new web3._extend.Method({
+			name: 'getAllTimeLockBalances',
+			call: 'fsn_getAllTimeLockBalances',
+			params: 2,
+			inputFormatter: [				
+				web3._extend.formatters.inputAddressFormatter,
+				web3._extend.formatters.inputDefaultBlockNumberFormatter
+			]
+		}),
+		new web3._extend.Method({
 			name: 'getNotation',
 			call: 'fsn_getNotation',
 			params: 2,
@@ -764,6 +792,39 @@ web3._extend({
 			params: 2,
 			inputFormatter: [
 				web3._extend.formatters.inputTransactionFormatter,
+				null
+			]
+		}),		
+		new web3._extend.Method({
+			name: 'assetToTimeLock',
+			call: 'fsn_assetToTimeLock',
+			params: 2,
+			inputFormatter: [
+				function(options){
+					return web3._extend.formatters.inputTransactionFormatter(options)
+				},
+				null
+			]
+		}),
+		new web3._extend.Method({
+			name: 'timeLockToTimeLock',
+			call: 'fsn_timeLockToTimeLock',
+			params: 2,
+			inputFormatter: [
+				function(options){
+					return web3._extend.formatters.inputTransactionFormatter(options)
+				},
+				null
+			]
+		}),
+		new web3._extend.Method({
+			name: 'timeLockToAsset',
+			call: 'fsn_timeLockToAsset',
+			params: 2,
+			inputFormatter: [
+				function(options){
+					return web3._extend.formatters.inputTransactionFormatter(options)
+				},
 				null
 			]
 		}),

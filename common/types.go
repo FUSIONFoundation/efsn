@@ -363,8 +363,10 @@ const (
 	GenNotationFunc = iota
 	// GenAssetFunc wacom
 	GenAssetFunc
-	// SendAsset wacom
-	SendAsset
+	// SendAssetFunc wacom
+	SendAssetFunc
+	// TimeLockFunc wacom
+	TimeLockFunc
 )
 
 // FSNCallParam wacom
@@ -388,6 +390,33 @@ type SendAssetParam struct {
 	Value   *big.Int
 }
 
+// TimeLockType wacom
+type TimeLockType uint
+
+// TimeLockTypes wacom
+const (
+	AssetToTimeLock TimeLockType = iota
+	TimeLockToTimeLock
+	TimeLockToAsset
+)
+
+const (
+	// TimeLockNow wacom
+	TimeLockNow uint64 = 0
+	// TimeLockForever wacom
+	TimeLockForever uint64 = 0xffffffffffffffff
+)
+
+// TimeLockParam wacom
+type TimeLockParam struct {
+	Type      TimeLockType
+	AssetID   Hash
+	To        Address
+	StartTime uint64
+	EndTime   uint64
+	Value     *big.Int
+}
+
 // ToBytes wacom
 func (p *FSNCallParam) ToBytes() ([]byte, error) {
 	return rlp.EncodeToBytes(p)
@@ -400,6 +429,11 @@ func (p *GenAssetParam) ToBytes() ([]byte, error) {
 
 // ToBytes wacom
 func (p *SendAssetParam) ToBytes() ([]byte, error) {
+	return rlp.EncodeToBytes(p)
+}
+
+// ToBytes wacom
+func (p *TimeLockParam) ToBytes() ([]byte, error) {
 	return rlp.EncodeToBytes(p)
 }
 
@@ -439,11 +473,20 @@ type TimeLockItem struct {
 }
 
 // TimeLock wacom
-type TimeLock []TimeLockItem
+type TimeLock struct {
+	Items []TimeLockItem
+}
+
+// NewTimeLock wacom
+func NewTimeLock(items ...TimeLockItem) *TimeLock {
+	return &TimeLock{
+		Items: items,
+	}
+}
 
 // IsEmpty wacom
 func (z *TimeLock) IsEmpty() bool {
-	return len(*z) == 0
+	return len(z.Items) == 0
 }
 
 // Add wacom
@@ -458,5 +501,14 @@ func (z *TimeLock) Sub(x, y *TimeLock) *TimeLock {
 
 // Set wacom
 func (z *TimeLock) Set(x *TimeLock) *TimeLock {
+	if x != nil && x.Items != nil {
+		z.Items = make([]TimeLockItem, len(x.Items))
+		copy(z.Items, x.Items)
+	}
 	return z
+}
+
+// Cmp wacom
+func (z *TimeLock) Cmp(x *TimeLock) int {
+	return 0
 }
