@@ -491,12 +491,37 @@ func (z *TimeLock) IsEmpty() bool {
 
 // Add wacom
 func (z *TimeLock) Add(x, y *TimeLock) *TimeLock {
-	return nil
+	if y != nil && y.Items != nil {
+		z.SetItems(x.Items)
+	} else {
+		z.Items = make([]TimeLockItem, 0)
+	}
+	if y != nil && y.Items != nil {
+		for i := 0; i < len(y.Items); i++ {
+			z.Items = append(z.Items, y.Items[i])
+		}
+	}
+	z.merge()
+	return z
 }
 
 // Sub wacom
 func (z *TimeLock) Sub(x, y *TimeLock) *TimeLock {
-	return nil
+	moreThan, index := x.cmp(y)
+	if moreThan >= 0 {
+		z.SetItems(x.Items)
+		zItem := z.Items[index]
+		yItem := y.Items[0]
+		zItem.Value = zItem.Value.Sub(zItem.Value, yItem.Value)
+		if zItem.StartTime < yItem.StartTime {
+			z.Items = append(z.Items, TimeLockItem{})
+		}
+		if yItem.EndTime > yItem.EndTime {
+			z.Items = append(z.Items, TimeLockItem{})
+		}
+		z.merge()
+	}
+	return z
 }
 
 // Set wacom
@@ -508,7 +533,42 @@ func (z *TimeLock) Set(x *TimeLock) *TimeLock {
 	return z
 }
 
+// SetItems wacom
+func (z *TimeLock) SetItems(items []TimeLockItem) {
+	if items != nil {
+		z.Items = make([]TimeLockItem, len(items))
+		copy(z.Items, items)
+	}
+}
+
 // Cmp wacom
 func (z *TimeLock) Cmp(x *TimeLock) int {
-	return 0
+	ret, _ := z.cmp(x)
+	return ret
+}
+
+func (z *TimeLock) cmp(x *TimeLock) (int, int) {
+	if len(x.Items) != 1 {
+		panic("Just Support One TimeLockItem")
+	}
+	xItem := x.Items[0]
+	for i := 0; i < len(z.Items); i++ {
+		zItem := z.Items[0]
+		if zItem.StartTime <= xItem.StartTime && zItem.EndTime >= xItem.EndTime && zItem.Value.Cmp(xItem.Value) >= 0 {
+			if i > 0 || len(z.Items) > 1 || zItem.StartTime < xItem.StartTime || zItem.EndTime > xItem.EndTime || zItem.Value.Cmp(xItem.Value) > 0 {
+				return 1, i
+			}
+			return 0, i
+		}
+	}
+	return -1, 0
+}
+
+func (z *TimeLock) merge() {
+	items := z.Items
+	if len(items) < 2 {
+		return
+	}
+
+	z.Items = items
 }
