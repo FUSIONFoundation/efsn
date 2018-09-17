@@ -97,6 +97,12 @@ func (s *stateObject) empty() bool {
 			break
 		}
 	}
+	for _, v := range s.data.TimeLockBalances {
+		balanceEmpty = balanceEmpty && v.IsEmpty()
+		if !balanceEmpty {
+			break
+		}
+	}
 	return s.data.Nonce == 0 && balanceEmpty && bytes.Equal(s.data.CodeHash, emptyCodeHash)
 }
 
