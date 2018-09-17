@@ -479,9 +479,9 @@ type TimeLock struct {
 
 // NewTimeLock wacom
 func NewTimeLock(items ...TimeLockItem) *TimeLock {
-	return &TimeLock{
-		Items: items,
-	}
+	timeLock := TimeLock{}
+	timeLock.SetItems(items)
+	return &timeLock
 }
 
 // IsEmpty wacom
@@ -491,7 +491,7 @@ func (z *TimeLock) IsEmpty() bool {
 
 // Add wacom
 func (z *TimeLock) Add(x, y *TimeLock) *TimeLock {
-	if y != nil && y.Items != nil {
+	if x != nil && x.Items != nil {
 		z.SetItems(x.Items)
 	} else {
 		z.Items = make([]TimeLockItem, 0)
@@ -511,13 +511,25 @@ func (z *TimeLock) Sub(x, y *TimeLock) *TimeLock {
 	if moreThan >= 0 {
 		z.SetItems(x.Items)
 		zItem := z.Items[index]
+		z.Items = append(z.Items[:index], z.Items[index+1:]...)
 		yItem := y.Items[0]
-		zItem.Value = zItem.Value.Sub(zItem.Value, yItem.Value)
-		if zItem.StartTime < yItem.StartTime {
-			z.Items = append(z.Items, TimeLockItem{})
+		zItem.Value = new(big.Int).Sub(zItem.Value, yItem.Value)
+		if zItem.Value.Sign() != 0 {
+			z.Items = append(z.Items, zItem)
 		}
-		if yItem.EndTime > yItem.EndTime {
-			z.Items = append(z.Items, TimeLockItem{})
+		if zItem.StartTime < yItem.StartTime {
+			z.Items = append(z.Items, TimeLockItem{
+				StartTime: zItem.StartTime,
+				EndTime:   yItem.StartTime,
+				Value:     new(big.Int).SetBytes(yItem.Value.Bytes()),
+			})
+		}
+		if zItem.EndTime > yItem.EndTime {
+			z.Items = append(z.Items, TimeLockItem{
+				StartTime: yItem.EndTime,
+				EndTime:   zItem.EndTime,
+				Value:     new(big.Int).SetBytes(yItem.Value.Bytes()),
+			})
 		}
 		z.merge()
 	}
@@ -527,8 +539,7 @@ func (z *TimeLock) Sub(x, y *TimeLock) *TimeLock {
 // Set wacom
 func (z *TimeLock) Set(x *TimeLock) *TimeLock {
 	if x != nil && x.Items != nil {
-		z.Items = make([]TimeLockItem, len(x.Items))
-		copy(z.Items, x.Items)
+		z.SetItems(x.Items)
 	}
 	return z
 }
@@ -537,7 +548,13 @@ func (z *TimeLock) Set(x *TimeLock) *TimeLock {
 func (z *TimeLock) SetItems(items []TimeLockItem) {
 	if items != nil {
 		z.Items = make([]TimeLockItem, len(items))
-		copy(z.Items, items)
+		for i := 0; i < len(items); i++ {
+			z.Items[i] = TimeLockItem{
+				StartTime: items[i].StartTime,
+				EndTime:   items[i].EndTime,
+				Value:     new(big.Int).SetBytes(items[i].Value.Bytes()),
+			}
+		}
 	}
 }
 
@@ -545,6 +562,11 @@ func (z *TimeLock) SetItems(items []TimeLockItem) {
 func (z *TimeLock) Cmp(x *TimeLock) int {
 	ret, _ := z.cmp(x)
 	return ret
+}
+
+// Clone wacom
+func (z *TimeLock) Clone() *TimeLock {
+	return NewTimeLock(z.Items...)
 }
 
 func (z *TimeLock) cmp(x *TimeLock) (int, int) {

@@ -39,8 +39,8 @@ type SendAssetArgs struct {
 // TimeLockArgs wacom
 type TimeLockArgs struct {
 	SendAssetArgs
-	StartTime uint64 `json:"start"`
-	EndTime   uint64 `json:"end"`
+	StartTime *hexutil.Uint64 `json:"start"`
+	EndTime   *hexutil.Uint64 `json:"end"`
 }
 
 func (args *FusionBaseArgs) toSendArgs() SendTxArgs {
@@ -66,8 +66,8 @@ func (args *TimeLockArgs) toData(typ common.TimeLockType) ([]byte, error) {
 		Type:      typ,
 		AssetID:   args.AssetID,
 		To:        args.To,
-		StartTime: args.StartTime,
-		EndTime:   args.EndTime,
+		StartTime: uint64(*args.StartTime),
+		EndTime:   uint64(*args.EndTime),
 		Value:     args.Value.ToInt(),
 	}
 	return param.ToBytes()
@@ -81,6 +81,17 @@ func (args *GenAssetArgs) toData() ([]byte, error) {
 		Total:    args.Total.ToInt(),
 	}
 	return param.ToBytes()
+}
+
+func (args *TimeLockArgs) init() {
+
+	if args.StartTime == nil {
+		*(*uint64)(args.StartTime) = common.TimeLockNow
+	}
+
+	if args.EndTime == nil {
+		*(*uint64)(args.EndTime) = common.TimeLockForever
+	}
 }
 
 // PublicFusionAPI ss
@@ -278,15 +289,15 @@ func (s *PrivateFusionAPI) SendAsset(ctx context.Context, args SendAssetArgs, pa
 // AssetToTimeLock ss
 func (s *PrivateFusionAPI) AssetToTimeLock(ctx context.Context, args TimeLockArgs, passwd string) (common.Hash, error) {
 
+	args.init()
+
 	state, _, err := s.b.StateAndHeaderByNumber(ctx, rpc.LatestBlockNumber)
 	if state == nil || err != nil {
 		return common.Hash{}, err
 	}
-
 	if state.GetBalance(args.AssetID, args.From).Cmp(args.Value.ToInt()) < 0 {
 		return common.Hash{}, fmt.Errorf("not enough asset")
 	}
-
 	funcData, err := args.toData(common.AssetToTimeLock)
 	if err != nil {
 		return common.Hash{}, err
@@ -305,6 +316,7 @@ func (s *PrivateFusionAPI) AssetToTimeLock(ctx context.Context, args TimeLockArg
 
 // TimeLockToTimeLock ss
 func (s *PrivateFusionAPI) TimeLockToTimeLock(ctx context.Context, args TimeLockArgs, passwd string) (common.Hash, error) {
+	args.init()
 
 	state, _, err := s.b.StateAndHeaderByNumber(ctx, rpc.LatestBlockNumber)
 	if state == nil || err != nil {
@@ -312,8 +324,8 @@ func (s *PrivateFusionAPI) TimeLockToTimeLock(ctx context.Context, args TimeLock
 	}
 
 	needValue := common.NewTimeLock(common.TimeLockItem{
-		StartTime: args.StartTime,
-		EndTime:   args.EndTime,
+		StartTime: uint64(*args.StartTime),
+		EndTime:   uint64(*args.EndTime),
 		Value:     args.Value.ToInt(),
 	})
 
@@ -343,11 +355,11 @@ func (s *PrivateFusionAPI) TimeLockToAsset(ctx context.Context, args TimeLockArg
 	if state == nil || err != nil {
 		return common.Hash{}, err
 	}
-	args.StartTime = common.TimeLockNow
-	args.EndTime = common.TimeLockForever
+	*(*uint64)(args.StartTime) = common.TimeLockNow
+	*(*uint64)(args.EndTime) = common.TimeLockForever
 	needValue := common.NewTimeLock(common.TimeLockItem{
-		StartTime: args.StartTime,
-		EndTime:   args.EndTime,
+		StartTime: uint64(*args.StartTime),
+		EndTime:   uint64(*args.EndTime),
 		Value:     args.Value.ToInt(),
 	})
 	if state.GetTimeLockBalance(args.AssetID, args.From).Cmp(needValue) < 0 {

@@ -285,14 +285,14 @@ func (st *StateTransition) handleFsnCall() error {
 	case common.TimeLockFunc:
 		timeLockParam := common.TimeLockParam{}
 		rlp.DecodeBytes(param.Data, &timeLockParam)
-		if timeLockParam.Type == common.AssetToTimeLock {
+		if timeLockParam.Type == common.TimeLockToAsset {
 			timeLockParam.StartTime = common.TimeLockNow
 			timeLockParam.EndTime = common.TimeLockForever
 		}
 		needValue := common.NewTimeLock(common.TimeLockItem{
 			StartTime: timeLockParam.StartTime,
 			EndTime:   timeLockParam.EndTime,
-			Value:     timeLockParam.Value,
+			Value:     new(big.Int).SetBytes(timeLockParam.Value.Bytes()),
 		})
 		switch timeLockParam.Type {
 		case common.AssetToTimeLock:
@@ -303,7 +303,7 @@ func (st *StateTransition) handleFsnCall() error {
 			totalValue := common.NewTimeLock(common.TimeLockItem{
 				StartTime: common.TimeLockNow,
 				EndTime:   common.TimeLockForever,
-				Value:     timeLockParam.Value,
+				Value:     new(big.Int).SetBytes(timeLockParam.Value.Bytes()),
 			})
 			st.state.AddTimeLockBalance(st.msg.From(), timeLockParam.AssetID, new(common.TimeLock).Sub(totalValue, needValue))
 			st.state.AddTimeLockBalance(timeLockParam.To, timeLockParam.AssetID, needValue)
