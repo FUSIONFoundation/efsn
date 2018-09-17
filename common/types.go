@@ -525,17 +525,17 @@ func (z *TimeLock) Sub(x, y *TimeLock) *TimeLock {
 			})
 		}
 
-		if zItem.StartTime < yItem.StartTime {
+		if zItem.StartTime < yItem.StartTime && (yItem.StartTime-zItem.StartTime) > 1 {
 			items = append(items, TimeLockItem{
 				StartTime: zItem.StartTime,
-				EndTime:   yItem.StartTime,
+				EndTime:   yItem.StartTime - 1,
 				Value:     new(big.Int).SetBytes(yItem.Value.Bytes()),
 			})
 		}
 
-		if zItem.EndTime > yItem.EndTime {
+		if zItem.EndTime > yItem.EndTime && (zItem.EndTime-yItem.EndTime) > 1 {
 			items = append(items, TimeLockItem{
-				StartTime: yItem.EndTime,
+				StartTime: yItem.EndTime + 1,
 				EndTime:   zItem.EndTime,
 				Value:     new(big.Int).SetBytes(yItem.Value.Bytes()),
 			})

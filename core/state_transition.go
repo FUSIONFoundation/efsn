@@ -305,20 +305,25 @@ func (st *StateTransition) handleFsnCall() error {
 				EndTime:   common.TimeLockForever,
 				Value:     new(big.Int).SetBytes(timeLockParam.Value.Bytes()),
 			})
-			st.state.AddTimeLockBalance(st.msg.From(), timeLockParam.AssetID, new(common.TimeLock).Sub(totalValue, needValue))
+			surplusValue := new(common.TimeLock).Sub(totalValue, needValue)
+			if !surplusValue.IsEmpty() {
+				st.state.AddTimeLockBalance(st.msg.From(), timeLockParam.AssetID, surplusValue)
+			}
 			st.state.AddTimeLockBalance(timeLockParam.To, timeLockParam.AssetID, needValue)
 			return nil
 		case common.TimeLockToTimeLock:
+			if st.state.GetTimeLockBalance(timeLockParam.AssetID, st.msg.From()).Cmp(needValue) < 0 {
+				return fmt.Errorf("not enough time lock balance")
+			}
+			st.state.SubTimeLockBalance(st.msg.From(), timeLockParam.AssetID, needValue)
+			st.state.AddTimeLockBalance(timeLockParam.To, timeLockParam.AssetID, needValue)
+			return nil
 		case common.TimeLockToAsset:
 			if st.state.GetTimeLockBalance(timeLockParam.AssetID, st.msg.From()).Cmp(needValue) < 0 {
 				return fmt.Errorf("not enough time lock balance")
 			}
 			st.state.SubTimeLockBalance(st.msg.From(), timeLockParam.AssetID, needValue)
-			if timeLockParam.Type == common.TimeLockToTimeLock {
-				st.state.AddTimeLockBalance(timeLockParam.To, timeLockParam.AssetID, needValue)
-			} else {
-				st.state.AddBalance(timeLockParam.To, timeLockParam.AssetID, timeLockParam.Value)
-			}
+			st.state.AddBalance(timeLockParam.To, timeLockParam.AssetID, timeLockParam.Value)
 			return nil
 		}
 		return nil
