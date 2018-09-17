@@ -491,16 +491,18 @@ func (z *TimeLock) IsEmpty() bool {
 
 // Add wacom
 func (z *TimeLock) Add(x, y *TimeLock) *TimeLock {
+	items := make([]TimeLockItem, 0)
 	if x != nil && x.Items != nil {
-		z.SetItems(x.Items)
-	} else {
-		z.Items = make([]TimeLockItem, 0)
+		for i := 0; i < len(x.Items); i++ {
+			items = append(items, x.Items[i])
+		}
 	}
 	if y != nil && y.Items != nil {
 		for i := 0; i < len(y.Items); i++ {
-			z.Items = append(z.Items, y.Items[i])
+			items = append(items, y.Items[i])
 		}
 	}
+	z.SetItems(items)
 	z.merge()
 	return z
 }
@@ -509,28 +511,36 @@ func (z *TimeLock) Add(x, y *TimeLock) *TimeLock {
 func (z *TimeLock) Sub(x, y *TimeLock) *TimeLock {
 	moreThan, index := x.cmp(y)
 	if moreThan >= 0 {
-		z.SetItems(x.Items)
-		zItem := z.Items[index]
-		z.Items = append(z.Items[:index], z.Items[index+1:]...)
+		items := make([]TimeLockItem, len(x.Items))
+		zItem := x.Items[index]
+		items = append(x.Items[:index], x.Items[index+1:]...)
 		yItem := y.Items[0]
-		zItem.Value = new(big.Int).Sub(zItem.Value, yItem.Value)
-		if zItem.Value.Sign() != 0 {
-			z.Items = append(z.Items, zItem)
+
+		value := new(big.Int).Sub(zItem.Value, yItem.Value)
+		if value.Sign() != 0 {
+			items = append(items, TimeLockItem{
+				StartTime: zItem.StartTime,
+				EndTime:   zItem.EndTime,
+				Value:     value,
+			})
 		}
+
 		if zItem.StartTime < yItem.StartTime {
-			z.Items = append(z.Items, TimeLockItem{
+			items = append(items, TimeLockItem{
 				StartTime: zItem.StartTime,
 				EndTime:   yItem.StartTime,
 				Value:     new(big.Int).SetBytes(yItem.Value.Bytes()),
 			})
 		}
+
 		if zItem.EndTime > yItem.EndTime {
-			z.Items = append(z.Items, TimeLockItem{
+			items = append(items, TimeLockItem{
 				StartTime: yItem.EndTime,
 				EndTime:   zItem.EndTime,
 				Value:     new(big.Int).SetBytes(yItem.Value.Bytes()),
 			})
 		}
+		z.SetItems(items)
 		z.merge()
 	}
 	return z
