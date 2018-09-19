@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"math"
 	"math/big"
+	"time"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/vm"
@@ -286,7 +287,9 @@ func (st *StateTransition) handleFsnCall() error {
 		timeLockParam := common.TimeLockParam{}
 		rlp.DecodeBytes(param.Data, &timeLockParam)
 		if timeLockParam.Type == common.TimeLockToAsset {
-			timeLockParam.StartTime = common.TimeLockNow
+			if timeLockParam.StartTime > uint64(time.Now().Unix()) {
+				return fmt.Errorf("Start time must be more than now")
+			}
 			timeLockParam.EndTime = common.TimeLockForever
 		}
 		needValue := common.NewTimeLock(common.TimeLockItem{

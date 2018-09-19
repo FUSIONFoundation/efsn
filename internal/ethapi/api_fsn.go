@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"math/big"
+	"time"
 
 	"github.com/ethereum/go-ethereum/accounts"
 	"github.com/ethereum/go-ethereum/common"
@@ -355,7 +356,7 @@ func (s *PrivateFusionAPI) TimeLockToAsset(ctx context.Context, args TimeLockArg
 	if state == nil || err != nil {
 		return common.Hash{}, err
 	}
-	*(*uint64)(args.StartTime) = common.TimeLockNow
+	*(*uint64)(args.StartTime) = uint64(time.Now().Unix())
 	*(*uint64)(args.EndTime) = common.TimeLockForever
 	needValue := common.NewTimeLock(common.TimeLockItem{
 		StartTime: uint64(*args.StartTime),
