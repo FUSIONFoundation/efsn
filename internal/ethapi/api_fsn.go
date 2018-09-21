@@ -324,7 +324,7 @@ func (s *PrivateFusionAPI) TimeLockToTimeLock(ctx context.Context, args TimeLock
 		return common.Hash{}, err
 	}
 
-	needValue := common.NewTimeLock(common.TimeLockItem{
+	needValue := common.NewTimeLock(&common.TimeLockItem{
 		StartTime: uint64(*args.StartTime),
 		EndTime:   uint64(*args.EndTime),
 		Value:     args.Value.ToInt(),
@@ -358,7 +358,7 @@ func (s *PrivateFusionAPI) TimeLockToAsset(ctx context.Context, args TimeLockArg
 	}
 	*(*uint64)(args.StartTime) = uint64(time.Now().Unix())
 	*(*uint64)(args.EndTime) = common.TimeLockForever
-	needValue := common.NewTimeLock(common.TimeLockItem{
+	needValue := common.NewTimeLock(&common.TimeLockItem{
 		StartTime: uint64(*args.StartTime),
 		EndTime:   uint64(*args.EndTime),
 		Value:     args.Value.ToInt(),

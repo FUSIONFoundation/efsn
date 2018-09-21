@@ -292,7 +292,7 @@ func (st *StateTransition) handleFsnCall() error {
 			}
 			timeLockParam.EndTime = common.TimeLockForever
 		}
-		needValue := common.NewTimeLock(common.TimeLockItem{
+		needValue := common.NewTimeLock(&common.TimeLockItem{
 			StartTime: timeLockParam.StartTime,
 			EndTime:   timeLockParam.EndTime,
 			Value:     new(big.Int).SetBytes(timeLockParam.Value.Bytes()),
@@ -303,7 +303,7 @@ func (st *StateTransition) handleFsnCall() error {
 				return fmt.Errorf("not enough asset")
 			}
 			st.state.SubBalance(st.msg.From(), timeLockParam.AssetID, timeLockParam.Value)
-			totalValue := common.NewTimeLock(common.TimeLockItem{
+			totalValue := common.NewTimeLock(&common.TimeLockItem{
 				StartTime: common.TimeLockNow,
 				EndTime:   common.TimeLockForever,
 				Value:     new(big.Int).SetBytes(timeLockParam.Value.Bytes()),
