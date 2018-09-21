@@ -1,6 +1,7 @@
 package common
 
 import (
+	"encoding/json"
 	"math/big"
 	"sort"
 )
@@ -50,14 +51,16 @@ func (z *TimeLockItem) Sub(x *TimeLockItem) (*big.Int, []*TimeLockItem) {
 	}
 	var missingValue *big.Int
 	if z.Value.Cmp(x.Value) >= 0 {
-		remaining = append(remaining, &TimeLockItem{
-			StartTime: x.StartTime,
-			EndTime:   x.EndTime,
-			Value:     new(big.Int).Sub(z.Value, x.Value),
-		})
+		if z.Value.Cmp(x.Value) > 0 {
+			remaining = append(remaining, &TimeLockItem{
+				StartTime: x.StartTime,
+				EndTime:   x.EndTime,
+				Value:     new(big.Int).Sub(z.Value, x.Value),
+			})
+		}
 		missingValue = big.NewInt(0)
 	} else {
-		missingValue = missingValue.Sub(x.Value, z.Value)
+		missingValue = new(big.Int).Sub(x.Value, z.Value)
 	}
 	return missingValue, remaining
 }
@@ -107,7 +110,7 @@ func (z *TimeLock) Add(x, y *TimeLock) *TimeLock {
 
 // Sub wacom z = x - y
 func (z *TimeLock) Sub(x, y *TimeLock) *TimeLock {
-	if len(x.Items) != 1 {
+	if len(y.Items) != 1 {
 		panic("Just Support One TimeLockItem")
 	}
 	item := y.Items[0]
@@ -173,7 +176,13 @@ func (z *TimeLock) Less(i, j int) bool {
 	if z.sortTime {
 		return z.Items[i].StartTime < z.Items[j].StartTime || (z.Items[i].StartTime == z.Items[j].StartTime && z.Items[i].EndTime <= z.Items[j].EndTime)
 	}
-	return z.Items[i].Value.Cmp(z.Items[j].Value) < 0
+	return z.Items[i].Value.Cmp(z.Items[j].Value) > 0
+}
+
+// String wacom
+func (z *TimeLock) String() string {
+	b, _ := json.Marshal(z.Items)
+	return string(b)
 }
 
 func (z *TimeLock) findNeed(item *TimeLockItem) (bool, []*TimeLockItem) {
@@ -187,6 +196,7 @@ func (z *TimeLock) findNeed(item *TimeLockItem) (bool, []*TimeLockItem) {
 			item.Value = missingValue
 			remaining = append(remaining, tempItems...)
 			if item.Value.Sign() == 0 {
+				remaining = append(remaining, z.Items[i+1:]...)
 				break
 			}
 		} else {
@@ -203,7 +213,101 @@ func (z *TimeLock) mergeAndSortValue() {
 	z.changed = false
 	z.sortTime = true
 	sort.Sort(z)
-
+	items := mergeValue(z.Items)
+	items = mergeTime(items)
+	z.Items = items
+	z.sortTime = true
+	sort.Sort(z)
 	z.sortTime = false
 	sort.Sort(z)
+}
+
+func mergeValue(items []*TimeLockItem) []*TimeLockItem {
+	i, j := 0, 1
+	for {
+		size := len(items)
+		if i >= size || j >= size {
+			break
+		}
+		x, y := items[i], items[j]
+		if x.StartTime == y.StartTime && x.EndTime == y.EndTime {
+			x.Value = x.Value.Add(x.Value, y.Value)
+			items = append(items[:j], items[j+1:]...)
+		} else if x.StartTime == y.StartTime {
+			j++
+		} else {
+			i = j
+			j++
+		}
+	}
+	return items
+}
+
+func mergeOneTime(items []*TimeLockItem) (*TimeLockItem, []*TimeLockItem) {
+	if len(items) == 0 {
+		return nil, nil
+	}
+	temp := items[0]
+	items = items[1:]
+	rems := make([]*TimeLockItem, 0)
+	i := 0
+	for {
+		if i >= len(items) {
+			break
+		}
+		item := items[i]
+		if temp.StartTime < item.StartTime && temp.EndTime+1 >= item.StartTime && temp.EndTime < item.EndTime {
+			items = append(items[:i], items[i+1:]...)
+			mergeValue := temp.Value
+			if mergeValue.Cmp(item.Value) > 0 {
+				mergeValue = item.Value
+			}
+			mergeValue = new(big.Int).SetBytes(mergeValue.Bytes())
+			_, rem := temp.Sub(&TimeLockItem{
+				StartTime: temp.StartTime,
+				EndTime:   temp.EndTime,
+				Value:     mergeValue,
+			})
+
+			rems = append(rems, rem...)
+
+			_, rem = item.Sub(&TimeLockItem{
+				StartTime: temp.EndTime + 1,
+				EndTime:   item.EndTime,
+				Value:     mergeValue,
+			})
+			rems = append(rems, rem...)
+
+			temp.EndTime = item.EndTime
+			temp.Value = mergeValue
+		} else {
+			i++
+		}
+
+	}
+	items = append(items, rems...)
+	items = mergeValue(items)
+	return temp, items
+}
+
+func mergeTime(items []*TimeLockItem) []*TimeLockItem {
+	temps := make([]*TimeLockItem, 0)
+	for {
+		temp, tempItems := mergeOneTime(items)
+		if temp == nil {
+			break
+		}
+		if len(tempItems) > 0 {
+			t := &TimeLock{
+				Items:    tempItems,
+				sortTime: true,
+			}
+			sort.Sort(t)
+			tempItems = t.Items
+		}
+		temps = append(temps, temp)
+		items = tempItems
+	}
+	temps = mergeValue(temps)
+	return temps
 }
