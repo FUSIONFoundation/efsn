@@ -873,8 +873,8 @@ func (db *StateDB) RemoveTicket(id common.Hash) error {
 	return db.updateTickets(tickets)
 }
 
-func (db *StateDB) updateTickets(assets map[common.Hash]common.Ticket) error {
-	data, err := rlp.EncodeToBytes(&assets)
+func (db *StateDB) updateTickets(tickets map[common.Hash]common.Ticket) error {
+	data, err := rlp.EncodeToBytes(&tickets)
 	if err != nil {
 		return err
 	}
