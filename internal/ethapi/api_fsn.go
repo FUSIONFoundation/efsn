@@ -198,6 +198,16 @@ func (s *PublicFusionAPI) AllAssets(ctx context.Context, blockNr rpc.BlockNumber
 	return assets, state.Error()
 }
 
+// AllTickets wacom
+func (s *PublicFusionAPI) AllTickets(ctx context.Context, blockNr rpc.BlockNumber) (map[common.Hash]common.Ticket, error) {
+	state, _, err := s.b.StateAndHeaderByNumber(ctx, blockNr)
+	if state == nil || err != nil {
+		return nil, err
+	}
+	tickets := state.AllTickets()
+	return tickets, state.Error()
+}
+
 // PrivateFusionAPI ss
 type PrivateFusionAPI struct {
 	am        *accounts.Manager
@@ -371,6 +381,41 @@ func (s *PrivateFusionAPI) TimeLockToAsset(ctx context.Context, args TimeLockArg
 		return common.Hash{}, err
 	}
 	var param = common.FSNCallParam{Func: common.TimeLockFunc, Data: funcData}
+	data, err := param.ToBytes()
+	if err != nil {
+		return common.Hash{}, err
+	}
+	var argsData = hexutil.Bytes(data)
+	sendArgs := args.toSendArgs()
+	sendArgs.To = &common.FSNCallAddress
+	sendArgs.Data = &argsData
+	return s.papi.SendTransaction(ctx, sendArgs, passwd)
+}
+
+// BuyTicket ss
+func (s *PrivateFusionAPI) BuyTicket(ctx context.Context, args FusionBaseArgs, passwd string) (common.Hash, error) {
+	state, _, err := s.b.StateAndHeaderByNumber(ctx, rpc.LatestBlockNumber)
+	if state == nil || err != nil {
+		return common.Hash{}, err
+	}
+
+	block, err := s.b.BlockByNumber(ctx, rpc.LatestBlockNumber)
+	if block == nil || err != nil {
+		return common.Hash{}, err
+	}
+
+	start := block.Time().Uint64()
+	value := big.NewInt(1)
+	needValue := common.NewTimeLock(&common.TimeLockItem{
+		StartTime: start,
+		EndTime:   start + 40*24*3600,
+		Value:     value,
+	})
+	if state.GetTimeLockBalance(common.SystemAssetID, args.From).Cmp(needValue) < 0 {
+		return common.Hash{}, fmt.Errorf("not enough time lock balance")
+	}
+
+	var param = common.FSNCallParam{Func: common.BuyTicketFunc}
 	data, err := param.ToBytes()
 	if err != nil {
 		return common.Hash{}, err

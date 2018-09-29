@@ -259,6 +259,7 @@ func (st *StateTransition) gasUsed() uint64 {
 }
 
 func (st *StateTransition) handleFsnCall() error {
+
 	param := common.FSNCallParam{}
 	rlp.DecodeBytes(st.msg.Data(), &param)
 	switch param.Func {
@@ -328,6 +329,33 @@ func (st *StateTransition) handleFsnCall() error {
 			st.state.SubTimeLockBalance(st.msg.From(), timeLockParam.AssetID, needValue)
 			st.state.AddBalance(timeLockParam.To, timeLockParam.AssetID, timeLockParam.Value)
 			return nil
+		}
+	case common.BuyTicketFunc:
+		from := st.msg.From()
+		start := st.evm.Context.Time.Uint64()
+		end := start + 40*24*3600
+		value := big.NewInt(1)
+		needValue := common.NewTimeLock(&common.TimeLockItem{
+			StartTime: start,
+			EndTime:   end,
+			Value:     value,
+		})
+		if st.state.GetTimeLockBalance(common.SystemAssetID, from).Cmp(needValue) < 0 {
+			return fmt.Errorf("not enough time lock balance")
+		}
+		st.state.SubTimeLockBalance(from, common.SystemAssetID, needValue)
+		height := st.evm.Context.BlockNumber.Uint64()
+		hash := st.evm.GetHash(height)
+		id := crypto.Keccak256Hash(from[:], hash[:])
+		ticket := common.Ticket{
+			ID:         id,
+			Owner:      st.msg.From(),
+			Height:     height,
+			ExpireTime: end,
+			Value:      value,
+		}
+		if err := st.state.AddTicket(ticket); err != nil {
+			return err
 		}
 		return nil
 	}

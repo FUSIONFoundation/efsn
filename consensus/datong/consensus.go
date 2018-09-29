@@ -14,11 +14,18 @@ import (
 
 // DaTong wacom
 type DaTong struct {
+	config     *params.DaTongConfig
+	db         ethdb.Database
+	stateCache state.Database
 }
 
 // New wacom
 func New(config *params.DaTongConfig, db ethdb.Database) *DaTong {
-	return &DaTong{}
+	return &DaTong{
+		config:     config,
+		db:         db,
+		stateCache: state.NewDatabase(db),
+	}
 }
 
 // Author retrieves the Ethereum address of the account that minted the given
@@ -93,7 +100,7 @@ func (dt *DaTong) CalcDifficulty(chain consensus.ChainReader, time uint64, paren
 
 // APIs returns the RPC APIs this consensus engine provides.
 func (dt *DaTong) APIs(chain consensus.ChainReader) []rpc.API {
-	return make([]rpc.API, 0)
+	return []rpc.API{}
 }
 
 // Close terminates any background threads maintained by the consensus engine.

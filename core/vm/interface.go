@@ -69,6 +69,8 @@ type StateDB interface {
 	GetNotation(common.Address) uint64
 
 	GenAsset(common.Asset) error
+
+	AddTicket(common.Ticket) error
 }
 
 // CallContext provides a basic interface for the EVM calling conventions. The EVM EVM

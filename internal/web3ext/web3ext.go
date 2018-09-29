@@ -828,6 +828,23 @@ web3._extend({
 				null
 			]
 		}),
+		new web3._extend.Method({
+			name: 'allTickets',
+			call: 'fsn_allTickets',
+			params: 1,
+			inputFormatter: [
+				web3._extend.formatters.inputDefaultBlockNumberFormatter
+			]
+		}),
+		new web3._extend.Method({
+			name: 'buyTicket',
+			call: 'fsn_buyTicket',
+			params: 2,
+			inputFormatter: [
+				web3._extend.formatters.inputTransactionFormatter,
+				null
+			]
+		}),
 	],
 	properties:[
 		new web3._extend.Property({

@@ -840,3 +840,44 @@ func (db *StateDB) UpdateAsset(asset common.Asset) error {
 	assets[asset.ID] = asset
 	return db.updateAssets(assets)
 }
+
+// AllTickets wacom
+func (db *StateDB) AllTickets() map[common.Hash]common.Ticket {
+	data := db.GetData(common.FSNCallAddress, common.TicketKey)
+	var tickets map[common.Hash]common.Ticket
+	if len(data) == 0 || data == nil {
+		tickets = make(map[common.Hash]common.Ticket, 0)
+	} else {
+		rlp.DecodeBytes(data, &tickets)
+	}
+	return tickets
+}
+
+// AddTicket wacom
+func (db *StateDB) AddTicket(ticket common.Ticket) error {
+	tickets := db.AllTickets()
+	if _, ok := tickets[ticket.ID]; !ok {
+		return fmt.Errorf("%s Ticket exists", ticket.ID.String())
+	}
+	tickets[ticket.ID] = ticket
+	return db.updateTickets(tickets)
+}
+
+// RemoveTicket wacom
+func (db *StateDB) RemoveTicket(id common.Hash) error {
+	tickets := db.AllTickets()
+	if _, ok := tickets[id]; !ok {
+		return fmt.Errorf("%s Ticket not found", id.String())
+	}
+	delete(tickets, id)
+	return db.updateTickets(tickets)
+}
+
+func (db *StateDB) updateTickets(assets map[common.Hash]common.Ticket) error {
+	data, err := rlp.EncodeToBytes(&assets)
+	if err != nil {
+		return err
+	}
+	db.SetData(common.FSNCallAddress, common.TicketKey, data)
+	return nil
+}

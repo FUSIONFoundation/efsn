@@ -353,6 +353,8 @@ var (
 	NotationKey = []byte{0x01}
 	// AssetKey wacom
 	AssetKey = []byte{0x02}
+	// TicketKey wacom
+	TicketKey = []byte{0x03}
 )
 
 // FSNCallFunc wacom
@@ -367,6 +369,8 @@ const (
 	SendAssetFunc
 	// TimeLockFunc wacom
 	TimeLockFunc
+	// BuyTicket wacom
+	BuyTicketFunc
 )
 
 // FSNCallParam wacom
@@ -446,4 +450,13 @@ var SystemAsset = Asset{
 	Decimals: 18,
 	Total:    new(big.Int).Mul(big.NewInt(81920000), big.NewInt(1000000000000000000)),
 	ID:       SystemAssetID,
+}
+
+// Ticket wacom
+type Ticket struct {
+	ID         Hash
+	Owner      Address
+	Height     uint64
+	ExpireTime uint64
+	Value      *big.Int
 }
