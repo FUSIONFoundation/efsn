@@ -856,7 +856,7 @@ func (db *StateDB) AllTickets() map[common.Hash]common.Ticket {
 // AddTicket wacom
 func (db *StateDB) AddTicket(ticket common.Ticket) error {
 	tickets := db.AllTickets()
-	if _, ok := tickets[ticket.ID]; !ok {
+	if _, ok := tickets[ticket.ID]; ok {
 		return fmt.Errorf("%s Ticket exists", ticket.ID.String())
 	}
 	tickets[ticket.ID] = ticket
