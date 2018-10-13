@@ -24,6 +24,7 @@ import (
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/core/vm"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/log"
@@ -77,6 +78,8 @@ type Message interface {
 	Nonce() uint64
 	CheckNonce() bool
 	Data() []byte
+
+	AsTransaction() *types.Transaction
 }
 
 // IntrinsicGas computes the 'intrinsic gas' for a message with the given data.
@@ -269,7 +272,7 @@ func (st *StateTransition) handleFsnCall() error {
 		genAssetParam := common.GenAssetParam{}
 		rlp.DecodeBytes(param.Data, &genAssetParam)
 		asset := genAssetParam.ToAsset()
-		asset.ID = crypto.Keccak256Hash(param.Data)
+		asset.ID = st.msg.AsTransaction().Hash()
 		if err := st.state.GenAsset(asset); err != nil {
 			return err
 		}
