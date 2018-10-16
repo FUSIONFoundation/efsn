@@ -347,8 +347,8 @@ func (st *StateTransition) handleFsnCall() error {
 			return fmt.Errorf("not enough time lock balance")
 		}
 		st.state.SubTimeLockBalance(from, common.SystemAssetID, needValue)
-		height := st.evm.Context.BlockNumber.Uint64()
-		hash := st.evm.GetHash(height)
+		height := st.evm.Context.BlockNumber
+		hash := st.evm.GetHash(height.Uint64())
 		id := crypto.Keccak256Hash(from[:], hash[:])
 		ticket := common.Ticket{
 			ID:         id,

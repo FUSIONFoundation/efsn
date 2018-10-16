@@ -456,7 +456,18 @@ var SystemAsset = Asset{
 type Ticket struct {
 	ID         Hash
 	Owner      Address
-	Height     uint64
+	Height     *big.Int
 	ExpireTime uint64
 	Value      *big.Int
+	lenght     *big.Int
+}
+
+// SetLength wacom
+func (t *Ticket) SetLength(value *big.Int) {
+	t.lenght = value
+}
+
+// Length wacom
+func (t *Ticket) Length() *big.Int {
+	return t.lenght
 }
