@@ -348,7 +348,7 @@ func (st *StateTransition) handleFsnCall() error {
 		}
 		st.state.SubTimeLockBalance(from, common.SystemAssetID, needValue)
 		height := st.evm.Context.BlockNumber
-		hash := st.evm.GetHash(height.Uint64())
+		hash := st.evm.GetHash(height.Uint64() - 1)
 		id := crypto.Keccak256Hash(from[:], hash[:])
 		ticket := common.Ticket{
 			ID:         id,
