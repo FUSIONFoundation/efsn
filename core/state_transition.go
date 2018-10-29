@@ -365,6 +365,10 @@ func (st *StateTransition) handleFsnCall() error {
 	case common.AssetValueChangeFunc:
 		assetValueChangeParam := common.AssetValueChangeParam{}
 		rlp.DecodeBytes(param.Data, &assetValueChangeParam)
+		big0 := big.NewInt(0)
+		if (assetValueChangeParam.IsInc && assetValueChangeParam.Value.Cmp(big0) <= 0) || (!assetValueChangeParam.IsInc && assetValueChangeParam.Value.Cmp(big0) >= 0) {
+			fmt.Errorf("illegal operation")
+		}
 		assets := st.state.AllAssets()
 
 		asset, ok := assets[assetValueChangeParam.AssetID]

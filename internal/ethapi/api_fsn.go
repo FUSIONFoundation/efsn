@@ -458,6 +458,13 @@ func (s *PrivateFusionAPI) DecAsset(ctx context.Context, args AssetValueChangeAr
 }
 
 func (s *PrivateFusionAPI) checkAssetValueChange(ctx context.Context, args AssetValueChangeArgs, passwd string) (common.Hash, error) {
+
+	big0 := big.NewInt(0)
+
+	if (args.IsInc && args.Value.ToInt().Cmp(big0) <= 0) || (!args.IsInc && args.Value.ToInt().Cmp(big0) >= 0) {
+		return common.Hash{}, fmt.Errorf("illegal operation")
+	}
+
 	state, _, err := s.b.StateAndHeaderByNumber(ctx, rpc.LatestBlockNumber)
 	if state == nil || err != nil {
 		return common.Hash{}, err
