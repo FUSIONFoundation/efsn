@@ -23,10 +23,11 @@ type FusionBaseArgs struct {
 // GenAssetArgs wacom
 type GenAssetArgs struct {
 	FusionBaseArgs
-	Name     string       `json:"name"`
-	Symbol   string       `json:"symbol"`
-	Decimals uint8        `json:"decimals"`
-	Total    *hexutil.Big `json:"total"`
+	Name      string       `json:"name"`
+	Symbol    string       `json:"symbol"`
+	Decimals  uint8        `json:"decimals"`
+	Total     *hexutil.Big `json:"total"`
+	CanChange bool         `json:"canChange"`
 }
 
 // SendAssetArgs wacom
@@ -42,6 +43,12 @@ type TimeLockArgs struct {
 	SendAssetArgs
 	StartTime *hexutil.Uint64 `json:"start"`
 	EndTime   *hexutil.Uint64 `json:"end"`
+}
+
+// AssetValueChangeArgs wacom
+type AssetValueChangeArgs struct {
+	SendAssetArgs
+	IsInc bool `json:"isInc"`
 }
 
 func (args *FusionBaseArgs) toSendArgs() SendTxArgs {
@@ -76,10 +83,21 @@ func (args *TimeLockArgs) toData(typ common.TimeLockType) ([]byte, error) {
 
 func (args *GenAssetArgs) toData() ([]byte, error) {
 	param := common.GenAssetParam{
-		Name:     args.Name,
-		Symbol:   args.Symbol,
-		Decimals: args.Decimals,
-		Total:    args.Total.ToInt(),
+		Name:      args.Name,
+		Symbol:    args.Symbol,
+		Decimals:  args.Decimals,
+		Total:     args.Total.ToInt(),
+		CanChange: args.CanChange,
+	}
+	return param.ToBytes()
+}
+
+func (args *AssetValueChangeArgs) toData() ([]byte, error) {
+	param := common.AssetValueChangeParam{
+		AssetID: args.AssetID,
+		To:      args.To,
+		Value:   args.Value.ToInt(),
+		IsInc:   args.IsInc,
 	}
 	return param.ToBytes()
 }
@@ -416,6 +434,62 @@ func (s *PrivateFusionAPI) BuyTicket(ctx context.Context, args FusionBaseArgs, p
 	}
 
 	var param = common.FSNCallParam{Func: common.BuyTicketFunc}
+	data, err := param.ToBytes()
+	if err != nil {
+		return common.Hash{}, err
+	}
+	var argsData = hexutil.Bytes(data)
+	sendArgs := args.toSendArgs()
+	sendArgs.To = &common.FSNCallAddress
+	sendArgs.Data = &argsData
+	return s.papi.SendTransaction(ctx, sendArgs, passwd)
+}
+
+// IncAsset ss
+func (s *PrivateFusionAPI) IncAsset(ctx context.Context, args AssetValueChangeArgs, passwd string) (common.Hash, error) {
+	args.IsInc = true
+	return s.checkAssetValueChange(ctx, args, passwd)
+}
+
+// DecAsset ss
+func (s *PrivateFusionAPI) DecAsset(ctx context.Context, args AssetValueChangeArgs, passwd string) (common.Hash, error) {
+	args.IsInc = false
+	return s.checkAssetValueChange(ctx, args, passwd)
+}
+
+func (s *PrivateFusionAPI) checkAssetValueChange(ctx context.Context, args AssetValueChangeArgs, passwd string) (common.Hash, error) {
+	state, _, err := s.b.StateAndHeaderByNumber(ctx, rpc.LatestBlockNumber)
+	if state == nil || err != nil {
+		return common.Hash{}, err
+	}
+
+	assets := state.AllAssets()
+
+	asset, ok := assets[args.AssetID]
+
+	if !ok {
+		return common.Hash{}, fmt.Errorf("asset not found")
+	}
+
+	if !asset.CanChange {
+		return common.Hash{}, fmt.Errorf("asset can't inc or dec")
+	}
+
+	if asset.Owner != args.From {
+		return common.Hash{}, fmt.Errorf("must be change by onwer")
+	}
+
+	if !args.IsInc {
+		if state.GetBalance(args.AssetID, args.To).Cmp(args.Value.ToInt()) < 0 {
+			return common.Hash{}, fmt.Errorf("not enough asset")
+		}
+	}
+
+	funcData, err := args.toData()
+	if err != nil {
+		return common.Hash{}, err
+	}
+	var param = common.FSNCallParam{Func: common.AssetValueChangeFunc, Data: funcData}
 	data, err := param.ToBytes()
 	if err != nil {
 		return common.Hash{}, err

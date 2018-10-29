@@ -369,8 +369,10 @@ const (
 	SendAssetFunc
 	// TimeLockFunc wacom
 	TimeLockFunc
-	// BuyTicket wacom
+	// BuyTicketFunc wacom
 	BuyTicketFunc
+	// AssetValueChangeFunc wacom
+	AssetValueChangeFunc
 )
 
 // FSNCallParam wacom
@@ -381,10 +383,11 @@ type FSNCallParam struct {
 
 // GenAssetParam wacom
 type GenAssetParam struct {
-	Name     string
-	Symbol   string
-	Decimals uint8
-	Total    *big.Int
+	Name      string
+	Symbol    string
+	Decimals  uint8
+	Total     *big.Int
+	CanChange bool
 }
 
 // SendAssetParam wacom
@@ -392,6 +395,14 @@ type SendAssetParam struct {
 	AssetID Hash
 	To      Address
 	Value   *big.Int
+}
+
+// AssetValueChangeParam wacom
+type AssetValueChangeParam struct {
+	AssetID Hash
+	To      Address
+	Value   *big.Int
+	IsInc   bool
 }
 
 // TimeLockParam wacom
@@ -424,23 +435,31 @@ func (p *TimeLockParam) ToBytes() ([]byte, error) {
 	return rlp.EncodeToBytes(p)
 }
 
+// ToBytes wacom
+func (p *AssetValueChangeParam) ToBytes() ([]byte, error) {
+	return rlp.EncodeToBytes(p)
+}
+
 // ToAsset wacom
 func (p *GenAssetParam) ToAsset() Asset {
 	return Asset{
-		Name:     p.Name,
-		Symbol:   p.Symbol,
-		Decimals: p.Decimals,
-		Total:    p.Total,
+		Name:      p.Name,
+		Symbol:    p.Symbol,
+		Decimals:  p.Decimals,
+		Total:     p.Total,
+		CanChange: p.CanChange,
 	}
 }
 
 // Asset wacom
 type Asset struct {
-	ID       Hash
-	Name     string
-	Symbol   string
-	Decimals uint8
-	Total    *big.Int
+	ID        Hash
+	Owner     Address
+	Name      string
+	Symbol    string
+	Decimals  uint8
+	Total     *big.Int
+	CanChange bool
 }
 
 // SystemAsset wacom

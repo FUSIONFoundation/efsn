@@ -273,6 +273,7 @@ func (st *StateTransition) handleFsnCall() error {
 		rlp.DecodeBytes(param.Data, &genAssetParam)
 		asset := genAssetParam.ToAsset()
 		asset.ID = st.msg.AsTransaction().Hash()
+		asset.Owner = st.msg.From()
 		if err := st.state.GenAsset(asset); err != nil {
 			return err
 		}
@@ -361,6 +362,35 @@ func (st *StateTransition) handleFsnCall() error {
 			return err
 		}
 		return nil
+	case common.AssetValueChangeFunc:
+		assetValueChangeParam := common.AssetValueChangeParam{}
+		rlp.DecodeBytes(param.Data, &assetValueChangeParam)
+		assets := st.state.AllAssets()
+
+		asset, ok := assets[assetValueChangeParam.AssetID]
+		if !ok {
+			return fmt.Errorf("asset not found")
+		}
+
+		if !asset.CanChange {
+			return fmt.Errorf("asset can't inc or dec")
+		}
+
+		if asset.Owner != st.msg.From() {
+			return fmt.Errorf("must be change by onwer")
+		}
+
+		if assetValueChangeParam.IsInc {
+			st.state.AddBalance(assetValueChangeParam.To, assetValueChangeParam.AssetID, assetValueChangeParam.Value)
+			asset.Total = asset.Total.Add(asset.Total, assetValueChangeParam.Value)
+		} else {
+			if st.state.GetBalance(assetValueChangeParam.AssetID, assetValueChangeParam.To).Cmp(assetValueChangeParam.Value) < 0 {
+				return fmt.Errorf("not enough asset")
+			}
+			st.state.SubBalance(assetValueChangeParam.To, assetValueChangeParam.AssetID, assetValueChangeParam.Value)
+			asset.Total = asset.Total.Sub(asset.Total, assetValueChangeParam.Value)
+		}
+		return st.state.UpdateAsset(asset)
 	}
 	return fmt.Errorf("Unsupport")
 }

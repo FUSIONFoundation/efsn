@@ -845,6 +845,24 @@ web3._extend({
 				null
 			]
 		}),
+		new web3._extend.Method({
+			name: 'incAsset',
+			call: 'fsn_incAsset',
+			params: 2,
+			inputFormatter: [
+				web3._extend.formatters.inputTransactionFormatter,
+				null
+			]
+		}),	
+		new web3._extend.Method({
+			name: 'decAsset',
+			call: 'fsn_decAsset',
+			params: 2,
+			inputFormatter: [
+				web3._extend.formatters.inputTransactionFormatter,
+				null
+			]
+		}),	
 	],
 	properties:[
 		new web3._extend.Property({
