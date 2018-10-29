@@ -787,6 +787,15 @@ web3._extend({
 			]
 		}),
 		new web3._extend.Method({
+			name: 'getAsset',
+			call: 'fsn_getAsset',
+			params: 2,
+			inputFormatter: [
+				null,
+				web3._extend.formatters.inputDefaultBlockNumberFormatter
+			]
+		}),
+		new web3._extend.Method({
 			name: 'sendAsset',
 			call: 'fsn_sendAsset',
 			params: 2,

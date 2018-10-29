@@ -206,6 +206,21 @@ func (s *PublicFusionAPI) AllNotation(ctx context.Context, blockNr rpc.BlockNumb
 	return b, state.Error()
 }
 
+// GetAsset wacom
+func (s *PublicFusionAPI) GetAsset(ctx context.Context, assetID common.Hash, blockNr rpc.BlockNumber) (*common.Asset, error) {
+	state, _, err := s.b.StateAndHeaderByNumber(ctx, blockNr)
+	if state == nil || err != nil {
+		return nil, err
+	}
+	assets := state.AllAssets()
+	asset, ok := assets[assetID]
+
+	if !ok {
+		return nil, fmt.Errorf("Asset not found")
+	}
+	return &asset, nil
+}
+
 // AllAssets wacom
 func (s *PublicFusionAPI) AllAssets(ctx context.Context, blockNr rpc.BlockNumber) (map[common.Hash]common.Asset, error) {
 	state, _, err := s.b.StateAndHeaderByNumber(ctx, blockNr)
@@ -312,6 +327,7 @@ func (s *PrivateFusionAPI) SendAsset(ctx context.Context, args SendAssetArgs, pa
 	sendArgs := args.toSendArgs()
 	sendArgs.To = &common.FSNCallAddress
 	sendArgs.Data = &argsData
+	sendArgs.Value = (*hexutil.Big)(big.NewInt(0))
 	return s.papi.SendTransaction(ctx, sendArgs, passwd)
 }
 
@@ -505,6 +521,7 @@ func (s *PrivateFusionAPI) checkAssetValueChange(ctx context.Context, args Asset
 	sendArgs := args.toSendArgs()
 	sendArgs.To = &common.FSNCallAddress
 	sendArgs.Data = &argsData
+	sendArgs.Value = (*hexutil.Big)(big.NewInt(0))
 	return s.papi.SendTransaction(ctx, sendArgs, passwd)
 }
 
