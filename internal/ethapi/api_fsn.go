@@ -47,8 +47,35 @@ type TimeLockArgs struct {
 
 // AssetValueChangeArgs wacom
 type AssetValueChangeArgs struct {
-	SendAssetArgs
-	IsInc bool `json:"isInc"`
+	FusionBaseArgs
+	AssetID common.Hash    `json:"asset"`
+	To      common.Address `json:"to"`
+	Value   *hexutil.Big   `json:"value"`
+	IsInc   bool           `json:"isInc"`
+}
+
+// MakeSwapArgs wacom
+type MakeSwapArgs struct {
+	FusionBaseArgs
+	FromAssetID   common.Hash
+	MinFromAmount *big.Int
+	ToAssetID     common.Hash
+	MinToAmount   *big.Int
+	SwapSize      *big.Int
+	Targes        []common.Address
+}
+
+// RecallSwapArgs wacom
+type RecallSwapArgs struct {
+	FusionBaseArgs
+	SwapID common.Hash
+}
+
+// TakeSwapArgs wacom
+type TakeSwapArgs struct {
+	FusionBaseArgs
+	SwapID common.Hash
+	Size   *big.Int
 }
 
 func (args *FusionBaseArgs) toSendArgs() SendTxArgs {
@@ -98,6 +125,33 @@ func (args *AssetValueChangeArgs) toData() ([]byte, error) {
 		To:      args.To,
 		Value:   args.Value.ToInt(),
 		IsInc:   args.IsInc,
+	}
+	return param.ToBytes()
+}
+
+func (args *MakeSwapArgs) toData() ([]byte, error) {
+	param := common.MakeSwapParam{
+		FromAssetID:   args.FromAssetID,
+		MinFromAmount: args.MinFromAmount,
+		ToAssetID:     args.ToAssetID,
+		MinToAmount:   args.MinToAmount,
+		SwapSize:      args.SwapSize,
+		Targes:        args.Targes,
+	}
+	return param.ToBytes()
+}
+
+func (args *RecallSwapArgs) toData() ([]byte, error) {
+	param := common.RecallSwapParam{
+		SwapID: args.SwapID,
+	}
+	return param.ToBytes()
+}
+
+func (args *TakeSwapArgs) toData() ([]byte, error) {
+	param := common.TakeSwapParam{
+		SwapID: args.SwapID,
+		Size:   args.Size,
 	}
 	return param.ToBytes()
 }
@@ -239,6 +293,16 @@ func (s *PublicFusionAPI) AllTickets(ctx context.Context, blockNr rpc.BlockNumbe
 	}
 	tickets := state.AllTickets()
 	return tickets, state.Error()
+}
+
+// AllSwaps wacom
+func (s *PublicFusionAPI) AllSwaps(ctx context.Context, blockNr rpc.BlockNumber) (map[common.Hash]common.Swap, error) {
+	state, _, err := s.b.StateAndHeaderByNumber(ctx, blockNr)
+	if state == nil || err != nil {
+		return nil, err
+	}
+	swaps := state.AllSwaps()
+	return swaps, state.Error()
 }
 
 // PrivateFusionAPI ss
@@ -521,7 +585,110 @@ func (s *PrivateFusionAPI) checkAssetValueChange(ctx context.Context, args Asset
 	sendArgs := args.toSendArgs()
 	sendArgs.To = &common.FSNCallAddress
 	sendArgs.Data = &argsData
-	sendArgs.Value = (*hexutil.Big)(big.NewInt(0))
+	return s.papi.SendTransaction(ctx, sendArgs, passwd)
+}
+
+// MakeSwap ss
+func (s *PrivateFusionAPI) MakeSwap(ctx context.Context, args MakeSwapArgs, passwd string) (common.Hash, error) {
+	big0 := big.NewInt(0)
+	if args.MinFromAmount.Cmp(big0) <= 0 || args.MinToAmount.Cmp(big0) <= 0 || args.SwapSize.Cmp(big0) <= 0 {
+		return common.Hash{}, fmt.Errorf("MinFromAmount,MinToAmount and SwapSize must be ge 1")
+	}
+
+	state, _, err := s.b.StateAndHeaderByNumber(ctx, rpc.LatestBlockNumber)
+	if state == nil || err != nil {
+		return common.Hash{}, err
+	}
+
+	total := new(big.Int).Mul(args.MinFromAmount, args.SwapSize)
+
+	if state.GetBalance(args.FromAssetID, args.From).Cmp(total) < 0 {
+		return common.Hash{}, fmt.Errorf("not enough from asset")
+	}
+
+	funcData, err := args.toData()
+	if err != nil {
+		return common.Hash{}, err
+	}
+	var param = common.FSNCallParam{Func: common.MakeSwapFunc, Data: funcData}
+	data, err := param.ToBytes()
+	if err != nil {
+		return common.Hash{}, err
+	}
+	var argsData = hexutil.Bytes(data)
+	sendArgs := args.toSendArgs()
+	sendArgs.To = &common.FSNCallAddress
+	sendArgs.Data = &argsData
+	return s.papi.SendTransaction(ctx, sendArgs, passwd)
+}
+
+// RecallSwap ss
+func (s *PrivateFusionAPI) RecallSwap(ctx context.Context, args RecallSwapArgs, passwd string) (common.Hash, error) {
+	state, _, err := s.b.StateAndHeaderByNumber(ctx, rpc.LatestBlockNumber)
+	if state == nil || err != nil {
+		return common.Hash{}, err
+	}
+	swaps := state.AllSwaps()
+	swap, ok := swaps[args.SwapID]
+	if !ok {
+		return common.Hash{}, fmt.Errorf("Swap not found")
+	}
+
+	if swap.Owner != args.From {
+		return common.Hash{}, fmt.Errorf("Must be swap onwer can recall")
+	}
+
+	funcData, err := args.toData()
+	if err != nil {
+		return common.Hash{}, err
+	}
+	var param = common.FSNCallParam{Func: common.RecallSwapFunc, Data: funcData}
+	data, err := param.ToBytes()
+	if err != nil {
+		return common.Hash{}, err
+	}
+	var argsData = hexutil.Bytes(data)
+	sendArgs := args.toSendArgs()
+	sendArgs.To = &common.FSNCallAddress
+	sendArgs.Data = &argsData
+	return s.papi.SendTransaction(ctx, sendArgs, passwd)
+}
+
+// TakeSwap ss
+func (s *PrivateFusionAPI) TakeSwap(ctx context.Context, args TakeSwapArgs, passwd string) (common.Hash, error) {
+	state, _, err := s.b.StateAndHeaderByNumber(ctx, rpc.LatestBlockNumber)
+	if state == nil || err != nil {
+		return common.Hash{}, err
+	}
+	swaps := state.AllSwaps()
+	swap, ok := swaps[args.SwapID]
+	if !ok {
+		return common.Hash{}, fmt.Errorf("Swap not found")
+	}
+	big0 := big.NewInt(0)
+	if swap.SwapSize.Cmp(args.Size) < 0 || args.Size.Cmp(big0) <= 0 {
+		return common.Hash{}, fmt.Errorf("SwapSize must le and Size must be ge 1")
+	}
+
+	total := new(big.Int).Mul(swap.MinToAmount, args.Size)
+
+	if state.GetBalance(swap.ToAssetID, args.From).Cmp(total) < 0 {
+		return common.Hash{}, fmt.Errorf("not enough to asset")
+	}
+
+	funcData, err := args.toData()
+	if err != nil {
+		return common.Hash{}, err
+	}
+	var param = common.FSNCallParam{Func: common.TakeSwapFunc, Data: funcData}
+	data, err := param.ToBytes()
+	if err != nil {
+		return common.Hash{}, err
+	}
+	var argsData = hexutil.Bytes(data)
+	sendArgs := args.toSendArgs()
+	sendArgs.To = &common.FSNCallAddress
+	sendArgs.Data = &argsData
 	return s.papi.SendTransaction(ctx, sendArgs, passwd)
 }
 

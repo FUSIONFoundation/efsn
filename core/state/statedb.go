@@ -881,3 +881,54 @@ func (db *StateDB) updateTickets(tickets map[common.Hash]common.Ticket) error {
 	db.SetData(common.FSNCallAddress, common.TicketKey, data)
 	return nil
 }
+
+// AllSwaps wacom
+func (db *StateDB) AllSwaps() map[common.Hash]common.Swap {
+	data := db.GetData(common.FSNCallAddress, common.SwapKey)
+	var swaps map[common.Hash]common.Swap
+	if len(data) == 0 || data == nil {
+		swaps = make(map[common.Hash]common.Swap, 0)
+	} else {
+		rlp.DecodeBytes(data, &swaps)
+	}
+	return swaps
+}
+
+// AddSwap wacom
+func (db *StateDB) AddSwap(swap common.Swap) error {
+	swaps := db.AllSwaps()
+	if _, ok := swaps[swap.ID]; ok {
+		return fmt.Errorf("%s Ticket exists", swap.ID.String())
+	}
+	swaps[swap.ID] = swap
+	return db.updateSwaps(swaps)
+}
+
+// UpdateSwap wacom
+func (db *StateDB) UpdateSwap(swap common.Swap) error {
+	swaps := db.AllSwaps()
+	if _, ok := swaps[swap.ID]; !ok {
+		return fmt.Errorf("%s Swap not found", swap.ID.String())
+	}
+	swaps[swap.ID] = swap
+	return db.updateSwaps(swaps)
+}
+
+// RemoveSwap wacom
+func (db *StateDB) RemoveSwap(id common.Hash) error {
+	swaps := db.AllSwaps()
+	if _, ok := swaps[id]; !ok {
+		return fmt.Errorf("%s Swap not found", id.String())
+	}
+	delete(swaps, id)
+	return db.updateSwaps(swaps)
+}
+
+func (db *StateDB) updateSwaps(swaps map[common.Hash]common.Swap) error {
+	data, err := rlp.EncodeToBytes(&swaps)
+	if err != nil {
+		return err
+	}
+	db.SetData(common.FSNCallAddress, common.SwapKey, data)
+	return nil
+}

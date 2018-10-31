@@ -871,7 +871,42 @@ web3._extend({
 				web3._extend.formatters.inputTransactionFormatter,
 				null
 			]
-		}),	
+		}),
+		new web3._extend.Method({
+			name: 'allSwaps',
+			call: 'fsn_allSwaps',
+			params: 1,
+			inputFormatter: [
+				web3._extend.formatters.inputDefaultBlockNumberFormatter
+			]
+		}),
+		new web3._extend.Method({
+			name: 'makeSwap',
+			call: 'fsn_makeSwap',
+			params: 2,
+			inputFormatter: [
+				web3._extend.formatters.inputTransactionFormatter,
+				null
+			]
+		}),
+		new web3._extend.Method({
+			name: 'recallSwap',
+			call: 'fsn_recallSwap',
+			params: 2,
+			inputFormatter: [
+				web3._extend.formatters.inputTransactionFormatter,
+				null
+			]
+		}),
+		new web3._extend.Method({
+			name: 'takeSwap',
+			call: 'fsn_takeSwap',
+			params: 2,
+			inputFormatter: [
+				web3._extend.formatters.inputTransactionFormatter,
+				null
+			]
+		}),
 	],
 	properties:[
 		new web3._extend.Property({

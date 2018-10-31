@@ -355,6 +355,8 @@ var (
 	AssetKey = []byte{0x02}
 	// TicketKey wacom
 	TicketKey = []byte{0x03}
+	// SwapKey wacom
+	SwapKey = []byte{0x04}
 )
 
 // FSNCallFunc wacom
@@ -373,6 +375,12 @@ const (
 	BuyTicketFunc
 	// AssetValueChangeFunc wacom
 	AssetValueChangeFunc
+	// MakeSwapFunc wacom
+	MakeSwapFunc
+	// RecallSwapFunc wacom
+	RecallSwapFunc
+	// TakeSwapFunc wacom
+	TakeSwapFunc
 )
 
 // FSNCallParam wacom
@@ -415,6 +423,27 @@ type TimeLockParam struct {
 	Value     *big.Int
 }
 
+// MakeSwapParam wacom
+type MakeSwapParam struct {
+	FromAssetID   Hash
+	MinFromAmount *big.Int
+	ToAssetID     Hash
+	MinToAmount   *big.Int
+	SwapSize      *big.Int
+	Targes        []Address
+}
+
+// RecallSwapParam wacom
+type RecallSwapParam struct {
+	SwapID Hash
+}
+
+// TakeSwapParam wacom
+type TakeSwapParam struct {
+	SwapID Hash
+	Size   *big.Int
+}
+
 // ToBytes wacom
 func (p *FSNCallParam) ToBytes() ([]byte, error) {
 	return rlp.EncodeToBytes(p)
@@ -437,6 +466,21 @@ func (p *TimeLockParam) ToBytes() ([]byte, error) {
 
 // ToBytes wacom
 func (p *AssetValueChangeParam) ToBytes() ([]byte, error) {
+	return rlp.EncodeToBytes(p)
+}
+
+// ToBytes wacom
+func (p *MakeSwapParam) ToBytes() ([]byte, error) {
+	return rlp.EncodeToBytes(p)
+}
+
+// ToBytes wacom
+func (p *RecallSwapParam) ToBytes() ([]byte, error) {
+	return rlp.EncodeToBytes(p)
+}
+
+// ToBytes wacom
+func (p *TakeSwapParam) ToBytes() ([]byte, error) {
 	return rlp.EncodeToBytes(p)
 }
 
@@ -489,4 +533,16 @@ func (t *Ticket) SetLength(value *big.Int) {
 // Length wacom
 func (t *Ticket) Length() *big.Int {
 	return t.lenght
+}
+
+// Swap wacom
+type Swap struct {
+	ID            Hash
+	Owner         Address
+	FromAssetID   Hash
+	MinFromAmount *big.Int
+	ToAssetID     Hash
+	MinToAmount   *big.Int
+	SwapSize      *big.Int
+	Targes        []Address
 }

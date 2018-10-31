@@ -395,6 +395,83 @@ func (st *StateTransition) handleFsnCall() error {
 			asset.Total = asset.Total.Sub(asset.Total, assetValueChangeParam.Value)
 		}
 		return st.state.UpdateAsset(asset)
+	case common.MakeSwapFunc:
+		makeSwapParam := common.MakeSwapParam{}
+		rlp.DecodeBytes(param.Data, &makeSwapParam)
+		big0 := big.NewInt(0)
+		if makeSwapParam.MinFromAmount.Cmp(big0) <= 0 || makeSwapParam.MinToAmount.Cmp(big0) <= 0 || makeSwapParam.SwapSize.Cmp(big0) <= 0 {
+			return fmt.Errorf("MinFromAmount,MinToAmount and SwapSize must be ge 1")
+		}
+		total := new(big.Int).Mul(makeSwapParam.MinFromAmount, makeSwapParam.SwapSize)
+		if st.state.GetBalance(makeSwapParam.FromAssetID, st.msg.From()).Cmp(total) < 0 {
+			return fmt.Errorf("not enough from asset")
+		}
+		swap := common.Swap{
+			ID:            st.msg.AsTransaction().Hash(),
+			Owner:         st.msg.From(),
+			FromAssetID:   makeSwapParam.FromAssetID,
+			MinFromAmount: makeSwapParam.MinFromAmount,
+			ToAssetID:     makeSwapParam.ToAssetID,
+			MinToAmount:   makeSwapParam.MinToAmount,
+			SwapSize:      makeSwapParam.SwapSize,
+			Targes:        makeSwapParam.Targes,
+		}
+		if err := st.state.AddSwap(swap); err != nil {
+			return err
+		}
+		st.state.SubBalance(st.msg.From(), makeSwapParam.FromAssetID, total)
+	case common.RecallSwapFunc:
+		recallSwapParam := common.RecallSwapParam{}
+		rlp.DecodeBytes(param.Data, &recallSwapParam)
+		swaps := st.state.AllSwaps()
+		swap, ok := swaps[recallSwapParam.SwapID]
+		if !ok {
+			return fmt.Errorf("Swap not found")
+		}
+
+		if swap.Owner != st.msg.From() {
+			return fmt.Errorf("Must be swap onwer can recall")
+		}
+
+		total := new(big.Int).Mul(swap.MinFromAmount, swap.SwapSize)
+		if err := st.state.RemoveSwap(swap.ID); err != nil {
+			return err
+		}
+		st.state.AddBalance(st.msg.From(), swap.FromAssetID, total)
+
+	case common.TakeSwapFunc:
+		takeSwapParam := common.TakeSwapParam{}
+		rlp.DecodeBytes(param.Data, &takeSwapParam)
+		swaps := st.state.AllSwaps()
+		swap, ok := swaps[takeSwapParam.SwapID]
+		if !ok {
+			return fmt.Errorf("Swap not found")
+		}
+		big0 := big.NewInt(0)
+		if swap.SwapSize.Cmp(takeSwapParam.Size) < 0 || takeSwapParam.Size.Cmp(big0) <= 0 {
+			return fmt.Errorf("SwapSize must le and Size must be ge 1")
+		}
+		fromTotal := new(big.Int).Mul(swap.MinFromAmount, takeSwapParam.Size)
+		toTotal := new(big.Int).Mul(swap.MinToAmount, takeSwapParam.Size)
+
+		if st.state.GetBalance(swap.ToAssetID, st.msg.From()).Cmp(toTotal) < 0 {
+			return fmt.Errorf("not enough to asset")
+		}
+
+		if swap.SwapSize.Cmp(takeSwapParam.Size) == 0 {
+			if err := st.state.RemoveSwap(swap.ID); err != nil {
+				return err
+			}
+		} else {
+			swap.SwapSize = swap.SwapSize.Sub(swap.SwapSize, takeSwapParam.Size)
+			if err := st.state.UpdateSwap(swap); err != nil {
+				return err
+			}
+		}
+
+		st.state.AddBalance(swap.Owner, swap.ToAssetID, toTotal)
+		st.state.SubBalance(st.msg.From(), swap.ToAssetID, toTotal)
+		st.state.AddBalance(st.msg.From(), swap.FromAssetID, fromTotal)
 	}
 	return fmt.Errorf("Unsupport")
 }
