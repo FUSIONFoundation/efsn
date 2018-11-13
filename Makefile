@@ -16,6 +16,13 @@ geth:
 	@echo "Done building."
 	@echo "Run \"$(GOBIN)/geth\" to launch geth."
 
+debug:
+	# https://ethereum.stackexchange.com/questions/41489/how-to-debug-geth-with-delve?rq=1
+	@echo building debug version
+	build/env.sh go build -o ./build/bin/geth   -gcflags=all='-N -l' -v ./cmd/geth
+	@echo end building debug version
+	@echo "Run \"$(GOBIN)/geth\" to launch geth."
+
 swarm:
 	build/env.sh go run build/ci.go install ./cmd/swarm
 	@echo "Done building."
