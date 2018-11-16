@@ -33,11 +33,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/ethereum/go-ethereum/crypto/sha3"
-	"github.com/ethereum/go-ethereum/log"
-	"github.com/ethereum/go-ethereum/swarm/api"
-	swarm "github.com/ethereum/go-ethereum/swarm/api/client"
+	"github.com/FusionFoundation/efsn/crypto"
+	"github.com/FusionFoundation/efsn/crypto/sha3"
+	"github.com/FusionFoundation/efsn/log"
+	"github.com/FusionFoundation/efsn/swarm/api"
+	swarm "github.com/FusionFoundation/efsn/swarm/api/client"
 )
 
 // TestAccessPassword tests for the correct creation of an ACT manifest protected by a password.

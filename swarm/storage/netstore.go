@@ -20,8 +20,8 @@ import (
 	"context"
 	"time"
 
-	"github.com/ethereum/go-ethereum/swarm/log"
-	"github.com/ethereum/go-ethereum/swarm/spancontext"
+	"github.com/FusionFoundation/efsn/swarm/log"
+	"github.com/FusionFoundation/efsn/swarm/spancontext"
 	opentracing "github.com/opentracing/opentracing-go"
 )
 

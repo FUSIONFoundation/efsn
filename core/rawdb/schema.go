@@ -20,8 +20,8 @@ package rawdb
 import (
 	"encoding/binary"
 
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/metrics"
+	"github.com/FusionFoundation/efsn/common"
+	"github.com/FusionFoundation/efsn/metrics"
 )
 
 // The fields below define the low level database schema prefixing.

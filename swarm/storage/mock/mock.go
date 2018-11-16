@@ -36,7 +36,7 @@ import (
 	"errors"
 	"io"
 
-	"github.com/ethereum/go-ethereum/common"
+	"github.com/FusionFoundation/efsn/common"
 )
 
 // ErrNotFound indicates that the chunk is not found.

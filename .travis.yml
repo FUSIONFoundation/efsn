@@ -1,5 +1,5 @@
 language: go
-go_import_path: github.com/ethereum/go-ethereum
+go_import_path: github.com/FusionFoundation/efsn
 sudo: false
 matrix:
   include:
@@ -155,8 +155,8 @@ matrix:
         - mv android-ndk-r17b $HOME
         - export ANDROID_NDK=$HOME/android-ndk-r17b
 
-        - mkdir -p $GOPATH/src/github.com/ethereum
-        - ln -s `pwd` $GOPATH/src/github.com/ethereum
+        - mkdir -p $GOPATH/src/github.com/FusionFoundation
+        - ln -s `pwd` $GOPATH/src/github.com/FusionFoundation
         - go run build/ci.go aar -signer ANDROID_SIGNING_KEY -deploy https://oss.sonatype.org -upload gethstore/builds
 
     # This builder does the OSX Azure, iOS CocoaPods and iOS Azure uploads

@@ -28,11 +28,11 @@
 //  	"context"
 //  	"fmt"
 //  	"os"
-//  	pss "github.com/ethereum/go-ethereum/swarm/pss/client"
-//  	"github.com/ethereum/go-ethereum/p2p/protocols"
-//  	"github.com/ethereum/go-ethereum/p2p"
-//  	"github.com/ethereum/go-ethereum/swarm/pot"
-//  	"github.com/ethereum/go-ethereum/swarm/log"
+//  	pss "github.com/FusionFoundation/efsn/swarm/pss/client"
+//  	"github.com/FusionFoundation/efsn/p2p/protocols"
+//  	"github.com/FusionFoundation/efsn/p2p"
+//  	"github.com/FusionFoundation/efsn/swarm/pot"
+//  	"github.com/FusionFoundation/efsn/swarm/log"
 //  )
 //
 //  type FooMsg struct {

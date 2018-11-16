@@ -26,9 +26,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ethereum/go-ethereum/rpc"
-	"github.com/ethereum/go-ethereum/swarm"
-	"github.com/ethereum/go-ethereum/swarm/api"
+	"github.com/FusionFoundation/efsn/rpc"
+	"github.com/FusionFoundation/efsn/swarm"
+	"github.com/FusionFoundation/efsn/swarm/api"
 
 	"github.com/docker/docker/pkg/reexec"
 )

@@ -20,8 +20,8 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/ethereum/go-ethereum/node"
-	"github.com/ethereum/go-ethereum/p2p/simulations/adapters"
+	"github.com/FusionFoundation/efsn/node"
+	"github.com/FusionFoundation/efsn/p2p/simulations/adapters"
 )
 
 // TestServiceBucket tests all bucket functionalities using subtests.

@@ -23,11 +23,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ethereum/go-ethereum/metrics"
-	"github.com/ethereum/go-ethereum/swarm/log"
-	bv "github.com/ethereum/go-ethereum/swarm/network/bitvector"
-	"github.com/ethereum/go-ethereum/swarm/spancontext"
-	"github.com/ethereum/go-ethereum/swarm/storage"
+	"github.com/FusionFoundation/efsn/metrics"
+	"github.com/FusionFoundation/efsn/swarm/log"
+	bv "github.com/FusionFoundation/efsn/swarm/network/bitvector"
+	"github.com/FusionFoundation/efsn/swarm/spancontext"
+	"github.com/FusionFoundation/efsn/swarm/storage"
 	opentracing "github.com/opentracing/opentracing-go"
 )
 
