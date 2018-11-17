@@ -234,6 +234,7 @@ func (dt *DaTong) SealHash(header *types.Header) (hash common.Hash) {
 // CalcDifficulty is the difficulty adjustment algorithm. It returns the difficulty
 // that a new block should have.
 func (dt *DaTong) CalcDifficulty(chain consensus.ChainReader, time uint64, parent *types.Header) *big.Int {
+	cmpZero := big.NewInt(0)
 	statedb, err := state.New(parent.Root, dt.stateCache)
 	maxDiff := new(big.Int).SetUint64(dt.config.MaxDiff)
 	if err != nil {
@@ -250,6 +251,9 @@ func (dt *DaTong) CalcDifficulty(chain consensus.ChainReader, time uint64, paren
 	// max / (weight * (period/distance))
 	diff := new(big.Int).Mul(weight, new(big.Int).SetUint64(dt.config.Period))
 	temp := new(big.Int).Mul(maxDiff, distance)
+	if cmpZero.Cmp(diff) == 0 {
+		return big.NewInt(1)
+	}
 	diff = diff.Div(temp, diff)
 	return diff
 }
