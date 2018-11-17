@@ -14,14 +14,14 @@ GO ?= latest
 geth:
 	build/env.sh go run build/ci.go install ./cmd/efsn
 	@echo "Done building."
-	@echo "Run \"$(GOBIN)/geth\" to launch geth."
+	@echo "Run \"$(GOBIN)/efsn\" to launch efsn."
 
 debug:
 	# https://ethereum.stackexchange.com/questions/41489/how-to-debug-geth-with-delve?rq=1
 	@echo building debug version
 	build/env.sh go build -o ./build/bin/efsn   -gcflags=all='-N -l' -v ./cmd/efsn
 	@echo end building debug version
-	@echo "Run \"$(GOBIN)/efsn\" to launch geth."
+	@echo "Run \"$(GOBIN)/efsn\" to launch efsn."
 
 swarm:
 	build/env.sh go run build/ci.go install ./cmd/swarm
