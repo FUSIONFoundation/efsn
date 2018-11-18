@@ -334,7 +334,7 @@ func (s *PrivateFusionAPI) GenNotation(ctx context.Context, args FusionBaseArgs,
 	notation := state.GetNotation(args.From)
 
 	if notation != 0 {
-		return common.Hash{}, fmt.Errorf("An address just can gen a notation, your have a notation:%d", calcNotationDisplay(notation))
+		return common.Hash{}, fmt.Errorf("An address can have only notation, you already have  notation:%d", calcNotationDisplay(notation))
 	}
 
 	var param = common.FSNCallParam{Func: common.GenNotationFunc}
