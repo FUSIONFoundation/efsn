@@ -267,7 +267,11 @@ func (st *StateTransition) handleFsnCall() error {
 	rlp.DecodeBytes(st.msg.Data(), &param)
 	switch param.Func {
 	case common.GenNotationFunc:
-		return st.state.GenNotation(st.msg.From())
+		err := st.state.GenNotation(st.msg.From())
+		if err == nil {
+			st.addLog(common.GenNotationFunc, []byte{})
+		}
+		return err
 	case common.GenAssetFunc:
 		genAssetParam := common.GenAssetParam{}
 		rlp.DecodeBytes(param.Data, &genAssetParam)
@@ -278,6 +282,7 @@ func (st *StateTransition) handleFsnCall() error {
 			return err
 		}
 		st.state.AddBalance(st.msg.From(), asset.ID, asset.Total)
+		st.addLog(common.GenAssetFunc, param.Data)
 		return nil
 	case common.SendAssetFunc:
 		sendAssetParam := common.SendAssetParam{}
@@ -287,6 +292,7 @@ func (st *StateTransition) handleFsnCall() error {
 		}
 		st.state.SubBalance(st.msg.From(), sendAssetParam.AssetID, sendAssetParam.Value)
 		st.state.AddBalance(sendAssetParam.To, sendAssetParam.AssetID, sendAssetParam.Value)
+		st.addLog(common.SendAssetFunc, param.Data)
 		return nil
 	case common.TimeLockFunc:
 		timeLockParam := common.TimeLockParam{}
@@ -318,6 +324,7 @@ func (st *StateTransition) handleFsnCall() error {
 				st.state.AddTimeLockBalance(st.msg.From(), timeLockParam.AssetID, surplusValue)
 			}
 			st.state.AddTimeLockBalance(timeLockParam.To, timeLockParam.AssetID, needValue)
+			st.addLog(common.TimeLockFunc, param.Data)
 			return nil
 		case common.TimeLockToTimeLock:
 			if st.state.GetTimeLockBalance(timeLockParam.AssetID, st.msg.From()).Cmp(needValue) < 0 {
@@ -325,6 +332,7 @@ func (st *StateTransition) handleFsnCall() error {
 			}
 			st.state.SubTimeLockBalance(st.msg.From(), timeLockParam.AssetID, needValue)
 			st.state.AddTimeLockBalance(timeLockParam.To, timeLockParam.AssetID, needValue)
+			st.addLog(common.TimeLockFunc, param.Data)
 			return nil
 		case common.TimeLockToAsset:
 			if st.state.GetTimeLockBalance(timeLockParam.AssetID, st.msg.From()).Cmp(needValue) < 0 {
@@ -332,6 +340,7 @@ func (st *StateTransition) handleFsnCall() error {
 			}
 			st.state.SubTimeLockBalance(st.msg.From(), timeLockParam.AssetID, needValue)
 			st.state.AddBalance(timeLockParam.To, timeLockParam.AssetID, timeLockParam.Value)
+			st.addLog(common.TimeLockFunc, param.Data)
 			return nil
 		}
 	case common.BuyTicketFunc:
@@ -361,6 +370,7 @@ func (st *StateTransition) handleFsnCall() error {
 		if err := st.state.AddTicket(ticket); err != nil {
 			return err
 		}
+		st.addLog(common.BuyTicketFunc, param.Data)
 		return nil
 	case common.AssetValueChangeFunc:
 		assetValueChangeParam := common.AssetValueChangeParam{}
@@ -394,7 +404,11 @@ func (st *StateTransition) handleFsnCall() error {
 			st.state.SubBalance(assetValueChangeParam.To, assetValueChangeParam.AssetID, assetValueChangeParam.Value)
 			asset.Total = asset.Total.Sub(asset.Total, assetValueChangeParam.Value)
 		}
-		return st.state.UpdateAsset(asset)
+		err := st.state.UpdateAsset(asset)
+		if err == nil {
+			st.addLog(common.AssetValueChangeFunc, param.Data)
+		}
+		return err
 	case common.MakeSwapFunc:
 		makeSwapParam := common.MakeSwapParam{}
 		rlp.DecodeBytes(param.Data, &makeSwapParam)
@@ -420,6 +434,8 @@ func (st *StateTransition) handleFsnCall() error {
 			return err
 		}
 		st.state.SubBalance(st.msg.From(), makeSwapParam.FromAssetID, total)
+		st.addLog(common.MakeSwapFunc, param.Data)
+		return nil
 	case common.RecallSwapFunc:
 		recallSwapParam := common.RecallSwapParam{}
 		rlp.DecodeBytes(param.Data, &recallSwapParam)
@@ -438,7 +454,8 @@ func (st *StateTransition) handleFsnCall() error {
 			return err
 		}
 		st.state.AddBalance(st.msg.From(), swap.FromAssetID, total)
-
+		st.addLog(common.RecallSwapFunc, param.Data)
+		return nil
 	case common.TakeSwapFunc:
 		takeSwapParam := common.TakeSwapParam{}
 		rlp.DecodeBytes(param.Data, &takeSwapParam)
@@ -472,6 +489,21 @@ func (st *StateTransition) handleFsnCall() error {
 		st.state.AddBalance(swap.Owner, swap.ToAssetID, toTotal)
 		st.state.SubBalance(st.msg.From(), swap.ToAssetID, toTotal)
 		st.state.AddBalance(st.msg.From(), swap.FromAssetID, fromTotal)
+		st.addLog(common.TakeSwapFunc, param.Data)
+		return nil
 	}
 	return fmt.Errorf("Unsupport")
+}
+
+func (st *StateTransition) addLog(typ common.FSNCallFunc, data []byte) {
+
+	topic := common.Hash{}
+	topic[common.HashLength-1] = (uint8)(typ)
+
+	st.evm.StateDB.AddLog(&types.Log{
+		Address:     common.FSNCallAddress,
+		Topics:      []common.Hash{topic},
+		Data:        data,
+		BlockNumber: st.evm.BlockNumber.Uint64(),
+	})
 }
