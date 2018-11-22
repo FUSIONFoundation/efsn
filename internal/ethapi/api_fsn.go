@@ -295,6 +295,22 @@ func (s *PublicFusionAPI) AllTickets(ctx context.Context, blockNr rpc.BlockNumbe
 	return tickets, state.Error()
 }
 
+// AllTicketsByAddress wacom
+func (s *PublicFusionAPI) AllTicketsByAddress(ctx context.Context, address common.Address, blockNr rpc.BlockNumber) (map[common.Hash]common.Ticket, error) {
+	state, _, err := s.b.StateAndHeaderByNumber(ctx, blockNr)
+	var ret  = make(map[common.Hash]common.Ticket)
+	if state == nil || err != nil {
+		return nil, err
+	}
+	tickets := state.AllTickets()
+	for k, v := range tickets {
+		if v.Owner == address {
+			ret[k] = v
+		}
+	}
+	return ret, state.Error()
+}
+
 // AllSwaps wacom
 func (s *PublicFusionAPI) AllSwaps(ctx context.Context, blockNr rpc.BlockNumber) (map[common.Hash]common.Swap, error) {
 	state, _, err := s.b.StateAndHeaderByNumber(ctx, blockNr)
