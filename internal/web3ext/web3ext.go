@@ -855,6 +855,23 @@ web3._extend({
 			]
 		}),
 		new web3._extend.Method({
+			name: 'totalNumberOfTickets',
+			call: 'fsn_totalNumberOfTickets',
+			params: 1,
+			inputFormatter: [
+				web3._extend.formatters.inputDefaultBlockNumberFormatter
+			]
+		}),
+		new web3._extend.Method({
+			name: 'totalNumberOfTicketsByAddress',
+			call: 'fsn_totalNumberOfTicketsByAddress',
+			params: 2,
+			inputFormatter: [
+				web3._extend.formatters.inputAddressFormatter,
+				web3._extend.formatters.inputDefaultBlockNumberFormatter
+			]
+		}),
+		new web3._extend.Method({
 			name: 'buyTicket',
 			call: 'fsn_buyTicket',
 			params: 2,

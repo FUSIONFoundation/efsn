@@ -295,6 +295,18 @@ func (s *PublicFusionAPI) AllTickets(ctx context.Context, blockNr rpc.BlockNumbe
 	return tickets, state.Error()
 }
 
+// TotalNumberOfTickets wacom
+func (s *PublicFusionAPI) TotalNumberOfTickets(ctx context.Context, blockNr rpc.BlockNumber) (int, error) {
+	tickets, err := s.AllTickets( ctx, blockNr )
+	return len(tickets), err
+}
+
+// TotalNumberOfTicketsByAddress wacom
+func (s *PublicFusionAPI) TotalNumberOfTicketsByAddress(ctx context.Context, address common.Address, blockNr rpc.BlockNumber)(int, error) {
+	tickets, err := s.AllTicketsByAddress( ctx, address, blockNr )
+	return len(tickets), err
+}
+
 // AllTicketsByAddress wacom
 func (s *PublicFusionAPI) AllTicketsByAddress(ctx context.Context, address common.Address, blockNr rpc.BlockNumber) (map[common.Hash]common.Ticket, error) {
 	state, _, err := s.b.StateAndHeaderByNumber(ctx, blockNr)
