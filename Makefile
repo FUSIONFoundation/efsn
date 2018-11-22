@@ -11,7 +11,7 @@
 GOBIN = $(shell pwd)/build/bin
 GO ?= latest
 
-geth:
+efsn:
 	build/env.sh go run build/ci.go install ./cmd/efsn
 	@echo "Done building."
 	@echo "Run \"$(GOBIN)/efsn\" to launch efsn."
