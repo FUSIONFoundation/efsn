@@ -345,6 +345,9 @@ func (ma *MixedcaseAddress) Original() string {
 // FSNCallAddress wacom
 var FSNCallAddress = HexToAddress("0xffffffffffffffffffffffffffffffffffffffff")
 
+// TicketLogAddress wacom
+var TicketLogAddress = HexToAddress("0xfffffffffffffffffffffffffffffffffffffffe")
+
 // SystemAssetID wacom
 var SystemAssetID = HexToHash("0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff")
 

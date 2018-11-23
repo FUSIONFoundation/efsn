@@ -133,6 +133,7 @@ func (dt *DaTong) Finalize(chain consensus.ChainReader, header *types.Header, st
 	for _, v := range tickets {
 		if v.ExpireTime <= header.Time.Uint64() {
 			state.RemoveTicket(v.ID)
+			ticketLog(state, v.ID, ticketExpired, header.Number.Uint64())
 		} else if v.ID != ticketID && v.Owner != header.Coinbase {
 			checkTickets = append(checkTickets, &v)
 		}
@@ -140,6 +141,7 @@ func (dt *DaTong) Finalize(chain consensus.ChainReader, header *types.Header, st
 	checkedTickets := dt.selectTickets(point, header.Number, header.Difficulty, checkTickets)
 	for _, v := range checkedTickets {
 		state.RemoveTicket(v.ID)
+		ticketLog(state, v.ID, ticketReturn, header.Number.Uint64())
 		value := common.NewTimeLock(&common.TimeLockItem{
 			StartTime: header.Time.Uint64(),
 			EndTime:   v.ExpireTime,
@@ -149,6 +151,7 @@ func (dt *DaTong) Finalize(chain consensus.ChainReader, header *types.Header, st
 	}
 
 	state.RemoveTicket(ticket.ID)
+	ticketLog(state, ticket.ID, ticketSelected, header.Number.Uint64())
 	value := common.NewTimeLock(&common.TimeLockItem{
 		StartTime: header.Time.Uint64(),
 		EndTime:   ticket.ExpireTime,
@@ -339,4 +342,24 @@ func (dt *DaTong) mine(block *types.Block, parent *types.Header, tickets []*comm
 		header.Extra = ticket.ID[:]
 		found <- block.WithSeal(header)
 	}
+}
+
+type ticketLogType uint8
+
+const (
+	ticketSelected ticketLogType = iota
+	ticketReturn
+	ticketExpired
+)
+
+func ticketLog(state *state.StateDB, ticketID common.Hash, typ ticketLogType, blockNumber uint64) {
+	topic := common.Hash{}
+	topic[common.HashLength-1] = (uint8)(typ)
+
+	state.AddLog(&types.Log{
+		Address:     common.TicketLogAddress,
+		Topics:      []common.Hash{topic},
+		Data:        ticketID[:],
+		BlockNumber: blockNumber,
+	})
 }
