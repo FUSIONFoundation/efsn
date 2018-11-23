@@ -402,10 +402,11 @@ func ParseBig256(s string) (*big.Int, bool) {
 	return bigint, ok
 }
 
-// TicketPrice  place holder for ticket price 
+// TicketPrice  place holder for ticket price
 func TicketPrice() *big.Int {
-	v, _ :=  ParseBig256( "21000000000000000000" ) // 21 x 10 ^ 18
-	return v
+	// v, _ :=  ParseBig256( "21000000000000000000" ) // 21 x 10 ^ 18
+	// return v
+	return new(big.Int).Mul(big.NewInt(200), big.NewInt(100000000000000000))
 }
 
 // FSNCallParam wacom
