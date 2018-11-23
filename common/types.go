@@ -383,6 +383,31 @@ const (
 	TakeSwapFunc
 )
 
+// ParseBig256 parses s as a 256 bit integer in decimal or hexadecimal syntax.
+// Leading zeros are accepted. The empty string parses as zero.
+func ParseBig256(s string) (*big.Int, bool) {
+	if s == "" {
+		return new(big.Int), true
+	}
+	var bigint *big.Int
+	var ok bool
+	if len(s) >= 2 && (s[:2] == "0x" || s[:2] == "0X") {
+		bigint, ok = new(big.Int).SetString(s[2:], 16)
+	} else {
+		bigint, ok = new(big.Int).SetString(s, 10)
+	}
+	if ok && bigint.BitLen() > 256 {
+		bigint, ok = nil, false
+	}
+	return bigint, ok
+}
+
+// TicketPrice  place holder for ticket price 
+func TicketPrice() *big.Int {
+	v, _ :=  ParseBig256( "21000000000000000000" ) // 21 x 10 ^ 18
+	return v
+}
+
 // FSNCallParam wacom
 type FSNCallParam struct {
 	Func FSNCallFunc

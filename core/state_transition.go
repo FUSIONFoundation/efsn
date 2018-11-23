@@ -347,7 +347,7 @@ func (st *StateTransition) handleFsnCall() error {
 		from := st.msg.From()
 		start := st.evm.Context.Time.Uint64()
 		end := start + 40*24*3600
-		value := big.NewInt(1)
+		value := common.TicketPrice()
 		needValue := common.NewTimeLock(&common.TimeLockItem{
 			StartTime: start,
 			EndTime:   end,
