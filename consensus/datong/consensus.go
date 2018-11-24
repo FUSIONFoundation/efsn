@@ -325,7 +325,16 @@ func (dt *DaTong) verifyTicket(proofPoint, height, diff *big.Int, ticket *common
 }
 
 func (dt *DaTong) calcRewards(height *big.Int) *big.Int {
-	return big.NewInt(1)
+	var i int64
+	div2 := big.NewInt(2)
+	// initial reward 2.5
+	var reward = new(big.Int).Mul(big.NewInt(25), big.NewInt(10000000000000000))
+	// every 4915200 blocks divide reward by 2
+	segment := new(big.Int).Div( height, new(big.Int).SetUint64(4915200))
+	for i = 0 ; i < segment.Int64() ; i++ {
+		reward = new(big.Int).Div( reward, div2 )
+	}
+	return reward
 }
 
 func (dt *DaTong) mine(block *types.Block, parent *types.Header, tickets []*common.Ticket, found chan *types.Block) {
