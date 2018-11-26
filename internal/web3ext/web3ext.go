@@ -32,6 +32,7 @@ var Modules = map[string]string{
 	"swarmfs":    SWARMFS_JS,
 	"txpool":     TxPool_JS,
 	"fsn":        FsnJS,
+	"fsntx":      FsnTxJS,
 }
 
 const Chequebook_JS = `
@@ -946,6 +947,131 @@ web3._extend({
 			name: 'coinbase',
 			getter: 'eth_coinbase'
 		}),
+	]
+});
+`
+
+// FsnTxJS wacom
+const FsnTxJS = `
+web3._extend({
+	property: 'fsntx',
+	methods: [
+		new web3._extend.Method({
+		name: 'genNotation',
+		call: 'fsntx_genNotation',
+		params: 1,
+		inputFormatter: [
+			web3._extend.formatters.inputTransactionFormatter			
+		]
+	}),
+	new web3._extend.Method({
+		name: 'genAsset',
+		call: 'fsntx_genAsset',
+		params: 1,
+		inputFormatter: [
+			function(options){					
+				if(options.name === undefined || !options.name){
+					throw new Error('invalid name');
+				}
+				if(options.symbol === undefined || !options.symbol){
+					throw new Error('invalid symbol');
+				}
+				if(options.decimals === undefined || options.decimals <= 0 || options.decimals > 255){
+					throw new Error('invalid decimals');
+				}
+				if(options.total !== undefined){
+					options.total = web3.fromDecimal(options.total)
+				}
+				return web3._extend.formatters.inputTransactionFormatter(options)
+			}
+		]
+	}),
+	new web3._extend.Method({
+		name: 'sendAsset',
+		call: 'fsntx_sendAsset',
+		params: 1,
+		inputFormatter: [
+			web3._extend.formatters.inputTransactionFormatter			
+		]
+	}),
+	new web3._extend.Method({
+		name: 'assetToTimeLock',
+		call: 'fsntx_assetToTimeLock',
+		params: 1,
+		inputFormatter: [
+			function(options){
+				return web3._extend.formatters.inputTransactionFormatter(options)
+			}			
+		]
+	}),
+	new web3._extend.Method({
+		name: 'timeLockToTimeLock',
+		call: 'fsntx_timeLockToTimeLock',
+		params: 1,
+		inputFormatter: [
+			function(options){
+				return web3._extend.formatters.inputTransactionFormatter(options)
+			}			
+		]
+	}),
+	new web3._extend.Method({
+		name: 'timeLockToAsset',
+		call: 'fsntx_timeLockToAsset',
+		params: 1,
+		inputFormatter: [
+			function(options){
+				return web3._extend.formatters.inputTransactionFormatter(options)
+			}			
+		]
+	}),
+	new web3._extend.Method({
+		name: 'buyTicket',
+		call: 'fsntx_buyTicket',
+		params: 1,
+		inputFormatter: [
+			web3._extend.formatters.inputTransactionFormatter			
+		]
+	}),
+	new web3._extend.Method({
+		name: 'incAsset',
+		call: 'fsntx_incAsset',
+		params: 1,
+		inputFormatter: [
+			web3._extend.formatters.inputTransactionFormatter
+		]
+	}),	
+	new web3._extend.Method({
+		name: 'decAsset',
+		call: 'fsntx_decAsset',
+		params: 1,
+		inputFormatter: [
+			web3._extend.formatters.inputTransactionFormatter			
+		]
+	}),
+	new web3._extend.Method({
+		name: 'makeSwap',
+		call: 'fsntx_makeSwap',
+		params: 1,
+		inputFormatter: [
+			web3._extend.formatters.inputTransactionFormatter			
+		]
+	}),
+	new web3._extend.Method({
+		name: 'recallSwap',
+		call: 'fsntx_recallSwap',
+		params: 1,
+		inputFormatter: [
+			web3._extend.formatters.inputTransactionFormatter			
+		]
+	}),
+	new web3._extend.Method({
+		name: 'takeSwap',
+		call: 'fsntx_takeSwap',
+		params: 1,
+		inputFormatter: [
+			web3._extend.formatters.inputTransactionFormatter			
+		]
+	}),
 	]
 });
 `
