@@ -340,6 +340,22 @@ func (s *PublicFusionAPI) AllSwaps(ctx context.Context, blockNr rpc.BlockNumber)
 	return swaps, state.Error()
 }
 
+// AllSwapsByAddress wacom
+func (s *PublicFusionAPI) AllSwapsByAddress(ctx context.Context, address common.Address,  blockNr rpc.BlockNumber) (map[common.Hash]common.Swap, error) {
+	state, _, err := s.b.StateAndHeaderByNumber(ctx, blockNr)
+	if state == nil || err != nil {
+		return nil, err
+	}
+	swaps := state.AllSwaps()
+	var ret = make(map[common.Hash]common.Swap)
+	for k, v := range swaps {
+		if v.Owner == address {
+			ret[k] = v
+		}
+	}
+	return ret, state.Error()
+}
+
 // PrivateFusionAPI ss
 type PrivateFusionAPI struct {
 	am        *accounts.Manager

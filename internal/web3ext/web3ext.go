@@ -915,6 +915,15 @@ web3._extend({
 			]
 		}),
 		new web3._extend.Method({
+			name: 'allSwapsByAddress',
+			call: 'fsn_allSwapsByAddress',
+			params: 2,
+			inputFormatter: [
+				web3._extend.formatters.inputAddressFormatter,
+				web3._extend.formatters.inputDefaultBlockNumberFormatter
+			]
+		}),
+		new web3._extend.Method({
 			name: 'makeSwap',
 			call: 'fsn_makeSwap',
 			params: 2,
