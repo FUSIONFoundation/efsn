@@ -406,8 +406,8 @@ func ParseBig256(s string) (*big.Int, bool) {
 }
 
 // TicketPrice  place holder for ticket price
-func TicketPrice() *big.Int {
-	return new(big.Int).Mul(big.NewInt(200), big.NewInt(100000000000000000))
+func TicketPrice() *big.Int {	
+	return new(big.Int).Mul(big.NewInt(200), big.NewInt(1000000000000000000))
 }
 
 // FSNCallParam wacom
