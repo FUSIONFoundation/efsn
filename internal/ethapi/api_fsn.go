@@ -182,20 +182,20 @@ func NewPublicFusionAPI(b Backend) *PublicFusionAPI {
 }
 
 // GetBalance wacom
-func (s *PublicFusionAPI) GetBalance(ctx context.Context, assetID common.Hash, address common.Address, blockNr rpc.BlockNumber) (*big.Int, error) {
+func (s *PublicFusionAPI) GetBalance(ctx context.Context, assetID common.Hash, address common.Address, blockNr rpc.BlockNumber) (string, error) {
 	state, _, err := s.b.StateAndHeaderByNumber(ctx, blockNr)
 	if state == nil || err != nil {
-		return new(big.Int), err
+		return "0", err
 	}
 	b := state.GetBalance(assetID, address)
-	return b, state.Error()
+	return b.String(), state.Error()
 }
 
 // GetAllBalances wacom
-func (s *PublicFusionAPI) GetAllBalances(ctx context.Context, address common.Address, blockNr rpc.BlockNumber) (map[common.Hash]*big.Int, error) {
+func (s *PublicFusionAPI) GetAllBalances(ctx context.Context, address common.Address, blockNr rpc.BlockNumber) (map[common.Hash]string, error) {
 	state, _, err := s.b.StateAndHeaderByNumber(ctx, blockNr)
 	if state == nil || err != nil {
-		return make(map[common.Hash]*big.Int), err
+		return make(map[common.Hash]string), err
 	}
 	b := state.GetAllBalances(address)
 	return b, state.Error()

@@ -187,12 +187,17 @@ func (self *StateDB) Empty(addr common.Address) bool {
 	return so == nil || so.empty()
 }
 
-func (self *StateDB) GetAllBalances(addr common.Address) map[common.Hash]*big.Int {
+func (self *StateDB) GetAllBalances(addr common.Address) map[common.Hash]string {
 	stateObject := self.getStateObject(addr)
 	if stateObject != nil {
-		return stateObject.Balances()
+		balances := stateObject.Balances()
+		retBalances := make(map[common.Hash]string)
+		for k, v := range balances {		
+			retBalances[k] = v.String()
+		}
+		return retBalances
 	}
-	return make(map[common.Hash]*big.Int)
+	return make(map[common.Hash]string)
 }
 
 func (self *StateDB) GetBalance(assetID common.Hash, addr common.Address) *big.Int {
