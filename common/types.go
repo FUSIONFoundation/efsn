@@ -359,7 +359,7 @@ var (
 	// TicketKey wacom
 	TicketKey = []byte{0x03}
 	// SwapKey wacom
-	SwapKey = []byte{0x04}
+	SwapKey = []byte{0x05} // 4 was the old
 )
 
 // FSNCallFunc wacom
@@ -447,7 +447,7 @@ type TimeLockParam struct {
 	To        Address
 	StartTime uint64
 	EndTime   uint64
-	Value     *big.Int
+	Value     *big.Int `json:",string"`
 }
 
 // MakeSwapParam wacom
