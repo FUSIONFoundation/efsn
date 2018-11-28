@@ -310,8 +310,8 @@ func (s *PublicFusionAPI) TotalNumberOfTicketsByAddress(ctx context.Context, add
 }
 
 // TicketPrice wacom
-func (s *PublicFusionAPI) TicketPrice(ctx context.Context) (*big.Int, error) {
-	return common.TicketPrice(), nil
+func (s *PublicFusionAPI) TicketPrice(ctx context.Context) (string, error) {
+	return common.TicketPrice().String(), nil
 }
 
 // AllTicketsByAddress wacom
@@ -341,7 +341,7 @@ func (s *PublicFusionAPI) AllSwaps(ctx context.Context, blockNr rpc.BlockNumber)
 }
 
 // AllSwapsByAddress wacom
-func (s *PublicFusionAPI) AllSwapsByAddress(ctx context.Context, address common.Address,  blockNr rpc.BlockNumber) (map[common.Hash]common.Swap, error) {
+func (s *PublicFusionAPI) AllSwapsByAddress(ctx context.Context, address common.Address, blockNr rpc.BlockNumber) (map[common.Hash]common.Swap, error) {
 	state, _, err := s.b.StateAndHeaderByNumber(ctx, blockNr)
 	if state == nil || err != nil {
 		return nil, err
