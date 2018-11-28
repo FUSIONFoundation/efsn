@@ -429,6 +429,7 @@ func (st *StateTransition) handleFsnCall() error {
 			MinToAmount:   makeSwapParam.MinToAmount,
 			SwapSize:      makeSwapParam.SwapSize,
 			Targes:        makeSwapParam.Targes,
+			Time  :   	   st.evm.Time,
 		}
 		if err := st.state.AddSwap(swap); err != nil {
 			return err

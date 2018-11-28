@@ -572,4 +572,5 @@ type Swap struct {
 	MinToAmount   *big.Int
 	SwapSize      *big.Int
 	Targes        []Address
+	Time          *big.Int       // Provides information for TIME
 }
