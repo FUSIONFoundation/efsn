@@ -554,7 +554,7 @@ func (s *PrivateFusionAPI) BuyTicket(ctx context.Context, args FusionBaseArgs, p
 	}
 
 	start := block.Time().Uint64()
-	value := big.NewInt(1)
+	value := common.TicketPrice()
 	needValue := common.NewTimeLock(&common.TimeLockItem{
 		StartTime: start,
 		EndTime:   start + 40*24*3600,
