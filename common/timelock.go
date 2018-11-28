@@ -166,6 +166,18 @@ func (z *TimeLock) Clone() *TimeLock {
 	return NewTimeLock(z.Items...)
 }
 
+func (u *TimeLockItem) MarshalJSON() ([]byte, error) {
+	return json.Marshal(&struct {
+		StartTime  uint64 
+		Value   string 
+		EndTime uint64  
+	}{
+		StartTime:       u.StartTime,
+		EndTime:     u.EndTime,
+		Value: u.Value.String(),
+	})
+}
+
 func (z *TimeLock) Len() int {
 	return len(z.Items)
 }

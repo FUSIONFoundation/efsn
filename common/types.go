@@ -533,6 +533,26 @@ type Asset struct {
 	CanChange bool
 }
 
+func (u *Asset) MarshalJSON() ([]byte, error) {
+	return json.Marshal(&struct {
+		ID        Hash
+		Owner     Address
+		Name      string
+		Symbol    string
+		Decimals  uint8
+		Total     string
+		CanChange bool
+	}{
+		ID : u.ID,
+		Owner : u.Owner,
+		Name   : u.Name,
+		Symbol  : u.Symbol,
+		Decimals  : u.Decimals,
+		Total    : u.Total.String(),
+		CanChange : u.CanChange,
+	})
+}
+
 // SystemAsset wacom
 var SystemAsset = Asset{
 	Name:     "Fusion",
