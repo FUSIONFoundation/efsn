@@ -592,7 +592,7 @@ func (s *PrivateFusionAPI) checkAssetValueChange(ctx context.Context, args Asset
 
 	big0 := big.NewInt(0)
 
-	if (args.IsInc && args.Value.ToInt().Cmp(big0) <= 0) || (!args.IsInc && args.Value.ToInt().Cmp(big0) >= 0) {
+	if ( args.Value.ToInt().Cmp(big0) <= 0) {
 		return common.Hash{}, fmt.Errorf("illegal operation")
 	}
 

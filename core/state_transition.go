@@ -17,10 +17,12 @@
 package core
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"math"
 	"math/big"
+	"reflect"
 	"time"
 
 	"github.com/FusionFoundation/efsn/common"
@@ -282,7 +284,7 @@ func (st *StateTransition) handleFsnCall() error {
 			return err
 		}
 		st.state.AddBalance(st.msg.From(), asset.ID, asset.Total)
-		st.addLog(common.GenAssetFunc, param.Data)
+		st.addLog(common.GenAssetFunc, genAssetParam, common.NewKeyValue("AssetID", asset.ID))
 		return nil
 	case common.SendAssetFunc:
 		sendAssetParam := common.SendAssetParam{}
@@ -370,7 +372,7 @@ func (st *StateTransition) handleFsnCall() error {
 		if err := st.state.AddTicket(ticket); err != nil {
 			return err
 		}
-		st.addLog(common.BuyTicketFunc, param.Data)
+		st.addLog(common.BuyTicketFunc,  param.Data, common.NewKeyValue("Ticket", ticket.ID))
 		return nil
 	case common.AssetValueChangeFunc:
 		assetValueChangeParam := common.AssetValueChangeParam{}
@@ -429,7 +431,7 @@ func (st *StateTransition) handleFsnCall() error {
 			MinToAmount:   makeSwapParam.MinToAmount,
 			SwapSize:      makeSwapParam.SwapSize,
 			Targes:        makeSwapParam.Targes,
-			Time  :   	   st.evm.Time,
+			Time:          st.evm.Time,
 		}
 		if err := st.state.AddSwap(swap); err != nil {
 			return err
@@ -496,7 +498,27 @@ func (st *StateTransition) handleFsnCall() error {
 	return fmt.Errorf("Unsupport")
 }
 
-func (st *StateTransition) addLog(typ common.FSNCallFunc, data []byte) {
+func (st *StateTransition) addLog(typ common.FSNCallFunc, value interface{}, keyValues ...*common.KeyValue) {
+
+	t := reflect.TypeOf(value)
+	v := reflect.ValueOf(value)
+
+	maps := make(map[string]interface{})
+	if t.Kind() == reflect.Struct {
+		for i := 0; i < t.NumField(); i++ {
+			if v.Field(i).CanInterface() {
+				maps[t.Field(i).Name] = v.Field(i).Interface()
+			}
+		}
+	} else {
+		maps["Base"] = value
+	}
+
+	for i := 0; i < len(keyValues); i++ {
+		maps[keyValues[i].Key] = keyValues[i].Value
+	}
+
+	data, _ := json.Marshal(maps)
 
 	topic := common.Hash{}
 	topic[common.HashLength-1] = (uint8)(typ)

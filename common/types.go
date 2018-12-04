@@ -594,3 +594,16 @@ type Swap struct {
 	Targes        []Address
 	Time          *big.Int       // Provides information for TIME
 }
+
+// KeyValue wacom
+type KeyValue struct {
+	Key   string
+	Value interface{}
+   }
+   
+// NewKeyValue wacom
+func NewKeyValue(name string, v interface{}) *KeyValue {
+
+	return &KeyValue{Key: name, Value: v}
+
+}
