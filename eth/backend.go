@@ -224,7 +224,7 @@ func CreateConsensusEngine(ctx *node.ServiceContext, chainConfig *params.ChainCo
 	}
 
 	if chainConfig.DaTong != nil {
-		return datong.New(chainConfig.DaTong, db)
+		return datong.New(chainConfig.DaTong, db, ctx.AccountManager)
 	}
 
 	// Otherwise assume proof-of-work

@@ -4,10 +4,12 @@ import (
 	"errors"
 	"math/big"
 
+	"github.com/FusionFoundation/efsn/accounts"
 	"github.com/FusionFoundation/efsn/common"
 	"github.com/FusionFoundation/efsn/consensus"
 	"github.com/FusionFoundation/efsn/core/state"
 	"github.com/FusionFoundation/efsn/core/types"
+	"github.com/FusionFoundation/efsn/crypto"
 	"github.com/FusionFoundation/efsn/crypto/sha3"
 	"github.com/FusionFoundation/efsn/ethdb"
 	"github.com/FusionFoundation/efsn/log"
@@ -18,17 +20,19 @@ import (
 
 // DaTong wacom
 type DaTong struct {
-	config     *params.DaTongConfig
-	db         ethdb.Database
-	stateCache state.Database
+	config         *params.DaTongConfig
+	db             ethdb.Database
+	stateCache     state.Database
+	accountManager *accounts.Manager
 }
 
 // New wacom
-func New(config *params.DaTongConfig, db ethdb.Database) *DaTong {
+func New(config *params.DaTongConfig, db ethdb.Database, accountManager *accounts.Manager) *DaTong {
 	return &DaTong{
-		config:     config,
-		db:         db,
-		stateCache: state.NewDatabase(db),
+		config:         config,
+		db:             db,
+		stateCache:     state.NewDatabase(db),
+		accountManager: accountManager,
 	}
 }
 
@@ -47,7 +51,16 @@ func (dt *DaTong) VerifyHeader(chain consensus.ChainReader, header *types.Header
 		return consensus.ErrUnknownAncestor
 	}
 	point := dt.calcProofPoint(parent, header.Time)
-	ticketID := common.BytesToHash(header.Extra)
+	ticketID := common.BytesToHash(header.Extra[:common.HashLength])
+	sig := header.Extra[common.HashLength:]
+	pubKey, err := crypto.Ecrecover(header.ParentHash[:], sig)
+	if err != nil {
+		return err
+	}
+	address := common.BytesToAddress(crypto.Keccak256(pubKey[1:])[12:])
+	if address != header.Coinbase {
+		return errors.New("signer not eq coinbase")
+	}
 	statedb, err := state.New(parent.Root, dt.stateCache)
 	if err != nil {
 		return err
@@ -57,6 +70,9 @@ func (dt *DaTong) VerifyHeader(chain consensus.ChainReader, header *types.Header
 		return errors.New("Ticket not found")
 	}
 	ticket := tickets[ticketID]
+	if ticket.Owner != address {
+		return errors.New("Ticket owner not eq signer")
+	}
 	return dt.verifyTicket(point, header.Number, header.Difficulty, &ticket)
 }
 
@@ -330,9 +346,9 @@ func (dt *DaTong) calcRewards(height *big.Int) *big.Int {
 	// initial reward 2.5
 	var reward = new(big.Int).Mul(big.NewInt(25), big.NewInt(10000000000000000))
 	// every 4915200 blocks divide reward by 2
-	segment := new(big.Int).Div( height, new(big.Int).SetUint64(4915200))
-	for i = 0 ; i < segment.Int64() ; i++ {
-		reward = new(big.Int).Div( reward, div2 )
+	segment := new(big.Int).Div(height, new(big.Int).SetUint64(4915200))
+	for i = 0; i < segment.Int64(); i++ {
+		reward = new(big.Int).Div(reward, div2)
 	}
 	return reward
 }
@@ -349,6 +365,10 @@ func (dt *DaTong) mine(block *types.Block, parent *types.Header, tickets []*comm
 			}
 		}
 		header.Extra = ticket.ID[:]
+		account := accounts.Account{Address: block.Header().Coinbase}
+		wallet, _ := dt.accountManager.Find(account)
+		sig, _ := wallet.SignHash(account, block.Header().ParentHash[:])
+		header.Extra = append(header.Extra, sig...)
 		found <- block.WithSeal(header)
 	}
 }
