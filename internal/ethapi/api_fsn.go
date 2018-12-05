@@ -1041,7 +1041,7 @@ func (s *FusionTransactionAPI) BuildBuyTicketTx(ctx context.Context, args Fusion
 	value := big.NewInt(1)
 	needValue := common.NewTimeLock(&common.TimeLockItem{
 		StartTime: start,
-		EndTime:   start + 40*24*3600,
+		EndTime:   start + 30*24*3600,
 		Value:     value,
 	})
 	if state.GetTimeLockBalance(common.SystemAssetID, args.From).Cmp(needValue) < 0 {

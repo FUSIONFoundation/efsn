@@ -130,6 +130,11 @@ func GetAPIs(apiBackend Backend) []rpc.API {
 			Version:   "1.0",
 			Service:   NewFusionTransactionAPI(apiBackend, nonceLock, txapi),
 			Public:    false,
+		}, {
+			Namespace: "fsnbt",
+			Version:   "1.0",
+			Service:   NewPublicFusionAPI(apiBackend),
+			Public:    true,
 		},
 	}
 }

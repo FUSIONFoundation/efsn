@@ -33,6 +33,7 @@ var Modules = map[string]string{
 	"txpool":     TxPool_JS,
 	"fsn":        FsnJS,
 	"fsntx":      FsnTxJS,
+	"fsnbt":	  FsnBT,
 }
 
 const Chequebook_JS = `
@@ -958,6 +959,121 @@ web3._extend({
 		}),
 	]
 });
+`
+
+// FsnBT wacome
+const FsnBT = `
+web3._extend({
+	property: 'fsnbt',
+	methods: [
+		new web3._extend.Method({
+			name: 'getBalance',
+			call: 'fsn_getBalance',
+			params: 3,
+			inputFormatter: [
+				null,
+				web3._extend.formatters.inputAddressFormatter,
+				web3._extend.formatters.inputDefaultBlockNumberFormatter
+			]
+		}),
+		new web3._extend.Method({
+			name: 'getAllBalances',
+			call: 'fsn_getAllBalances',
+			params: 2,
+			inputFormatter: [				
+				web3._extend.formatters.inputAddressFormatter,
+				web3._extend.formatters.inputDefaultBlockNumberFormatter
+			]
+		}),
+		new web3._extend.Method({
+			name: 'getTimeLockBalance',
+			call: 'fsn_getTimeLockBalance',
+			params: 3,
+			inputFormatter: [
+				null,
+				web3._extend.formatters.inputAddressFormatter,
+				web3._extend.formatters.inputDefaultBlockNumberFormatter
+			]
+		}),
+		new web3._extend.Method({
+			name: 'getAllTimeLockBalances',
+			call: 'fsn_getAllTimeLockBalances',
+			params: 2,
+			inputFormatter: [				
+				web3._extend.formatters.inputAddressFormatter,
+				web3._extend.formatters.inputDefaultBlockNumberFormatter
+			]
+		}),
+		new web3._extend.Method({
+			name: 'getNotation',
+			call: 'fsn_getNotation',
+			params: 2,
+			inputFormatter: [
+				web3._extend.formatters.inputAddressFormatter,
+				web3._extend.formatters.inputDefaultBlockNumberFormatter
+			]
+		}),
+		new web3._extend.Method({
+			name: 'getAddressByNotation',
+			call: 'fsn_getAddressByNotation',
+			params: 2,
+			inputFormatter: [
+				null,
+				web3._extend.formatters.inputDefaultBlockNumberFormatter
+			]
+		}),
+		new web3._extend.Method({
+			name: 'allTickets',
+			call: 'fsn_allTickets',
+			params: 1,
+			inputFormatter: [
+				web3._extend.formatters.inputDefaultBlockNumberFormatter
+			]
+		}),
+		new web3._extend.Method({
+			name: 'allTicketsByAddress',
+			call: 'fsn_allTicketsByAddress',
+			params: 2,
+			inputFormatter: [
+				web3._extend.formatters.inputAddressFormatter,
+				web3._extend.formatters.inputDefaultBlockNumberFormatter
+			]
+		}),
+		new web3._extend.Method({
+			name: 'totalNumberOfTickets',
+			call: 'fsn_totalNumberOfTickets',
+			params: 1,
+			inputFormatter: [
+				web3._extend.formatters.inputDefaultBlockNumberFormatter
+			]
+		}),
+		new web3._extend.Method({
+			name: 'totalNumberOfTicketsByAddress',
+			call: 'fsn_totalNumberOfTicketsByAddress',
+			params: 2,
+			inputFormatter: [
+				web3._extend.formatters.inputAddressFormatter,
+				web3._extend.formatters.inputDefaultBlockNumberFormatter
+			]
+		}),
+		new web3._extend.Method({
+			name: 'ticketPrice',
+			call: 'fsn_ticketPrice',
+			params: 0,
+			inputFormatter: [
+			]
+		}),
+		new web3._extend.Method({
+			name: 'buyTicket',
+			call: 'fsn_buyTicket',
+			params: 2,
+			inputFormatter: [
+				web3._extend.formatters.inputTransactionFormatter,
+				null
+			]
+		}),
+		]
+	});
 `
 
 // FsnTxJS wacom
