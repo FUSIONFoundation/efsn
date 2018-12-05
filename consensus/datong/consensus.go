@@ -156,14 +156,16 @@ func (dt *DaTong) Finalize(chain consensus.ChainReader, header *types.Header, st
 	}
 	checkedTickets := dt.selectTickets(point, header.Number, header.Difficulty, checkTickets)
 	for _, v := range checkedTickets {
-		state.RemoveTicket(v.ID)
-		ticketLog(state, v.ID, ticketReturn, header.Number.Uint64())
-		value := common.NewTimeLock(&common.TimeLockItem{
-			StartTime: header.Time.Uint64(),
-			EndTime:   v.ExpireTime,
-			Value:     v.Value,
-		})
-		state.AddTimeLockBalance(v.Owner, common.SystemAssetID, value)
+		if v.Owner != ticket.Owner {
+			state.RemoveTicket(v.ID)
+			ticketLog(state, v.ID, ticketReturn, header.Number.Uint64())
+			value := common.NewTimeLock(&common.TimeLockItem{
+				StartTime: header.Time.Uint64(),
+				EndTime:   v.ExpireTime,
+				Value:     v.Value,
+			})
+			state.AddTimeLockBalance(v.Owner, common.SystemAssetID, value)
+		}
 	}
 
 	state.RemoveTicket(ticket.ID)
