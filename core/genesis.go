@@ -24,12 +24,14 @@ import (
 	"fmt"
 	"math/big"
 	"strings"
+	"time"
 
 	"github.com/FusionFoundation/efsn/common"
 	"github.com/FusionFoundation/efsn/common/hexutil"
 	"github.com/FusionFoundation/efsn/common/math"
 	"github.com/FusionFoundation/efsn/core/rawdb"
 	"github.com/FusionFoundation/efsn/core/state"
+	"github.com/FusionFoundation/efsn/crypto"
 	"github.com/FusionFoundation/efsn/core/types"
 	"github.com/FusionFoundation/efsn/ethdb"
 	"github.com/FusionFoundation/efsn/log"
@@ -55,6 +57,7 @@ type Genesis struct {
 	Coinbase   common.Address      `json:"coinbase"`
 	Alloc      GenesisAlloc        `json:"alloc"      gencodec:"required"`
 	Tickets    []common.Ticket     `json:"tickets"`
+	TicketsCreate common.TicketsCreate `json:"ticketsCreate`
 
 	// These fields are used for consensus tests. Please don't use them
 	// in actual genesis blocks.
@@ -237,6 +240,21 @@ func (g *Genesis) ToBlock(db ethdb.Database) *types.Block {
 
 	for i := 0; i < len(g.Tickets); i++ {
 		statedb.AddTicket(g.Tickets[i])
+	}
+
+	var x int64
+	for x = 0 ; x < g.TicketsCreate.Number ; x++ {
+		from := g.TicketsCreate.Owner
+		hash := crypto.Keccak256Hash(big.NewInt(x).Bytes())
+		id := crypto.Keccak256Hash(from[:], hash[:])
+		ticket := common.Ticket{
+			ID:         id,
+			Owner:      g.TicketsCreate.Owner,
+			Height:     big.NewInt(0),
+			ExpireTime:  uint64(time.Now().Unix()) + 30*24*3600,
+			Value:      common.TicketPrice(),
+		}
+		statedb.AddTicket(ticket)
 	}
 
 	statedb.GenAsset(common.SystemAsset)
