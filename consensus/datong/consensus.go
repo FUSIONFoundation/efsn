@@ -366,6 +366,47 @@ func (dt *DaTong) mine(block *types.Block, parent *types.Header, tickets []*comm
 				ticket = selectedTickets[i]
 			}
 		}
+		nextBlockTickets := make(map[common.Hash]*common.Ticket)
+
+		for i := 0; i < len(tickets); i++ {
+			nextBlockTickets[tickets[i].ID] = tickets[i]
+		}
+
+		delete(nextBlockTickets, ticket.ID)
+
+		for i := 0; i < len(selectedTickets); i++ {
+			if selectedTickets[i].Owner != ticket.Owner {
+				delete(nextBlockTickets, selectedTickets[i].ID)
+			}
+		}
+
+		blockTime := block.Header().Time.Uint64()
+		for i := 0; i < len(tickets); i++ {
+			if tickets[i].ExpireTime <= blockTime {
+				delete(nextBlockTickets, tickets[i].ID)
+			}
+		}
+
+		if len(nextBlockTickets) == 0 {
+			buyTicketCount := 0
+			txs := block.Transactions()
+			for i := 0; i < len(txs); i++ {
+				tx := txs[i]
+				to := tx.To()
+				if to != nil && *to == common.FSNCallAddress {
+					param := common.FSNCallParam{}
+					rlp.DecodeBytes(tx.Data(), &param)
+					if param.Func == common.BuyTicketFunc {
+						buyTicketCount++
+					}
+				}
+			}
+
+			if buyTicketCount == 0 {
+				return
+			}
+		}
+
 		header.Extra = ticket.ID[:]
 		account := accounts.Account{Address: block.Header().Coinbase}
 		wallet, _ := dt.accountManager.Find(account)
