@@ -355,10 +355,29 @@ func (st *StateTransition) handleFsnCall() error {
 			EndTime:   end,
 			Value:     value,
 		})
+		useAsset := false
 		if st.state.GetTimeLockBalance(common.SystemAssetID, from).Cmp(needValue) < 0 {
-			return fmt.Errorf("not enough time lock balance")
+			if st.state.GetBalance(common.SystemAssetID, from).Cmp(value) < 0 {
+				return fmt.Errorf("not enough time lock or asset balance")
+			}
+			useAsset = true
 		}
-		st.state.SubTimeLockBalance(from, common.SystemAssetID, needValue)
+
+		if useAsset {
+			st.state.SubBalance(from, common.SystemAssetID, value)
+			totalValue := common.NewTimeLock(&common.TimeLockItem{
+				StartTime: common.TimeLockNow,
+				EndTime:   common.TimeLockForever,
+				Value:     value,
+			})
+			surplusValue := new(common.TimeLock).Sub(totalValue, needValue)
+			if !surplusValue.IsEmpty() {
+				st.state.AddTimeLockBalance(from, common.SystemAssetID, surplusValue)
+			}
+		} else {
+			st.state.SubTimeLockBalance(from, common.SystemAssetID, needValue)
+		}
+
 		height := st.evm.Context.BlockNumber
 		hash := st.evm.GetHash(height.Uint64() - 1)
 		id := crypto.Keccak256Hash(from[:], hash[:])

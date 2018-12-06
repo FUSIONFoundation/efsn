@@ -588,7 +588,9 @@ func (s *PrivateFusionAPI) BuyTicket(ctx context.Context, args FusionBaseArgs, p
 		Value:     value,
 	})
 	if state.GetTimeLockBalance(common.SystemAssetID, args.From).Cmp(needValue) < 0 {
-		return common.Hash{}, fmt.Errorf("not enough time lock balance")
+		if state.GetBalance(common.SystemAssetID, args.From).Cmp(value) < 0 {
+			return common.Hash{}, fmt.Errorf("not enough time lock or asset balance")
+		}
 	}
 
 	var param = common.FSNCallParam{Func: common.BuyTicketFunc}
@@ -1102,8 +1104,11 @@ func (s *FusionTransactionAPI) BuildBuyTicketTx(ctx context.Context, args Fusion
 		EndTime:   start + 30*24*3600,
 		Value:     value,
 	})
+
 	if state.GetTimeLockBalance(common.SystemAssetID, args.From).Cmp(needValue) < 0 {
-		return nil, fmt.Errorf("not enough time lock balance")
+		if state.GetBalance(common.SystemAssetID, args.From).Cmp(value) < 0 {
+			return nil, fmt.Errorf("not enough time lock or asset balance")
+		}
 	}
 
 	var param = common.FSNCallParam{Func: common.BuyTicketFunc}
