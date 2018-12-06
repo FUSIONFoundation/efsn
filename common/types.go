@@ -406,7 +406,7 @@ func ParseBig256(s string) (*big.Int, bool) {
 }
 
 // TicketPrice  place holder for ticket price
-func TicketPrice() *big.Int {	
+func TicketPrice() *big.Int {
 	return new(big.Int).Mul(big.NewInt(200), big.NewInt(1000000000000000000))
 }
 
@@ -453,8 +453,12 @@ type TimeLockParam struct {
 // MakeSwapParam wacom
 type MakeSwapParam struct {
 	FromAssetID   Hash
+	FromStartTime uint64
+	FromEndTime   uint64
 	MinFromAmount *big.Int
 	ToAssetID     Hash
+	ToStartTime   uint64
+	ToEndTime     uint64
 	MinToAmount   *big.Int
 	SwapSize      *big.Int
 	Targes        []Address
@@ -543,13 +547,13 @@ func (u *Asset) MarshalJSON() ([]byte, error) {
 		Total     string
 		CanChange bool
 	}{
-		ID : u.ID,
-		Owner : u.Owner,
-		Name   : u.Name,
-		Symbol  : u.Symbol,
-		Decimals  : u.Decimals,
-		Total    : u.Total.String(),
-		CanChange : u.CanChange,
+		ID:        u.ID,
+		Owner:     u.Owner,
+		Name:      u.Name,
+		Symbol:    u.Symbol,
+		Decimals:  u.Decimals,
+		Total:     u.Total.String(),
+		CanChange: u.CanChange,
 	})
 }
 
@@ -574,8 +578,8 @@ type Ticket struct {
 
 // TicketsCreate wacom
 type TicketsCreate struct {
-	Owner      Address   `json:"tickets"`
-	Number     int64	 `json:"number"`
+	Owner  Address `json:"tickets"`
+	Number int64   `json:"number"`
 }
 
 // SetLength wacom
@@ -593,20 +597,24 @@ type Swap struct {
 	ID            Hash
 	Owner         Address
 	FromAssetID   Hash
+	FromStartTime uint64
+	FromEndTime   uint64
 	MinFromAmount *big.Int
 	ToAssetID     Hash
+	ToStartTime   uint64
+	ToEndTime     uint64
 	MinToAmount   *big.Int
 	SwapSize      *big.Int
 	Targes        []Address
-	Time          *big.Int       // Provides information for TIME
+	Time          *big.Int // Provides information for TIME
 }
 
 // KeyValue wacom
 type KeyValue struct {
 	Key   string
 	Value interface{}
-   }
-   
+}
+
 // NewKeyValue wacom
 func NewKeyValue(name string, v interface{}) *KeyValue {
 

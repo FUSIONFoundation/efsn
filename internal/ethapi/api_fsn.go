@@ -60,8 +60,12 @@ type AssetValueChangeArgs struct {
 type MakeSwapArgs struct {
 	FusionBaseArgs
 	FromAssetID   common.Hash
+	FromStartTime *hexutil.Uint64
+	FromEndTime   *hexutil.Uint64
 	MinFromAmount *big.Int
 	ToAssetID     common.Hash
+	ToStartTime   *hexutil.Uint64
+	ToEndTime     *hexutil.Uint64
 	MinToAmount   *big.Int
 	SwapSize      *big.Int
 	Targes        []common.Address
@@ -131,11 +135,34 @@ func (args *AssetValueChangeArgs) toData() ([]byte, error) {
 	return param.ToBytes()
 }
 
+func (args *MakeSwapArgs) init() {
+
+	if args.FromStartTime == nil {
+		*(*uint64)(args.FromStartTime) = common.TimeLockNow
+	}
+
+	if args.FromEndTime == nil {
+		*(*uint64)(args.FromEndTime) = common.TimeLockForever
+	}
+
+	if args.ToStartTime == nil {
+		*(*uint64)(args.ToStartTime) = common.TimeLockNow
+	}
+
+	if args.ToEndTime == nil {
+		*(*uint64)(args.ToEndTime) = common.TimeLockForever
+	}
+}
+
 func (args *MakeSwapArgs) toData() ([]byte, error) {
 	param := common.MakeSwapParam{
 		FromAssetID:   args.FromAssetID,
+		FromStartTime: uint64(*args.FromStartTime),
+		FromEndTime:   uint64(*args.FromEndTime),
 		MinFromAmount: args.MinFromAmount,
 		ToAssetID:     args.ToAssetID,
+		ToStartTime:   uint64(*args.ToStartTime),
+		ToEndTime:     uint64(*args.ToEndTime),
 		MinToAmount:   args.MinToAmount,
 		SwapSize:      args.SwapSize,
 		Targes:        args.Targes,
@@ -592,7 +619,7 @@ func (s *PrivateFusionAPI) checkAssetValueChange(ctx context.Context, args Asset
 
 	big0 := big.NewInt(0)
 
-	if ( args.Value.ToInt().Cmp(big0) <= 0) {
+	if args.Value.ToInt().Cmp(big0) <= 0 {
 		return common.Hash{}, fmt.Errorf("illegal operation")
 	}
 
@@ -641,6 +668,9 @@ func (s *PrivateFusionAPI) checkAssetValueChange(ctx context.Context, args Asset
 
 // MakeSwap ss
 func (s *PrivateFusionAPI) MakeSwap(ctx context.Context, args MakeSwapArgs, passwd string) (common.Hash, error) {
+
+	args.init()
+
 	big0 := big.NewInt(0)
 	if args.MinFromAmount.Cmp(big0) <= 0 || args.MinToAmount.Cmp(big0) <= 0 || args.SwapSize.Cmp(big0) <= 0 {
 		return common.Hash{}, fmt.Errorf("MinFromAmount,MinToAmount and SwapSize must be ge 1")
@@ -653,8 +683,22 @@ func (s *PrivateFusionAPI) MakeSwap(ctx context.Context, args MakeSwapArgs, pass
 
 	total := new(big.Int).Mul(args.MinFromAmount, args.SwapSize)
 
-	if state.GetBalance(args.FromAssetID, args.From).Cmp(total) < 0 {
-		return common.Hash{}, fmt.Errorf("not enough from asset")
+	start := uint64(*args.FromStartTime)
+	end := uint64(*args.FromEndTime)
+
+	if start == common.TimeLockNow && end == common.TimeLockForever {
+		if state.GetBalance(args.FromAssetID, args.From).Cmp(total) < 0 {
+			return common.Hash{}, fmt.Errorf("not enough from asset")
+		}
+	} else {
+		needValue := common.NewTimeLock(&common.TimeLockItem{
+			StartTime: start,
+			EndTime:   end,
+			Value:     total,
+		})
+		if state.GetTimeLockBalance(args.FromAssetID, args.From).Cmp(needValue) < 0 {
+			return common.Hash{}, fmt.Errorf("not enough time lock balance")
+		}
 	}
 
 	funcData, err := args.toData()
@@ -723,8 +767,22 @@ func (s *PrivateFusionAPI) TakeSwap(ctx context.Context, args TakeSwapArgs, pass
 
 	total := new(big.Int).Mul(swap.MinToAmount, args.Size)
 
-	if state.GetBalance(swap.ToAssetID, args.From).Cmp(total) < 0 {
-		return common.Hash{}, fmt.Errorf("not enough to asset")
+	start := swap.ToStartTime
+	end := swap.ToEndTime
+
+	if start == common.TimeLockNow && end == common.TimeLockForever {
+		if state.GetBalance(swap.ToAssetID, args.From).Cmp(total) < 0 {
+			return common.Hash{}, fmt.Errorf("not enough from asset")
+		}
+	} else {
+		needValue := common.NewTimeLock(&common.TimeLockItem{
+			StartTime: start,
+			EndTime:   end,
+			Value:     total,
+		})
+		if state.GetTimeLockBalance(swap.ToAssetID, args.From).Cmp(needValue) < 0 {
+			return common.Hash{}, fmt.Errorf("not enough time lock balance")
+		}
 	}
 
 	funcData, err := args.toData()
@@ -1152,6 +1210,9 @@ func (s *FusionTransactionAPI) DecAsset(ctx context.Context, args AssetValueChan
 
 // BuildMakeSwapTx ss
 func (s *FusionTransactionAPI) BuildMakeSwapTx(ctx context.Context, args MakeSwapArgs) (*types.Transaction, error) {
+
+	args.init()
+
 	big0 := big.NewInt(0)
 	if args.MinFromAmount.Cmp(big0) <= 0 || args.MinToAmount.Cmp(big0) <= 0 || args.SwapSize.Cmp(big0) <= 0 {
 		return nil, fmt.Errorf("MinFromAmount,MinToAmount and SwapSize must be ge 1")
@@ -1164,8 +1225,22 @@ func (s *FusionTransactionAPI) BuildMakeSwapTx(ctx context.Context, args MakeSwa
 
 	total := new(big.Int).Mul(args.MinFromAmount, args.SwapSize)
 
-	if state.GetBalance(args.FromAssetID, args.From).Cmp(total) < 0 {
-		return nil, fmt.Errorf("not enough from asset")
+	start := uint64(*args.FromStartTime)
+	end := uint64(*args.FromEndTime)
+
+	if start == common.TimeLockNow && end == common.TimeLockForever {
+		if state.GetBalance(args.FromAssetID, args.From).Cmp(total) < 0 {
+			return nil, fmt.Errorf("not enough from asset")
+		}
+	} else {
+		needValue := common.NewTimeLock(&common.TimeLockItem{
+			StartTime: start,
+			EndTime:   end,
+			Value:     total,
+		})
+		if state.GetTimeLockBalance(args.FromAssetID, args.From).Cmp(needValue) < 0 {
+			return nil, fmt.Errorf("not enough time lock balance")
+		}
 	}
 
 	funcData, err := args.toData()
@@ -1252,10 +1327,23 @@ func (s *FusionTransactionAPI) BuildTakeSwapTx(ctx context.Context, args TakeSwa
 
 	total := new(big.Int).Mul(swap.MinToAmount, args.Size)
 
-	if state.GetBalance(swap.ToAssetID, args.From).Cmp(total) < 0 {
-		return nil, fmt.Errorf("not enough to asset")
-	}
+	start := swap.ToStartTime
+	end := swap.ToEndTime
 
+	if start == common.TimeLockNow && end == common.TimeLockForever {
+		if state.GetBalance(swap.ToAssetID, args.From).Cmp(total) < 0 {
+			return nil, fmt.Errorf("not enough from asset")
+		}
+	} else {
+		needValue := common.NewTimeLock(&common.TimeLockItem{
+			StartTime: start,
+			EndTime:   end,
+			Value:     total,
+		})
+		if state.GetTimeLockBalance(swap.ToAssetID, args.From).Cmp(needValue) < 0 {
+			return nil, fmt.Errorf("not enough time lock balance")
+		}
+	}
 	funcData, err := args.toData()
 	if err != nil {
 		return nil, err

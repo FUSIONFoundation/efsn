@@ -372,7 +372,7 @@ func (st *StateTransition) handleFsnCall() error {
 		if err := st.state.AddTicket(ticket); err != nil {
 			return err
 		}
-		st.addLog(common.BuyTicketFunc,  param.Data, common.NewKeyValue("Ticket", ticket.ID))
+		st.addLog(common.BuyTicketFunc, param.Data, common.NewKeyValue("Ticket", ticket.ID))
 		return nil
 	case common.AssetValueChangeFunc:
 		assetValueChangeParam := common.AssetValueChangeParam{}
@@ -419,15 +419,35 @@ func (st *StateTransition) handleFsnCall() error {
 			return fmt.Errorf("MinFromAmount,MinToAmount and SwapSize must be ge 1")
 		}
 		total := new(big.Int).Mul(makeSwapParam.MinFromAmount, makeSwapParam.SwapSize)
-		if st.state.GetBalance(makeSwapParam.FromAssetID, st.msg.From()).Cmp(total) < 0 {
-			return fmt.Errorf("not enough from asset")
+
+		start := makeSwapParam.FromStartTime
+		end := makeSwapParam.FromEndTime
+		needValue := common.NewTimeLock(&common.TimeLockItem{
+			StartTime: start,
+			EndTime:   end,
+			Value:     total,
+		})
+
+		if start == common.TimeLockNow && end == common.TimeLockForever {
+			if st.state.GetBalance(makeSwapParam.FromAssetID, st.msg.From()).Cmp(total) < 0 {
+				return fmt.Errorf("not enough from asset")
+			}
+		} else {
+			if st.state.GetTimeLockBalance(makeSwapParam.FromAssetID, st.msg.From()).Cmp(needValue) < 0 {
+				return fmt.Errorf("not enough time lock balance")
+			}
 		}
+
 		swap := common.Swap{
 			ID:            st.msg.AsTransaction().Hash(),
 			Owner:         st.msg.From(),
 			FromAssetID:   makeSwapParam.FromAssetID,
+			FromStartTime: makeSwapParam.FromStartTime,
+			FromEndTime:   makeSwapParam.FromEndTime,
 			MinFromAmount: makeSwapParam.MinFromAmount,
 			ToAssetID:     makeSwapParam.ToAssetID,
+			ToStartTime:   makeSwapParam.ToStartTime,
+			ToEndTime:     makeSwapParam.ToEndTime,
 			MinToAmount:   makeSwapParam.MinToAmount,
 			SwapSize:      makeSwapParam.SwapSize,
 			Targes:        makeSwapParam.Targes,
@@ -436,7 +456,11 @@ func (st *StateTransition) handleFsnCall() error {
 		if err := st.state.AddSwap(swap); err != nil {
 			return err
 		}
-		st.state.SubBalance(st.msg.From(), makeSwapParam.FromAssetID, total)
+		if start == common.TimeLockNow && end == common.TimeLockForever {
+			st.state.SubBalance(st.msg.From(), makeSwapParam.FromAssetID, total)
+		} else {
+			st.state.SubTimeLockBalance(st.msg.From(), makeSwapParam.FromAssetID, needValue)
+		}
 		st.addLog(common.MakeSwapFunc, param.Data)
 		return nil
 	case common.RecallSwapFunc:
@@ -453,10 +477,22 @@ func (st *StateTransition) handleFsnCall() error {
 		}
 
 		total := new(big.Int).Mul(swap.MinFromAmount, swap.SwapSize)
+		start := swap.FromStartTime
+		end := swap.FromEndTime
+		needValue := common.NewTimeLock(&common.TimeLockItem{
+			StartTime: start,
+			EndTime:   end,
+			Value:     total,
+		})
+
 		if err := st.state.RemoveSwap(swap.ID); err != nil {
 			return err
 		}
-		st.state.AddBalance(st.msg.From(), swap.FromAssetID, total)
+		if start == common.TimeLockNow && end == common.TimeLockForever {
+			st.state.AddBalance(st.msg.From(), swap.FromAssetID, total)
+		} else {
+			st.state.AddTimeLockBalance(st.msg.From(), swap.FromAssetID, needValue)
+		}
 		st.addLog(common.RecallSwapFunc, param.Data)
 		return nil
 	case common.TakeSwapFunc:
@@ -471,11 +507,33 @@ func (st *StateTransition) handleFsnCall() error {
 		if swap.SwapSize.Cmp(takeSwapParam.Size) < 0 || takeSwapParam.Size.Cmp(big0) <= 0 {
 			return fmt.Errorf("SwapSize must le and Size must be ge 1")
 		}
-		fromTotal := new(big.Int).Mul(swap.MinFromAmount, takeSwapParam.Size)
-		toTotal := new(big.Int).Mul(swap.MinToAmount, takeSwapParam.Size)
 
-		if st.state.GetBalance(swap.ToAssetID, st.msg.From()).Cmp(toTotal) < 0 {
-			return fmt.Errorf("not enough to asset")
+		fromTotal := new(big.Int).Mul(swap.MinFromAmount, takeSwapParam.Size)
+		fromStart := swap.FromStartTime
+		fromEnd := swap.FromEndTime
+		fromNeedValue := common.NewTimeLock(&common.TimeLockItem{
+			StartTime: fromStart,
+			EndTime:   fromEnd,
+			Value:     fromTotal,
+		})
+
+		toTotal := new(big.Int).Mul(swap.MinToAmount, takeSwapParam.Size)
+		toStart := swap.ToStartTime
+		toEnd := swap.ToEndTime
+		toNeedValue := common.NewTimeLock(&common.TimeLockItem{
+			StartTime: toStart,
+			EndTime:   toEnd,
+			Value:     toTotal,
+		})
+
+		if toStart == common.TimeLockNow && toEnd == common.TimeLockForever {
+			if st.state.GetBalance(swap.ToAssetID, st.msg.From()).Cmp(toTotal) < 0 {
+				return fmt.Errorf("not enough from asset")
+			}
+		} else {
+			if st.state.GetTimeLockBalance(swap.ToAssetID, st.msg.From()).Cmp(toNeedValue) < 0 {
+				return fmt.Errorf("not enough time lock balance")
+			}
 		}
 
 		if swap.SwapSize.Cmp(takeSwapParam.Size) == 0 {
@@ -489,9 +547,20 @@ func (st *StateTransition) handleFsnCall() error {
 			}
 		}
 
-		st.state.AddBalance(swap.Owner, swap.ToAssetID, toTotal)
-		st.state.SubBalance(st.msg.From(), swap.ToAssetID, toTotal)
-		st.state.AddBalance(st.msg.From(), swap.FromAssetID, fromTotal)
+		if toStart == common.TimeLockNow && toEnd == common.TimeLockForever {
+			st.state.AddBalance(swap.Owner, swap.ToAssetID, toTotal)
+			st.state.SubBalance(st.msg.From(), swap.ToAssetID, toTotal)
+		} else {
+			st.state.AddTimeLockBalance(swap.Owner, swap.ToAssetID, toNeedValue)
+			st.state.SubTimeLockBalance(st.msg.From(), swap.ToAssetID, toNeedValue)
+		}
+
+		if fromStart == common.TimeLockNow && fromEnd == common.TimeLockForever {
+			st.state.AddBalance(st.msg.From(), swap.FromAssetID, fromTotal)
+		} else {
+			st.state.AddTimeLockBalance(st.msg.From(), swap.FromAssetID, fromNeedValue)
+		}
+
 		st.addLog(common.TakeSwapFunc, param.Data)
 		return nil
 	}
