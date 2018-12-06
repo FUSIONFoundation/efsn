@@ -578,8 +578,8 @@ type Ticket struct {
 
 // TicketsCreate wacom
 type TicketsCreate struct {
-	Owner  Address `json:"tickets"`
-	Number int64   `json:"number"`
+	Owner  Address `json:"owner"`
+	Value int64   `json:"value"`
 }
 
 // SetLength wacom

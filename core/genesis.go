@@ -31,8 +31,8 @@ import (
 	"github.com/FusionFoundation/efsn/common/math"
 	"github.com/FusionFoundation/efsn/core/rawdb"
 	"github.com/FusionFoundation/efsn/core/state"
-	"github.com/FusionFoundation/efsn/crypto"
 	"github.com/FusionFoundation/efsn/core/types"
+	"github.com/FusionFoundation/efsn/crypto"
 	"github.com/FusionFoundation/efsn/ethdb"
 	"github.com/FusionFoundation/efsn/log"
 	"github.com/FusionFoundation/efsn/params"
@@ -47,17 +47,17 @@ var errGenesisNoConfig = errors.New("genesis has no chain configuration")
 // Genesis specifies the header fields, state of a genesis block. It also defines hard
 // fork switch-over blocks through the chain configuration.
 type Genesis struct {
-	Config     *params.ChainConfig `json:"config"`
-	Nonce      uint64              `json:"nonce"`
-	Timestamp  uint64              `json:"timestamp"`
-	ExtraData  []byte              `json:"extraData"`
-	GasLimit   uint64              `json:"gasLimit"   gencodec:"required"`
-	Difficulty *big.Int            `json:"difficulty" gencodec:"required"`
-	Mixhash    common.Hash         `json:"mixHash"`
-	Coinbase   common.Address      `json:"coinbase"`
-	Alloc      GenesisAlloc        `json:"alloc"      gencodec:"required"`
-	Tickets    []common.Ticket     `json:"tickets"`
-	TicketsCreate common.TicketsCreate `json:"ticketsCreate`
+	Config           *params.ChainConfig  `json:"config"`
+	Nonce            uint64               `json:"nonce"`
+	Timestamp        uint64               `json:"timestamp"`
+	ExtraData        []byte               `json:"extraData"`
+	GasLimit         uint64               `json:"gasLimit"   gencodec:"required"`
+	Difficulty       *big.Int             `json:"difficulty" gencodec:"required"`
+	Mixhash          common.Hash          `json:"mixHash"`
+	Coinbase         common.Address       `json:"coinbase"`
+	Alloc            GenesisAlloc         `json:"alloc"      gencodec:"required"`
+	Tickets          []common.Ticket      `json:"tickets"`
+	TicketCreateInfo common.TicketsCreate `json:"ticketsCreate" gencodec:"required"`
 
 	// These fields are used for consensus tests. Please don't use them
 	// in actual genesis blocks.
@@ -225,6 +225,8 @@ func (g *Genesis) configOrDefault(ghash common.Hash) *params.ChainConfig {
 // ToBlock creates the genesis block and writes state of a genesis specification
 // to the given database (or discards it if nil).
 func (g *Genesis) ToBlock(db ethdb.Database) *types.Block {
+	fmt.Println(g.TicketCreateInfo)
+
 	if db == nil {
 		db = ethdb.NewMemDatabase()
 	}
@@ -243,15 +245,15 @@ func (g *Genesis) ToBlock(db ethdb.Database) *types.Block {
 	}
 
 	var x int64
-	for x = 0 ; x < g.TicketsCreate.Number ; x++ {
-		from := g.TicketsCreate.Owner
+	for x = 0; x < g.TicketCreateInfo.Value; x++ {
+		from := g.TicketCreateInfo.Owner
 		hash := crypto.Keccak256Hash(big.NewInt(x).Bytes())
 		id := crypto.Keccak256Hash(from[:], hash[:])
 		ticket := common.Ticket{
 			ID:         id,
-			Owner:      g.TicketsCreate.Owner,
+			Owner:      g.TicketCreateInfo.Owner,
 			Height:     big.NewInt(0),
-			ExpireTime:  uint64(time.Now().Unix()) + 30*24*3600,
+			ExpireTime: uint64(time.Now().Unix()) + 30*24*3600,
 			Value:      common.TicketPrice(),
 		}
 		statedb.AddTicket(ticket)
