@@ -359,7 +359,7 @@ var (
 	// TicketKey wacom
 	TicketKey = []byte{0x03}
 	// SwapKey wacom
-	SwapKey = []byte{0x05} // 4 was the old
+	SwapKey = []byte{0x06} // 4 was the old
 )
 
 // FSNCallFunc wacom
