@@ -47,23 +47,28 @@ var errGenesisNoConfig = errors.New("genesis has no chain configuration")
 // Genesis specifies the header fields, state of a genesis block. It also defines hard
 // fork switch-over blocks through the chain configuration.
 type Genesis struct {
-	Config           *params.ChainConfig  `json:"config"`
-	Nonce            uint64               `json:"nonce"`
-	Timestamp        uint64               `json:"timestamp"`
-	ExtraData        []byte               `json:"extraData"`
-	GasLimit         uint64               `json:"gasLimit"   gencodec:"required"`
-	Difficulty       *big.Int             `json:"difficulty" gencodec:"required"`
-	Mixhash          common.Hash          `json:"mixHash"`
-	Coinbase         common.Address       `json:"coinbase"`
-	Alloc            GenesisAlloc         `json:"alloc"      gencodec:"required"`
-	Tickets          []common.Ticket      `json:"tickets"`
-	TicketCreateInfo common.TicketsCreate `json:"ticketsCreate" gencodec:"required"`
+	Config           *params.ChainConfig `json:"config"`
+	Nonce            uint64              `json:"nonce"`
+	Timestamp        uint64              `json:"timestamp"`
+	ExtraData        []byte              `json:"extraData"`
+	GasLimit         uint64              `json:"gasLimit"   gencodec:"required"`
+	Difficulty       *big.Int            `json:"difficulty" gencodec:"required"`
+	Mixhash          common.Hash         `json:"mixHash"`
+	Coinbase         common.Address      `json:"coinbase"`
+	Alloc            GenesisAlloc        `json:"alloc"      gencodec:"required"`
+	TicketCreateInfo *TicketsCreate      `json:"ticketsCreate"`
 
 	// These fields are used for consensus tests. Please don't use them
 	// in actual genesis blocks.
 	Number     uint64      `json:"number"`
 	GasUsed    uint64      `json:"gasUsed"`
 	ParentHash common.Hash `json:"parentHash"`
+}
+
+// TicketsCreate wacom
+type TicketsCreate struct {
+	Owner common.Address `json:"owner"`
+	Count uint64         `json:"count"`
 }
 
 // GenesisAlloc specifies the initial state that is part of the genesis block.
@@ -225,7 +230,6 @@ func (g *Genesis) configOrDefault(ghash common.Hash) *params.ChainConfig {
 // ToBlock creates the genesis block and writes state of a genesis specification
 // to the given database (or discards it if nil).
 func (g *Genesis) ToBlock(db ethdb.Database) *types.Block {
-	fmt.Println(g.TicketCreateInfo)
 
 	if db == nil {
 		db = ethdb.NewMemDatabase()
@@ -240,23 +244,21 @@ func (g *Genesis) ToBlock(db ethdb.Database) *types.Block {
 		}
 	}
 
-	for i := 0; i < len(g.Tickets); i++ {
-		statedb.AddTicket(g.Tickets[i])
-	}
-
-	var x int64
-	for x = 0; x < g.TicketCreateInfo.Value; x++ {
-		from := g.TicketCreateInfo.Owner
-		hash := crypto.Keccak256Hash(big.NewInt(x).Bytes())
-		id := crypto.Keccak256Hash(from[:], hash[:])
-		ticket := common.Ticket{
-			ID:         id,
-			Owner:      g.TicketCreateInfo.Owner,
-			Height:     big.NewInt(0),
-			ExpireTime: uint64(time.Now().Unix()) + 30*24*3600,
-			Value:      common.TicketPrice(),
+	if g.TicketCreateInfo != nil {
+		var x uint64
+		for x = 0; x < g.TicketCreateInfo.Count; x++ {
+			from := g.TicketCreateInfo.Owner
+			hash := crypto.Keccak256Hash(new(big.Int).SetUint64(x).Bytes())
+			id := crypto.Keccak256Hash(from[:], hash[:])
+			ticket := common.Ticket{
+				ID:         id,
+				Owner:      g.TicketCreateInfo.Owner,
+				Height:     big.NewInt(0),
+				ExpireTime: uint64(time.Now().Unix()) + 30*24*3600,
+				Value:      common.TicketPrice(),
+			}
+			statedb.AddTicket(ticket)
 		}
-		statedb.AddTicket(ticket)
 	}
 
 	statedb.GenAsset(common.SystemAsset)

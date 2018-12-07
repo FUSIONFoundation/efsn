@@ -576,12 +576,6 @@ type Ticket struct {
 	lenght     *big.Int
 }
 
-// TicketsCreate wacom
-type TicketsCreate struct {
-	Owner  Address `json:"owner"`
-	Value int64   `json:"value"`
-}
-
 // SetLength wacom
 func (t *Ticket) SetLength(value *big.Int) {
 	t.lenght = value
