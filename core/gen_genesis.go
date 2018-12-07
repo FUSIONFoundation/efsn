@@ -106,7 +106,7 @@ func (g *Genesis) UnmarshalJSON(input []byte) error {
 	for k, v := range dec.Alloc {
 		g.Alloc[common.Address(k)] = v
 	}
-	if g.TicketCreateInfo != nil {
+	if dec.TicketCreateInfo != nil {
 		g.TicketCreateInfo = dec.TicketCreateInfo
 	}
 	if dec.Number != nil {
