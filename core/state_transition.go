@@ -294,7 +294,7 @@ func (st *StateTransition) handleFsnCall() error {
 		}
 		st.state.SubBalance(st.msg.From(), sendAssetParam.AssetID, sendAssetParam.Value)
 		st.state.AddBalance(sendAssetParam.To, sendAssetParam.AssetID, sendAssetParam.Value)
-		st.addLog(common.SendAssetFunc, param.Data)
+		st.addLog(common.SendAssetFunc, sendAssetParam )
 		return nil
 	case common.TimeLockFunc:
 		timeLockParam := common.TimeLockParam{}
@@ -326,7 +326,7 @@ func (st *StateTransition) handleFsnCall() error {
 				st.state.AddTimeLockBalance(st.msg.From(), timeLockParam.AssetID, surplusValue)
 			}
 			st.state.AddTimeLockBalance(timeLockParam.To, timeLockParam.AssetID, needValue)
-			st.addLog(common.TimeLockFunc, param.Data)
+			st.addLog(common.TimeLockFunc,timeLockParam, common.NewKeyValue("LockType", "AssetToTimeLock"))
 			return nil
 		case common.TimeLockToTimeLock:
 			if st.state.GetTimeLockBalance(timeLockParam.AssetID, st.msg.From()).Cmp(needValue) < 0 {
@@ -334,7 +334,7 @@ func (st *StateTransition) handleFsnCall() error {
 			}
 			st.state.SubTimeLockBalance(st.msg.From(), timeLockParam.AssetID, needValue)
 			st.state.AddTimeLockBalance(timeLockParam.To, timeLockParam.AssetID, needValue)
-			st.addLog(common.TimeLockFunc, param.Data)
+			st.addLog(common.TimeLockFunc, timeLockParam, common.NewKeyValue("LockType", "TimeLockToTimeLock"))
 			return nil
 		case common.TimeLockToAsset:
 			if st.state.GetTimeLockBalance(timeLockParam.AssetID, st.msg.From()).Cmp(needValue) < 0 {
@@ -342,7 +342,7 @@ func (st *StateTransition) handleFsnCall() error {
 			}
 			st.state.SubTimeLockBalance(st.msg.From(), timeLockParam.AssetID, needValue)
 			st.state.AddBalance(timeLockParam.To, timeLockParam.AssetID, timeLockParam.Value)
-			st.addLog(common.TimeLockFunc, param.Data)
+			st.addLog(common.TimeLockFunc, timeLockParam, common.NewKeyValue("LockType", "TimeLockToAsset"))
 			return nil
 		}
 	case common.BuyTicketFunc:
@@ -427,7 +427,7 @@ func (st *StateTransition) handleFsnCall() error {
 		}
 		err := st.state.UpdateAsset(asset)
 		if err == nil {
-			st.addLog(common.AssetValueChangeFunc, param.Data)
+			st.addLog(common.AssetValueChangeFunc, assetValueChangeParam)
 		}
 		return err
 	case common.MakeSwapFunc:
@@ -480,7 +480,7 @@ func (st *StateTransition) handleFsnCall() error {
 		} else {
 			st.state.SubTimeLockBalance(st.msg.From(), makeSwapParam.FromAssetID, needValue)
 		}
-		st.addLog(common.MakeSwapFunc, param.Data)
+		st.addLog(common.MakeSwapFunc,  makeSwapParam)
 		return nil
 	case common.RecallSwapFunc:
 		recallSwapParam := common.RecallSwapParam{}
@@ -512,7 +512,7 @@ func (st *StateTransition) handleFsnCall() error {
 		} else {
 			st.state.AddTimeLockBalance(st.msg.From(), swap.FromAssetID, needValue)
 		}
-		st.addLog(common.RecallSwapFunc, param.Data)
+		st.addLog(common.RecallSwapFunc, recallSwapParam)
 		return nil
 	case common.TakeSwapFunc:
 		takeSwapParam := common.TakeSwapParam{}
@@ -580,7 +580,7 @@ func (st *StateTransition) handleFsnCall() error {
 			st.state.AddTimeLockBalance(st.msg.From(), swap.FromAssetID, fromNeedValue)
 		}
 
-		st.addLog(common.TakeSwapFunc, param.Data)
+		st.addLog( common.TakeSwapFunc, takeSwapParam )
 		return nil
 	}
 	return fmt.Errorf("Unsupport")
