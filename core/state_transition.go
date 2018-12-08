@@ -480,7 +480,7 @@ func (st *StateTransition) handleFsnCall() error {
 		} else {
 			st.state.SubTimeLockBalance(st.msg.From(), makeSwapParam.FromAssetID, needValue)
 		}
-		st.addLog(common.MakeSwapFunc,  makeSwapParam)
+		st.addLog(common.MakeSwapFunc,  makeSwapParam, common.NewKeyValue("SwapID", swap.ID ) )
 		return nil
 	case common.RecallSwapFunc:
 		recallSwapParam := common.RecallSwapParam{}
@@ -512,7 +512,7 @@ func (st *StateTransition) handleFsnCall() error {
 		} else {
 			st.state.AddTimeLockBalance(st.msg.From(), swap.FromAssetID, needValue)
 		}
-		st.addLog(common.RecallSwapFunc, recallSwapParam)
+		st.addLog(common.RecallSwapFunc, recallSwapParam, common.NewKeyValue("SwapID", swap.ID ) )
 		return nil
 	case common.TakeSwapFunc:
 		takeSwapParam := common.TakeSwapParam{}
@@ -580,7 +580,7 @@ func (st *StateTransition) handleFsnCall() error {
 			st.state.AddTimeLockBalance(st.msg.From(), swap.FromAssetID, fromNeedValue)
 		}
 
-		st.addLog( common.TakeSwapFunc, takeSwapParam )
+		st.addLog( common.TakeSwapFunc, takeSwapParam, common.NewKeyValue("SwapID", swap.ID )  )
 		return nil
 	}
 	return fmt.Errorf("Unsupport")
