@@ -552,3 +552,13 @@ func calcRewards(height *big.Int) *big.Int {
 	}
 	return reward
 }
+
+// GenGenesisExtraData wacom
+func GenGenesisExtraData(number *big.Int) []byte {
+	data := make([]byte, extraVanity)
+	snap := newSnapshot()
+	snap.SetWeight(number)
+	data = append(data, snap.Bytes()...)
+	data = append(data, bytes.Repeat([]byte{0x00}, extraSeal)...)
+	return data
+}
