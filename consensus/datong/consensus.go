@@ -167,8 +167,10 @@ func (dt *DaTong) VerifySeal(chain consensus.ChainReader, header *types.Header) 
 
 	tickets := make([]*common.Ticket, len(ticketMap))
 	selected := false
+	i := 0
 	for _, v := range ticketMap {
-		tickets = append(tickets, &v)
+		temp := v
+		tickets[i] = &temp
 	}
 
 	selectedTickets := dt.selectTickets(tickets, parent, header.Time.Uint64())
@@ -217,11 +219,13 @@ func (dt *DaTong) Finalize(chain consensus.ChainReader, header *types.Header, st
 	ticketMap := state.AllTickets()
 	tickets := make([]*common.Ticket, len(ticketMap))
 	haveTicket := false
+	i := 0
 	for _, v := range ticketMap {
 		if v.Owner == header.Coinbase {
 			haveTicket = true
 		}
-		tickets = append(tickets, &v)
+		temp := v
+		tickets[i] = &temp
 	}
 
 	if !haveTicket {
