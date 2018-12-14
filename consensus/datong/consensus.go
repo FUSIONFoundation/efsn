@@ -418,7 +418,19 @@ func (dt *DaTong) selectTickets(tickets []*common.Ticket, parent *types.Header, 
 }
 
 func (dt *DaTong) calcGenTicketNumber(state *state.StateDB, txs []*types.Transaction) *big.Int {
-	return big.NewInt(0)
+	var buyTicketCount int64
+	for i := 0; i < len(txs); i++ {
+		tx := txs[i]
+		to := tx.To()
+		if to != nil && *to == common.FSNCallAddress {
+			param := common.FSNCallParam{}
+			rlp.DecodeBytes(tx.Data(), &param)
+			if param.Func == common.BuyTicketFunc {
+				buyTicketCount++
+			}
+		}
+	}
+	return big.NewInt(buyTicketCount)
 }
 
 func sigHash(header *types.Header) (hash common.Hash) {
