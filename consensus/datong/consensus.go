@@ -279,7 +279,7 @@ func (dt *DaTong) Finalize(chain consensus.ChainReader, header *types.Header, st
 		})
 	}
 
-	var remaining int64 = 0
+	var remaining int64
 	for _, t := range ticketMap {
 		if t.ExpireTime <= time {
 			delete(ticketMap, t.ID)
