@@ -185,6 +185,7 @@ func (dt *DaTong) VerifySeal(chain consensus.ChainReader, header *types.Header) 
 	for _, v := range ticketMap {
 		temp := v
 		tickets[i] = &temp
+		i++
 	}
 
 	selectedTickets := dt.selectTickets(tickets, parent, header.Time.Uint64())
@@ -240,6 +241,7 @@ func (dt *DaTong) Finalize(chain consensus.ChainReader, header *types.Header, st
 		}
 		temp := v
 		tickets[i] = &temp
+		i++
 	}
 
 	if !haveTicket {
