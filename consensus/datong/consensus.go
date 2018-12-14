@@ -1,8 +1,11 @@
 package datong
 
 import (
+	"bytes"
 	"errors"
 	"math/big"
+	"sync"
+	"time"
 
 	"github.com/FusionFoundation/efsn/accounts"
 	"github.com/FusionFoundation/efsn/common"
@@ -11,29 +14,58 @@ import (
 	"github.com/FusionFoundation/efsn/core/types"
 	"github.com/FusionFoundation/efsn/crypto"
 	"github.com/FusionFoundation/efsn/crypto/sha3"
-	"github.com/FusionFoundation/efsn/ethdb"
 	"github.com/FusionFoundation/efsn/log"
 	"github.com/FusionFoundation/efsn/params"
 	"github.com/FusionFoundation/efsn/rlp"
 	"github.com/FusionFoundation/efsn/rpc"
 )
 
+var (
+	errUnknownBlock = errors.New("unknown block")
+
+	errMissingVanity = errors.New("extra-data 32 byte vanity prefix missing")
+
+	errMissingSignature = errors.New("extra-data 65 byte suffix signature missing")
+
+	errInvalidUncleHash = errors.New("non empty uncle hash")
+
+	errUnauthorized = errors.New("unauthorized")
+)
+
+// SignerFn is a signer callback function to request a hash to be signed by a
+// backing account.
+type SignerFn func(accounts.Account, []byte) ([]byte, error)
+
+var (
+	extraVanity = 32
+	extraSeal   = 65
+)
+
+var (
+	emptyUncleHash = types.CalcUncleHash(nil)
+)
+
 // DaTong wacom
 type DaTong struct {
-	config         *params.DaTongConfig
-	db             ethdb.Database
-	stateCache     state.Database
-	accountManager *accounts.Manager
+	config *params.DaTongConfig
+	signer common.Address
+	signFn SignerFn
+	lock   sync.RWMutex
 }
 
 // New wacom
-func New(config *params.DaTongConfig, db ethdb.Database, accountManager *accounts.Manager) *DaTong {
+func New(config *params.DaTongConfig) *DaTong {
 	return &DaTong{
-		config:         config,
-		db:             db,
-		stateCache:     state.NewDatabase(db),
-		accountManager: accountManager,
+		config: config,
 	}
+}
+
+// Authorize wacom
+func (dt *DaTong) Authorize(signer common.Address, signFn SignerFn) {
+	dt.lock.Lock()
+	defer dt.lock.Unlock()
+	dt.signer = signer
+	dt.signFn = signFn
 }
 
 // Author retrieves the Ethereum address of the account that minted the given
@@ -46,34 +78,29 @@ func (dt *DaTong) Author(header *types.Header) (common.Address, error) {
 // VerifyHeader checks whether a header conforms to the consensus rules of the
 // stock Ethereum ethash engine.
 func (dt *DaTong) VerifyHeader(chain consensus.ChainReader, header *types.Header, seal bool) error {
-	parent := chain.GetHeader(header.ParentHash, header.Number.Uint64()-1)
-	if parent == nil {
-		return consensus.ErrUnknownAncestor
+	if header.Number == nil {
+		return errUnknownBlock
 	}
-	point := dt.calcProofPoint(parent, header.Time)
-	ticketID := common.BytesToHash(header.Extra[:common.HashLength])
-	sig := header.Extra[common.HashLength:]
-	pubKey, err := crypto.Ecrecover(header.ParentHash[:], sig)
-	if err != nil {
+
+	if len(header.Extra) < extraVanity {
+		return errMissingVanity
+	}
+	if len(header.Extra) < extraVanity+extraSeal {
+		return errMissingSignature
+	}
+
+	if _, err := newSnapshotWithData(getSnapDataByHeader(header)); err != nil {
 		return err
 	}
-	address := common.BytesToAddress(crypto.Keccak256(pubKey[1:])[12:])
-	if address != header.Coinbase {
-		return errors.New("signer not eq coinbase")
+
+	if header.UncleHash != emptyUncleHash {
+		return errInvalidUncleHash
 	}
-	statedb, err := state.New(parent.Root, dt.stateCache)
-	if err != nil {
-		return err
+
+	if header.Time.Cmp(big.NewInt(time.Now().Unix())) > 0 {
+		return consensus.ErrFutureBlock
 	}
-	tickets := statedb.AllTickets()
-	if _, ok := tickets[ticketID]; !ok {
-		return errors.New("Ticket not found")
-	}
-	ticket := tickets[ticketID]
-	if ticket.Owner != address {
-		return errors.New("Ticket owner not eq signer")
-	}
-	return dt.verifyTicket(point, header.Number, header.Difficulty, &ticket)
+	return nil
 }
 
 // VerifyHeaders is similar to VerifyHeader, but verifies a batch of headers
@@ -83,8 +110,8 @@ func (dt *DaTong) VerifyHeaders(chain consensus.ChainReader, headers []*types.He
 	abort := make(chan struct{})
 	results := make(chan error, len(headers))
 	go func() {
-		for _, header := range headers {
-			err := dt.VerifyHeader(chain, header, false)
+		for i, header := range headers {
+			err := dt.VerifyHeader(chain, header, seals[i])
 			select {
 			case <-abort:
 				return
@@ -109,19 +136,70 @@ func (dt *DaTong) VerifyUncles(chain consensus.ChainReader, block *types.Block) 
 func (dt *DaTong) VerifySeal(chain consensus.ChainReader, header *types.Header) error {
 	number := header.Number.Uint64()
 	if number == 0 {
-		return errors.New("unknown block")
+		return errUnknownBlock
 	}
+	parent := chain.GetHeader(header.ParentHash, number-1)
+	if parent == nil {
+		return consensus.ErrUnknownAncestor
+	}
+	snap, err := newSnapshotWithData(getSnapDataByHeader(header))
+	if err != nil {
+		return err
+	}
+	signature := header.Extra[len(header.Extra)-extraSeal:]
+	pubkey, err := crypto.Ecrecover(sigHash(header).Bytes(), signature)
+	if err != nil {
+		return err
+	}
+	var signer common.Address
+	copy(signer[:], crypto.Keccak256(pubkey[1:])[12:])
+	ticketID := snap.GetVoteTicket()
+	ticketMap := dt.getAllTickets(chain, header)
+
+	if _, ok := ticketMap[ticketID]; !ok {
+		return errors.New("Ticket not found")
+	}
+	ticket := ticketMap[ticketID]
+
+	if ticket.Owner != signer {
+		return errors.New("Ticket owner not be the signer")
+	}
+
+	tickets := make([]*common.Ticket, len(ticketMap))
+	selected := false
+	for _, v := range ticketMap {
+		tickets = append(tickets, &v)
+	}
+
+	selectedTickets := dt.selectTickets(tickets, parent, header.Time.Uint64())
+	for _, v := range selectedTickets {
+		if v.ID == ticketID {
+			selected = true
+			break
+		}
+	}
+
+	if !selected {
+		return errors.New("the ticket not selected")
+	}
+
 	return nil
 }
 
 // Prepare initializes the consensus fields of a block header according to the
 // rules of a particular engine. The changes are executed inline.
 func (dt *DaTong) Prepare(chain consensus.ChainReader, header *types.Header) error {
-	parent := chain.GetHeader(header.ParentHash, header.Number.Uint64()-1)
+	header.Coinbase = common.BytesToAddress(dt.signer[:])
+	number := header.Number.Uint64()
+	parent := chain.GetHeader(header.ParentHash, number-1)
 	if parent == nil {
 		return consensus.ErrUnknownAncestor
 	}
-	header.Difficulty = dt.CalcDifficulty(chain, header.Time.Uint64(), parent)
+	if len(header.Extra) < extraVanity {
+		header.Extra = append(header.Extra, bytes.Repeat([]byte{0x00}, extraVanity-len(header.Extra))...)
+	}
+	header.Extra = header.Extra[:extraVanity]
+	header.Difficulty = dt.CalcDifficulty(chain, parent.Time.Uint64(), parent)
 	return nil
 }
 
@@ -135,49 +213,106 @@ func (dt *DaTong) Finalize(chain consensus.ChainReader, header *types.Header, st
 	if parent == nil {
 		return nil, consensus.ErrUnknownAncestor
 	}
-	ticketID := common.BytesToHash(header.Extra)
-	tickets := state.AllTickets()
-	if _, ok := tickets[ticketID]; !ok {
-		return nil, errors.New("Ticket not found")
-	}
-	ticket := tickets[ticketID]
-	point := dt.calcProofPoint(parent, header.Time)
-	if err := dt.verifyTicket(point, header.Number, header.Difficulty, &ticket); err != nil {
-		return nil, err
-	}
-	checkTickets := make([]*common.Ticket, 0)
-	for _, v := range tickets {
-		if v.ExpireTime <= header.Time.Uint64() {
-			state.RemoveTicket(v.ID)
-			ticketLog(state, v.ID, ticketExpired, header.Number.Uint64())
-		} else if v.ID != ticketID && v.Owner != header.Coinbase {
-			checkTickets = append(checkTickets, &v)
+	ticketMap := state.AllTickets()
+	tickets := make([]*common.Ticket, len(ticketMap))
+	haveTicket := false
+	for _, v := range ticketMap {
+		if v.Owner == header.Coinbase {
+			haveTicket = true
 		}
-	}
-	checkedTickets := dt.selectTickets(point, header.Number, header.Difficulty, checkTickets)
-	for _, v := range checkedTickets {
-		if v.Owner != ticket.Owner {
-			state.RemoveTicket(v.ID)
-			ticketLog(state, v.ID, ticketReturn, header.Number.Uint64())
-			value := common.NewTimeLock(&common.TimeLockItem{
-				StartTime: header.Time.Uint64(),
-				EndTime:   v.ExpireTime,
-				Value:     v.Value,
-			})
-			state.AddTimeLockBalance(v.Owner, common.SystemAssetID, value)
-		}
+		tickets = append(tickets, &v)
 	}
 
-	state.RemoveTicket(ticket.ID)
-	ticketLog(state, ticket.ID, ticketSelected, header.Number.Uint64())
+	if !haveTicket {
+		return nil, errors.New("Miner don't have ticket")
+	}
+	time := uint64(time.Now().Unix())
+	var (
+		selected *common.Ticket
+		retreat  []*common.Ticket
+	)
+	for {
+		retreat = make([]*common.Ticket, 0)
+		s := dt.selectTickets(tickets, parent, time)
+		for _, t := range s {
+			if t.Owner == header.Coinbase {
+				selected = t
+				break
+			} else {
+				retreat = append(retreat, t)
+			}
+		}
+		if selected != nil {
+			break
+		}
+		time++
+	}
+	header.Time = new(big.Int).SetUint64(time)
+
+	snap := newSnapshot()
+
+	delete(ticketMap, selected.ID)
+	state.RemoveTicket(selected.ID)
 	value := common.NewTimeLock(&common.TimeLockItem{
-		StartTime: header.Time.Uint64(),
-		EndTime:   ticket.ExpireTime,
-		Value:     ticket.Value,
+		StartTime: time,
+		EndTime:   selected.ExpireTime,
+		Value:     selected.Value,
 	})
-	state.AddTimeLockBalance(ticket.Owner, common.SystemAssetID, value)
+	state.AddTimeLockBalance(header.Coinbase, common.SystemAssetID, value)
+	snap.AddLog(&ticketLog{
+		TicketID: selected.ID,
+		Type:     ticketSelect,
+	})
 
-	state.AddBalance(header.Coinbase, common.SystemAssetID, dt.calcRewards(header.Number))
+	for _, t := range retreat {
+		delete(ticketMap, t.ID)
+		state.RemoveTicket(t.ID)
+		value := common.NewTimeLock(&common.TimeLockItem{
+			StartTime: time,
+			EndTime:   t.ExpireTime,
+			Value:     t.Value,
+		})
+		state.AddTimeLockBalance(t.Owner, common.SystemAssetID, value)
+		snap.AddLog(&ticketLog{
+			TicketID: t.ID,
+			Type:     ticketRetreat,
+		})
+	}
+
+	var remaining int64 = 0
+	for _, t := range ticketMap {
+		if t.ExpireTime <= time {
+			delete(ticketMap, t.ID)
+			state.RemoveTicket(t.ID)
+			value := common.NewTimeLock(&common.TimeLockItem{
+				StartTime: time,
+				EndTime:   t.ExpireTime,
+				Value:     t.Value,
+			})
+			state.AddTimeLockBalance(t.Owner, common.SystemAssetID, value)
+			snap.AddLog(&ticketLog{
+				TicketID: t.ID,
+				Type:     ticketExpired,
+			})
+		} else {
+			remaining++
+		}
+	}
+	weight := dt.calcGenTicketNumber(state, txs)
+
+	weight = weight.Add(weight, big.NewInt(remaining))
+
+	if weight.Cmp(common.Big0) <= 0 {
+		return nil, errors.New("Next block don't have ticket, wait buy ticket")
+	}
+	snap.SetWeight(weight)
+	snapBytes := snap.Bytes()
+	header.Extra = append(header.Extra, snapBytes...)
+	header.Extra = append(header.Extra, make([]byte, extraSeal)...)
+	state.AddBalance(header.Coinbase, common.SystemAssetID, calcRewards(header.Number))
+
+	header.Root = state.IntermediateRoot(chain.Config().IsEIP158(header.Number))
+	header.UncleHash = types.CalcUncleHash(nil)
 	return types.NewBlock(header, txs, nil, receipts), nil
 }
 
@@ -188,50 +323,82 @@ func (dt *DaTong) Finalize(chain consensus.ChainReader, header *types.Header, st
 // than one result may also be returned depending on the consensus algorothm.
 func (dt *DaTong) Seal(chain consensus.ChainReader, block *types.Block, results chan<- *types.Block, stop <-chan struct{}) error {
 	header := block.Header()
+
 	number := header.Number.Uint64()
 	if number == 0 {
-		return errors.New("unknown block")
+		return errUnknownBlock
+	}
+	dt.lock.RLock()
+	signer, signFn := dt.signer, dt.signFn
+	dt.lock.RUnlock()
+
+	if signer != header.Coinbase {
+		return errors.New("Mismatched Signer and Coinbase")
 	}
 
-	parent := chain.GetHeader(header.ParentHash, header.Number.Uint64()-1)
-	if parent == nil {
-		return consensus.ErrUnknownAncestor
-	}
-
-	statedb, err := state.New(block.Root(), dt.stateCache)
+	sighash, err := signFn(accounts.Account{Address: header.Coinbase}, sigHash(header).Bytes())
 	if err != nil {
 		return err
 	}
-	allTickets := statedb.AllTickets()
-	tickets := make([]*common.Ticket, 0)
-	for _, v := range allTickets {
-		if v.Owner == header.Coinbase {
-			tickets = append(tickets, &v)
-		}
-	}
+	copy(header.Extra[len(header.Extra)-extraSeal:], sighash)
 
-	found := make(chan *types.Block)
+	delay := time.Unix(header.Time.Int64(), 0).Sub(time.Now())
 	go func() {
-		dt.mine(block, parent, tickets, found)
-	}()
-	go func() {
-		var result *types.Block
 		select {
 		case <-stop:
 			return
-		case result = <-found:
-			select {
-			case results <- result:
-			default:
-				log.Warn("Sealing result is not read by miner", "mode", "local", "sealhash", dt.SealHash(block.Header()))
-			}
+		case <-time.After(delay):
+		}
+
+		select {
+		case results <- block.WithSeal(header):
+		default:
+			log.Warn("Sealing result is not read by miner", "sealhash", dt.SealHash(header))
 		}
 	}()
+
 	return nil
 }
 
 // SealHash returns the hash of a block prior to it being sealed.
 func (dt *DaTong) SealHash(header *types.Header) (hash common.Hash) {
+	return sigHash(header)
+}
+
+// CalcDifficulty is the difficulty adjustment algorithm. It returns the difficulty
+// that a new block should have.
+func (dt *DaTong) CalcDifficulty(chain consensus.ChainReader, time uint64, parent *types.Header) *big.Int {
+	snapData := getSnapDataByHeader(parent)
+	snap, err := newSnapshotWithData(snapData)
+	if err != nil {
+		return nil
+	}
+	return calcDifficulty(snap)
+}
+
+// APIs returns the RPC APIs this consensus engine provides.
+func (dt *DaTong) APIs(chain consensus.ChainReader) []rpc.API {
+	return []rpc.API{}
+}
+
+// Close terminates any background threads maintained by the consensus engine.
+func (dt *DaTong) Close() error {
+	return nil
+}
+
+func (dt *DaTong) getAllTickets(chain consensus.ChainReader, header *types.Header) map[common.Hash]common.Ticket {
+	return nil
+}
+
+func (dt *DaTong) selectTickets(tickets []*common.Ticket, parent *types.Header, time uint64) []*common.Ticket {
+	return nil
+}
+
+func (dt *DaTong) calcGenTicketNumber(state *state.StateDB, txs []*types.Transaction) *big.Int {
+	return big.NewInt(0)
+}
+
+func sigHash(header *types.Header) (hash common.Hash) {
 	hasher := sha3.NewKeccak256()
 	rlp.Encode(hasher, []interface{}{
 		header.ParentHash,
@@ -246,103 +413,28 @@ func (dt *DaTong) SealHash(header *types.Header) (hash common.Hash) {
 		header.GasLimit,
 		header.GasUsed,
 		header.Time,
-		header.Extra,
+		header.Extra[:len(header.Extra)-extraSeal],
+		header.MixDigest,
+		header.Nonce,
 	})
 	hasher.Sum(hash[:0])
 	return hash
 }
 
-// CalcDifficulty is the difficulty adjustment algorithm. It returns the difficulty
-// that a new block should have.
-func (dt *DaTong) CalcDifficulty(chain consensus.ChainReader, time uint64, parent *types.Header) *big.Int {
-	cmpZero := big.NewInt(0)
-	statedb, err := state.New(parent.Root, dt.stateCache)
-	maxDiff := new(big.Int).SetUint64(dt.config.MaxDiff)
-	if err != nil {
-		return maxDiff
-	}
-	tickets := statedb.AllTickets()
-	weight := big.NewInt(0)
-	height := parent.Number
-	for _, v := range tickets {
-		weight = weight.Add(weight, height)
-		weight = weight.Sub(weight, v.Height)
-	}
-	distance := new(big.Int).Sub(new(big.Int).SetUint64(time), parent.Time)
-	// max / (weight * (period/distance))
-	diff := new(big.Int).Mul(weight, new(big.Int).SetUint64(dt.config.Period))
-	temp := new(big.Int).Mul(maxDiff, distance)
-	if cmpZero.Cmp(diff) == 0 {
-		return big.NewInt(1)
-	}
-	diff = diff.Div(temp, diff)
-	return diff
+func getSnapDataByHeader(header *types.Header) []byte {
+	return getSnapData(header.Extra)
 }
 
-// APIs returns the RPC APIs this consensus engine provides.
-func (dt *DaTong) APIs(chain consensus.ChainReader) []rpc.API {
-	return []rpc.API{}
+func getSnapData(data []byte) []byte {
+	extraSuffix := len(data) - extraSeal
+	return data[extraVanity:extraSuffix]
 }
 
-// Close terminates any background threads maintained by the consensus engine.
-func (dt *DaTong) Close() error {
-	return nil
+func calcDifficulty(snap *snapshot) *big.Int {
+	return snap.Weight()
 }
 
-func (dt *DaTong) calcStakeModifier() common.Hash {
-	return common.Hash{}
-}
-
-func (dt *DaTong) calcProofPoint(parent *types.Header, time *big.Int) *big.Int {
-	hasher := sha3.NewKeccak256()
-	rlp.Encode(hasher, []interface{}{
-		dt.calcStakeModifier(),
-		parent.ParentHash,
-		parent.UncleHash,
-		parent.Coinbase,
-		parent.Root,
-		parent.TxHash,
-		parent.ReceiptHash,
-		parent.Bloom,
-		parent.Difficulty,
-		parent.Number,
-		parent.GasLimit,
-		parent.GasUsed,
-		parent.Time,
-		parent.Extra,
-		time,
-	})
-	hash := common.Hash{}
-	hasher.Sum(hash[:0])
-	return new(big.Int).SetBytes(hash[:])
-}
-
-func (dt *DaTong) selectTickets(proofPoint, height, diff *big.Int, tickets []*common.Ticket) []*common.Ticket {
-	results := make([]*common.Ticket, 0)
-	for _, ticket := range tickets {
-		if dt.verifyTicket(proofPoint, height, diff, ticket) == nil {
-			results = append(results, ticket)
-		}
-	}
-	return results
-}
-
-func (dt *DaTong) verifyTicket(proofPoint, height, diff *big.Int, ticket *common.Ticket) error {
-	ticketPoint := new(big.Int).SetBytes(ticket.ID[:])
-	length := new(big.Int).Div(new(big.Int).SetUint64(dt.config.MaxDiff), diff)
-	weight := new(big.Int).Sub(height, ticket.Height)
-	logicProofPoint := new(big.Int).Div(proofPoint, length)
-	logicTicketPoint := new(big.Int).Div(ticketPoint, length)
-	start := new(big.Int).Sub(logicTicketPoint, weight)
-	end := new(big.Int).Add(logicTicketPoint, weight)
-	if start.Cmp(logicProofPoint) <= 0 && end.Cmp(logicProofPoint) >= 0 {
-		ticket.SetLength(weight)
-		return nil
-	}
-	return errors.New("the point not in the ticket")
-}
-
-func (dt *DaTong) calcRewards(height *big.Int) *big.Int {
+func calcRewards(height *big.Int) *big.Int {
 	var i int64
 	div2 := big.NewInt(2)
 	// initial reward 2.5
@@ -353,85 +445,4 @@ func (dt *DaTong) calcRewards(height *big.Int) *big.Int {
 		reward = new(big.Int).Div(reward, div2)
 	}
 	return reward
-}
-
-func (dt *DaTong) mine(block *types.Block, parent *types.Header, tickets []*common.Ticket, found chan *types.Block) {
-	header := block.Header()
-	point := dt.calcProofPoint(parent, header.Time)
-	selectedTickets := dt.selectTickets(point, header.Number, header.Difficulty, tickets)
-	if len(selectedTickets) > 0 {
-		ticket := selectedTickets[0]
-		for i := 1; i < len(selectedTickets); i++ {
-			if selectedTickets[i].Length().Cmp(ticket.Length()) > 0 {
-				ticket = selectedTickets[i]
-			}
-		}
-		nextBlockTickets := make(map[common.Hash]*common.Ticket)
-
-		for i := 0; i < len(tickets); i++ {
-			nextBlockTickets[tickets[i].ID] = tickets[i]
-		}
-
-		delete(nextBlockTickets, ticket.ID)
-
-		for i := 0; i < len(selectedTickets); i++ {
-			if selectedTickets[i].Owner != ticket.Owner {
-				delete(nextBlockTickets, selectedTickets[i].ID)
-			}
-		}
-
-		blockTime := block.Header().Time.Uint64()
-		for i := 0; i < len(tickets); i++ {
-			if tickets[i].ExpireTime <= blockTime {
-				delete(nextBlockTickets, tickets[i].ID)
-			}
-		}
-
-		if len(nextBlockTickets) == 0 {
-			buyTicketCount := 0
-			txs := block.Transactions()
-			for i := 0; i < len(txs); i++ {
-				tx := txs[i]
-				to := tx.To()
-				if to != nil && *to == common.FSNCallAddress {
-					param := common.FSNCallParam{}
-					rlp.DecodeBytes(tx.Data(), &param)
-					if param.Func == common.BuyTicketFunc {
-						buyTicketCount++
-					}
-				}
-			}
-
-			if buyTicketCount == 0 {
-				return
-			}
-		}
-
-		header.Extra = ticket.ID[:]
-		account := accounts.Account{Address: block.Header().Coinbase}
-		wallet, _ := dt.accountManager.Find(account)
-		sig, _ := wallet.SignHash(account, block.Header().ParentHash[:])
-		header.Extra = append(header.Extra, sig...)
-		found <- block.WithSeal(header)
-	}
-}
-
-type ticketLogType uint8
-
-const (
-	ticketSelected ticketLogType = iota
-	ticketReturn
-	ticketExpired
-)
-
-func ticketLog(state *state.StateDB, ticketID common.Hash, typ ticketLogType, blockNumber uint64) {
-	topic := common.Hash{}
-	topic[common.HashLength-1] = (uint8)(typ)
-
-	state.AddLog(&types.Log{
-		Address:     common.TicketLogAddress,
-		Topics:      []common.Hash{topic},
-		Data:        ticketID[:],
-		BlockNumber: blockNumber,
-	})
 }

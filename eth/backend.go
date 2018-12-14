@@ -224,7 +224,7 @@ func CreateConsensusEngine(ctx *node.ServiceContext, chainConfig *params.ChainCo
 	}
 
 	if chainConfig.DaTong != nil {
-		return datong.New(chainConfig.DaTong, db, ctx.AccountManager)
+		return datong.New(chainConfig.DaTong)
 	}
 
 	// Otherwise assume proof-of-work
@@ -382,6 +382,16 @@ func (s *Ethereum) StartMining(threads int) error {
 			}
 			clique.Authorize(eb, wallet.SignHash)
 		}
+
+		if datong, ok := s.engine.(*datong.DaTong); ok {
+			wallet, err := s.accountManager.Find(accounts.Account{Address: eb})
+			if wallet == nil || err != nil {
+				log.Error("Etherbase account unavailable locally", "err", err)
+				return fmt.Errorf("signer missing: %v", err)
+			}
+			datong.Authorize(eb, wallet.SignHash)
+		}
+
 		// If mining is started, we can disable the transaction rejection mechanism
 		// introduced to speed sync times.
 		atomic.StoreUint32(&s.protocolManager.acceptTxs, 1)
