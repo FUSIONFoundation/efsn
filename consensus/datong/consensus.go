@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"math/big"
+	"sort"
 	"sync"
 	"time"
 
@@ -38,6 +39,9 @@ var (
 type SignerFn func(accounts.Account, []byte) ([]byte, error)
 
 var (
+	maxBytes    = bytes.Repeat([]byte{0xff}, common.HashLength)
+	maxDiff     = new(big.Int).SetBytes(maxBytes)
+	maxProb     = new(big.Int)
 	extraVanity = 32
 	extraSeal   = 65
 )
@@ -58,6 +62,7 @@ type DaTong struct {
 
 // New wacom
 func New(config *params.DaTongConfig, db ethdb.Database) *DaTong {
+	maxProb.SetUint64(uint64(2 ^ (config.Period + 2)))
 	return &DaTong{
 		config:     config,
 		db:         db,
@@ -413,8 +418,74 @@ func (dt *DaTong) getAllTickets(chain consensus.ChainReader, header *types.Heade
 	return statedb.AllTickets(), nil
 }
 
+type ticketSlice []*common.Ticket
+
+func (c ticketSlice) Len() int {
+	return len(c)
+}
+func (c ticketSlice) Swap(i, j int) {
+	c[i], c[j] = c[j], c[i]
+}
+
+func (c ticketSlice) Less(i, j int) bool {
+	return c[i].Weight().Cmp(c[j].Weight()) < 0
+}
+
 func (dt *DaTong) selectTickets(tickets []*common.Ticket, parent *types.Header, time uint64) []*common.Ticket {
-	return nil
+	selectedTickets := make([]*common.Ticket, 0)
+	sanp, err := newSnapshotWithData(getSnapDataByHeader(parent))
+	if err != nil {
+		return selectedTickets
+	}
+	weight := sanp.Weight()
+	distance := new(big.Int).Sub(new(big.Int).SetUint64(time), parent.Time)
+	prob := dt.getProbability(distance)
+	length := new(big.Int).Div(maxDiff, weight)
+	length = length.Mul(length, prob)
+	length = length.Div(length, maxProb)
+	length = length.Div(length, common.Big2)
+	parentHash := parent.Hash()
+	point := new(big.Int).SetBytes(crypto.Keccak256(parentHash[:], prob.Bytes()))
+	for i := 0; i < len(tickets); i++ {
+		times := new(big.Int).Sub(parent.Number, tickets[i].Height)
+		times = times.Add(times, common.Big1)
+		if dt.validateTicket(tickets[i], point, length, times) {
+			tickets[i].SetWeight(times)
+			selectedTickets = append(selectedTickets, tickets[i])
+		}
+	}
+	sort.Sort(ticketSlice(selectedTickets))
+	return selectedTickets
+}
+
+func (dt *DaTong) getProbability(distance *big.Int) *big.Int {
+	d := distance.Uint64()
+	ret := new(big.Int).SetUint64(2 ^ d)
+	if ret.Cmp(maxProb) > 0 {
+		ret = ret.SetBytes(maxProb.Bytes())
+	}
+	return ret
+}
+
+func (dt *DaTong) validateTicket(ticket *common.Ticket, point, length, times *big.Int) bool {
+	for times.Cmp(common.Big0) > 0 {
+		ticketPoint := new(big.Int).SetBytes(crypto.Keccak256(ticket.ID[:], point.Bytes(), times.Bytes()))
+		if new(big.Int).Add(ticketPoint, length).Cmp(point) >= 0 && ticketPoint.Cmp(point) <= 0 {
+			return true
+		}
+		start := new(big.Int).Sub(ticketPoint, length)
+		if start.Cmp(point) <= 0 && ticketPoint.Cmp(point) >= 0 {
+			return true
+		}
+		if start.Cmp(common.Big0) <= 0 {
+			start = start.Add(start, maxDiff)
+			if start.Cmp(point) <= 0 && maxDiff.Cmp(point) >= 0 {
+				return true
+			}
+		}
+		times = times.Sub(times, common.Big1)
+	}
+	return false
 }
 
 func (dt *DaTong) calcGenTicketNumber(state *state.StateDB, txs []*types.Transaction) *big.Int {

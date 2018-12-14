@@ -573,17 +573,17 @@ type Ticket struct {
 	Height     *big.Int
 	ExpireTime uint64
 	Value      *big.Int
-	lenght     *big.Int
+	weight     *big.Int
 }
 
-// SetLength wacom
-func (t *Ticket) SetLength(value *big.Int) {
-	t.lenght = value
+// SetWeight wacom
+func (t *Ticket) SetWeight(value *big.Int) {
+	t.weight = value
 }
 
-// Length wacom
-func (t *Ticket) Length() *big.Int {
-	return t.lenght
+// Weight wacom
+func (t *Ticket) Weight() *big.Int {
+	return t.weight
 }
 
 // Swap wacom
