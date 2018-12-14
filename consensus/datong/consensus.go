@@ -14,6 +14,7 @@ import (
 	"github.com/FusionFoundation/efsn/core/types"
 	"github.com/FusionFoundation/efsn/crypto"
 	"github.com/FusionFoundation/efsn/crypto/sha3"
+	"github.com/FusionFoundation/efsn/ethdb"
 	"github.com/FusionFoundation/efsn/log"
 	"github.com/FusionFoundation/efsn/params"
 	"github.com/FusionFoundation/efsn/rlp"
@@ -47,16 +48,20 @@ var (
 
 // DaTong wacom
 type DaTong struct {
-	config *params.DaTongConfig
-	signer common.Address
-	signFn SignerFn
-	lock   sync.RWMutex
+	config     *params.DaTongConfig
+	db         ethdb.Database
+	stateCache state.Database
+	signer     common.Address
+	signFn     SignerFn
+	lock       sync.RWMutex
 }
 
 // New wacom
-func New(config *params.DaTongConfig) *DaTong {
+func New(config *params.DaTongConfig, db ethdb.Database) *DaTong {
 	return &DaTong{
-		config: config,
+		config:     config,
+		db:         db,
+		stateCache: state.NewDatabase(db),
 	}
 }
 
@@ -154,7 +159,11 @@ func (dt *DaTong) VerifySeal(chain consensus.ChainReader, header *types.Header) 
 	var signer common.Address
 	copy(signer[:], crypto.Keccak256(pubkey[1:])[12:])
 	ticketID := snap.GetVoteTicket()
-	ticketMap := dt.getAllTickets(chain, header)
+	ticketMap, err := dt.getAllTickets(chain, header)
+
+	if err != nil {
+		return err
+	}
 
 	if _, ok := ticketMap[ticketID]; !ok {
 		return errors.New("Ticket not found")
@@ -392,8 +401,16 @@ func (dt *DaTong) Close() error {
 	return nil
 }
 
-func (dt *DaTong) getAllTickets(chain consensus.ChainReader, header *types.Header) map[common.Hash]common.Ticket {
-	return nil
+func (dt *DaTong) getAllTickets(chain consensus.ChainReader, header *types.Header) (map[common.Hash]common.Ticket, error) {
+	parent := chain.GetHeader(header.ParentHash, header.Number.Uint64()-1)
+	if parent == nil {
+		return nil, consensus.ErrUnknownAncestor
+	}
+	statedb, err := state.New(parent.Root, dt.stateCache)
+	if err != nil {
+		return nil, err
+	}
+	return statedb.AllTickets(), nil
 }
 
 func (dt *DaTong) selectTickets(tickets []*common.Ticket, parent *types.Header, time uint64) []*common.Ticket {
