@@ -284,7 +284,7 @@ func (dt *DaTong) Finalize(chain consensus.ChainReader, header *types.Header, st
 		})
 	}
 
-	var remaining int64
+	remaining := big.NewInt(0)
 	for _, t := range ticketMap {
 		if t.ExpireTime <= time {
 			delete(ticketMap, t.ID)
@@ -300,12 +300,12 @@ func (dt *DaTong) Finalize(chain consensus.ChainReader, header *types.Header, st
 				Type:     ticketExpired,
 			})
 		} else {
-			remaining++
+			remaining = remaining.Add(new(big.Int).Sub(header.Number, t.Height), common.Big1)
 		}
 	}
 	weight := dt.calcGenTicketNumber(state, txs)
 
-	weight = weight.Add(weight, big.NewInt(remaining))
+	weight = weight.Add(weight, remaining)
 
 	if weight.Cmp(common.Big0) <= 0 {
 		return nil, errors.New("Next block don't have ticket, wait buy ticket")
