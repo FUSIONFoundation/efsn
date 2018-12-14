@@ -199,6 +199,7 @@ func (dt *DaTong) Prepare(chain consensus.ChainReader, header *types.Header) err
 		header.Extra = append(header.Extra, bytes.Repeat([]byte{0x00}, extraVanity-len(header.Extra))...)
 	}
 	header.Extra = header.Extra[:extraVanity]
+	header.Extra = append(header.Extra, make([]byte, extraSeal)...)
 	header.Difficulty = dt.CalcDifficulty(chain, parent.Time.Uint64(), parent)
 	return nil
 }
@@ -307,6 +308,7 @@ func (dt *DaTong) Finalize(chain consensus.ChainReader, header *types.Header, st
 	}
 	snap.SetWeight(weight)
 	snapBytes := snap.Bytes()
+	header.Extra = header.Extra[:extraVanity]
 	header.Extra = append(header.Extra, snapBytes...)
 	header.Extra = append(header.Extra, make([]byte, extraSeal)...)
 	state.AddBalance(header.Coinbase, common.SystemAssetID, calcRewards(header.Number))
