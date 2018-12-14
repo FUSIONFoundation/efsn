@@ -1,6 +1,7 @@
 package datong
 
 import (
+	"errors"
 	"math/big"
 
 	"github.com/FusionFoundation/efsn/common"
@@ -51,11 +52,53 @@ func (snap *snapshot) AddLog(log *ticketLog) {
 }
 
 func (snap *snapshot) SetBytes(data []byte) error {
+	if len(data) <= 0 {
+		return errors.New("Empty data")
+	}
+
+	realData := data[:len(data)-1]
+	check := data[len(data)-1]
+
+	if calcCheck(realData) != check {
+		return errors.New("check error")
+	}
+	weightLength := common.BytesToInt(realData[0:4])
+	weightBytes := realData[len(realData)-weightLength:]
+	snap.weight = new(big.Int).SetBytes(weightBytes)
+	realData = realData[4 : len(realData)-weightLength]
+
+	logLength := common.HashLength + 1
+
+	if len(realData)%logLength != 0 {
+		return errors.New("data length error")
+	}
+
+	for i := 0; i < len(realData)/(common.HashLength+1); i++ {
+		base := logLength * i
+		log := &ticketLog{
+			TicketID: common.BytesToHash(realData[base : logLength+base-1]),
+			Type:     ticketLogType(realData[logLength+base-1]),
+		}
+		snap.logs = append(snap.logs, log)
+	}
+
 	return nil
 }
 
 func (snap *snapshot) Bytes() []byte {
-	return nil
+	data := make([]byte, 0)
+	weightBytes := snap.weight.Bytes()
+	data = append(data, common.IntToBytes(len(weightBytes))...)
+
+	for i := 0; i < len(snap.logs); i++ {
+		data = append(data, snap.logs[i].TicketID[:]...)
+		data = append(data, byte(snap.logs[i].Type))
+	}
+
+	data = append(data, weightBytes...)
+
+	data = append(data, calcCheck(data))
+	return data
 }
 
 func (snap *snapshot) Weight() *big.Int {
@@ -64,4 +107,12 @@ func (snap *snapshot) Weight() *big.Int {
 
 func (snap *snapshot) SetWeight(weight *big.Int) {
 	snap.weight = new(big.Int).SetBytes(weight.Bytes())
+}
+
+func calcCheck(data []byte) byte {
+	var check byte
+	for i := 0; i < len(data); i++ {
+		check += data[i]
+	}
+	return check
 }
