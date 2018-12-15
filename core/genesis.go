@@ -24,7 +24,6 @@ import (
 	"fmt"
 	"math/big"
 	"strings"
-	"time"
 
 	"github.com/FusionFoundation/efsn/common"
 	"github.com/FusionFoundation/efsn/common/hexutil"
@@ -69,6 +68,7 @@ type Genesis struct {
 type TicketsCreate struct {
 	Owner common.Address `json:"owner"`
 	Count uint64         `json:"count"`
+	Time  uint64         `json:"time"`
 }
 
 // GenesisAlloc specifies the initial state that is part of the genesis block.
@@ -254,7 +254,7 @@ func (g *Genesis) ToBlock(db ethdb.Database) *types.Block {
 				ID:         id,
 				Owner:      g.TicketCreateInfo.Owner,
 				Height:     big.NewInt(0),
-				ExpireTime: uint64(time.Now().Unix()) + 30*24*3600,
+				ExpireTime: g.TicketCreateInfo.Time + 30*24*3600,
 				Value:      common.TicketPrice(),
 			}
 			statedb.AddTicket(ticket)
