@@ -593,7 +593,7 @@ func (s *PrivateFusionAPI) BuyTicket(ctx context.Context, args FusionBaseArgs, p
 		}
 	}
 
-	var param = common.FSNCallParam{Func: common.BuyTicketFunc}
+	var param = common.FSNCallParam{Func: common.BuyTicketFunc, Data: new(big.Int).SetUint64(start).Bytes()}
 	data, err := param.ToBytes()
 	if err != nil {
 		return common.Hash{}, err
@@ -1098,7 +1098,7 @@ func (s *FusionTransactionAPI) BuildBuyTicketTx(ctx context.Context, args Fusion
 	}
 
 	start := block.Time().Uint64()
-	value := big.NewInt(1)
+	value := common.TicketPrice()
 	needValue := common.NewTimeLock(&common.TimeLockItem{
 		StartTime: start,
 		EndTime:   start + 30*24*3600,
@@ -1111,7 +1111,7 @@ func (s *FusionTransactionAPI) BuildBuyTicketTx(ctx context.Context, args Fusion
 		}
 	}
 
-	var param = common.FSNCallParam{Func: common.BuyTicketFunc}
+	var param = common.FSNCallParam{Func: common.BuyTicketFunc, Data: new(big.Int).SetUint64(start).Bytes()}
 	data, err := param.ToBytes()
 	if err != nil {
 		return nil, err
