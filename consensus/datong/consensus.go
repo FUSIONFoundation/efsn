@@ -184,9 +184,11 @@ func (dt *DaTong) VerifySeal(chain consensus.ChainReader, header *types.Header) 
 	selected := false
 	i := 0
 	for _, v := range ticketMap {
-		temp := v
-		tickets[i] = &temp
-		i++
+		if v.Height.Cmp(header.Number) < 0 {
+			temp := v
+			tickets[i] = &temp
+			i++
+		}
 	}
 
 	selectedTickets := dt.selectTickets(tickets, parent, header.Time.Uint64())
@@ -233,22 +235,26 @@ func (dt *DaTong) Finalize(chain consensus.ChainReader, header *types.Header, st
 		return nil, consensus.ErrUnknownAncestor
 	}
 	ticketMap := state.AllTickets()
-	tickets := make([]*common.Ticket, len(ticketMap))
+	if len(ticketMap) == 1 {
+		return nil, errors.New("Next block don't have ticket, wait buy ticket")
+	}
+
+	tickets := make([]*common.Ticket, 0)
 	haveTicket := false
-	i := 0
 	for _, v := range ticketMap {
-		if v.Owner == header.Coinbase {
-			haveTicket = true
+		if v.Height.Cmp(header.Number) < 0 {
+			if v.Owner == header.Coinbase {
+				haveTicket = true
+			}
+			temp := v
+			tickets = append(tickets, &temp)
 		}
-		temp := v
-		tickets[i] = &temp
-		i++
 	}
 
 	if !haveTicket {
 		return nil, errors.New("Miner don't have ticket")
 	}
-	time := uint64(time.Now().Unix())
+	time := header.Time.Uint64()
 	var (
 		selected *common.Ticket
 		retreat  []*common.Ticket
@@ -270,9 +276,7 @@ func (dt *DaTong) Finalize(chain consensus.ChainReader, header *types.Header, st
 		time++
 	}
 	header.Time = new(big.Int).SetUint64(time)
-
 	snap := newSnapshot()
-
 	delete(ticketMap, selected.ID)
 	state.RemoveTicket(selected.ID)
 	value := common.NewTimeLock(&common.TimeLockItem{
@@ -300,8 +304,7 @@ func (dt *DaTong) Finalize(chain consensus.ChainReader, header *types.Header, st
 			Type:     ticketRetreat,
 		})
 	}
-
-	remaining := big.NewInt(0)
+	var remaining uint64
 	for _, t := range ticketMap {
 		if t.ExpireTime <= time {
 			delete(ticketMap, t.ID)
@@ -317,23 +320,19 @@ func (dt *DaTong) Finalize(chain consensus.ChainReader, header *types.Header, st
 				Type:     ticketExpired,
 			})
 		} else {
-			remaining = remaining.Add(new(big.Int).Sub(header.Number, t.Height), common.Big1)
+			remaining += new(big.Int).Sub(header.Number, t.Height).Uint64() + 1
 		}
 	}
-	weight := dt.calcGenTicketNumber(state, txs)
 
-	weight = weight.Add(weight, remaining)
-
-	if weight.Cmp(common.Big0) <= 0 {
+	if remaining <= 0 {
 		return nil, errors.New("Next block don't have ticket, wait buy ticket")
 	}
-	snap.SetWeight(weight)
+	snap.SetWeight(new(big.Int).SetUint64(remaining))
 	snapBytes := snap.Bytes()
 	header.Extra = header.Extra[:extraVanity]
 	header.Extra = append(header.Extra, snapBytes...)
 	header.Extra = append(header.Extra, make([]byte, extraSeal)...)
 	state.AddBalance(header.Coinbase, common.SystemAssetID, calcRewards(header.Number))
-
 	header.Root = state.IntermediateRoot(chain.Config().IsEIP158(header.Number))
 	header.UncleHash = types.CalcUncleHash(nil)
 	return types.NewBlock(header, txs, nil, receipts), nil
@@ -421,20 +420,31 @@ func (dt *DaTong) getAllTickets(chain consensus.ChainReader, header *types.Heade
 	return statedb.AllTickets(), nil
 }
 
-type ticketSlice []*common.Ticket
+type ticketSlice struct {
+	data         []*common.Ticket
+	isSortWeight bool
+}
 
 func (c ticketSlice) Len() int {
-	return len(c)
+	return len(c.data)
 }
 func (c ticketSlice) Swap(i, j int) {
-	c[i], c[j] = c[j], c[i]
+	c.data[i], c.data[j] = c.data[j], c.data[i]
 }
 
 func (c ticketSlice) Less(i, j int) bool {
-	return c[i].Weight().Cmp(c[j].Weight()) < 0
+	if c.isSortWeight {
+		return c.data[i].Weight().Cmp(c.data[j].Weight()) < 0
+	}
+	return new(big.Int).SetBytes(c.data[i].ID[:]).Cmp(new(big.Int).SetBytes(c.data[j].ID[:])) < 0
+
 }
 
 func (dt *DaTong) selectTickets(tickets []*common.Ticket, parent *types.Header, time uint64) []*common.Ticket {
+	sort.Sort(ticketSlice{
+		data:         tickets,
+		isSortWeight: false,
+	})
 	selectedTickets := make([]*common.Ticket, 0)
 	sanp, err := newSnapshotWithData(getSnapDataByHeader(parent))
 	if err != nil {
@@ -457,7 +467,10 @@ func (dt *DaTong) selectTickets(tickets []*common.Ticket, parent *types.Header, 
 			selectedTickets = append(selectedTickets, tickets[i])
 		}
 	}
-	sort.Sort(ticketSlice(selectedTickets))
+	sort.Sort(ticketSlice{
+		data:         selectedTickets,
+		isSortWeight: true,
+	})
 	return selectedTickets
 }
 
@@ -482,22 +495,6 @@ func (dt *DaTong) validateTicket(ticket *common.Ticket, point, length, times *bi
 		times = times.Sub(times, common.Big1)
 	}
 	return false
-}
-
-func (dt *DaTong) calcGenTicketNumber(state *state.StateDB, txs []*types.Transaction) *big.Int {
-	var buyTicketCount int64
-	for i := 0; i < len(txs); i++ {
-		tx := txs[i]
-		to := tx.To()
-		if to != nil && *to == common.FSNCallAddress {
-			param := common.FSNCallParam{}
-			rlp.DecodeBytes(tx.Data(), &param)
-			if param.Func == common.BuyTicketFunc {
-				buyTicketCount++
-			}
-		}
-	}
-	return big.NewInt(buyTicketCount)
 }
 
 func sigHash(header *types.Header) (hash common.Hash) {
