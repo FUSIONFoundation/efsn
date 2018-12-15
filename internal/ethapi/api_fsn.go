@@ -62,11 +62,11 @@ type MakeSwapArgs struct {
 	FromAssetID   common.Hash
 	FromStartTime *hexutil.Uint64
 	FromEndTime   *hexutil.Uint64
-	MinFromAmount *big.Int
+	MinFromAmount *hexutil.Big
 	ToAssetID     common.Hash
 	ToStartTime   *hexutil.Uint64
 	ToEndTime     *hexutil.Uint64
-	MinToAmount   *big.Int
+	MinToAmount   *hexutil.Big
 	SwapSize      *big.Int
 	Targes        []common.Address
 }
@@ -159,11 +159,11 @@ func (args *MakeSwapArgs) toData() ([]byte, error) {
 		FromAssetID:   args.FromAssetID,
 		FromStartTime: uint64(*args.FromStartTime),
 		FromEndTime:   uint64(*args.FromEndTime),
-		MinFromAmount: args.MinFromAmount,
+		MinFromAmount: args.MinFromAmount.ToInt(),
 		ToAssetID:     args.ToAssetID,
 		ToStartTime:   uint64(*args.ToStartTime),
 		ToEndTime:     uint64(*args.ToEndTime),
-		MinToAmount:   args.MinToAmount,
+		MinToAmount:   args.MinToAmount.ToInt(),
 		SwapSize:      args.SwapSize,
 		Targes:        args.Targes,
 	}
@@ -674,7 +674,7 @@ func (s *PrivateFusionAPI) MakeSwap(ctx context.Context, args MakeSwapArgs, pass
 	args.init()
 
 	big0 := big.NewInt(0)
-	if args.MinFromAmount.Cmp(big0) <= 0 || args.MinToAmount.Cmp(big0) <= 0 || args.SwapSize.Cmp(big0) <= 0 {
+	if args.MinFromAmount.ToInt().Cmp(big0) <= 0 || args.MinToAmount.ToInt().Cmp(big0) <= 0 || args.SwapSize.Cmp(big0) <= 0 {
 		return common.Hash{}, fmt.Errorf("MinFromAmount,MinToAmount and SwapSize must be ge 1")
 	}
 
@@ -683,7 +683,7 @@ func (s *PrivateFusionAPI) MakeSwap(ctx context.Context, args MakeSwapArgs, pass
 		return common.Hash{}, err
 	}
 
-	total := new(big.Int).Mul(args.MinFromAmount, args.SwapSize)
+	total := new(big.Int).Mul(args.MinFromAmount.ToInt(), args.SwapSize)
 
 	start := uint64(*args.FromStartTime)
 	end := uint64(*args.FromEndTime)
@@ -1219,7 +1219,7 @@ func (s *FusionTransactionAPI) BuildMakeSwapTx(ctx context.Context, args MakeSwa
 	args.init()
 
 	big0 := big.NewInt(0)
-	if args.MinFromAmount.Cmp(big0) <= 0 || args.MinToAmount.Cmp(big0) <= 0 || args.SwapSize.Cmp(big0) <= 0 {
+	if args.MinFromAmount.ToInt().Cmp(big0) <= 0 || args.MinToAmount.ToInt().Cmp(big0) <= 0 || args.SwapSize.Cmp(big0) <= 0 {
 		return nil, fmt.Errorf("MinFromAmount,MinToAmount and SwapSize must be ge 1")
 	}
 
@@ -1228,7 +1228,7 @@ func (s *FusionTransactionAPI) BuildMakeSwapTx(ctx context.Context, args MakeSwa
 		return nil, err
 	}
 
-	total := new(big.Int).Mul(args.MinFromAmount, args.SwapSize)
+	total := new(big.Int).Mul(args.MinFromAmount.ToInt(), args.SwapSize)
 
 	start := uint64(*args.FromStartTime)
 	end := uint64(*args.FromEndTime)
