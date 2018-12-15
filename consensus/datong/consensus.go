@@ -3,6 +3,7 @@ package datong
 import (
 	"bytes"
 	"errors"
+	"math"
 	"math/big"
 	"sort"
 	"sync"
@@ -62,7 +63,7 @@ type DaTong struct {
 
 // New wacom
 func New(config *params.DaTongConfig, db ethdb.Database) *DaTong {
-	maxProb.SetUint64(uint64(2 ^ (config.Period + 2)))
+	maxProb.SetUint64(uint64(math.Pow(2, float64(config.Period+1))))
 	return &DaTong{
 		config:     config,
 		db:         db,
@@ -462,28 +463,21 @@ func (dt *DaTong) selectTickets(tickets []*common.Ticket, parent *types.Header, 
 
 func (dt *DaTong) getProbability(distance *big.Int) *big.Int {
 	d := distance.Uint64()
-	ret := new(big.Int).SetUint64(2 ^ d)
-	if ret.Cmp(maxProb) > 0 {
-		ret = ret.SetBytes(maxProb.Bytes())
-	}
-	return ret
+	return new(big.Int).SetUint64(uint64(math.Pow(2, float64(d))))
 }
 
 func (dt *DaTong) validateTicket(ticket *common.Ticket, point, length, times *big.Int) bool {
+
+	if length.Cmp(common.Big0) <= 0 {
+		return true
+	}
+
 	for times.Cmp(common.Big0) > 0 {
 		ticketPoint := new(big.Int).SetBytes(crypto.Keccak256(ticket.ID[:], point.Bytes(), times.Bytes()))
-		if new(big.Int).Add(ticketPoint, length).Cmp(point) >= 0 && ticketPoint.Cmp(point) <= 0 {
+		ticketPoint = ticketPoint.Div(ticketPoint, length)
+		tempPoint := new(big.Int).Div(point, length)
+		if ticketPoint.Cmp(tempPoint) == 0 {
 			return true
-		}
-		start := new(big.Int).Sub(ticketPoint, length)
-		if start.Cmp(point) <= 0 && ticketPoint.Cmp(point) >= 0 {
-			return true
-		}
-		if start.Cmp(common.Big0) <= 0 {
-			start = start.Add(start, maxDiff)
-			if start.Cmp(point) <= 0 && maxDiff.Cmp(point) >= 0 {
-				return true
-			}
 		}
 		times = times.Sub(times, common.Big1)
 	}
