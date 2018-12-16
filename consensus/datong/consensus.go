@@ -400,7 +400,12 @@ func (dt *DaTong) CalcDifficulty(chain consensus.ChainReader, time uint64, paren
 
 // APIs returns the RPC APIs this consensus engine provides.
 func (dt *DaTong) APIs(chain consensus.ChainReader) []rpc.API {
-	return []rpc.API{}
+	return []rpc.API{{
+		Namespace: "fsn",
+		Version:   "1.0",
+		Service:   &API{chain: chain},
+		Public:    false,
+	}}
 }
 
 // Close terminates any background threads maintained by the consensus engine.

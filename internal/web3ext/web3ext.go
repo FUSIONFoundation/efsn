@@ -33,7 +33,7 @@ var Modules = map[string]string{
 	"txpool":     TxPool_JS,
 	"fsn":        FsnJS,
 	"fsntx":      FsnTxJS,
-	"fsnbt":	  FsnBT,
+	"fsnbt":      FsnBT,
 }
 
 const Chequebook_JS = `
@@ -684,6 +684,12 @@ const FsnJS = `
 web3._extend({
 	property: 'fsn',
 	methods: [
+		new web3._extend.Method({
+			name: 'getSnapshot',
+			call: 'fsn_getSnapshot',
+			params: 1,
+			inputFormatter: [null]
+		}),
 		new web3._extend.Method({
 			name: 'getBalance',
 			call: 'fsn_getBalance',

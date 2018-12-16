@@ -7,6 +7,14 @@ import (
 	"github.com/FusionFoundation/efsn/common"
 )
 
+// Snapshot wacom
+type Snapshot struct {
+	Selected common.Hash   `json:"selected"`
+	Retreat  []common.Hash `json:"retreat"`
+	Expired  []common.Hash `json:"expired"`
+	Weight   *big.Int      `json:"weight"`
+}
+
 type ticketLogType byte
 
 const (
@@ -107,6 +115,25 @@ func (snap *snapshot) Weight() *big.Int {
 
 func (snap *snapshot) SetWeight(weight *big.Int) {
 	snap.weight = new(big.Int).SetBytes(weight.Bytes())
+}
+
+func (snap *snapshot) ToShow() *Snapshot {
+	retreat := make([]common.Hash, 0)
+	expired := make([]common.Hash, 0)
+	for i := 0; i < len(snap.logs); i++ {
+		if snap.logs[i].Type == ticketRetreat {
+			retreat = append(retreat, snap.logs[i].TicketID)
+		} else if snap.logs[i].Type == ticketExpired {
+			expired = append(expired, snap.logs[i].TicketID)
+		}
+
+	}
+	return &Snapshot{
+		Selected: snap.GetVoteTicket(),
+		Retreat:  retreat,
+		Expired:  expired,
+		Weight:   snap.weight,
+	}
 }
 
 func calcCheck(data []byte) byte {
