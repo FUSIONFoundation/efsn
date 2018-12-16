@@ -254,6 +254,7 @@ func (g *Genesis) ToBlock(db ethdb.Database) *types.Block {
 				ID:         id,
 				Owner:      g.TicketCreateInfo.Owner,
 				Height:     big.NewInt(0),
+				StartTime:  g.TicketCreateInfo.Time,
 				ExpireTime: g.TicketCreateInfo.Time + 30*24*3600,
 				Value:      common.TicketPrice(),
 			}

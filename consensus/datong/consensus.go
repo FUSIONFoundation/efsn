@@ -464,12 +464,15 @@ func (dt *DaTong) selectTickets(tickets []*common.Ticket, parent *types.Header, 
 	length = length.Div(length, common.Big2)
 	parentHash := parent.Hash()
 	point := new(big.Int).SetBytes(crypto.Keccak256(parentHash[:], prob.Bytes()))
+	expireTime := parent.Time.Uint64()
 	for i := 0; i < len(tickets); i++ {
-		times := new(big.Int).Sub(parent.Number, tickets[i].Height)
-		times = times.Add(times, common.Big1)
-		if dt.validateTicket(tickets[i], point, length, times) {
-			tickets[i].SetWeight(times)
-			selectedTickets = append(selectedTickets, tickets[i])
+		if time >= tickets[i].StartTime && tickets[i].ExpireTime > expireTime {
+			times := new(big.Int).Sub(parent.Number, tickets[i].Height)
+			times = times.Add(times, common.Big1)
+			if dt.validateTicket(tickets[i], point, length, times) {
+				tickets[i].SetWeight(times)
+				selectedTickets = append(selectedTickets, tickets[i])
+			}
 		}
 	}
 	sort.Sort(ticketSlice{

@@ -425,6 +425,12 @@ type GenAssetParam struct {
 	CanChange bool
 }
 
+// BuyTicketParam wacom
+type BuyTicketParam struct {
+	Start uint64
+	End   uint64
+}
+
 // SendAssetParam wacom
 type SendAssetParam struct {
 	AssetID Hash
@@ -492,6 +498,11 @@ func (p *SendAssetParam) ToBytes() ([]byte, error) {
 
 // ToBytes wacom
 func (p *TimeLockParam) ToBytes() ([]byte, error) {
+	return rlp.EncodeToBytes(p)
+}
+
+// ToBytes wacom
+func (p *BuyTicketParam) ToBytes() ([]byte, error) {
 	return rlp.EncodeToBytes(p)
 }
 
@@ -571,6 +582,7 @@ type Ticket struct {
 	ID         Hash
 	Owner      Address
 	Height     *big.Int
+	StartTime  uint64
 	ExpireTime uint64
 	Value      *big.Int
 	weight     *big.Int

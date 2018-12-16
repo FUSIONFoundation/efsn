@@ -346,9 +346,11 @@ func (st *StateTransition) handleFsnCall() error {
 			return nil
 		}
 	case common.BuyTicketFunc:
+		buyTicketParam := common.BuyTicketParam{}
+		rlp.DecodeBytes(param.Data, &buyTicketParam)
 		from := st.msg.From()
-		start := new(big.Int).SetBytes(param.Data).Uint64()
-		end := start + 30*24*3600
+		start := buyTicketParam.Start
+		end := buyTicketParam.End
 		value := common.TicketPrice()
 		needValue := common.NewTimeLock(&common.TimeLockItem{
 			StartTime: start,
@@ -385,6 +387,7 @@ func (st *StateTransition) handleFsnCall() error {
 			ID:         id,
 			Owner:      st.msg.From(),
 			Height:     height,
+			StartTime:  buyTicketParam.Start,
 			ExpireTime: end,
 			Value:      value,
 		}

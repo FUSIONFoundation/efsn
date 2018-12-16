@@ -47,6 +47,13 @@ type TimeLockArgs struct {
 	EndTime   *hexutil.Uint64 `json:"end"`
 }
 
+// BuyTicketArgs wacom
+type BuyTicketArgs struct {
+	FusionBaseArgs
+	Start *hexutil.Uint64 `json:"start"`
+	End   *hexutil.Uint64 `json:"end"`
+}
+
 // AssetValueChangeArgs wacom
 type AssetValueChangeArgs struct {
 	FusionBaseArgs
@@ -125,6 +132,14 @@ func (args *GenAssetArgs) toData() ([]byte, error) {
 	return param.ToBytes()
 }
 
+func (args *BuyTicketArgs) toData() ([]byte, error) {
+	param := common.BuyTicketParam{
+		Start: uint64(*args.Start),
+		End:   uint64(*args.End),
+	}
+	return param.ToBytes()
+}
+
 func (args *AssetValueChangeArgs) toData() ([]byte, error) {
 	param := common.AssetValueChangeParam{
 		AssetID: args.AssetID,
@@ -138,18 +153,22 @@ func (args *AssetValueChangeArgs) toData() ([]byte, error) {
 func (args *MakeSwapArgs) init() {
 
 	if args.FromStartTime == nil {
+		args.FromStartTime = new(hexutil.Uint64)
 		*(*uint64)(args.FromStartTime) = common.TimeLockNow
 	}
 
 	if args.FromEndTime == nil {
+		args.FromEndTime = new(hexutil.Uint64)
 		*(*uint64)(args.FromEndTime) = common.TimeLockForever
 	}
 
 	if args.ToStartTime == nil {
+		args.ToStartTime = new(hexutil.Uint64)
 		*(*uint64)(args.ToStartTime) = common.TimeLockNow
 	}
 
 	if args.ToEndTime == nil {
+		args.ToEndTime = new(hexutil.Uint64)
 		*(*uint64)(args.ToEndTime) = common.TimeLockForever
 	}
 }
@@ -188,10 +207,12 @@ func (args *TakeSwapArgs) toData() ([]byte, error) {
 func (args *TimeLockArgs) init() {
 
 	if args.StartTime == nil {
+		args.StartTime = new(hexutil.Uint64)
 		*(*uint64)(args.StartTime) = common.TimeLockNow
 	}
 
 	if args.EndTime == nil {
+		args.StartTime = new(hexutil.Uint64)
 		*(*uint64)(args.EndTime) = common.TimeLockForever
 	}
 }
@@ -542,6 +563,7 @@ func (s *PrivateFusionAPI) TimeLockToAsset(ctx context.Context, args TimeLockArg
 	if state == nil || err != nil {
 		return common.Hash{}, err
 	}
+	args.init()
 	*(*uint64)(args.StartTime) = uint64(time.Now().Unix())
 	*(*uint64)(args.EndTime) = common.TimeLockForever
 	needValue := common.NewTimeLock(&common.TimeLockItem{
@@ -569,7 +591,7 @@ func (s *PrivateFusionAPI) TimeLockToAsset(ctx context.Context, args TimeLockArg
 }
 
 // BuyTicket ss
-func (s *PrivateFusionAPI) BuyTicket(ctx context.Context, args FusionBaseArgs, passwd string) (common.Hash, error) {
+func (s *PrivateFusionAPI) BuyTicket(ctx context.Context, args BuyTicketArgs, passwd string) (common.Hash, error) {
 	state, _, err := s.b.StateAndHeaderByNumber(ctx, rpc.LatestBlockNumber)
 	if state == nil || err != nil {
 		return common.Hash{}, err
@@ -580,11 +602,22 @@ func (s *PrivateFusionAPI) BuyTicket(ctx context.Context, args FusionBaseArgs, p
 		return common.Hash{}, err
 	}
 
-	start := block.Time().Uint64()
+	if args.Start == nil {
+		args.Start = new(hexutil.Uint64)
+		*(*uint64)(args.Start) = block.Time().Uint64()
+	}
+
+	if args.End == nil {
+		args.End = new(hexutil.Uint64)
+		*(*uint64)(args.End) = uint64(*args.Start) + 30*24*3600
+	}
+
+	start := uint64(*args.Start)
+	end := uint64(*args.End)
 	value := common.TicketPrice()
 	needValue := common.NewTimeLock(&common.TimeLockItem{
 		StartTime: start,
-		EndTime:   start + 40*24*3600,
+		EndTime:   end,
 		Value:     value,
 	})
 	if state.GetTimeLockBalance(common.SystemAssetID, args.From).Cmp(needValue) < 0 {
@@ -1050,6 +1083,7 @@ func (s *FusionTransactionAPI) BuildTimeLockToAssetTx(ctx context.Context, args 
 	if state == nil || err != nil {
 		return nil, err
 	}
+	args.init()
 	*(*uint64)(args.StartTime) = uint64(time.Now().Unix())
 	*(*uint64)(args.EndTime) = common.TimeLockForever
 	needValue := common.NewTimeLock(&common.TimeLockItem{
@@ -1086,7 +1120,7 @@ func (s *FusionTransactionAPI) TimeLockToAsset(ctx context.Context, args TimeLoc
 }
 
 // BuildBuyTicketTx ss
-func (s *FusionTransactionAPI) BuildBuyTicketTx(ctx context.Context, args FusionBaseArgs) (*types.Transaction, error) {
+func (s *FusionTransactionAPI) BuildBuyTicketTx(ctx context.Context, args BuyTicketArgs) (*types.Transaction, error) {
 	state, _, err := s.b.StateAndHeaderByNumber(ctx, rpc.LatestBlockNumber)
 	if state == nil || err != nil {
 		return nil, err
@@ -1097,11 +1131,23 @@ func (s *FusionTransactionAPI) BuildBuyTicketTx(ctx context.Context, args Fusion
 		return nil, err
 	}
 
-	start := block.Time().Uint64()
+	if args.Start == nil {
+		args.Start = new(hexutil.Uint64)
+		*(*uint64)(args.Start) = block.Time().Uint64()
+	}
+
+	if args.End == nil {
+		args.End = new(hexutil.Uint64)
+		*(*uint64)(args.End) = uint64(*args.Start) + 30*24*3600
+	}
+
+	start := uint64(*args.Start)
+	end := uint64(*args.End)
+
 	value := common.TicketPrice()
 	needValue := common.NewTimeLock(&common.TimeLockItem{
 		StartTime: start,
-		EndTime:   start + 30*24*3600,
+		EndTime:   end,
 		Value:     value,
 	})
 
@@ -1124,7 +1170,7 @@ func (s *FusionTransactionAPI) BuildBuyTicketTx(ctx context.Context, args Fusion
 }
 
 // BuyTicket ss
-func (s *FusionTransactionAPI) BuyTicket(ctx context.Context, args FusionBaseArgs) (common.Hash, error) {
+func (s *FusionTransactionAPI) BuyTicket(ctx context.Context, args BuyTicketArgs) (common.Hash, error) {
 	tx, err := s.BuildBuyTicketTx(ctx, args)
 	if err != nil {
 		return common.Hash{}, err
