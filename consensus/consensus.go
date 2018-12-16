@@ -114,3 +114,11 @@ type PoW interface {
 	// Hashrate returns the current mining hashrate of a PoW consensus engine.
 	Hashrate() float64
 }
+
+// NoPow is a consensus engine based on proof-of-other.
+type NoPow interface {
+	Engine
+
+	// ConsensusData wacom
+	ConsensusData() []*big.Int
+}

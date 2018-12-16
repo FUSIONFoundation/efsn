@@ -147,8 +147,7 @@ func (c *CliqueConfig) String() string {
 
 // DaTongConfig is the consensus engine configs for proof-of-stake based sealing.
 type DaTongConfig struct {
-	Period  uint64 `json:"period"`
-	MaxDiff uint64 `json:"maxdiff"`
+	Period uint64 `json:"period"`
 }
 
 // String implements the stringer interface, returning the consensus engine details.

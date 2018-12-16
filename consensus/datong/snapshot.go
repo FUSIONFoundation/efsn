@@ -5,14 +5,16 @@ import (
 	"math/big"
 
 	"github.com/FusionFoundation/efsn/common"
+	"github.com/FusionFoundation/efsn/core/types"
 )
 
 // Snapshot wacom
 type Snapshot struct {
-	Selected common.Hash   `json:"selected"`
-	Retreat  []common.Hash `json:"retreat"`
-	Expired  []common.Hash `json:"expired"`
-	Weight   *big.Int      `json:"weight"`
+	Selected     common.Hash   `json:"selected"`
+	Retreat      []common.Hash `json:"retreat"`
+	Expired      []common.Hash `json:"expired"`
+	Weight       *big.Int      `json:"weight"`
+	TicketNumber int           `json:"ticketNumber"`
 }
 
 type ticketLogType byte
@@ -29,8 +31,9 @@ type ticketLog struct {
 }
 
 type snapshot struct {
-	logs   []*ticketLog
-	weight *big.Int
+	logs         []*ticketLog
+	weight       *big.Int
+	ticketNumber int
 }
 
 func newSnapshot() *snapshot {
@@ -46,6 +49,15 @@ func newSnapshotWithData(data []byte) (*snapshot, error) {
 		return nil, err
 	}
 	return snap, nil
+}
+
+// NewSnapshotFromHeader wacom
+func NewSnapshotFromHeader(header *types.Header) (*Snapshot, error) {
+	snap := newSnapshot()
+	if err := snap.SetBytes(getSnapDataByHeader(header)); err != nil {
+		return nil, err
+	}
+	return snap.ToShow(), nil
 }
 
 func (snap *snapshot) GetVoteTicket() common.Hash {
@@ -70,10 +82,14 @@ func (snap *snapshot) SetBytes(data []byte) error {
 	if calcCheck(realData) != check {
 		return errors.New("check error")
 	}
+
 	weightLength := common.BytesToInt(realData[0:4])
 	weightBytes := realData[len(realData)-weightLength:]
 	snap.weight = new(big.Int).SetBytes(weightBytes)
-	realData = realData[4 : len(realData)-weightLength]
+
+	snap.ticketNumber = common.BytesToInt(realData[4:8])
+
+	realData = realData[8 : len(realData)-weightLength]
 
 	logLength := common.HashLength + 1
 
@@ -97,6 +113,7 @@ func (snap *snapshot) Bytes() []byte {
 	data := make([]byte, 0)
 	weightBytes := snap.weight.Bytes()
 	data = append(data, common.IntToBytes(len(weightBytes))...)
+	data = append(data, common.IntToBytes(snap.ticketNumber)...)
 
 	for i := 0; i < len(snap.logs); i++ {
 		data = append(data, snap.logs[i].TicketID[:]...)
@@ -117,6 +134,14 @@ func (snap *snapshot) SetWeight(weight *big.Int) {
 	snap.weight = new(big.Int).SetBytes(weight.Bytes())
 }
 
+func (snap *snapshot) TicketNumber() int {
+	return snap.ticketNumber
+}
+
+func (snap *snapshot) SetTicketNumber(ticketNumber int) {
+	snap.ticketNumber = ticketNumber
+}
+
 func (snap *snapshot) ToShow() *Snapshot {
 	retreat := make([]common.Hash, 0)
 	expired := make([]common.Hash, 0)
@@ -129,10 +154,11 @@ func (snap *snapshot) ToShow() *Snapshot {
 
 	}
 	return &Snapshot{
-		Selected: snap.GetVoteTicket(),
-		Retreat:  retreat,
-		Expired:  expired,
-		Weight:   snap.weight,
+		Selected:     snap.GetVoteTicket(),
+		Retreat:      retreat,
+		Expired:      expired,
+		Weight:       snap.weight,
+		TicketNumber: snap.ticketNumber,
 	}
 }
 

@@ -33,6 +33,7 @@ import (
 	"github.com/FusionFoundation/efsn/common"
 	"github.com/FusionFoundation/efsn/common/mclock"
 	"github.com/FusionFoundation/efsn/consensus"
+	"github.com/FusionFoundation/efsn/consensus/datong"
 	"github.com/FusionFoundation/efsn/core"
 	"github.com/FusionFoundation/efsn/core/types"
 	"github.com/FusionFoundation/efsn/eth"
@@ -468,19 +469,21 @@ func (s *Service) reportLatency(conn *websocket.Conn) error {
 
 // blockStats is the information to report about individual blocks.
 type blockStats struct {
-	Number     *big.Int       `json:"number"`
-	Hash       common.Hash    `json:"hash"`
-	ParentHash common.Hash    `json:"parentHash"`
-	Timestamp  *big.Int       `json:"timestamp"`
-	Miner      common.Address `json:"miner"`
-	GasUsed    uint64         `json:"gasUsed"`
-	GasLimit   uint64         `json:"gasLimit"`
-	Diff       string         `json:"difficulty"`
-	TotalDiff  string         `json:"totalDifficulty"`
-	Txs        []txStats      `json:"transactions"`
-	TxHash     common.Hash    `json:"transactionsRoot"`
-	Root       common.Hash    `json:"stateRoot"`
-	Uncles     uncleStats     `json:"uncles"`
+	Number       *big.Int       `json:"number"`
+	Hash         common.Hash    `json:"hash"`
+	ParentHash   common.Hash    `json:"parentHash"`
+	Timestamp    *big.Int       `json:"timestamp"`
+	Miner        common.Address `json:"miner"`
+	GasUsed      uint64         `json:"gasUsed"`
+	GasLimit     uint64         `json:"gasLimit"`
+	Diff         string         `json:"difficulty"`
+	TotalDiff    string         `json:"totalDifficulty"`
+	Weigth       *big.Int       `json:"weight"`
+	TicketNumber int            `json:"ticketNumber"`
+	Txs          []txStats      `json:"transactions"`
+	TxHash       common.Hash    `json:"transactionsRoot"`
+	Root         common.Hash    `json:"stateRoot"`
+	Uncles       uncleStats     `json:"uncles"`
 }
 
 // txStats is the information to report about individual transactions.
@@ -553,20 +556,33 @@ func (s *Service) assembleBlockStats(block *types.Block) *blockStats {
 	// Assemble and return the block stats
 	author, _ := s.engine.Author(header)
 
+	var weight *big.Int
+	var ticketNumber int
+
+	if _, ok := s.engine.(*datong.DaTong); ok {
+		snap, err := datong.NewSnapshotFromHeader(header)
+		if err == nil {
+			weight = snap.Weight
+			ticketNumber = snap.TicketNumber
+		}
+	}
+
 	return &blockStats{
-		Number:     header.Number,
-		Hash:       header.Hash(),
-		ParentHash: header.ParentHash,
-		Timestamp:  header.Time,
-		Miner:      author,
-		GasUsed:    header.GasUsed,
-		GasLimit:   header.GasLimit,
-		Diff:       header.Difficulty.String(),
-		TotalDiff:  td.String(),
-		Txs:        txs,
-		TxHash:     header.TxHash,
-		Root:       header.Root,
-		Uncles:     uncles,
+		Number:       header.Number,
+		Hash:         header.Hash(),
+		ParentHash:   header.ParentHash,
+		Timestamp:    header.Time,
+		Miner:        author,
+		GasUsed:      header.GasUsed,
+		GasLimit:     header.GasLimit,
+		Diff:         header.Difficulty.String(),
+		TotalDiff:    td.String(),
+		Weigth:       weight,
+		TicketNumber: ticketNumber,
+		Txs:          txs,
+		TxHash:       header.TxHash,
+		Root:         header.Root,
+		Uncles:       uncles,
 	}
 }
 
@@ -663,13 +679,15 @@ func (s *Service) reportPending(conn *websocket.Conn) error {
 
 // nodeStats is the information to report about the local node.
 type nodeStats struct {
-	Active   bool `json:"active"`
-	Syncing  bool `json:"syncing"`
-	Mining   bool `json:"mining"`
-	Hashrate int  `json:"hashrate"`
-	Peers    int  `json:"peers"`
-	GasPrice int  `json:"gasPrice"`
-	Uptime   int  `json:"uptime"`
+	Active       bool     `json:"active"`
+	Syncing      bool     `json:"syncing"`
+	Mining       bool     `json:"mining"`
+	Hashrate     int      `json:"hashrate"`
+	Weight       *big.Int `json:"weight"`
+	TicketNumber *big.Int `json:"ticketNumber"`
+	Peers        int      `json:"peers"`
+	GasPrice     int      `json:"gasPrice"`
+	Uptime       int      `json:"uptime"`
 }
 
 // reportPending retrieves various stats about the node at the networking and
@@ -677,14 +695,21 @@ type nodeStats struct {
 func (s *Service) reportStats(conn *websocket.Conn) error {
 	// Gather the syncing and mining infos from the local miner instance
 	var (
-		mining   bool
-		hashrate int
-		syncing  bool
-		gasprice int
+		mining       bool
+		hashrate     int
+		weight       *big.Int
+		ticketNumber *big.Int
+		syncing      bool
+		gasprice     int
 	)
 	if s.eth != nil {
 		mining = s.eth.Miner().Mining()
 		hashrate = int(s.eth.Miner().HashRate())
+		if datong, ok := s.engine.(*datong.DaTong); ok {
+			data := datong.ConsensusData()
+			weight = data[0]
+			ticketNumber = data[1]
+		}
 
 		sync := s.eth.Downloader().Progress()
 		syncing = s.eth.BlockChain().CurrentHeader().Number.Uint64() >= sync.HighestBlock
@@ -701,13 +726,15 @@ func (s *Service) reportStats(conn *websocket.Conn) error {
 	stats := map[string]interface{}{
 		"id": s.node,
 		"stats": &nodeStats{
-			Active:   true,
-			Mining:   mining,
-			Hashrate: hashrate,
-			Peers:    s.server.PeerCount(),
-			GasPrice: gasprice,
-			Syncing:  syncing,
-			Uptime:   100,
+			Active:       true,
+			Mining:       mining,
+			Hashrate:     hashrate,
+			Weight:       weight,
+			TicketNumber: ticketNumber,
+			Peers:        s.server.PeerCount(),
+			GasPrice:     gasprice,
+			Syncing:      syncing,
+			Uptime:       100,
 		},
 	}
 	report := map[string][]interface{}{

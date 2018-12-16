@@ -19,6 +19,7 @@ package miner
 
 import (
 	"fmt"
+	"math/big"
 	"sync/atomic"
 	"time"
 
@@ -135,6 +136,13 @@ func (self *Miner) HashRate() uint64 {
 		return uint64(pow.Hashrate())
 	}
 	return 0
+}
+
+func (self *Miner) ConsensusData() []*big.Int {
+	if noPow, ok := self.engine.(consensus.NoPow); ok {
+		return noPow.ConsensusData()
+	}
+	return nil
 }
 
 func (self *Miner) SetExtra(extra []byte) error {

@@ -3,6 +3,7 @@ package datong
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"math"
 	"math/big"
 	"sort"
@@ -59,6 +60,9 @@ type DaTong struct {
 	signer     common.Address
 	signFn     SignerFn
 	lock       sync.RWMutex
+
+	weight            *big.Int
+	validTicketNumber *big.Int
 }
 
 // New wacom
@@ -68,6 +72,9 @@ func New(config *params.DaTongConfig, db ethdb.Database) *DaTong {
 		config:     config,
 		db:         db,
 		stateCache: state.NewDatabase(db),
+
+		weight:            new(big.Int),
+		validTicketNumber: new(big.Int),
 	}
 }
 
@@ -241,15 +248,23 @@ func (dt *DaTong) Finalize(chain consensus.ChainReader, header *types.Header, st
 
 	tickets := make([]*common.Ticket, 0)
 	haveTicket := false
+
+	var weight, number uint64
+
 	for _, v := range ticketMap {
 		if v.Height.Cmp(header.Number) < 0 {
 			if v.Owner == header.Coinbase {
+				number++
+				weight += header.Number.Uint64() - v.Height.Uint64() + 1
 				haveTicket = true
 			}
 			temp := v
 			tickets = append(tickets, &temp)
 		}
 	}
+
+	dt.weight.SetUint64(weight)
+	dt.validTicketNumber.SetUint64(number)
 
 	if !haveTicket {
 		return nil, errors.New("Miner don't have ticket")
@@ -304,7 +319,9 @@ func (dt *DaTong) Finalize(chain consensus.ChainReader, header *types.Header, st
 			Type:     ticketRetreat,
 		})
 	}
-	var remaining uint64
+	remainingWeight := new(big.Int)
+	ticketNumber := 0
+
 	for _, t := range ticketMap {
 		if t.ExpireTime <= time {
 			delete(ticketMap, t.ID)
@@ -320,14 +337,18 @@ func (dt *DaTong) Finalize(chain consensus.ChainReader, header *types.Header, st
 				Type:     ticketExpired,
 			})
 		} else {
-			remaining += new(big.Int).Sub(header.Number, t.Height).Uint64() + 1
+			ticketNumber++
+			weight := new(big.Int).Sub(header.Number, t.Height)
+			remainingWeight.Add(remainingWeight, weight.Add(weight, common.Big1))
 		}
 	}
 
-	if remaining <= 0 {
+	if remainingWeight.Cmp(common.Big0) <= 0 {
 		return nil, errors.New("Next block don't have ticket, wait buy ticket")
 	}
-	snap.SetWeight(new(big.Int).SetUint64(remaining))
+	fmt.Println(remainingWeight)
+	snap.SetWeight(remainingWeight)
+	snap.SetTicketNumber(ticketNumber)
 	snapBytes := snap.Bytes()
 	header.Extra = header.Extra[:extraVanity]
 	header.Extra = append(header.Extra, snapBytes...)
@@ -396,6 +417,11 @@ func (dt *DaTong) CalcDifficulty(chain consensus.ChainReader, time uint64, paren
 		return nil
 	}
 	return calcDifficulty(snap)
+}
+
+// ConsensusData wacom
+func (dt *DaTong) ConsensusData() []*big.Int {
+	return []*big.Int{dt.weight, dt.validTicketNumber}
 }
 
 // APIs returns the RPC APIs this consensus engine provides.
