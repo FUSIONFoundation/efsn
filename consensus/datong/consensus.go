@@ -569,7 +569,7 @@ func calcRewards(height *big.Int) *big.Int {
 	var i int64
 	div2 := big.NewInt(2)
 	// initial reward 2.5
-	var reward = new(big.Int).Mul(big.NewInt(25), big.NewInt(100000000000000000))
+	var reward = new(big.Int).Mul(big.NewInt(25), big.NewInt(1000000000000000000))
 	// every 4915200 blocks divide reward by 2
 	segment := new(big.Int).Div(height, new(big.Int).SetUint64(4915200))
 	for i = 0; i < segment.Int64(); i++ {
