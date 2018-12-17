@@ -293,12 +293,14 @@ func (dt *DaTong) Finalize(chain consensus.ChainReader, header *types.Header, st
 	snap := newSnapshot()
 	delete(ticketMap, selected.ID)
 	state.RemoveTicket(selected.ID)
-	value := common.NewTimeLock(&common.TimeLockItem{
-		StartTime: time,
-		EndTime:   selected.ExpireTime,
-		Value:     selected.Value,
-	})
-	state.AddTimeLockBalance(header.Coinbase, common.SystemAssetID, value)
+	if selected.Height.Cmp(common.Big0) > 0 {
+		value := common.NewTimeLock(&common.TimeLockItem{
+			StartTime: selected.StartTime,
+			EndTime:   selected.ExpireTime,
+			Value:     selected.Value,
+		})
+		state.AddTimeLockBalance(header.Coinbase, common.SystemAssetID, value)
+	}
 	snap.AddLog(&ticketLog{
 		TicketID: selected.ID,
 		Type:     ticketSelect,
@@ -307,12 +309,14 @@ func (dt *DaTong) Finalize(chain consensus.ChainReader, header *types.Header, st
 	for _, t := range retreat {
 		delete(ticketMap, t.ID)
 		state.RemoveTicket(t.ID)
-		value := common.NewTimeLock(&common.TimeLockItem{
-			StartTime: time,
-			EndTime:   t.ExpireTime,
-			Value:     t.Value,
-		})
-		state.AddTimeLockBalance(t.Owner, common.SystemAssetID, value)
+		if t.Height.Cmp(common.Big0) > 0 {
+			value := common.NewTimeLock(&common.TimeLockItem{
+				StartTime: t.StartTime,
+				EndTime:   t.ExpireTime,
+				Value:     t.Value,
+			})
+			state.AddTimeLockBalance(t.Owner, common.SystemAssetID, value)
+		}
 		snap.AddLog(&ticketLog{
 			TicketID: t.ID,
 			Type:     ticketRetreat,
@@ -325,12 +329,6 @@ func (dt *DaTong) Finalize(chain consensus.ChainReader, header *types.Header, st
 		if t.ExpireTime <= time {
 			delete(ticketMap, t.ID)
 			state.RemoveTicket(t.ID)
-			value := common.NewTimeLock(&common.TimeLockItem{
-				StartTime: time,
-				EndTime:   t.ExpireTime,
-				Value:     t.Value,
-			})
-			state.AddTimeLockBalance(t.Owner, common.SystemAssetID, value)
 			snap.AddLog(&ticketLog{
 				TicketID: t.ID,
 				Type:     ticketExpired,
