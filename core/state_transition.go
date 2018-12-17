@@ -346,9 +346,21 @@ func (st *StateTransition) handleFsnCall() error {
 			return nil
 		}
 	case common.BuyTicketFunc:
+
+		from := st.msg.From()
+		height := st.evm.Context.BlockNumber
+		hash := st.evm.GetHash(height.Uint64() - 1)
+		id := crypto.Keccak256Hash(from[:], hash[:])
+
+		tickets := st.state.AllTickets()
+
+		if _, ok := tickets[id]; ok {
+			return fmt.Errorf("one block just can buy one ticket")
+		}
+
 		buyTicketParam := common.BuyTicketParam{}
 		rlp.DecodeBytes(param.Data, &buyTicketParam)
-		from := st.msg.From()
+
 		start := buyTicketParam.Start
 		end := buyTicketParam.End
 		value := common.TicketPrice()
@@ -380,12 +392,9 @@ func (st *StateTransition) handleFsnCall() error {
 			st.state.SubTimeLockBalance(from, common.SystemAssetID, needValue)
 		}
 
-		height := st.evm.Context.BlockNumber
-		hash := st.evm.GetHash(height.Uint64() - 1)
-		id := crypto.Keccak256Hash(from[:], hash[:])
 		ticket := common.Ticket{
 			ID:         id,
-			Owner:      st.msg.From(),
+			Owner:      from,
 			Height:     height,
 			StartTime:  buyTicketParam.Start,
 			ExpireTime: end,
