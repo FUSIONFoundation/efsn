@@ -626,8 +626,12 @@ func (s *PrivateFusionAPI) BuyTicket(ctx context.Context, args BuyTicketArgs, pa
 		}
 	}
 
-	var param = common.FSNCallParam{Func: common.BuyTicketFunc, Data: new(big.Int).SetUint64(start).Bytes()}
-	data, err := param.ToBytes()
+	data, err := args.toData()
+	if err != nil {
+		return common.Hash{}, err
+	}
+	var param = common.FSNCallParam{Func: common.BuyTicketFunc, Data: data}
+	data, err = param.ToBytes()
 	if err != nil {
 		return common.Hash{}, err
 	}
@@ -1157,8 +1161,12 @@ func (s *FusionTransactionAPI) BuildBuyTicketTx(ctx context.Context, args BuyTic
 		}
 	}
 
-	var param = common.FSNCallParam{Func: common.BuyTicketFunc, Data: new(big.Int).SetUint64(start).Bytes()}
-	data, err := param.ToBytes()
+	data, err := args.toData()
+	if err != nil {
+		return nil, err
+	}
+	var param = common.FSNCallParam{Func: common.BuyTicketFunc, Data: data}
+	data, err = param.ToBytes()
 	if err != nil {
 		return nil, err
 	}

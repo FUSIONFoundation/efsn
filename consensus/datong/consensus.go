@@ -3,7 +3,6 @@ package datong
 import (
 	"bytes"
 	"errors"
-	"fmt"
 	"math"
 	"math/big"
 	"sort"
@@ -346,7 +345,6 @@ func (dt *DaTong) Finalize(chain consensus.ChainReader, header *types.Header, st
 	if remainingWeight.Cmp(common.Big0) <= 0 {
 		return nil, errors.New("Next block don't have ticket, wait buy ticket")
 	}
-	fmt.Println(remainingWeight)
 	snap.SetWeight(remainingWeight)
 	snap.SetTicketNumber(ticketNumber)
 	snapBytes := snap.Bytes()
