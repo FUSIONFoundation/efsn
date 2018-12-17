@@ -691,6 +691,11 @@ web3._extend({
 			inputFormatter: [null]
 		}),
 		new web3._extend.Method({
+			name: 'getSnapshotAtHash',
+			call: 'fsn_getSnapshotAtHash',
+			params: 1
+		}),
+		new web3._extend.Method({
 			name: 'getBalance',
 			call: 'fsn_getBalance',
 			params: 3,
