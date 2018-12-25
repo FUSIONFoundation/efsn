@@ -291,7 +291,8 @@ func (dt *DaTong) Finalize(chain consensus.ChainReader, header *types.Header, st
 	}
 	header.Time = new(big.Int).SetUint64(time)
 	snap := newSnapshot()
-
+	delete(ticketMap, selected.ID)
+	state.RemoveTicket(selected.ID)
 	if selected.Height.Cmp(common.Big0) > 0 {
 		value := common.NewTimeLock(&common.TimeLockItem{
 			StartTime: selected.StartTime,
@@ -338,9 +339,6 @@ func (dt *DaTong) Finalize(chain consensus.ChainReader, header *types.Header, st
 			remainingWeight.Add(remainingWeight, weight.Add(weight, common.Big1))
 		}
 	}
-
-	delete(ticketMap, selected.ID)
-	state.RemoveTicket(selected.ID)
 
 	if remainingWeight.Cmp(common.Big0) <= 0 {
 		return nil, errors.New("Next block don't have ticket, wait buy ticket")
