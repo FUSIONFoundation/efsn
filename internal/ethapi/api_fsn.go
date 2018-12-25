@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"math/big"
-	"time"
 
 	"github.com/FusionFoundation/efsn/accounts"
 	"github.com/FusionFoundation/efsn/common"
@@ -563,8 +562,12 @@ func (s *PrivateFusionAPI) TimeLockToAsset(ctx context.Context, args TimeLockArg
 	if state == nil || err != nil {
 		return common.Hash{}, err
 	}
+	block, err := s.b.BlockByNumber(ctx, rpc.LatestBlockNumber)
+	if block == nil || err != nil {
+		return common.Hash{}, err
+	}
 	args.init()
-	*(*uint64)(args.StartTime) = uint64(time.Now().Unix())
+	*(*uint64)(args.StartTime) = block.Time().Uint64()
 	*(*uint64)(args.EndTime) = common.TimeLockForever
 	needValue := common.NewTimeLock(&common.TimeLockItem{
 		StartTime: uint64(*args.StartTime),
@@ -1083,8 +1086,12 @@ func (s *FusionTransactionAPI) BuildTimeLockToAssetTx(ctx context.Context, args 
 	if state == nil || err != nil {
 		return nil, err
 	}
+	block, err := s.b.BlockByNumber(ctx, rpc.LatestBlockNumber)
+	if block == nil || err != nil {
+		return nil, err
+	}
 	args.init()
-	*(*uint64)(args.StartTime) = uint64(time.Now().Unix())
+	*(*uint64)(args.StartTime) = block.Time().Uint64()
 	*(*uint64)(args.EndTime) = common.TimeLockForever
 	needValue := common.NewTimeLock(&common.TimeLockItem{
 		StartTime: uint64(*args.StartTime),
