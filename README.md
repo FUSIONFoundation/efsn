@@ -1,4 +1,4 @@
-## Go Ethereum
+## Go EFSN
 
 Official golang implementation of the Ethereum protocol.
 
