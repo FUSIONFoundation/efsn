@@ -40,11 +40,13 @@ var (
 type SignerFn func(accounts.Account, []byte) ([]byte, error)
 
 var (
-	maxBytes    = bytes.Repeat([]byte{0xff}, common.HashLength)
-	maxDiff     = new(big.Int).SetBytes(maxBytes)
-	maxProb     = new(big.Int)
-	extraVanity = 32
-	extraSeal   = 65
+	maxBytes            = bytes.Repeat([]byte{0xff}, common.HashLength)
+	maxDiff             = new(big.Int).SetBytes(maxBytes)
+	maxProb             = new(big.Int)
+	extraVanity         = 32
+	extraSeal           = 65
+	minTickets          = 6
+	maxBlockTime uint64 = 30
 )
 
 var (
@@ -170,6 +172,15 @@ func (dt *DaTong) VerifySeal(chain consensus.ChainReader, header *types.Header) 
 	}
 	var signer common.Address
 	copy(signer[:], crypto.Keccak256(pubkey[1:])[12:])
+
+	parentTime := parent.Time.Uint64()
+	time := header.Time.Uint64()
+	if parentTime-time > maxBlockTime {
+		if header.Coinbase != signer {
+			return errors.New("Ticket owner not be the signer")
+		}
+		return nil
+	}
 	ticketID := snap.GetVoteTicket()
 	ticketMap, err := dt.getAllTickets(chain, header)
 
@@ -268,11 +279,13 @@ func (dt *DaTong) Finalize(chain consensus.ChainReader, header *types.Header, st
 	if !haveTicket {
 		return nil, errors.New("Miner don't have ticket")
 	}
+	parentTime := parent.Time.Uint64()
 	time := header.Time.Uint64()
 	var (
 		selected *common.Ticket
 		retreat  []*common.Ticket
 	)
+	deleteAll := false
 	for {
 		retreat = make([]*common.Ticket, 0)
 		s := dt.selectTickets(tickets, parent, time)
@@ -288,40 +301,63 @@ func (dt *DaTong) Finalize(chain consensus.ChainReader, header *types.Header, st
 			break
 		}
 		time++
+		if (parentTime-time) > maxBlockTime && len(ticketMap) < minTickets {
+			deleteAll = true
+			break
+		}
 	}
 	header.Time = new(big.Int).SetUint64(time)
 	snap := newSnapshot()
-	delete(ticketMap, selected.ID)
-	state.RemoveTicket(selected.ID)
-	if selected.Height.Cmp(common.Big0) > 0 {
-		value := common.NewTimeLock(&common.TimeLockItem{
-			StartTime: selected.StartTime,
-			EndTime:   selected.ExpireTime,
-			Value:     selected.Value,
-		})
-		state.AddTimeLockBalance(header.Coinbase, common.SystemAssetID, value)
-	}
-	snap.AddLog(&ticketLog{
-		TicketID: selected.ID,
-		Type:     ticketSelect,
-	})
 
-	for _, t := range retreat {
-		delete(ticketMap, t.ID)
-		state.RemoveTicket(t.ID)
-		if t.Height.Cmp(common.Big0) > 0 {
-			value := common.NewTimeLock(&common.TimeLockItem{
-				StartTime: t.StartTime,
-				EndTime:   t.ExpireTime,
-				Value:     t.Value,
+	if deleteAll {
+		snap.AddLog(&ticketLog{
+			TicketID: common.BytesToHash(header.Coinbase[:]),
+			Type:     ticketSelect,
+		})
+
+		for _, t := range ticketMap {
+			delete(ticketMap, t.ID)
+			state.RemoveTicket(t.ID)
+			snap.AddLog(&ticketLog{
+				TicketID: t.ID,
+				Type:     ticketDelete,
 			})
-			state.AddTimeLockBalance(t.Owner, common.SystemAssetID, value)
+		}
+
+	} else {
+		delete(ticketMap, selected.ID)
+		state.RemoveTicket(selected.ID)
+		if selected.Height.Cmp(common.Big0) > 0 {
+			value := common.NewTimeLock(&common.TimeLockItem{
+				StartTime: selected.StartTime,
+				EndTime:   selected.ExpireTime,
+				Value:     selected.Value,
+			})
+			state.AddTimeLockBalance(header.Coinbase, common.SystemAssetID, value)
 		}
 		snap.AddLog(&ticketLog{
-			TicketID: t.ID,
-			Type:     ticketRetreat,
+			TicketID: selected.ID,
+			Type:     ticketSelect,
 		})
+
+		for _, t := range retreat {
+			delete(ticketMap, t.ID)
+			state.RemoveTicket(t.ID)
+			if t.Height.Cmp(common.Big0) > 0 {
+				value := common.NewTimeLock(&common.TimeLockItem{
+					StartTime: t.StartTime,
+					EndTime:   t.ExpireTime,
+					Value:     t.Value,
+				})
+				state.AddTimeLockBalance(t.Owner, common.SystemAssetID, value)
+			}
+			snap.AddLog(&ticketLog{
+				TicketID: t.ID,
+				Type:     ticketRetreat,
+			})
+		}
 	}
+
 	remainingWeight := new(big.Int)
 	ticketNumber := 0
 

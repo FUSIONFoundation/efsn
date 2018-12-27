@@ -23,6 +23,7 @@ const (
 	ticketSelect ticketLogType = iota + 1
 	ticketRetreat
 	ticketExpired
+	ticketDelete
 )
 
 type ticketLog struct {
