@@ -421,7 +421,7 @@ type GenAssetParam struct {
 	Name      string
 	Symbol    string
 	Decimals  uint8
-	Total     *big.Int
+	Total     *big.Int `json:",string"`
 	CanChange bool
 }
 
@@ -435,14 +435,14 @@ type BuyTicketParam struct {
 type SendAssetParam struct {
 	AssetID Hash
 	To      Address
-	Value   *big.Int
+	Value   *big.Int `json:",string"`
 }
 
 // AssetValueChangeParam wacom
 type AssetValueChangeParam struct {
 	AssetID Hash
 	To      Address
-	Value   *big.Int
+	Value   *big.Int `json:",string"`
 	IsInc   bool
 }
 
@@ -459,14 +459,14 @@ type TimeLockParam struct {
 // MakeSwapParam wacom
 type MakeSwapParam struct {
 	FromAssetID   Hash
-	FromStartTime uint64
+	FromStartTime uint64  
 	FromEndTime   uint64
-	MinFromAmount *big.Int
+	MinFromAmount *big.Int `json:",string"`
 	ToAssetID     Hash
 	ToStartTime   uint64
 	ToEndTime     uint64
-	MinToAmount   *big.Int
-	SwapSize      *big.Int
+	MinToAmount   *big.Int `json:",string"`
+	SwapSize      *big.Int  `json:",string"`
 	Targes        []Address
 }
 
@@ -478,7 +478,7 @@ type RecallSwapParam struct {
 // TakeSwapParam wacom
 type TakeSwapParam struct {
 	SwapID Hash
-	Size   *big.Int
+	Size   *big.Int `json:",string"`
 }
 
 // ToBytes wacom
@@ -544,7 +544,7 @@ type Asset struct {
 	Name      string
 	Symbol    string
 	Decimals  uint8
-	Total     *big.Int
+	Total     *big.Int `json:",string"`
 	CanChange bool
 }
 
@@ -581,11 +581,11 @@ var SystemAsset = Asset{
 type Ticket struct {
 	ID         Hash
 	Owner      Address
-	Height     *big.Int
+	Height     *big.Int  `json:",string"`
 	StartTime  uint64
 	ExpireTime uint64
-	Value      *big.Int
-	weight     *big.Int
+	Value      *big.Int  `json:",string"`
+	weight     *big.Int  `json:",string"`
 }
 
 // SetWeight wacom
@@ -605,12 +605,12 @@ type Swap struct {
 	FromAssetID   Hash
 	FromStartTime uint64
 	FromEndTime   uint64
-	MinFromAmount *big.Int
+	MinFromAmount *big.Int  `json:",string"`
 	ToAssetID     Hash
 	ToStartTime   uint64
 	ToEndTime     uint64
-	MinToAmount   *big.Int
-	SwapSize      *big.Int
+	MinToAmount   *big.Int `json:",string"`
+	SwapSize      *big.Int  `json:",string"`
 	Targes        []Address
 	Time          *big.Int // Provides information for TIME
 }
