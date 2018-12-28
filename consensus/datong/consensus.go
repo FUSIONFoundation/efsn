@@ -316,12 +316,14 @@ func (dt *DaTong) Finalize(chain consensus.ChainReader, header *types.Header, st
 		})
 
 		for _, t := range ticketMap {
-			delete(ticketMap, t.ID)
-			state.RemoveTicket(t.ID)
-			snap.AddLog(&ticketLog{
-				TicketID: t.ID,
-				Type:     ticketDelete,
-			})
+			if t.Height.Cmp(header.Number) < 0 {
+				delete(ticketMap, t.ID)
+				state.RemoveTicket(t.ID)
+				snap.AddLog(&ticketLog{
+					TicketID: t.ID,
+					Type:     ticketDelete,
+				})
+			}
 		}
 
 	} else {
