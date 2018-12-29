@@ -46,7 +46,7 @@ var (
 	extraVanity         = 32
 	extraSeal           = 65
 	minTickets          = 6
-	maxBlockTime uint64 = 30
+	maxBlockTime uint64 = 120 // 2 minutes
 )
 
 var (
