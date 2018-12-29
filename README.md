@@ -16,6 +16,41 @@ Change the parameter /Users/work/dev/dockerVolume/fusion-node to your local dire
 
 Connect via ws://localhost:9001
 
+#run a miner on docker
+Instructions to run on ubuntu linux in under 10 minutes
+
+Open up terminal and fill in the following commands.
+
+sudo apt-get update
+sudo apt-get install docker.io
+
+Now it is time to pay attention since we need to have all directories set up correctly.
+
+Replace the following to fit you:
+
+THEDIRECTORYFORYOURNODE = (example: /home/yourname/psn)
+YOURWALLETADDRESSHERE = (example: '0xwhatever') single quotes must not be removed.
+NAMEOFYOURNODEHERE = AFusioniteNode
+
+type in: sudo nano runpsn.sh
+paste in the following line with your corresponding replacements:
+
+sudo docker run -v THEDIRECTORYFORYOURNODE:/fusion-node fusionnetwork/efsn -u 'YOURWALLETADDRESSHERE' -e NAMEOFYOURNODEHERE
+
+exit nano by pressing ctrl-x
+
+run the following commands:
+sudo chmod +x runpsn.sh
+sudo ./runpsn.sh
+
+you will see that the node doesn't run because the password file and keystore are missing.
+put your keystore in the THEDIRECTORYFORYOURNODE/data/keystore folder
+and a password file like this THEDIRECTORYFORYOURNODE/password.txt
+
+run ./runpsn.sh again.
+
+VOILA A NODE RUNNING!!!
+
 #API Reference
 
 Api reference can be found at https://github.com/FUSIONFoundation/web3-fusion-extend
