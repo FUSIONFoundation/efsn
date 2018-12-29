@@ -80,7 +80,8 @@ type StateDB struct {
 	validRevisions []revision
 	nextRevisionId int
 
-	lock sync.Mutex
+	lock   sync.Mutex
+	rwlock sync.RWMutex
 }
 
 // Create a new state from a given trie.
@@ -192,7 +193,7 @@ func (self *StateDB) GetAllBalances(addr common.Address) map[common.Hash]string 
 	if stateObject != nil {
 		balances := stateObject.Balances()
 		retBalances := make(map[common.Hash]string)
-		for k, v := range balances {		
+		for k, v := range balances {
 			retBalances[k] = v.String()
 		}
 		return retBalances
@@ -776,6 +777,8 @@ func (db *StateDB) GetNotation(addr common.Address) uint64 {
 
 // AllNotation wacom
 func (db *StateDB) AllNotation() []common.Address {
+	db.rwlock.RLock()
+	defer db.rwlock.RUnlock()
 	data := db.GetData(common.FSNCallAddress, common.NotationKey)
 	var notations []common.Address
 	if len(data) == 0 || data == nil {
@@ -788,6 +791,8 @@ func (db *StateDB) AllNotation() []common.Address {
 
 // GenNotation wacom
 func (db *StateDB) GenNotation(addr common.Address) error {
+	db.rwlock.Lock()
+	defer db.rwlock.Unlock()
 	stateObject := db.GetOrNewStateObject(addr)
 	if stateObject != nil {
 		if n := db.GetNotation(addr); n != 0 {
@@ -816,6 +821,8 @@ func (db *StateDB) updateAssets(assets map[common.Hash]common.Asset) error {
 
 // AllAssets wacom
 func (db *StateDB) AllAssets() map[common.Hash]common.Asset {
+	db.rwlock.RLock()
+	defer db.rwlock.RUnlock()
 	data := db.GetData(common.FSNCallAddress, common.AssetKey)
 	var assets map[common.Hash]common.Asset
 	if len(data) == 0 || data == nil {
@@ -828,6 +835,8 @@ func (db *StateDB) AllAssets() map[common.Hash]common.Asset {
 
 // GenAsset wacom
 func (db *StateDB) GenAsset(asset common.Asset) error {
+	db.rwlock.Lock()
+	defer db.rwlock.Unlock()
 	assets := db.AllAssets()
 	if _, ok := assets[asset.ID]; ok {
 		return fmt.Errorf("%s Asset exists", asset.ID.String())
@@ -838,6 +847,8 @@ func (db *StateDB) GenAsset(asset common.Asset) error {
 
 // UpdateAsset wacom
 func (db *StateDB) UpdateAsset(asset common.Asset) error {
+	db.rwlock.Lock()
+	defer db.rwlock.Unlock()
 	assets := db.AllAssets()
 	if _, ok := assets[asset.ID]; !ok {
 		return fmt.Errorf("%s Asset not found", asset.ID.String())
@@ -848,6 +859,8 @@ func (db *StateDB) UpdateAsset(asset common.Asset) error {
 
 // AllTickets wacom
 func (db *StateDB) AllTickets() map[common.Hash]common.Ticket {
+	db.rwlock.RLock()
+	defer db.rwlock.RUnlock()
 	data := db.GetData(common.FSNCallAddress, common.TicketKey)
 	var tickets map[common.Hash]common.Ticket
 	if len(data) == 0 || data == nil {
@@ -860,6 +873,8 @@ func (db *StateDB) AllTickets() map[common.Hash]common.Ticket {
 
 // AddTicket wacom
 func (db *StateDB) AddTicket(ticket common.Ticket) error {
+	db.rwlock.Lock()
+	defer db.rwlock.Unlock()
 	tickets := db.AllTickets()
 	if _, ok := tickets[ticket.ID]; ok {
 		return fmt.Errorf("%s Ticket exists", ticket.ID.String())
@@ -870,6 +885,8 @@ func (db *StateDB) AddTicket(ticket common.Ticket) error {
 
 // RemoveTicket wacom
 func (db *StateDB) RemoveTicket(id common.Hash) error {
+	db.rwlock.Lock()
+	defer db.rwlock.Unlock()
 	tickets := db.AllTickets()
 	if _, ok := tickets[id]; !ok {
 		return fmt.Errorf("%s Ticket not found", id.String())
@@ -889,6 +906,8 @@ func (db *StateDB) updateTickets(tickets map[common.Hash]common.Ticket) error {
 
 // AllSwaps wacom
 func (db *StateDB) AllSwaps() map[common.Hash]common.Swap {
+	db.rwlock.RLock()
+	defer db.rwlock.RUnlock()
 	data := db.GetData(common.FSNCallAddress, common.SwapKey)
 	var swaps map[common.Hash]common.Swap
 	if len(data) == 0 || data == nil {
@@ -901,6 +920,8 @@ func (db *StateDB) AllSwaps() map[common.Hash]common.Swap {
 
 // AddSwap wacom
 func (db *StateDB) AddSwap(swap common.Swap) error {
+	db.rwlock.Lock()
+	defer db.rwlock.Unlock()
 	swaps := db.AllSwaps()
 	if _, ok := swaps[swap.ID]; ok {
 		return fmt.Errorf("%s Ticket exists", swap.ID.String())
@@ -911,6 +932,8 @@ func (db *StateDB) AddSwap(swap common.Swap) error {
 
 // UpdateSwap wacom
 func (db *StateDB) UpdateSwap(swap common.Swap) error {
+	db.rwlock.Lock()
+	defer db.rwlock.Unlock()
 	swaps := db.AllSwaps()
 	if _, ok := swaps[swap.ID]; !ok {
 		return fmt.Errorf("%s Swap not found", swap.ID.String())
@@ -921,6 +944,8 @@ func (db *StateDB) UpdateSwap(swap common.Swap) error {
 
 // RemoveSwap wacom
 func (db *StateDB) RemoveSwap(id common.Hash) error {
+	db.rwlock.Lock()
+	defer db.rwlock.Unlock()
 	swaps := db.AllSwaps()
 	if _, ok := swaps[id]; !ok {
 		return fmt.Errorf("%s Swap not found", id.String())
