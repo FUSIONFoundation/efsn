@@ -1,59 +1,76 @@
-## Go EFSN
+<div align="center"><img src ="https://i.imgur.com/lixyKZe.png" height="100px" /></div>
+
+## Go eFSN
 
 Fusion would like to extend its gratitude to the Ethereum Foundation. Fusion has used the official open-source golang implementation of the Ethereum protocol.
 
 
-## Quick Start on docker
+## Run a Gateway
 
-#Build the gateway
-docker build --file Dockerfile.gtw -t fusionnetwork/gateway 
-docker run -it -p 9001:9001 -v /Users/work/dev/dockerVolume/fusion-node:/fusion-node  fusionnetwork/gateway
+Change the parameter `YOURDIRECTORY` to your local directory
 
-#Run a gateway
-docker run -it -p 9001:9001 -v /Users/work/dev/dockerVolume/fusion-node:/fusion-node  fusionnetwork/gateway
+### Build the Gateway
+`docker build --file Dockerfile.gtw -t fusionnetwork/gateway`
 
-Change the parameter /Users/work/dev/dockerVolume/fusion-node to your local directory
+`docker run -it -p 9001:9001 -v YOURDIRECTORY:/fusion-node  fusionnetwork/gateway`
 
-Connect via ws://localhost:9001
+### Run a Gateway
+`docker run -it -p 9001:9001 -v YOURDIRECTORY:/fusion-node  fusionnetwork/gateway`
 
-#run a miner on docker
-Instructions to run on ubuntu linux in under 10 minutes
+You can now connect via `ws://localhost:9001z
 
-Open up terminal and fill in the following commands.
+## Run a miner (Ubuntu 16.04)
 
-sudo apt-get update
-sudo apt-get install docker.io
+Please, to run a miner on Ubuntu use the following guide.
+
+Open up the terminal and execute the following commands:
+
+`sudo apt-get update`
+
+`sudo apt-get install docker.io`
 
 Now it is time to pay attention since we need to have all directories set up correctly.
 
 Replace the following to fit you:
 
-THEDIRECTORYFORYOURNODE = (example: /home/yourname/psn)
-YOURWALLETADDRESSHERE = (example: '0xwhatever') single quotes must not be removed.
-NAMEOFYOURNODEHERE = AFusioniteNode
+`THEDIRECTORYFORYOURNODE` = (example: /home/yourname/psn)
 
-type in: sudo nano runpsn.sh
+`YOURWALLETADDRESSHERE` = (example: '0xwhatever') | Note : Single quotes must not be removed.
+
+`NAMEOFYOURNODEHERE` = AFusionNode
+
+Type in: `sudo nano runpsn.sh`
 paste in the following line with your corresponding replacements:
 
-sudo docker run -v THEDIRECTORYFORYOURNODE:/fusion-node fusionnetwork/efsn -u 'YOURWALLETADDRESSHERE' -e NAMEOFYOURNODEHERE
+`sudo docker run -v THEDIRECTORYFORYOURNODE:/fusion-node fusionnetwork/efsn -u 'YOURWALLETADDRESSHERE' -e NAMEOFYOURNODEHERE`
 
-exit nano by pressing ctrl-x
+Save the file by hitting `CTRL+O` and exit Nano by pressing `CTRL+X`
 
-run the following commands:
-sudo chmod +x runpsn.sh
-sudo ./runpsn.sh
+We now have to make our .sh file executable. Run the following commands:
 
-you will see that the node doesn't run because the password file and keystore are missing.
-put your keystore in the THEDIRECTORYFORYOURNODE/data/keystore folder
-and a password file like this THEDIRECTORYFORYOURNODE/password.txt
+`sudo chmod +x runpsn.sh`
 
-run ./runpsn.sh again.
+Execute the sh file by running:
 
-VOILA A NODE RUNNING!!!
+`sudo ./runpsn.sh`
 
-#API Reference
+You will now notice that the node doesn't run because the password file and keystore file are missing.
 
-Api reference can be found at https://github.com/FUSIONFoundation/web3-fusion-extend
+Put your keystore in the `THEDIRECTORYFORYOURNODE/data/keystore` folder
+
+and the password.txt file in: `THEDIRECTORYFORYOURNODE/password.txt`
+
+`Note: Password file must be named password.txt and the keystore must have UTC in it's name.`
+
+After finishing the above tasks run the node again by typing.
+
+`sudo ./runpsn.sh`
+
+Your node is now set up successfully.
+
+## API Reference
+
+The API reference can be found [here](https://github.com/FUSIONFoundation/web3-fusion-extend) 
 
 ## Building the source
 
