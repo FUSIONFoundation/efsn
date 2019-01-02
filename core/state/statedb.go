@@ -777,6 +777,7 @@ func (db *StateDB) GetNotation(addr common.Address) uint64 {
 
 // AllNotation wacom
 func (db *StateDB) AllNotation() []common.Address {
+        //fmt.Printf("=========AllNotation=============\n")//caihaijun
 	db.rwlock.RLock()
 	defer db.rwlock.RUnlock()
 	data := db.GetData(common.FSNCallAddress, common.NotationKey)
@@ -791,14 +792,15 @@ func (db *StateDB) AllNotation() []common.Address {
 
 // GenNotation wacom
 func (db *StateDB) GenNotation(addr common.Address) error {
-	db.rwlock.Lock()
-	defer db.rwlock.Unlock()
+        //fmt.Printf("=========GenNotation=============\n")//caihaijun
 	stateObject := db.GetOrNewStateObject(addr)
 	if stateObject != nil {
 		if n := db.GetNotation(addr); n != 0 {
 			return fmt.Errorf("Account %s has a notation:%d", addr.String(), n)
 		}
 		notations := db.AllNotation()
+		db.rwlock.Lock()
+		defer db.rwlock.Unlock()
 		notations = append(notations, addr)
 		data, err := rlp.EncodeToBytes(&notations)
 		if err != nil {
@@ -821,6 +823,7 @@ func (db *StateDB) updateAssets(assets map[common.Hash]common.Asset) error {
 
 // AllAssets wacom
 func (db *StateDB) AllAssets() map[common.Hash]common.Asset {
+        //fmt.Printf("=========AllAssets=============\n")//caihaijun
 	db.rwlock.RLock()
 	defer db.rwlock.RUnlock()
 	data := db.GetData(common.FSNCallAddress, common.AssetKey)
@@ -835,30 +838,33 @@ func (db *StateDB) AllAssets() map[common.Hash]common.Asset {
 
 // GenAsset wacom
 func (db *StateDB) GenAsset(asset common.Asset) error {
-	db.rwlock.Lock()
-	defer db.rwlock.Unlock()
+        //fmt.Printf("=========GenAsset=============\n")//caihaijun
 	assets := db.AllAssets()
 	if _, ok := assets[asset.ID]; ok {
 		return fmt.Errorf("%s Asset exists", asset.ID.String())
 	}
+	db.rwlock.Lock()
+	defer db.rwlock.Unlock()
 	assets[asset.ID] = asset
 	return db.updateAssets(assets)
 }
 
 // UpdateAsset wacom
 func (db *StateDB) UpdateAsset(asset common.Asset) error {
-	db.rwlock.Lock()
-	defer db.rwlock.Unlock()
+        //fmt.Printf("=========UpdateAsset=============\n")//caihaijun
 	assets := db.AllAssets()
 	if _, ok := assets[asset.ID]; !ok {
 		return fmt.Errorf("%s Asset not found", asset.ID.String())
 	}
+	db.rwlock.Lock()
+	defer db.rwlock.Unlock()
 	assets[asset.ID] = asset
 	return db.updateAssets(assets)
 }
 
 // AllTickets wacom
 func (db *StateDB) AllTickets() map[common.Hash]common.Ticket {
+        //fmt.Printf("=========AllTickets=============\n")//caihaijun
 	db.rwlock.RLock()
 	defer db.rwlock.RUnlock()
 	data := db.GetData(common.FSNCallAddress, common.TicketKey)
@@ -873,24 +879,26 @@ func (db *StateDB) AllTickets() map[common.Hash]common.Ticket {
 
 // AddTicket wacom
 func (db *StateDB) AddTicket(ticket common.Ticket) error {
-	db.rwlock.Lock()
-	defer db.rwlock.Unlock()
+        //fmt.Printf("=========AddTicket=============\n")//caihaijun
 	tickets := db.AllTickets()
 	if _, ok := tickets[ticket.ID]; ok {
 		return fmt.Errorf("%s Ticket exists", ticket.ID.String())
 	}
+	db.rwlock.Lock()
+	defer db.rwlock.Unlock()
 	tickets[ticket.ID] = ticket
 	return db.updateTickets(tickets)
 }
 
 // RemoveTicket wacom
 func (db *StateDB) RemoveTicket(id common.Hash) error {
-	db.rwlock.Lock()
-	defer db.rwlock.Unlock()
+        //fmt.Printf("=========RemoveTicket=============\n")//caihaijun
 	tickets := db.AllTickets()
 	if _, ok := tickets[id]; !ok {
 		return fmt.Errorf("%s Ticket not found", id.String())
 	}
+	db.rwlock.Lock()
+	defer db.rwlock.Unlock()
 	delete(tickets, id)
 	return db.updateTickets(tickets)
 }
@@ -906,6 +914,7 @@ func (db *StateDB) updateTickets(tickets map[common.Hash]common.Ticket) error {
 
 // AllSwaps wacom
 func (db *StateDB) AllSwaps() map[common.Hash]common.Swap {
+        //fmt.Printf("=========AllSwaps=============\n")//caihaijun
 	db.rwlock.RLock()
 	defer db.rwlock.RUnlock()
 	data := db.GetData(common.FSNCallAddress, common.SwapKey)
@@ -920,36 +929,39 @@ func (db *StateDB) AllSwaps() map[common.Hash]common.Swap {
 
 // AddSwap wacom
 func (db *StateDB) AddSwap(swap common.Swap) error {
-	db.rwlock.Lock()
-	defer db.rwlock.Unlock()
+        //fmt.Printf("=========AddSwap=============\n")//caihaijun
 	swaps := db.AllSwaps()
 	if _, ok := swaps[swap.ID]; ok {
 		return fmt.Errorf("%s Ticket exists", swap.ID.String())
 	}
+	db.rwlock.Lock()
+	defer db.rwlock.Unlock()
 	swaps[swap.ID] = swap
 	return db.updateSwaps(swaps)
 }
 
 // UpdateSwap wacom
 func (db *StateDB) UpdateSwap(swap common.Swap) error {
-	db.rwlock.Lock()
-	defer db.rwlock.Unlock()
+        //fmt.Printf("=========UpdateSwap=============\n")//caihaijun
 	swaps := db.AllSwaps()
 	if _, ok := swaps[swap.ID]; !ok {
 		return fmt.Errorf("%s Swap not found", swap.ID.String())
 	}
+	db.rwlock.Lock()
+	defer db.rwlock.Unlock()
 	swaps[swap.ID] = swap
 	return db.updateSwaps(swaps)
 }
 
 // RemoveSwap wacom
 func (db *StateDB) RemoveSwap(id common.Hash) error {
-	db.rwlock.Lock()
-	defer db.rwlock.Unlock()
+        //fmt.Printf("=========RemoveSwap=============\n")//caihaijun
 	swaps := db.AllSwaps()
 	if _, ok := swaps[id]; !ok {
 		return fmt.Errorf("%s Swap not found", id.String())
 	}
+	db.rwlock.Lock()
+	defer db.rwlock.Unlock()
 	delete(swaps, id)
 	return db.updateSwaps(swaps)
 }
