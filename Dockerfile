@@ -13,7 +13,7 @@ RUN apk add --no-cache ca-certificates
 # RUN apk add --no-cache jq
 COPY --from=builder /efsn/build/bin/efsn /usr/local/bin/
 
-EXPOSE 40401 40401/udp 40402 40402/udp 40404 40404/udp 9001 9001/udp 8001 8001/udp
+EXPOSE 40401 40401/udp 40402 40402/udp 40404 40404/udp 9001 9001/udp 8001 8001/udp 16714 16714/udp
 
 COPY ./docker-entrypoint.sh /usr/local/bin
 
