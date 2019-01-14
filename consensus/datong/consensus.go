@@ -175,7 +175,7 @@ func (dt *DaTong) VerifySeal(chain consensus.ChainReader, header *types.Header) 
 
 	parentTime := parent.Time.Uint64()
 	time := header.Time.Uint64()
-	if parentTime-time > maxBlockTime {
+	if time-parentTime > maxBlockTime {
 		if header.Coinbase != signer {
 			return errors.New("Ticket owner not be the signer")
 		}
@@ -301,7 +301,7 @@ func (dt *DaTong) Finalize(chain consensus.ChainReader, header *types.Header, st
 			break
 		}
 		time++
-		if (parentTime-time) > maxBlockTime && len(ticketMap) < minTickets {
+		if (time-parentTime) > maxBlockTime && len(ticketMap) < minTickets {
 			deleteAll = true
 			break
 		}
