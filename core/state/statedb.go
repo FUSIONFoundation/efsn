@@ -389,13 +389,12 @@ func (self *StateDB) SetState(addr common.Address, key, value common.Hash) {
 	}
 }
 
-func (self *StateDB) SetData(addr common.Address, value []byte) error {
+func (self *StateDB) SetData(addr common.Address, value []byte)  {
 	
 	stateObject := self.GetOrNewStateObject(addr)
 	if stateObject != nil {
-		return stateObject.SetCode(crypto.Keccak256Hash(value), value)
+		stateObject.SetCode(crypto.Keccak256Hash(value), value)
 	}
-	return nil
 }
 
 // Suicide marks the given account as suicided.
@@ -915,7 +914,15 @@ func (db *StateDB) AllTickets() map[common.Hash]common.Ticket {
 	if len(data) == 0 || data == nil {
 		tickets = make(map[common.Hash]common.Ticket, 0)
 	} else {
-		rlp.DecodeBytes(data, &tickets)
+		var list sortableLURSlice
+		rlp.DecodeBytes(data, &list)
+		fmt.Printf("rlp.DecodeBytes, list: %+v\n", list)
+		tickets = make(map[common.Hash]common.Ticket, 0)
+		for _, va := range list {
+			hash := va.HASH
+			ticket := va.TICKET
+			tickets[hash] = ticket
+		}
 	}
 	db.tickets = tickets
 	return tickets
@@ -966,7 +973,19 @@ func (db *StateDB) updateTickets(tickets map[common.Hash]common.Ticket) error {
 	db.tickets = tickets
 
 	log.Info("COMMIT: saving tickets")
-	data, err := rlp.EncodeToBytes(&db.tickets)
+
+	var list sortableLURSlice
+	for k, v := range tickets {
+		res := ticketsStruct{
+			HASH:   k,
+			TICKET: v,
+		}
+		list = append(list, res)
+	}
+
+	sort.Sort(list)
+	data, err := rlp.EncodeToBytes(&list)
+
 	if err != nil {
 		return  err
 	}
@@ -1027,5 +1046,6 @@ func (db *StateDB) updateSwaps(swaps map[common.Hash]common.Swap) error {
 	if err != nil {
 		return  err
 	}
-	return db.SetData(common.SwapKeyAddress, data)
+	db.SetData(common.SwapKeyAddress, data)
+	return nil
 }
