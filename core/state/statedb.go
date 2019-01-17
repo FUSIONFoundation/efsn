@@ -860,11 +860,23 @@ func (db *StateDB) updateNotations() error {
 func (db *StateDB) updateAssets(assets map[common.Hash]common.Asset) error {
 	db.assets = assets
 	log.Info("COMMIT: saving assets")
-	data , err := rlp.EncodeToBytes(db.assets)
-   if err != nil {
-	   return  err
-   }
-   db.SetData(common.AssetKeyAddress, data)
+
+	var list sortableAssetLURSlice
+	for k, v := range assets {
+		res := assetsStruct{
+			HASH:   k,
+			ASSET: v,
+		}
+		list = append(list, res)
+	}
+
+	sort.Sort(list)
+	data, err := rlp.EncodeToBytes(&list)
+
+	if err != nil {
+		return  err
+	}
+    db.SetData(common.AssetKeyAddress, data)
 	return nil
 }
 
@@ -878,7 +890,15 @@ func (db *StateDB) AllAssets() map[common.Hash]common.Asset {
 	if len(data) == 0 || data == nil {
 		assets = make(map[common.Hash]common.Asset, 0)
 	} else {
-		rlp.DecodeBytes(data, &assets)
+		var list sortableAssetLURSlice
+		rlp.DecodeBytes(data, &list)
+		fmt.Printf("rlp.DecodeBytes assets, list: %+v\n", list)
+		assets = make(map[common.Hash]common.Asset, 0)
+		for _, va := range list {
+			hash := va.HASH
+			asset := va.ASSET
+			assets[hash] = asset
+		}
 	}
 	db.assets = assets
 	return assets
@@ -914,7 +934,7 @@ func (db *StateDB) AllTickets() map[common.Hash]common.Ticket {
 	if len(data) == 0 || data == nil {
 		tickets = make(map[common.Hash]common.Ticket, 0)
 	} else {
-		var list sortableLURSlice
+		var list sortableTicketsLURSlice
 		rlp.DecodeBytes(data, &list)
 		fmt.Printf("rlp.DecodeBytes, list: %+v\n", list)
 		tickets = make(map[common.Hash]common.Ticket, 0)
@@ -948,33 +968,14 @@ func (db *StateDB) RemoveTicket(id common.Hash) error {
 	return db.updateTickets(tickets)
 }
 
-type ticketsStruct struct {
-	HASH   common.Hash
-	TICKET common.Ticket
-}
 
-type sortableLURSlice []ticketsStruct
-
-func (s sortableLURSlice) Len() int {
-	return len(s)
-}
-
-func (s sortableLURSlice) Less(i, j int) bool {
-	a, _ := new(big.Int).SetString(s[i].HASH.Hex(), 0)
-	b, _ := new(big.Int).SetString(s[j].HASH.Hex(), 0)
-	return a.Cmp(b) < 0
-}
-
-func (s sortableLURSlice) Swap(i, j int) {
-	s[i], s[j] = s[j], s[i]
-}
 
 func (db *StateDB) updateTickets(tickets map[common.Hash]common.Ticket) error {
 	db.tickets = tickets
 
 	log.Info("COMMIT: saving tickets")
 
-	var list sortableLURSlice
+	var list sortableTicketsLURSlice
 	for k, v := range tickets {
 		res := ticketsStruct{
 			HASH:   k,
@@ -999,11 +1000,20 @@ func (db *StateDB) AllSwaps() map[common.Hash]common.Swap {
 		return db.swaps
 	}
 	data := db.GetData(common.SwapKeyAddress)
+
 	var swaps map[common.Hash]common.Swap
 	if len(data) == 0 || data == nil {
 		swaps = make(map[common.Hash]common.Swap, 0)
 	} else {
-		rlp.DecodeBytes(data, &swaps)
+		var list sortableSwapLURSlice
+		rlp.DecodeBytes(data, &list)
+		fmt.Printf("rlp.DecodeBytes swap, list: %+v\n", list)
+		swaps = make(map[common.Hash]common.Swap, 0)
+		for _, va := range list {
+			hash := va.HASH
+			swap := va.SWAP
+			swaps[hash] = swap
+		}
 	}
 	db.swaps = swaps
 	return swaps
@@ -1042,10 +1052,89 @@ func (db *StateDB) RemoveSwap(id common.Hash) error {
 func (db *StateDB) updateSwaps(swaps map[common.Hash]common.Swap) error {
 	db.swaps = swaps
 	log.Info("COMMIT: saving swaps")
-	data, err := rlp.EncodeToBytes(&db.swaps)
+	
+	var list sortableSwapLURSlice
+	for k, v := range swaps {
+		res := swapsStruct{
+			HASH:   k,
+			SWAP: v,
+		}
+		list = append(list, res)
+	}
+
+	sort.Sort(list)
+	data, err := rlp.EncodeToBytes(&list)
+
 	if err != nil {
 		return  err
 	}
 	db.SetData(common.SwapKeyAddress, data)
 	return nil
 }
+
+
+type ticketsStruct struct {
+	HASH   common.Hash
+	TICKET common.Ticket
+}
+
+type sortableTicketsLURSlice []ticketsStruct
+
+func (s sortableTicketsLURSlice) Len() int {
+	return len(s)
+}
+
+func (s sortableTicketsLURSlice) Less(i, j int) bool {
+	a, _ := new(big.Int).SetString(s[i].HASH.Hex(), 0)
+	b, _ := new(big.Int).SetString(s[j].HASH.Hex(), 0)
+	return a.Cmp(b) < 0
+}
+
+func (s sortableTicketsLURSlice) Swap(i, j int) {
+	s[i], s[j] = s[j], s[i]
+}
+
+type assetsStruct struct {
+	HASH   common.Hash
+	ASSET common.Asset
+}
+
+type sortableAssetLURSlice []assetsStruct
+
+func (s sortableAssetLURSlice) Len() int {
+	return len(s)
+}
+
+func (s sortableAssetLURSlice) Less(i, j int) bool {
+	a, _ := new(big.Int).SetString(s[i].HASH.Hex(), 0)
+	b, _ := new(big.Int).SetString(s[j].HASH.Hex(), 0)
+	return a.Cmp(b) < 0
+}
+
+func (s sortableAssetLURSlice) Swap(i, j int) {
+	s[i], s[j] = s[j], s[i]
+}
+
+type swapsStruct struct {
+	HASH   common.Hash
+	SWAP common.Swap
+}
+
+type sortableSwapLURSlice []swapsStruct
+
+func (s sortableSwapLURSlice) Len() int {
+	return len(s)
+}
+
+func (s sortableSwapLURSlice) Less(i, j int) bool {
+	a, _ := new(big.Int).SetString(s[i].HASH.Hex(), 0)
+	b, _ := new(big.Int).SetString(s[j].HASH.Hex(), 0)
+	return a.Cmp(b) < 0
+}
+
+func (s sortableSwapLURSlice) Swap(i, j int) {
+	s[i], s[j] = s[j], s[i]
+}
+
+
+
