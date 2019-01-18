@@ -119,7 +119,7 @@ func (dt *DaTong) VerifyHeader(chain consensus.ChainReader, header *types.Header
 	if header.Time.Cmp(big.NewInt(time.Now().Unix())) > 0 {
 		return consensus.ErrFutureBlock
 	}
-	return dt.VerifySeal(chain, header)
+	return nil // dt.VerifySeal(chain, header)
 }
 
 // VerifyHeaders is similar to VerifyHeader, but verifies a batch of headers
