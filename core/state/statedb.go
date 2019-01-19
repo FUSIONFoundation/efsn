@@ -754,7 +754,7 @@ func (s *StateDB) Commit(deleteEmptyObjects bool) (root common.Hash, err error) 
 	// 	s.swaps = nil
 	// }
 
-	log.Info("COMMIT: saving state")
+	// log.Info("COMMIT: saving state")
 
 	for addr := range s.journal.dirties {
 		s.stateObjectsDirty[addr] = struct{}{}
@@ -771,7 +771,7 @@ func (s *StateDB) Commit(deleteEmptyObjects bool) (root common.Hash, err error) 
 		case isDirty:
 			// Write any contract code associated with the state object
 			if stateObject.code != nil && stateObject.dirtyCode {
-				log.Info( "SAVING code object " , "addr", addr)
+				// log.Info( "SAVING code object " , "addr", addr)
 				s.db.TrieDB().InsertBlob(common.BytesToHash(stateObject.CodeHash()), stateObject.code)
 				stateObject.dirtyCode = false
 			}
@@ -980,7 +980,7 @@ func (db *StateDB) RemoveTicket(id common.Hash) error {
 func (db *StateDB) updateTickets(tickets map[common.Hash]common.Ticket) error {
 	db.tickets = tickets
 
-	log.Info("COMMIT: saving tickets")
+	
 
 	var list sortableTicketsLURSlice
 	for k, v := range tickets {

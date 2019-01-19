@@ -352,7 +352,7 @@ func (st *StateTransition) handleFsnCall() error {
 			return nil
 		}
 	case common.BuyTicketFunc:
-		log.Info( "Buy a ticket func called")
+		// log.Info( "Buy a ticket func called")
 		from := st.msg.From()
 		height := st.evm.Context.BlockNumber
 		hash := st.evm.GetHash(height.Uint64() - 1)
