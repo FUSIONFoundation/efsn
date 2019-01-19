@@ -55,8 +55,12 @@ func (self *StateDB) RawDump() Dump {
 		}
 
 		obj := newObject(nil, common.BytesToAddress(addr), data)
+		bal := make(map[common.Hash]*big.Int)
+		for i, v := range data.BalancesHash {
+			bal[v] = data.BalancesVal[i]
+		}
 		account := DumpAccount{
-			Balances: data.Balances,
+			Balances: bal,
 			Nonce:    data.Nonce,
 			Root:     common.Bytes2Hex(data.Root[:]),
 			CodeHash: common.Bytes2Hex(data.CodeHash),

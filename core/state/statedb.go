@@ -402,7 +402,8 @@ func (self *StateDB) Suicide(addr common.Address) bool {
 	if stateObject == nil {
 		return false
 	}
-	for k, v := range stateObject.data.Balances {
+	for i, v := range stateObject.data.BalancesVal {
+		k := stateObject.data.BalancesHash[i]
 		self.journal.append(suicideChange{
 			isTimeLock:  false,
 			account:     &addr,
@@ -411,10 +412,11 @@ func (self *StateDB) Suicide(addr common.Address) bool {
 			prevbalance: new(big.Int).Set(v),
 		})
 		stateObject.suicided = true
-		stateObject.data.Balances[k] = new(big.Int)
+		stateObject.setBalance( k ,  new(big.Int) )
 	}
 
-	for k, v := range stateObject.data.TimeLockBalances {
+	for i, v := range stateObject.data.TimeLockBalancesVal {
+		k := stateObject.data.TimeLockBalancesHash[i]
 		self.journal.append(suicideChange{
 			account:             &addr,
 			prev:                stateObject.suicided,
@@ -422,7 +424,7 @@ func (self *StateDB) Suicide(addr common.Address) bool {
 			prevTimeLockBalance: new(common.TimeLock).Set(v),
 		})
 		stateObject.suicided = true
-		stateObject.data.TimeLockBalances[k] = new(common.TimeLock)
+		stateObject.SetTimeLockBalance( k, new(common.TimeLock) )
 	}
 
 	stateObject.markSuicided()
@@ -518,11 +520,11 @@ func (self *StateDB) createObject(addr common.Address) (newobj, prev *stateObjec
 func (self *StateDB) CreateAccount(addr common.Address) {
 	new, prev := self.createObject(addr)
 	if prev != nil {
-		for k, v := range prev.data.Balances {
-			new.setBalance(k, v)
+		for i, v := range prev.data.BalancesVal {
+			new.setBalance( prev.data.BalancesHash[i], v)
 		}
-		for k, v := range prev.data.TimeLockBalances {
-			new.setTimeLockBalance(k, v)
+		for i, v := range prev.data.TimeLockBalancesVal {
+			new.setTimeLockBalance( prev.data.TimeLockBalancesHash[i], v)
 		}
 	}
 }
@@ -887,7 +889,7 @@ func (db *StateDB) AllAssets() map[common.Hash]common.Asset {
 	} else {
 		var list sortableAssetLURSlice
 		rlp.DecodeBytes(data, &list)
-		fmt.Printf("rlp.DecodeBytes assets, list: %+v\n", list)
+		//fmt.Printf("rlp.DecodeBytes assets, list: %+v\n", list)
 		assets = make(map[common.Hash]common.Asset, 0)
 		for _, va := range list {
 			hash := va.HASH
@@ -931,7 +933,7 @@ func (db *StateDB) AllTickets() map[common.Hash]common.Ticket {
 	} else {
 		var list sortableTicketsLURSlice
 		rlp.DecodeBytes(data, &list)
-		fmt.Printf("rlp.DecodeBytes, list: %+v\n", list)
+		// fmt.Printf("rlp.DecodeBytes, list: %+v\n", list)
 		tickets = make(map[common.Hash]common.Ticket, 0)
 		for _, va := range list {
 			hash := va.HASH
@@ -1002,7 +1004,7 @@ func (db *StateDB) AllSwaps() map[common.Hash]common.Swap {
 	} else {
 		var list sortableSwapLURSlice
 		rlp.DecodeBytes(data, &list)
-		fmt.Printf("rlp.DecodeBytes swap, list: %+v\n", list)
+		// fmt.Printf("rlp.DecodeBytes swap, list: %+v\n", list)
 		swaps = make(map[common.Hash]common.Swap, 0)
 		for _, va := range list {
 			hash := va.HASH
