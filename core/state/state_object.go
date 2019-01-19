@@ -423,8 +423,12 @@ func (self *stateObject) CodeHash() []byte {
 	return self.data.CodeHash
 }
 
-func (self *stateObject) Balances() map[common.Hash]*big.Int {
-	return self.data.Balances
+func (self *stateObject) CopyBalances()  map[common.Hash]string {
+	retBalances := make(map[common.Hash]string)
+	for k, v := range self.data.Balances {
+		retBalances[k] = v.String()
+	}
+	return retBalances
 }
 
 func (self *stateObject) Balance(assetID common.Hash) *big.Int {
@@ -434,8 +438,12 @@ func (self *stateObject) Balance(assetID common.Hash) *big.Int {
 	return self.data.Balances[assetID]
 }
 
-func (self *stateObject) TimeLockBalances() map[common.Hash]*common.TimeLock {
-	return self.data.TimeLockBalances
+func (self *stateObject) CopyTimeLockBalances() map[common.Hash]*common.TimeLock {
+	retBalances := make(map[common.Hash]*common.TimeLock)
+	for k, v := range self.data.TimeLockBalances {
+		retBalances[k] = v
+	}
+	return retBalances
 }
 
 func (self *stateObject) TimeLockBalance(assetID common.Hash) *common.TimeLock {

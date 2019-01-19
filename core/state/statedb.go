@@ -205,12 +205,7 @@ func (self *StateDB) Empty(addr common.Address) bool {
 func (self *StateDB) GetAllBalances(addr common.Address) map[common.Hash]string {
 	stateObject := self.getStateObject(addr)
 	if stateObject != nil {
-		balances := stateObject.Balances()
-		retBalances := make(map[common.Hash]string)
-		for k, v := range balances {
-			retBalances[k] = v.String()
-		}
-		return retBalances
+		return stateObject.CopyBalances()
 	}
 	return make(map[common.Hash]string)
 }
@@ -226,7 +221,7 @@ func (self *StateDB) GetBalance(assetID common.Hash, addr common.Address) *big.I
 func (self *StateDB) GetAllTimeLockBalances(addr common.Address) map[common.Hash]*common.TimeLock {
 	stateObject := self.getStateObject(addr)
 	if stateObject != nil {
-		return stateObject.TimeLockBalances()
+		return stateObject.CopyTimeLockBalances()
 	}
 	return make(map[common.Hash]*common.TimeLock)
 }
