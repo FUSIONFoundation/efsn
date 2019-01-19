@@ -921,10 +921,22 @@ func (db *StateDB) UpdateAsset(asset common.Asset) error {
 	return db.updateAssets(assets)
 }
 
+func (db *StateDB) copyOfTickets() map[common.Hash]common.Ticket {
+	targetMap :=  make(map[common.Hash]common.Ticket)
+	if db.tickets == nil {
+		return targetMap
+	}
+	// Copy from the original map to the target map
+	for key, value := range db.tickets {
+		targetMap[key] = value
+	}
+	return targetMap
+}
+
 // AllTickets wacom
 func (db *StateDB) AllTickets() map[common.Hash]common.Ticket {
 	if db.tickets != nil {
-		return db.tickets
+		return db.copyOfTickets()
 	}
 	data := db.GetData( common.TicketKeyAddress)
 	var tickets map[common.Hash]common.Ticket
@@ -942,7 +954,7 @@ func (db *StateDB) AllTickets() map[common.Hash]common.Ticket {
 		}
 	}
 	db.tickets = tickets
-	return tickets
+	return db.copyOfTickets()
 }
 
 // AddTicket wacom
@@ -964,8 +976,6 @@ func (db *StateDB) RemoveTicket(id common.Hash) error {
 	delete(tickets, id)
 	return db.updateTickets(tickets)
 }
-
-
 
 func (db *StateDB) updateTickets(tickets map[common.Hash]common.Ticket) error {
 	db.tickets = tickets
