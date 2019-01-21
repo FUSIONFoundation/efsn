@@ -42,6 +42,7 @@ import (
 	"github.com/FusionFoundation/efsn/params"
 	"github.com/FusionFoundation/efsn/rlp"
 	"github.com/FusionFoundation/efsn/trie"
+	"github.com/FusionFoundation/efsn/consensus/datong"
 	"github.com/hashicorp/golang-lru"
 	"gopkg.in/karalabe/cookiejar.v2/collections/prque"
 )
@@ -906,6 +907,9 @@ func (bc *BlockChain) WriteBlockWithState(block *types.Block, receipts []*types.
 		return NonStatTy, err
 	}
 	triedb := bc.stateCache.TrieDB()
+
+	// Update datong stateCache, fix verifySeal
+	datong.UpdateStateCache(bc.stateCache)
 
 	// If we're running an archive node, always flush
 	if bc.cacheConfig.Disabled {

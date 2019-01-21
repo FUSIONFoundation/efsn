@@ -66,6 +66,8 @@ type DaTong struct {
 	validTicketNumber *big.Int
 }
 
+var stateCache state.Database
+
 // New wacom
 func New(config *params.DaTongConfig, db ethdb.Database) *DaTong {
 	maxProb.SetUint64(uint64(math.Pow(2, float64(config.Period+1))))
@@ -119,7 +121,7 @@ func (dt *DaTong) VerifyHeader(chain consensus.ChainReader, header *types.Header
 	if header.Time.Cmp(big.NewInt(time.Now().Unix())) > 0 {
 		return consensus.ErrFutureBlock
 	}
-	return nil // dt.VerifySeal(chain, header)
+	return dt.VerifySeal(chain, header)
 }
 
 // VerifyHeaders is similar to VerifyHeader, but verifies a batch of headers
@@ -479,7 +481,17 @@ func (dt *DaTong) getAllTickets(chain consensus.ChainReader, header *types.Heade
 	if parent == nil {
 		return nil, consensus.ErrUnknownAncestor
 	}
-	statedb, err := state.New(parent.Root, dt.stateCache)
+	// statedb, err := state.New(parent.Root, dt.stateCache)
+	
+	// Update the stateCache
+	var statedb *state.StateDB
+	var err error
+	if stateCache != nil {
+		statedb, err = state.New(parent.Root, stateCache)
+	}else {
+		statedb, err = state.New(parent.Root, dt.stateCache)
+	}
+
 	if err != nil {
 		return nil, err
 	}
@@ -623,4 +635,9 @@ func GenGenesisExtraData(number *big.Int) []byte {
 	data = append(data, snap.Bytes()...)
 	data = append(data, bytes.Repeat([]byte{0x00}, extraSeal)...)
 	return data
+}
+
+
+func UpdateStateCache(sc state.Database) {
+	stateCache = sc
 }
