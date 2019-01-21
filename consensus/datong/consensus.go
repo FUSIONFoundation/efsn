@@ -58,6 +58,7 @@ type DaTong struct {
 	config     *params.DaTongConfig
 	db         ethdb.Database
 	stateCache state.Database
+	
 	signer     common.Address
 	signFn     SignerFn
 	lock       sync.RWMutex
@@ -67,6 +68,7 @@ type DaTong struct {
 }
 
 var stateCache state.Database
+var selectStateDB *state.StateDB
 
 // New wacom
 func New(config *params.DaTongConfig, db ethdb.Database) *DaTong {
@@ -130,7 +132,7 @@ func (dt *DaTong) verifyHeader(chain consensus.ChainReader, header *types.Header
 // VerifyHeader checks whether a header conforms to the consensus rules of the
 // stock Ethereum ethash engine.
 func (dt *DaTong) VerifyHeader(chain consensus.ChainReader, header *types.Header, seal bool ) error {
-	return dt.verifyHeader( chain, header, seal, nil )
+	return dt.verifyHeader( chain, header, seal, glb_parents )
 }
 
 // VerifyHeaders is similar to VerifyHeader, but verifies a batch of headers
@@ -145,6 +147,10 @@ func (dt *DaTong) VerifyHeaders(chain consensus.ChainReader, headers []*types.He
 	go func() {
 		for i, header := range headers {
 			err := dt.verifyHeader(chain, header, seals[i], headers[:i])
+			if selectStateDB != nil {
+				selectStateDB.Commit(true)
+				selectStateDB = nil
+			}
 			select {
 			case <-abort:
 				log.Info("Verify Headers", "ABORT BLOCK" , header.Number )
@@ -171,6 +177,11 @@ func (dt *DaTong) VerifyUncles(chain consensus.ChainReader, block *types.Block) 
 // in the header satisfies the consensus protocol requirements.
 func (c *DaTong) VerifySeal(chain consensus.ChainReader, header *types.Header) error {
 	return c.verifySeal(chain, header, nil)
+}
+
+var glb_parents []*types.Header 
+func SetHeaders(  parents []*types.Header ) {
+	glb_parents = parents
 }
 
 // VerifySeal checks whether the crypto seal on a header is valid according to
@@ -546,6 +557,7 @@ func (dt *DaTong) getAllTickets(chain consensus.ChainReader, header *types.Heade
 	} else {
 		statedb, err = state.New(parent.Root, dt.stateCache)
 	}
+	selectStateDB = statedb
 
 	if err != nil {
 		return nil, err

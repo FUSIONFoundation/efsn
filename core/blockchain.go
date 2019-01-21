@@ -1056,8 +1056,8 @@ func (bc *BlockChain) insertChain(chain types.Blocks) (int, []interface{}, []*ty
 	}
 	log.Info("!!!!!! Update cache...")
 	datong.UpdateStateCache(bc.stateCache)
-	abort, results := bc.engine.VerifyHeaders(bc, headers, seals)
-	defer close(abort)
+	// abort, results := bc.engine.VerifyHeaders(bc, headers, seals)
+	// defer close(abort)
 
 	// Start a parallel signature recovery (signer will fluke on fork transition, minimal perf loss)
 	senderCacher.recoverFromBlocks(types.MakeSigner(bc.chainConfig, chain[0].Number()), chain)
@@ -1077,7 +1077,10 @@ func (bc *BlockChain) insertChain(chain types.Blocks) (int, []interface{}, []*ty
 		// Wait for the block's verification to complete
 		bstart := time.Now()
 
-		err := <-results
+		//err := <-results
+		datong.SetHeaders( headers[:i])
+		err := bc.engine.VerifyHeader(bc, headers[i], seals[i] )
+		datong.SetHeaders(nil)
 		if err == nil {
 			err = bc.Validator().ValidateBody(block)
 		}
@@ -1199,6 +1202,8 @@ func (bc *BlockChain) insertChain(chain types.Blocks) (int, []interface{}, []*ty
 
 		cache, _ := bc.stateCache.TrieDB().Size()
 		stats.report(chain, i, cache)
+		// log.Info("Continue to next block....." , "StateCache", bc.stateCache)
+		// datong.UpdateStateCache(bc.stateCache)
 	}
 	// Append a single chain head event if we've progressed the chain
 	if lastCanon != nil && bc.CurrentBlock().Hash() == lastCanon.Hash() {
