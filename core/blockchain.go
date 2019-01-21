@@ -909,6 +909,7 @@ func (bc *BlockChain) WriteBlockWithState(block *types.Block, receipts []*types.
 	triedb := bc.stateCache.TrieDB()
 
 	// Update datong stateCache, fix verifySeal
+	log.Info("updating cache")
 	datong.UpdateStateCache(bc.stateCache)
 
 	// If we're running an archive node, always flush
@@ -1053,6 +1054,8 @@ func (bc *BlockChain) insertChain(chain types.Blocks) (int, []interface{}, []*ty
 		headers[i] = block.Header()
 		seals[i] = true
 	}
+	log.Info("!!!!!! Update cache...")
+	datong.UpdateStateCache(bc.stateCache)
 	abort, results := bc.engine.VerifyHeaders(bc, headers, seals)
 	defer close(abort)
 
@@ -1452,6 +1455,10 @@ Error: %v
 // because nonces can be verified sparsely, not needing to check each.
 func (bc *BlockChain) InsertHeaderChain(chain []*types.Header, checkFreq int) (int, error) {
 	start := time.Now()
+
+	log.Info("Insert Header updating cache")
+	datong.UpdateStateCache(bc.stateCache)
+
 	if i, err := bc.hc.ValidateHeaderChain(chain, checkFreq); err != nil {
 		return i, err
 	}
