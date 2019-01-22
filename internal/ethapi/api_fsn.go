@@ -8,6 +8,7 @@ import (
 	"github.com/FusionFoundation/efsn/accounts"
 	"github.com/FusionFoundation/efsn/common"
 	"github.com/FusionFoundation/efsn/common/hexutil"
+	"github.com/FusionFoundation/efsn/log"
 	"github.com/FusionFoundation/efsn/core/types"
 	"github.com/FusionFoundation/efsn/rlp"
 	"github.com/FusionFoundation/efsn/rpc"
@@ -713,8 +714,29 @@ func (s *PrivateFusionAPI) MakeSwap(ctx context.Context, args MakeSwapArgs, pass
 	args.init()
 
 	big0 := big.NewInt(0)
+	
+	if args.MinFromAmount == nil {
+		log.Info( "MinFromAmount missing in make swap" )
+		return common.Hash{}, fmt.Errorf("MinFromAmount missing in make swap")
+	}
+	if args.MinToAmount == nil {
+		log.Info( "MinToAmount missing in make swap" )
+		return common.Hash{}, fmt.Errorf("MinToAmount missing in make swap")
+	}
+	if args.SwapSize == nil {
+		log.Info( "SwapSize missing in make swap" )
+		return common.Hash{}, fmt.Errorf("SwapSize missing in make swap")
+	}
+
 	if args.MinFromAmount.ToInt().Cmp(big0) <= 0 || args.MinToAmount.ToInt().Cmp(big0) <= 0 || args.SwapSize.Cmp(big0) <= 0 {
+		log.Info( "MinFromAmount,MinToAmount and SwapSize must be ge 1" )
 		return common.Hash{}, fmt.Errorf("MinFromAmount,MinToAmount and SwapSize must be ge 1")
+	}
+
+	if  args.FromStartTime == nil || args.FromEndTime  == nil  || 
+		args.ToStartTime == nil || args.ToEndTime == nil {
+			log.Info( "time fields must be set" )
+		return common.Hash{}, fmt.Errorf("time fields must be set")
 	}
 
 	state, _, err := s.b.StateAndHeaderByNumber(ctx, rpc.LatestBlockNumber)
