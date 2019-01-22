@@ -1087,6 +1087,19 @@ func (s *FusionTransactionAPI) BuildTimeLockToTimeLockTx(ctx context.Context, ar
 		return nil, err
 	}
 
+	if args.Value == nil {
+		log.Info("BuildTimeLockToTimeLockTx: Value is set improperly")
+		return nil, fmt.Errorf("Value is set improperly")
+	}
+	if args.StartTime == nil {
+		log.Info("BuildTimeLockToTimeLockTx: StartTime is not set")
+		return nil, fmt.Errorf("StartTime is not set")
+	}
+	if args.EndTime == nil {
+		log.Info("BuildAsseBuildTimeLockToTimeLockTxtToTimeLockTx: EndTime is not set")
+		return nil, fmt.Errorf("EndTime is not set")
+	}
+
 	needValue := common.NewTimeLock(&common.TimeLockItem{
 		StartTime: uint64(*args.StartTime),
 		EndTime:   uint64(*args.EndTime),
@@ -1133,6 +1146,12 @@ func (s *FusionTransactionAPI) BuildTimeLockToAssetTx(ctx context.Context, args 
 		return nil, err
 	}
 	args.init()
+
+	if args.Value == nil {
+		log.Info("BuildTimeLockToAssetTx: Value is set improperly")
+		return nil, fmt.Errorf("Value is set improperly")
+	}
+
 	*(*uint64)(args.StartTime) = block.Time().Uint64()
 	*(*uint64)(args.EndTime) = common.TimeLockForever
 	needValue := common.NewTimeLock(&common.TimeLockItem{
@@ -1438,6 +1457,12 @@ func (s *FusionTransactionAPI) BuildTakeSwapTx(ctx context.Context, args TakeSwa
 	if !ok {
 		return nil, fmt.Errorf("Swap not found")
 	}
+
+	if args.Size == nil {
+		log.Info("BuildTimeLockToTimeLockTx: Size is mssing")
+		return nil, fmt.Errorf("Size is missing")
+	}
+
 	big0 := big.NewInt(0)
 	if swap.SwapSize.Cmp(args.Size) < 0 || args.Size.Cmp(big0) <= 0 {
 		return nil, fmt.Errorf("SwapSize must le and Size must be ge 1")
