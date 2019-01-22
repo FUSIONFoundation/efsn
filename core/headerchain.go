@@ -28,12 +28,14 @@ import (
 
 	"github.com/FusionFoundation/efsn/common"
 	"github.com/FusionFoundation/efsn/consensus"
+	"github.com/FusionFoundation/efsn/consensus/datong"
 	"github.com/FusionFoundation/efsn/core/rawdb"
+	"github.com/FusionFoundation/efsn/core/state"
 	"github.com/FusionFoundation/efsn/core/types"
 	"github.com/FusionFoundation/efsn/ethdb"
 	"github.com/FusionFoundation/efsn/log"
 	"github.com/FusionFoundation/efsn/params"
-	"github.com/hashicorp/golang-lru"
+	lru "github.com/hashicorp/golang-lru"
 )
 
 const (
@@ -206,6 +208,9 @@ type WhCallback func(*types.Header) error
 
 func (hc *HeaderChain) ValidateHeaderChain(chain []*types.Header, checkFreq int) (int, error) {
 	// Do a sanity check that the provided chain is actually ordered and linked
+	stateCache := state.NewDatabase(hc.chainDb)
+	datong.UpdateStateCache(stateCache)
+
 	for i := 1; i < len(chain); i++ {
 		if chain[i].Number.Uint64() != chain[i-1].Number.Uint64()+1 || chain[i].ParentHash != chain[i-1].Hash() {
 			// Chain broke ancestry, log a message (programming error) and skip insertion
@@ -226,10 +231,14 @@ func (hc *HeaderChain) ValidateHeaderChain(chain []*types.Header, checkFreq int)
 		}
 		seals[index] = true
 	}
+	headers := make([]*types.Header, len(chain))
+	for i, block := range chain {
+		headers[i] = block
+	}
 	seals[len(seals)-1] = true // Last should always be verified to avoid junk
 
-	abort, results := hc.engine.VerifyHeaders(hc, chain, seals)
-	defer close(abort)
+	// abort, results := hc.engine.VerifyHeaders(hc, chain, seals)
+	// defer close(abort)
 
 	// Iterate over the headers and ensure they all check out
 	for i, header := range chain {
@@ -243,7 +252,10 @@ func (hc *HeaderChain) ValidateHeaderChain(chain []*types.Header, checkFreq int)
 			return i, ErrBlacklistedHash
 		}
 		// Otherwise wait for headers checks and ensure they pass
-		if err := <-results; err != nil {
+		datong.SetHeaders(headers[:i])
+		err := hc.engine.VerifyHeader(hc, headers[i], seals[i])
+		datong.SetHeaders(nil)
+		if err != nil {
 			return i, err
 		}
 	}
