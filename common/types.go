@@ -351,6 +351,11 @@ var TicketLogAddress = HexToAddress("0xfffffffffffffffffffffffffffffffffffffffe"
 // SystemAssetID wacom
 var SystemAssetID = HexToHash("0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff")
 
+var NotationKeyAddress = HexToAddress("0xfffffffffffffffffffffffffffffffffffffffd")
+var AssetKeyAddress = HexToAddress("0xfffffffffffffffffffffffffffffffffffffffc")
+var TicketKeyAddress = HexToAddress("0xfffffffffffffffffffffffffffffffffffffffb")
+var SwapKeyAddress = HexToAddress("0xfffffffffffffffffffffffffffffffffffffffa")
+
 var (
 	// NotationKey wacom
 	NotationKey = []byte{0x01}

@@ -42,6 +42,7 @@ import (
 	"github.com/FusionFoundation/efsn/params"
 	"github.com/FusionFoundation/efsn/rlp"
 	"github.com/FusionFoundation/efsn/trie"
+	"github.com/FusionFoundation/efsn/consensus/datong"
 	"github.com/hashicorp/golang-lru"
 	"gopkg.in/karalabe/cookiejar.v2/collections/prque"
 )
@@ -907,6 +908,10 @@ func (bc *BlockChain) WriteBlockWithState(block *types.Block, receipts []*types.
 	}
 	triedb := bc.stateCache.TrieDB()
 
+	// Update datong stateCache, fix verifySeal
+	log.Info("updating cache")
+	datong.UpdateStateCache(bc.stateCache)
+
 	// If we're running an archive node, always flush
 	if bc.cacheConfig.Disabled {
 		if err := triedb.Commit(root, false); err != nil {
@@ -1049,8 +1054,10 @@ func (bc *BlockChain) insertChain(chain types.Blocks) (int, []interface{}, []*ty
 		headers[i] = block.Header()
 		seals[i] = true
 	}
-	abort, results := bc.engine.VerifyHeaders(bc, headers, seals)
-	defer close(abort)
+	log.Info("!!!!!! Update cache...")
+	datong.UpdateStateCache(bc.stateCache)
+	// abort, results := bc.engine.VerifyHeaders(bc, headers, seals)
+	// defer close(abort)
 
 	// Start a parallel signature recovery (signer will fluke on fork transition, minimal perf loss)
 	senderCacher.recoverFromBlocks(types.MakeSigner(bc.chainConfig, chain[0].Number()), chain)
@@ -1070,7 +1077,10 @@ func (bc *BlockChain) insertChain(chain types.Blocks) (int, []interface{}, []*ty
 		// Wait for the block's verification to complete
 		bstart := time.Now()
 
-		err := <-results
+		//err := <-results
+		datong.SetHeaders( headers[:i])
+		err := bc.engine.VerifyHeader(bc, headers[i], seals[i] )
+		datong.SetHeaders(nil)
 		if err == nil {
 			err = bc.Validator().ValidateBody(block)
 		}
@@ -1192,6 +1202,8 @@ func (bc *BlockChain) insertChain(chain types.Blocks) (int, []interface{}, []*ty
 
 		cache, _ := bc.stateCache.TrieDB().Size()
 		stats.report(chain, i, cache)
+		// log.Info("Continue to next block....." , "StateCache", bc.stateCache)
+		// datong.UpdateStateCache(bc.stateCache)
 	}
 	// Append a single chain head event if we've progressed the chain
 	if lastCanon != nil && bc.CurrentBlock().Hash() == lastCanon.Hash() {
@@ -1448,6 +1460,10 @@ Error: %v
 // because nonces can be verified sparsely, not needing to check each.
 func (bc *BlockChain) InsertHeaderChain(chain []*types.Header, checkFreq int) (int, error) {
 	start := time.Now()
+
+	log.Info("Insert Header updating cache")
+	datong.UpdateStateCache(bc.stateCache)
+
 	if i, err := bc.hc.ValidateHeaderChain(chain, checkFreq); err != nil {
 		return i, err
 	}
