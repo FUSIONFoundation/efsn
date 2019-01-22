@@ -966,6 +966,11 @@ func (s *FusionTransactionAPI) BuildGenAssetTx(ctx context.Context, args GenAsse
 	if err != nil {
 		return nil, err
 	}
+	if len(args.Name)==0 || len(args.Symbol) == 0 || args.Total == nil {
+		log.Info( "BuildGenAsset name, symbol and total must be set")
+		return nil, fmt.Errorf("BuildGenAsset name, symbol and total must be set")
+	}
+
 	var param = common.FSNCallParam{Func: common.GenAssetFunc, Data: funcData}
 	data, err := param.ToBytes()
 	if err != nil {
@@ -1028,6 +1033,18 @@ func (s *FusionTransactionAPI) SendAsset(ctx context.Context, args SendAssetArgs
 func (s *FusionTransactionAPI) BuildAssetToTimeLockTx(ctx context.Context, args TimeLockArgs) (*types.Transaction, error) {
 
 	args.init()
+	if args.Value == nil {
+		log.Info("BuildAssetToTimeLockTx: Value is set improperly")
+		return nil, fmt.Errorf("Value is set improperly")
+	}
+	if args.StartTime == nil {
+		log.Info("BuildAssetToTimeLockTx: StartTime is not set")
+		return nil, fmt.Errorf("StartTime is not set")
+	}
+	if args.EndTime == nil {
+		log.Info("BuildAssetToTimeLockTx: EndTime is not set")
+		return nil, fmt.Errorf("EndTime is not set")
+	}
 
 	state, _, err := s.b.StateAndHeaderByNumber(ctx, rpc.LatestBlockNumber)
 	if state == nil || err != nil {
