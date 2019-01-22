@@ -58,10 +58,10 @@ type DaTong struct {
 	config     *params.DaTongConfig
 	db         ethdb.Database
 	stateCache state.Database
-	
-	signer     common.Address
-	signFn     SignerFn
-	lock       sync.RWMutex
+
+	signer common.Address
+	signFn SignerFn
+	lock   sync.RWMutex
 
 	weight            *big.Int
 	validTicketNumber *big.Int
@@ -100,12 +100,12 @@ func (dt *DaTong) Author(header *types.Header) (common.Address, error) {
 
 // VerifyHeader checks whether a header conforms to the consensus rules of the
 // stock Ethereum ethash engine.
-func (dt *DaTong) verifyHeader(chain consensus.ChainReader, header *types.Header, seal bool, parents []*types.Header ) error {
+func (dt *DaTong) verifyHeader(chain consensus.ChainReader, header *types.Header, seal bool, parents []*types.Header) error {
 	if header.Number == nil {
 		return errUnknownBlock
 	}
 
-	log.Info("Verify Header", "BLOCK" , header.Number )
+	log.Info("Verify Header", "BLOCK", header.Number)
 
 	if len(header.Extra) < extraVanity {
 		return errMissingVanity
@@ -125,14 +125,14 @@ func (dt *DaTong) verifyHeader(chain consensus.ChainReader, header *types.Header
 	if header.Time.Cmp(big.NewInt(time.Now().Unix())) > 0 {
 		return consensus.ErrFutureBlock
 	}
-	log.Info("Verify Header Calling Seal", "BLOCK" , header.Number )
-	return dt.verifySeal(chain, header, parents )
+	log.Info("Verify Header Calling Seal", "BLOCK", header.Number)
+	return dt.verifySeal(chain, header, parents)
 }
 
 // VerifyHeader checks whether a header conforms to the consensus rules of the
 // stock Ethereum ethash engine.
-func (dt *DaTong) VerifyHeader(chain consensus.ChainReader, header *types.Header, seal bool ) error {
-	return dt.verifyHeader( chain, header, seal, glb_parents )
+func (dt *DaTong) VerifyHeader(chain consensus.ChainReader, header *types.Header, seal bool) error {
+	return dt.verifyHeader(chain, header, seal, glb_parents)
 }
 
 // VerifyHeaders is similar to VerifyHeader, but verifies a batch of headers
@@ -153,13 +153,13 @@ func (dt *DaTong) VerifyHeaders(chain consensus.ChainReader, headers []*types.He
 			}
 			select {
 			case <-abort:
-				log.Info("Verify Headers", "ABORT BLOCK" , header.Number )
+				log.Info("Verify Headers", "ABORT BLOCK", header.Number)
 				return
 			case results <- err:
 			}
 		}
 	}()
-	log.Info("Verify Headers end", "abort" , abort, "results", results  )
+	log.Info("Verify Headers end", "abort", abort, "results", results)
 	return abort, results
 }
 
@@ -172,15 +172,15 @@ func (dt *DaTong) VerifyUncles(chain consensus.ChainReader, block *types.Block) 
 	return nil
 }
 
-
 // VerifySeal implements consensus.Engine, checking whether the signature contained
 // in the header satisfies the consensus protocol requirements.
 func (c *DaTong) VerifySeal(chain consensus.ChainReader, header *types.Header) error {
 	return c.verifySeal(chain, header, nil)
 }
 
-var glb_parents []*types.Header 
-func SetHeaders(  parents []*types.Header ) {
+var glb_parents []*types.Header
+
+func SetHeaders(parents []*types.Header) {
 	glb_parents = parents
 }
 
@@ -200,7 +200,7 @@ func (dt *DaTong) verifySeal(chain consensus.ChainReader, header *types.Header, 
 		parent = chain.GetHeader(header.ParentHash, number-1)
 	}
 	if parent == nil {
-		log.Info("ErrUnknownAncestor", "number", number - 1 )
+		log.Info("ErrUnknownAncestor", "number", number-1)
 		return consensus.ErrUnknownAncestor
 	}
 	log.Info("c Step 1a")
@@ -236,18 +236,18 @@ func (dt *DaTong) verifySeal(chain consensus.ChainReader, header *types.Header, 
 	ticketMap, err := dt.getAllTickets(chain, header, parents)
 
 	if err != nil {
-		log.Info("c Step 2a", "err", err.Error() )
+		log.Info("c Step 2a", "err", err.Error())
 		return err
 	}
 
 	if _, ok := ticketMap[ticketID]; !ok {
-		log.Info("c Step 2b ticket not found" )
+		log.Info("c Step 2b ticket not found")
 		return errors.New("Ticket not found")
 	}
 	ticket := ticketMap[ticketID]
 
 	if ticket.Owner != signer {
-		log.Info("ticket owneer not signeer" )
+		log.Info("ticket owneer not signeer")
 		return errors.New("Ticket owner not be the signer")
 	}
 
@@ -532,10 +532,10 @@ func (dt *DaTong) Close() error {
 	return nil
 }
 
-func (dt *DaTong) getAllTickets(chain consensus.ChainReader, header *types.Header,  parents []*types.Header) (map[common.Hash]common.Ticket, error) {
+func (dt *DaTong) getAllTickets(chain consensus.ChainReader, header *types.Header, parents []*types.Header) (map[common.Hash]common.Ticket, error) {
 	number := header.Number.Uint64()
 	if number == 0 {
-		return nil,errUnknownBlock
+		return nil, errUnknownBlock
 	}
 	var parent *types.Header
 	if len(parents) > 0 {
@@ -543,7 +543,7 @@ func (dt *DaTong) getAllTickets(chain consensus.ChainReader, header *types.Heade
 	} else {
 		parent = chain.GetHeader(header.ParentHash, number-1)
 	}
-	
+
 	if parent == nil {
 		return nil, consensus.ErrUnknownAncestor
 	}
@@ -555,6 +555,7 @@ func (dt *DaTong) getAllTickets(chain consensus.ChainReader, header *types.Heade
 	if stateCache != nil {
 		statedb, err = state.New(parent.Root, stateCache)
 	} else {
+		log.Info("State cache not set, defaulting")
 		statedb, err = state.New(parent.Root, dt.stateCache)
 	}
 	selectStateDB = statedb
