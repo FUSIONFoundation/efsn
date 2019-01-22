@@ -91,11 +91,11 @@ type stateObject struct {
 // empty returns whether the account is considered empty.
 func (s *stateObject) empty() bool {
 	var balanceEmpty = true
-	if len( s.data.BalancesVal ) > 0 {
+	if len(s.data.BalancesVal) > 0 {
 		balanceEmpty = false
 	}
-	if len( s.data.TimeLockBalancesVal ) > 0 {
-		balanceEmpty = false 
+	if len(s.data.TimeLockBalancesVal) > 0 {
+		balanceEmpty = false
 	}
 	return s.data.Nonce == 0 && balanceEmpty && bytes.Equal(s.data.CodeHash, emptyCodeHash)
 }
@@ -103,8 +103,8 @@ func (s *stateObject) empty() bool {
 // Account is the Ethereum consensus representation of accounts.
 // These objects are stored in the main account trie.
 type Account struct {
-	Nonce            uint64
-	Notaion          uint64
+	Nonce   uint64
+	Notaion uint64
 
 	// Balances         map[common.Hash]*big.Int
 	// TimeLockBalances map[common.Hash]*common.TimeLock
@@ -115,8 +115,8 @@ type Account struct {
 	TimeLockBalancesHash []common.Hash
 	TimeLockBalancesVal  []*common.TimeLock
 
-	Root             common.Hash // merkle root of the storage trie
-	CodeHash         []byte
+	Root     common.Hash // merkle root of the storage trie
+	CodeHash []byte
 }
 
 // newObject creates a state object.
@@ -131,14 +131,14 @@ func newObject(db *StateDB, address common.Address, data Account) *stateObject {
 	if data.BalancesHash == nil {
 		data.BalancesHash = make([]common.Hash, 0)
 	}
-	if  data.BalancesVal == nil {
-		data.BalancesVal = make( []*big.Int, 0 )
+	if data.BalancesVal == nil {
+		data.BalancesVal = make([]*big.Int, 0)
 	}
 	if data.TimeLockBalancesHash == nil {
 		data.TimeLockBalancesHash = make([]common.Hash, 0)
 	}
-	if  data.TimeLockBalancesVal == nil {
-		data.TimeLockBalancesVal = make( []*common.TimeLock, 0 )
+	if data.TimeLockBalancesVal == nil {
+		data.TimeLockBalancesVal = make([]*common.TimeLock, 0)
 	}
 
 	if data.CodeHash == nil {
@@ -267,7 +267,7 @@ func (self *stateObject) CommitTrie(db Database) error {
 	return err
 }
 
-func (c *stateObject) balanceAssetIndex( assetID common.Hash ) int {
+func (c *stateObject) balanceAssetIndex(assetID common.Hash) int {
 
 	for i, v := range c.data.BalancesHash {
 		if v == assetID {
@@ -275,10 +275,10 @@ func (c *stateObject) balanceAssetIndex( assetID common.Hash ) int {
 		}
 	}
 
-	c.data.BalancesHash = append( c.data.BalancesHash, assetID)
-	c.data.BalancesVal = append( c.data.BalancesVal, new(big.Int))
+	c.data.BalancesHash = append(c.data.BalancesHash, assetID)
+	c.data.BalancesVal = append(c.data.BalancesVal, new(big.Int))
 
-	return len( c.data.BalancesVal ) - 1
+	return len(c.data.BalancesVal) - 1
 }
 
 // AddBalance removes amount from c's balance.
@@ -292,7 +292,7 @@ func (c *stateObject) AddBalance(assetID common.Hash, amount *big.Int) {
 		}
 		return
 	}
-	index := c.balanceAssetIndex( assetID )
+	index := c.balanceAssetIndex(assetID)
 
 	c.SetBalance(assetID, new(big.Int).Add(c.data.BalancesVal[index], amount))
 }
@@ -303,13 +303,13 @@ func (c *stateObject) SubBalance(assetID common.Hash, amount *big.Int) {
 	if amount.Sign() == 0 {
 		return
 	}
-	index := c.balanceAssetIndex( assetID )
+	index := c.balanceAssetIndex(assetID)
 	c.SetBalance(assetID, new(big.Int).Sub(c.data.BalancesVal[index], amount))
 }
 
 func (self *stateObject) SetBalance(assetID common.Hash, amount *big.Int) {
-	index := self.balanceAssetIndex( assetID )
-	
+	index := self.balanceAssetIndex(assetID)
+
 	self.db.journal.append(balanceChange{
 		account: &self.address,
 		assetID: assetID,
@@ -319,12 +319,11 @@ func (self *stateObject) SetBalance(assetID common.Hash, amount *big.Int) {
 }
 
 func (self *stateObject) setBalance(assetID common.Hash, amount *big.Int) {
-	index := self.balanceAssetIndex( assetID )
+	index := self.balanceAssetIndex(assetID)
 	self.data.BalancesVal[index] = amount
 }
 
-
-func (c *stateObject) timeLockAssetIndex( assetID common.Hash ) int {
+func (c *stateObject) timeLockAssetIndex(assetID common.Hash) int {
 
 	for i, v := range c.data.TimeLockBalancesHash {
 		if v == assetID {
@@ -332,12 +331,11 @@ func (c *stateObject) timeLockAssetIndex( assetID common.Hash ) int {
 		}
 	}
 
-	c.data.TimeLockBalancesHash = append( c.data.TimeLockBalancesHash, assetID)
-	c.data.TimeLockBalancesVal = append( c.data.TimeLockBalancesVal, new(common.TimeLock) )
+	c.data.TimeLockBalancesHash = append(c.data.TimeLockBalancesHash, assetID)
+	c.data.TimeLockBalancesVal = append(c.data.TimeLockBalancesVal, new(common.TimeLock))
 
-	return len( c.data.BalancesVal ) - 1
+	return len(c.data.TimeLockBalancesVal) - 1
 }
-
 
 // AddTimeLockBalance wacom
 func (s *stateObject) AddTimeLockBalance(assetID common.Hash, amount *common.TimeLock) {
@@ -348,7 +346,7 @@ func (s *stateObject) AddTimeLockBalance(assetID common.Hash, amount *common.Tim
 		return
 	}
 
-	index := s.timeLockAssetIndex( assetID )
+	index := s.timeLockAssetIndex(assetID)
 
 	s.SetTimeLockBalance(assetID, new(common.TimeLock).Add(s.data.TimeLockBalancesVal[index], amount))
 }
@@ -359,13 +357,12 @@ func (s *stateObject) SubTimeLockBalance(assetID common.Hash, amount *common.Tim
 		return
 	}
 
-	index := s.timeLockAssetIndex( assetID )
+	index := s.timeLockAssetIndex(assetID)
 	s.SetTimeLockBalance(assetID, new(common.TimeLock).Sub(s.data.TimeLockBalancesVal[index], amount))
 }
 
 func (s *stateObject) SetTimeLockBalance(assetID common.Hash, amount *common.TimeLock) {
-	index := s.timeLockAssetIndex( assetID )
-
+	index := s.timeLockAssetIndex(assetID)
 
 	s.db.journal.append(timeLockBalanceChange{
 		account: &s.address,
@@ -376,7 +373,7 @@ func (s *stateObject) SetTimeLockBalance(assetID common.Hash, amount *common.Tim
 }
 
 func (s *stateObject) setTimeLockBalance(assetID common.Hash, amount *common.TimeLock) {
-	index := s.timeLockAssetIndex( assetID )
+	index := s.timeLockAssetIndex(assetID)
 	s.data.TimeLockBalancesVal[index] = amount
 }
 
@@ -466,7 +463,7 @@ func (self *stateObject) CodeHash() []byte {
 	return self.data.CodeHash
 }
 
-func (self *stateObject) CopyBalances()  map[common.Hash]string {
+func (self *stateObject) CopyBalances() map[common.Hash]string {
 	retBalances := make(map[common.Hash]string)
 	for i, v := range self.data.BalancesHash {
 		retBalances[v] = self.data.BalancesVal[i].String()
@@ -475,7 +472,7 @@ func (self *stateObject) CopyBalances()  map[common.Hash]string {
 }
 
 func (self *stateObject) Balance(assetID common.Hash) *big.Int {
-	index := self.balanceAssetIndex( assetID )
+	index := self.balanceAssetIndex(assetID)
 	return self.data.BalancesVal[index]
 }
 
@@ -488,7 +485,7 @@ func (self *stateObject) CopyTimeLockBalances() map[common.Hash]*common.TimeLock
 }
 
 func (self *stateObject) TimeLockBalance(assetID common.Hash) *common.TimeLock {
-	index := self.timeLockAssetIndex( assetID )
+	index := self.timeLockAssetIndex(assetID)
 	return self.data.TimeLockBalancesVal[index]
 }
 
