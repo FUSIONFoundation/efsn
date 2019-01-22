@@ -252,15 +252,20 @@ func (dt *DaTong) verifySeal(chain consensus.ChainReader, header *types.Header, 
 	}
 
 	log.Info("c Step 3")
-	tickets := make([]*common.Ticket, len(ticketMap))
+	tickets := make([]*common.Ticket, 0 )
 	selected := false
 	i := 0
 	for _, v := range ticketMap {
 		if v.Height.Cmp(header.Number) < 0 {
 			temp := v
-			tickets[i] = &temp
+			tickets = append( tickets, &temp )
 			i++
 		}
+	}
+
+	if i == 0 {
+		log.Info("no tickets with correct header number, ticket not selected")
+		return errors.New("the ticket not selected")
 	}
 
 	log.Info("c Step 4")
