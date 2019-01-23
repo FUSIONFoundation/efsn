@@ -30,6 +30,7 @@ import (
 	"github.com/FusionFoundation/efsn/common"
 	"github.com/FusionFoundation/efsn/common/mclock"
 	"github.com/FusionFoundation/efsn/consensus"
+	"github.com/FusionFoundation/efsn/consensus/datong"
 	"github.com/FusionFoundation/efsn/core/rawdb"
 	"github.com/FusionFoundation/efsn/core/state"
 	"github.com/FusionFoundation/efsn/core/types"
@@ -42,8 +43,7 @@ import (
 	"github.com/FusionFoundation/efsn/params"
 	"github.com/FusionFoundation/efsn/rlp"
 	"github.com/FusionFoundation/efsn/trie"
-	"github.com/FusionFoundation/efsn/consensus/datong"
-	"github.com/hashicorp/golang-lru"
+	lru "github.com/hashicorp/golang-lru"
 	"gopkg.in/karalabe/cookiejar.v2/collections/prque"
 )
 
@@ -217,6 +217,7 @@ func (bc *BlockChain) loadLastState() error {
 		log.Warn("Head block missing, resetting chain", "hash", head)
 		return bc.Reset()
 	}
+
 	// Make sure the state associated with the block is available
 	if _, err := state.New(currentBlock.Root(), bc.stateCache); err != nil {
 		// Dangling block without a state associated, init from scratch
@@ -1015,6 +1016,7 @@ func (bc *BlockChain) InsertChain(chain types.Blocks) (int, error) {
 // only reason this method exists as a separate one is to make locking cleaner
 // with deferred statements.
 func (bc *BlockChain) insertChain(chain types.Blocks) (int, []interface{}, []*types.Log, error) {
+
 	// Sanity check that we have something meaningful to import
 	if len(chain) == 0 {
 		return 0, nil, nil, nil
@@ -1046,16 +1048,34 @@ func (bc *BlockChain) insertChain(chain types.Blocks) (int, []interface{}, []*ty
 		lastCanon     *types.Block
 		coalescedLogs []*types.Log
 	)
+
 	// Start the parallel header verifier
 	headers := make([]*types.Header, len(chain))
 	seals := make([]bool, len(chain))
 
+	// var prevBlock *types.Block
 	for i, block := range chain {
+		// if prevBlock == nil {
+		// 	prevBlock = bc.GetBlockByNumber(block.NumberU64() - 1)
+		// }
 		headers[i] = block.Header()
 		seals[i] = true
 	}
-	log.Info("!!!!!! Update cache...")
-	datong.UpdateStateCache(bc.stateCache)
+
+	// see if we can load the previous block
+	// if prevBlock != nil {
+	// 	log.Info("loaded previous block", "block", prevBlock.NumberU64(), "root", prevBlock.Root())
+	// 	if _, err := state.New(prevBlock.Root(), bc.stateCache); err != nil {
+	// 		// Dangling block without a state associated, init from scratch
+	// 		log.Warn("prev block state missing", "number", prevBlock.Number(), "root", prevBlock.Root(), "bc.sc", &bc.stateCache, "err", err.Error())
+	// 		// if err := bc.repair(&prevBlock); err != nil {
+	// 		// 	return 0, nil, nil, err
+	// 		// }
+	// 	}
+	// } else {
+	// 	log.Info("unable to load previous block", "block", prevBlock.NumberU64())
+	// }
+
 	// abort, results := bc.engine.VerifyHeaders(bc, headers, seals)
 	// defer close(abort)
 
@@ -1078,12 +1098,14 @@ func (bc *BlockChain) insertChain(chain types.Blocks) (int, []interface{}, []*ty
 		bstart := time.Now()
 
 		//err := <-results
-		datong.SetHeaders( headers[:i])
-		err := bc.engine.VerifyHeader(bc, headers[i], seals[i] )
-		datong.SetHeaders(nil)
+		log.Info("!!!!!! Update cache...")
+		datong.UpdateStateCache(bc.stateCache)
+		datong.SetHeaders(headers[:i])
+		err := bc.engine.VerifyHeader(bc, headers[i], seals[i])
 		if err == nil {
 			err = bc.Validator().ValidateBody(block)
 		}
+		datong.SetHeaders(nil)
 		switch {
 		case err == ErrKnownBlock:
 			// Block and state both already known. However if the current block is below
@@ -1165,7 +1187,10 @@ func (bc *BlockChain) insertChain(chain types.Blocks) (int, []interface{}, []*ty
 			return i, events, coalescedLogs, err
 		}
 		// Validate the state using the default validator
+		datong.SetHeaders(headers[:i])
+		log.Info("-> Calling validator")
 		err = bc.Validator().ValidateState(block, parent, state, receipts, usedGas)
+		datong.SetHeaders(nil)
 		if err != nil {
 			bc.reportBlock(block, receipts, err)
 			return i, events, coalescedLogs, err
