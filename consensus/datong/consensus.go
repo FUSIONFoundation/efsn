@@ -59,9 +59,10 @@ type DaTong struct {
 	db         ethdb.Database
 	stateCache state.Database
 
-	signer common.Address
-	signFn SignerFn
-	lock   sync.RWMutex
+	signer     common.Address
+	signFn     SignerFn
+	lock       sync.RWMutex
+	lockHeader sync.RWMutex
 
 	weight            *big.Int
 	validTicketNumber *big.Int
@@ -101,11 +102,15 @@ func (dt *DaTong) Author(header *types.Header) (common.Address, error) {
 // VerifyHeader checks whether a header conforms to the consensus rules of the
 // stock Ethereum ethash engine.
 func (dt *DaTong) verifyHeader(chain consensus.ChainReader, header *types.Header, seal bool, parents []*types.Header) error {
+	log.Info("Verify Header", "BLOCK", header.Number)
+
+	dt.lockHeader.Lock()
+	defer dt.lockHeader.Unlock()
+	log.Info("Verify Header Start ...")
+
 	if header.Number == nil {
 		return errUnknownBlock
 	}
-
-	log.Info("Verify Header", "BLOCK", header.Number)
 
 	if len(header.Extra) < extraVanity {
 		return errMissingVanity
@@ -252,13 +257,13 @@ func (dt *DaTong) verifySeal(chain consensus.ChainReader, header *types.Header, 
 	}
 
 	log.Info("c Step 3")
-	tickets := make([]*common.Ticket, 0 )
+	tickets := make([]*common.Ticket, 0)
 	selected := false
 	i := 0
 	for _, v := range ticketMap {
 		if v.Height.Cmp(header.Number) < 0 {
 			temp := v
-			tickets = append( tickets, &temp )
+			tickets = append(tickets, &temp)
 			i++
 		}
 	}
@@ -544,9 +549,12 @@ func (dt *DaTong) getAllTickets(chain consensus.ChainReader, header *types.Heade
 	}
 	var parent *types.Header
 	if len(parents) > 0 {
+		log.Info("  getAllTickets use past headers ")
 		parent = parents[len(parents)-1]
 	} else {
-		parent = chain.GetHeader(header.ParentHash, number-1)
+		log.Info("  getAllTickets get header with parent hash ")
+		// parent = chain.GetHeader(header.ParentHash, number-1)
+		parent = chain.GetHeaderByNumber(number - 1)
 	}
 
 	if parent == nil {
@@ -558,8 +566,10 @@ func (dt *DaTong) getAllTickets(chain consensus.ChainReader, header *types.Heade
 	var statedb *state.StateDB
 	var err error
 	if stateCache != nil {
+		log.Info("getAllTickets trying to load ", "parent.Root ", parent.Root)
 		statedb, err = state.New(parent.Root, stateCache)
-	} else {
+	}
+	if statedb == nil {
 		log.Info("State cache not set, defaulting")
 		statedb, err = state.New(parent.Root, dt.stateCache)
 	}
@@ -711,5 +721,6 @@ func GenGenesisExtraData(number *big.Int) []byte {
 }
 
 func UpdateStateCache(sc state.Database) {
+	// log.Info("UpdateStateCache ", "database=", sc)
 	stateCache = sc
 }
