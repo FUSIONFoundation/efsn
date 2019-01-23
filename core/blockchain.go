@@ -909,10 +909,6 @@ func (bc *BlockChain) WriteBlockWithState(block *types.Block, receipts []*types.
 	}
 	triedb := bc.stateCache.TrieDB()
 
-	// Update datong stateCache, fix verifySeal
-	log.Info("updating cache")
-	datong.UpdateStateCache(bc.stateCache)
-
 	// If we're running an archive node, always flush
 	if bc.cacheConfig.Disabled {
 		if err := triedb.Commit(root, false); err != nil {
@@ -1062,23 +1058,6 @@ func (bc *BlockChain) insertChain(chain types.Blocks) (int, []interface{}, []*ty
 		seals[i] = true
 	}
 
-	// see if we can load the previous block
-	// if prevBlock != nil {
-	// 	log.Info("loaded previous block", "block", prevBlock.NumberU64(), "root", prevBlock.Root())
-	// 	if _, err := state.New(prevBlock.Root(), bc.stateCache); err != nil {
-	// 		// Dangling block without a state associated, init from scratch
-	// 		log.Warn("prev block state missing", "number", prevBlock.Number(), "root", prevBlock.Root(), "bc.sc", &bc.stateCache, "err", err.Error())
-	// 		// if err := bc.repair(&prevBlock); err != nil {
-	// 		// 	return 0, nil, nil, err
-	// 		// }
-	// 	}
-	// } else {
-	// 	log.Info("unable to load previous block", "block", prevBlock.NumberU64())
-	// }
-
-	// abort, results := bc.engine.VerifyHeaders(bc, headers, seals)
-	// defer close(abort)
-
 	// Start a parallel signature recovery (signer will fluke on fork transition, minimal perf loss)
 	senderCacher.recoverFromBlocks(types.MakeSigner(bc.chainConfig, chain[0].Number()), chain)
 
@@ -1098,8 +1077,6 @@ func (bc *BlockChain) insertChain(chain types.Blocks) (int, []interface{}, []*ty
 		bstart := time.Now()
 
 		//err := <-results
-		log.Info("!!!!!! Update cache...")
-		datong.UpdateStateCache(bc.stateCache)
 		datong.SetHeaders(headers[:i])
 		err := bc.engine.VerifyHeader(bc, headers[i], seals[i])
 		if err == nil {
@@ -1188,7 +1165,6 @@ func (bc *BlockChain) insertChain(chain types.Blocks) (int, []interface{}, []*ty
 		}
 		// Validate the state using the default validator
 		datong.SetHeaders(headers[:i])
-		log.Info("-> Calling validator")
 		err = bc.Validator().ValidateState(block, parent, state, receipts, usedGas)
 		datong.SetHeaders(nil)
 		if err != nil {
@@ -1227,8 +1203,6 @@ func (bc *BlockChain) insertChain(chain types.Blocks) (int, []interface{}, []*ty
 
 		cache, _ := bc.stateCache.TrieDB().Size()
 		stats.report(chain, i, cache)
-		// log.Info("Continue to next block....." , "StateCache", bc.stateCache)
-		// datong.UpdateStateCache(bc.stateCache)
 	}
 	// Append a single chain head event if we've progressed the chain
 	if lastCanon != nil && bc.CurrentBlock().Hash() == lastCanon.Hash() {
@@ -1485,9 +1459,6 @@ Error: %v
 // because nonces can be verified sparsely, not needing to check each.
 func (bc *BlockChain) InsertHeaderChain(chain []*types.Header, checkFreq int) (int, error) {
 	start := time.Now()
-
-	log.Info("Insert Header updating cache")
-	datong.UpdateStateCache(bc.stateCache)
 
 	if i, err := bc.hc.ValidateHeaderChain(chain, checkFreq); err != nil {
 		return i, err

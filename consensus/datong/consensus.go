@@ -68,9 +68,6 @@ type DaTong struct {
 	validTicketNumber *big.Int
 }
 
-var stateCache state.Database
-var selectStateDB *state.StateDB
-
 // New wacom
 func New(config *params.DaTongConfig, db ethdb.Database) *DaTong {
 	maxProb.SetUint64(uint64(math.Pow(2, float64(config.Period+1))))
@@ -102,35 +99,38 @@ func (dt *DaTong) Author(header *types.Header) (common.Address, error) {
 // VerifyHeader checks whether a header conforms to the consensus rules of the
 // stock Ethereum ethash engine.
 func (dt *DaTong) verifyHeader(chain consensus.ChainReader, header *types.Header, seal bool, parents []*types.Header) error {
-	log.Info("Verify Header", "BLOCK", header.Number)
-
 	dt.lockHeader.Lock()
 	defer dt.lockHeader.Unlock()
-	log.Info("Verify Header Start ...")
 
 	if header.Number == nil {
+		log.Info("consensus.verifyheader eerror unknown block ")
 		return errUnknownBlock
 	}
 
 	if len(header.Extra) < extraVanity {
+		log.Info("consensus.verifyheadererr missing vanity ")
 		return errMissingVanity
 	}
 	if len(header.Extra) < extraVanity+extraSeal {
+		log.Info("consensus.verifyheadererr missing signature ")
 		return errMissingSignature
 	}
 
 	if _, err := newSnapshotWithData(getSnapDataByHeader(header)); err != nil {
+		log.Info("consensus.verifyheadererr snapshot with data ", err, err.Error() )
 		return err
 	}
 
 	if header.UncleHash != emptyUncleHash {
+		log.Info("consensus.verifyheadererr invalid uncle hash ")
 		return errInvalidUncleHash
 	}
 
 	if header.Time.Cmp(big.NewInt(time.Now().Unix())) > 0 {
+		log.Info("consensus.verifyheadererr error future block ")
 		return consensus.ErrFutureBlock
 	}
-	log.Info("Verify Header Calling Seal", "BLOCK", header.Number)
+	
 	return dt.verifySeal(chain, header, parents)
 }
 
@@ -144,18 +144,11 @@ func (dt *DaTong) VerifyHeader(chain consensus.ChainReader, header *types.Header
 // concurrently. The method returns a quit channel to abort the operations and
 // a results channel to retrieve the async verifications.
 func (dt *DaTong) VerifyHeaders(chain consensus.ChainReader, headers []*types.Header, seals []bool) (chan<- struct{}, <-chan error) {
-
-	log.Info("updating cache")
-
 	abort := make(chan struct{})
 	results := make(chan error, len(headers))
 	go func() {
 		for i, header := range headers {
 			err := dt.verifyHeader(chain, header, seals[i], headers[:i])
-			if selectStateDB != nil {
-				selectStateDB.Commit(true)
-				selectStateDB = nil
-			}
 			select {
 			case <-abort:
 				log.Info("Verify Headers", "ABORT BLOCK", header.Number)
@@ -164,7 +157,7 @@ func (dt *DaTong) VerifyHeaders(chain consensus.ChainReader, headers []*types.He
 			}
 		}
 	}()
-	log.Info("Verify Headers end", "abort", abort, "results", results)
+
 	return abort, results
 }
 
@@ -196,7 +189,6 @@ func (dt *DaTong) verifySeal(chain consensus.ChainReader, header *types.Header, 
 	if number == 0 {
 		return errUnknownBlock
 	}
-	log.Info("c Step 1")
 
 	var parent *types.Header
 	if len(parents) > 0 {
@@ -205,58 +197,54 @@ func (dt *DaTong) verifySeal(chain consensus.ChainReader, header *types.Header, 
 		parent = chain.GetHeader(header.ParentHash, number-1)
 	}
 	if parent == nil {
-		log.Info("ErrUnknownAncestor", "number", number-1)
+		log.Info("consensus.verifySeal ErrUnknownAncestor", "number", number-1)
 		return consensus.ErrUnknownAncestor
 	}
-	log.Info("c Step 1a")
+	
 	snap, err := newSnapshotWithData(getSnapDataByHeader(header))
 	if err != nil {
+		log.Info("consensus.verifySeal Err newSnapshot " , "err" , err.Error() )
 		return err
 	}
-	log.Info("c Step 1b")
+	
 	signature := header.Extra[len(header.Extra)-extraSeal:]
 	pubkey, err := crypto.Ecrecover(sigHash(header).Bytes(), signature)
 	if err != nil {
+		log.Info("consensus.verifySeal Ecrecover ", "err", err.Error()) 
 		return err
 	}
-	log.Info("c Step 1c")
+
 	var signer common.Address
 	copy(signer[:], crypto.Keccak256(pubkey[1:])[12:])
 
 	parentTime := parent.Time.Uint64()
 	time := header.Time.Uint64()
 	if time-parentTime > maxBlockTime {
-		log.Info("c Step 1cb")
 		if header.Coinbase != signer {
-			log.Info("Ticket owner not be the signer")
+			log.Info("consensus.verifySeal Ticket owner not be the signer")
 			return errors.New("Ticket owner not be the signer")
 		}
-		log.Info("c Step 1cbd")
 		return nil
 	}
-	log.Info("c Step 1c")
-
-	log.Info("c Step 2")
 	ticketID := snap.GetVoteTicket()
 	ticketMap, err := dt.getAllTickets(chain, header, parents)
 
 	if err != nil {
-		log.Info("c Step 2a", "err", err.Error())
+		log.Info("consensus.verifySeal getAllTickets", "err", err.Error())
 		return err
 	}
 
 	if _, ok := ticketMap[ticketID]; !ok {
-		log.Info("c Step 2b ticket not found")
+		log.Info("consensus.verifySeal ticketNotFound", "ticketID", ticketID )
 		return errors.New("Ticket not found")
 	}
 	ticket := ticketMap[ticketID]
 
 	if ticket.Owner != signer {
-		log.Info("ticket owneer not signeer")
+		log.Info("consensus.verifySeal ticket owner not signer", "ticOwner", ticket.Owner, "signer", signer )
 		return errors.New("Ticket owner not be the signer")
 	}
 
-	log.Info("c Step 3")
 	tickets := make([]*common.Ticket, 0)
 	selected := false
 	i := 0
@@ -269,11 +257,10 @@ func (dt *DaTong) verifySeal(chain consensus.ChainReader, header *types.Header, 
 	}
 
 	if i == 0 {
-		log.Info("no tickets with correct header number, ticket not selected")
+		log.Info("consensus.verifySeal no tickets with correct header number, ticket not selected")
 		return errors.New("the ticket not selected")
 	}
 
-	log.Info("c Step 4")
 	selectedTickets := dt.selectTickets(tickets, parent, header.Time.Uint64())
 	for _, v := range selectedTickets {
 		if v.ID == ticketID {
@@ -281,13 +268,11 @@ func (dt *DaTong) verifySeal(chain consensus.ChainReader, header *types.Header, 
 			break
 		}
 	}
-	log.Info("c Step 5")
 
 	if !selected {
-		log.Info("ticket not selected")
+		log.Info("consensus.verifySeal ticket not selected")
 		return errors.New("the ticket not selected")
 	}
-
 	return nil
 }
 
@@ -549,33 +534,24 @@ func (dt *DaTong) getAllTickets(chain consensus.ChainReader, header *types.Heade
 	}
 	var parent *types.Header
 	if len(parents) > 0 {
-		log.Info("  getAllTickets use past headers ")
+		// log.Info("  getAllTickets use past headers ")
 		parent = parents[len(parents)-1]
 	} else {
-		log.Info("  getAllTickets get header with parent hash ")
-		// parent = chain.GetHeader(header.ParentHash, number-1)
-		parent = chain.GetHeaderByNumber(number - 1)
+		// log.Info("  getAllTickets get header with parent hash ")
+		parent = chain.GetHeader(header.ParentHash, number-1)
 	}
 
 	if parent == nil {
 		return nil, consensus.ErrUnknownAncestor
 	}
-	// statedb, err := state.New(parent.Root, dt.stateCache)
 
-	// Update the stateCache
 	var statedb *state.StateDB
 	var err error
-	if stateCache != nil {
-		log.Info("getAllTickets trying to load ", "parent.Root ", parent.Root)
-		statedb, err = state.New(parent.Root, stateCache)
-	}
-	if statedb == nil {
-		log.Info("State cache not set, defaulting")
-		statedb, err = state.New(parent.Root, dt.stateCache)
-	}
-	selectStateDB = statedb
+
+	statedb, err = state.New(parent.Root, dt.stateCache)
 
 	if err != nil {
+		log.Info("  consensus.go getAllTickets state not found for parent root ", "err", err.Error()  )
 		return nil, err
 	}
 	return statedb.AllTickets(), nil
@@ -718,9 +694,4 @@ func GenGenesisExtraData(number *big.Int) []byte {
 	data = append(data, snap.Bytes()...)
 	data = append(data, bytes.Repeat([]byte{0x00}, extraSeal)...)
 	return data
-}
-
-func UpdateStateCache(sc state.Database) {
-	// log.Info("UpdateStateCache ", "database=", sc)
-	stateCache = sc
 }

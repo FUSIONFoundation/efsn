@@ -714,48 +714,6 @@ func (s *StateDB) clearJournalAndRefund() {
 func (s *StateDB) Commit(deleteEmptyObjects bool) (root common.Hash, err error) {
 	defer s.clearJournalAndRefund()
 
-	// if s.notations != nil {
-	// 	log.Info("COMMIT: saving notations")
-	// 	data, err := rlp.EncodeToBytes(&s.notations)
-	// 	if err != nil {
-	// 		return common.Hash{}, err
-	// 	}
-	// 	s.SetData( common.NotationKeyAddress, data)
-	// 	s.notations = nil
-	// }
-
-	// if s.assets != nil {
-	// 	log.Info("COMMIT: saving assets")
-	//  	data , err := rlp.EncodeToBytes(&s.assets)
-	// 	if err != nil {
-	// 		return common.Hash{}, err
-	// 	}
-	// 	s.SetData(common.AssetKeyAddress, data)
-	// 	s.assets = nil
-	// }
-
-	// if s.tickets != nil {
-	// 	log.Info("COMMIT: saving tickets")
-	// 	data, err := rlp.EncodeToBytes(&s.tickets)
-	// 	if err != nil {
-	// 		return common.Hash{}, err
-	// 	}
-	// 	s.SetData(common.TicketKeyAddress, data)
-	// 	s.tickets = nil
-	// }
-
-	// if s.swaps != nil {
-	// 	log.Info("COMMIT: saving swaps")
-	// 	data, err := rlp.EncodeToBytes(&s.swaps)
-	// 	if err != nil {
-	// 		return common.Hash{}, err
-	// 	}
-	// 	s.SetData(common.SwapKeyAddress, data)
-	// 	s.swaps = nil
-	// }
-
-	// log.Info("COMMIT: saving state")
-
 	for addr := range s.journal.dirties {
 		s.stateObjectsDirty[addr] = struct{}{}
 	}

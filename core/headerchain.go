@@ -30,7 +30,6 @@ import (
 	"github.com/FusionFoundation/efsn/consensus"
 	"github.com/FusionFoundation/efsn/consensus/datong"
 	"github.com/FusionFoundation/efsn/core/rawdb"
-	"github.com/FusionFoundation/efsn/core/state"
 	"github.com/FusionFoundation/efsn/core/types"
 	"github.com/FusionFoundation/efsn/ethdb"
 	"github.com/FusionFoundation/efsn/log"
@@ -208,8 +207,6 @@ type WhCallback func(*types.Header) error
 
 func (hc *HeaderChain) ValidateHeaderChain(chain []*types.Header, checkFreq int) (int, error) {
 	// Do a sanity check that the provided chain is actually ordered and linked
-	stateCache := state.NewDatabase(hc.chainDb)
-	datong.UpdateStateCache(stateCache)
 
 	for i := 1; i < len(chain); i++ {
 		if chain[i].Number.Uint64() != chain[i-1].Number.Uint64()+1 || chain[i].ParentHash != chain[i-1].Hash() {
@@ -232,8 +229,8 @@ func (hc *HeaderChain) ValidateHeaderChain(chain []*types.Header, checkFreq int)
 		seals[index] = true
 	}
 	headers := make([]*types.Header, len(chain))
-	for i, block := range chain {
-		headers[i] = block
+	for i, header := range chain {
+		headers[i] = header
 	}
 	seals[len(seals)-1] = true // Last should always be verified to avoid junk
 
