@@ -19,7 +19,7 @@ Change the parameter `YOURDIRECTORY` to your local directory
 ### Build your own Gateway (optional)
 `docker build --file Dockerfile.gtw -t YOUR-DOCKER-HUB-ID/gateway .`
 
-### Run a Gateway using your immage
+### Run a Gateway using your image
 `docker run -it -p 9001:9001 -v YOURDIRECTORY:/fusion-node  YOUR-DOCKER-HUB-ID/gateway`
 
 Remember to replace `YOUR-DOCKER-HUB-ID` string with your valid Docker Hub id.
