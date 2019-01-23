@@ -384,8 +384,8 @@ func (self *StateDB) SetState(addr common.Address, key, value common.Hash) {
 	}
 }
 
-func (self *StateDB) SetData(addr common.Address, value []byte)  {
-	
+func (self *StateDB) SetData(addr common.Address, value []byte) {
+
 	stateObject := self.GetOrNewStateObject(addr)
 	if stateObject != nil {
 		stateObject.SetCode(crypto.Keccak256Hash(value), value)
@@ -412,7 +412,7 @@ func (self *StateDB) Suicide(addr common.Address) bool {
 			prevbalance: new(big.Int).Set(v),
 		})
 		stateObject.suicided = true
-		stateObject.setBalance( k ,  new(big.Int) )
+		stateObject.setBalance(k, new(big.Int))
 	}
 
 	for i, v := range stateObject.data.TimeLockBalancesVal {
@@ -424,7 +424,7 @@ func (self *StateDB) Suicide(addr common.Address) bool {
 			prevTimeLockBalance: new(common.TimeLock).Set(v),
 		})
 		stateObject.suicided = true
-		stateObject.SetTimeLockBalance( k, new(common.TimeLock) )
+		stateObject.SetTimeLockBalance(k, new(common.TimeLock))
 	}
 
 	stateObject.markSuicided()
@@ -521,10 +521,10 @@ func (self *StateDB) CreateAccount(addr common.Address) {
 	new, prev := self.createObject(addr)
 	if prev != nil {
 		for i, v := range prev.data.BalancesVal {
-			new.setBalance( prev.data.BalancesHash[i], v)
+			new.setBalance(prev.data.BalancesHash[i], v)
 		}
 		for i, v := range prev.data.TimeLockBalancesVal {
-			new.setTimeLockBalance( prev.data.TimeLockBalancesHash[i], v)
+			new.setTimeLockBalance(prev.data.TimeLockBalancesHash[i], v)
 		}
 	}
 }
@@ -719,7 +719,7 @@ func (s *StateDB) Commit(deleteEmptyObjects bool) (root common.Hash, err error) 
 	}
 	// Commit objects to the trie.
 	for addr, stateObject := range s.stateObjects {
-		
+
 		_, isDirty := s.stateObjectsDirty[addr]
 		switch {
 		case stateObject.suicided || (isDirty && deleteEmptyObjects && stateObject.empty()):
@@ -803,23 +803,23 @@ func (db *StateDB) GenNotation(addr common.Address) error {
 }
 
 func (db *StateDB) updateNotations() error {
-	log.Info("COMMIT: saving notations")
+	//log.Info("COMMIT: saving notations")
 	data, err := rlp.EncodeToBytes(&db.notations)
 	if err != nil {
-		return  err
+		return err
 	}
-	db.SetData( common.NotationKeyAddress, data)
+	db.SetData(common.NotationKeyAddress, data)
 	return nil
 }
 
 func (db *StateDB) updateAssets(assets map[common.Hash]common.Asset) error {
 	db.assets = assets
-	log.Info("COMMIT: saving assets")
+	//log.Info("COMMIT: saving assets")
 
 	var list sortableAssetLURSlice
 	for k, v := range assets {
 		res := assetsStruct{
-			HASH:   k,
+			HASH:  k,
 			ASSET: v,
 		}
 		list = append(list, res)
@@ -829,9 +829,9 @@ func (db *StateDB) updateAssets(assets map[common.Hash]common.Asset) error {
 	data, err := rlp.EncodeToBytes(&list)
 
 	if err != nil {
-		return  err
+		return err
 	}
-    db.SetData(common.AssetKeyAddress, data)
+	db.SetData(common.AssetKeyAddress, data)
 	return nil
 }
 
@@ -880,7 +880,7 @@ func (db *StateDB) UpdateAsset(asset common.Asset) error {
 }
 
 func (db *StateDB) copyOfTickets() map[common.Hash]common.Ticket {
-	targetMap :=  make(map[common.Hash]common.Ticket)
+	targetMap := make(map[common.Hash]common.Ticket)
 	if db.tickets == nil {
 		return targetMap
 	}
@@ -896,7 +896,7 @@ func (db *StateDB) AllTickets() map[common.Hash]common.Ticket {
 	if db.tickets != nil {
 		return db.copyOfTickets()
 	}
-	data := db.GetData( common.TicketKeyAddress)
+	data := db.GetData(common.TicketKeyAddress)
 	var tickets map[common.Hash]common.Ticket
 	if len(data) == 0 || data == nil {
 		tickets = make(map[common.Hash]common.Ticket, 0)
@@ -938,8 +938,6 @@ func (db *StateDB) RemoveTicket(id common.Hash) error {
 func (db *StateDB) updateTickets(tickets map[common.Hash]common.Ticket) error {
 	db.tickets = tickets
 
-	
-
 	var list sortableTicketsLURSlice
 	for k, v := range tickets {
 		res := ticketsStruct{
@@ -953,7 +951,7 @@ func (db *StateDB) updateTickets(tickets map[common.Hash]common.Ticket) error {
 	data, err := rlp.EncodeToBytes(&list)
 
 	if err != nil {
-		return  err
+		return err
 	}
 	db.SetData(common.TicketKeyAddress, data)
 	return nil
@@ -1016,12 +1014,12 @@ func (db *StateDB) RemoveSwap(id common.Hash) error {
 
 func (db *StateDB) updateSwaps(swaps map[common.Hash]common.Swap) error {
 	db.swaps = swaps
-	log.Info("COMMIT: saving swaps")
-	
+	//log.Info("COMMIT: saving swaps")
+
 	var list sortableSwapLURSlice
 	for k, v := range swaps {
 		res := swapsStruct{
-			HASH:   k,
+			HASH: k,
 			SWAP: v,
 		}
 		list = append(list, res)
@@ -1031,12 +1029,11 @@ func (db *StateDB) updateSwaps(swaps map[common.Hash]common.Swap) error {
 	data, err := rlp.EncodeToBytes(&list)
 
 	if err != nil {
-		return  err
+		return err
 	}
 	db.SetData(common.SwapKeyAddress, data)
 	return nil
 }
-
 
 type ticketsStruct struct {
 	HASH   common.Hash
@@ -1060,7 +1057,7 @@ func (s sortableTicketsLURSlice) Swap(i, j int) {
 }
 
 type assetsStruct struct {
-	HASH   common.Hash
+	HASH  common.Hash
 	ASSET common.Asset
 }
 
@@ -1081,7 +1078,7 @@ func (s sortableAssetLURSlice) Swap(i, j int) {
 }
 
 type swapsStruct struct {
-	HASH   common.Hash
+	HASH common.Hash
 	SWAP common.Swap
 }
 
@@ -1100,6 +1097,3 @@ func (s sortableSwapLURSlice) Less(i, j int) bool {
 func (s sortableSwapLURSlice) Swap(i, j int) {
 	s[i], s[j] = s[j], s[i]
 }
-
-
-
