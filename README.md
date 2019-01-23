@@ -9,15 +9,22 @@ Fusion would like to extend its gratitude to the Ethereum Foundation. Fusion has
 
 Change the parameter `YOURDIRECTORY` to your local directory
 
-### Build the Gateway
-`docker build --file Dockerfile.gtw -t fusionnetwork/gateway`
+### Pull image from repository:
 
-`docker run -it -p 9001:9001 -v YOURDIRECTORY:/fusion-node  fusionnetwork/gateway`
+`docker pull fusionnetwork/gateway:latest`
 
 ### Run a Gateway
 `docker run -it -p 9001:9001 -v YOURDIRECTORY:/fusion-node  fusionnetwork/gateway`
 
-You can now connect via `ws://localhost:9001z
+### Build your own Gateway (optional)
+`docker build --file Dockerfile.gtw -t YOUR-DOCKER-HUB-ID/gateway .`
+
+### Run a Gateway using your immage
+`docker run -it -p 9001:9001 -v YOURDIRECTORY:/fusion-node  YOUR-DOCKER-HUB-ID/gateway`
+
+Remember to replace `YOUR-DOCKER-HUB-ID` string with your valid Docker Hub id.
+
+You can now connect via `ws://localhost:9001`
 
 ## Run a miner (Ubuntu 16.04)
 
