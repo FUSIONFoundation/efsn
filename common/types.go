@@ -473,6 +473,7 @@ type MakeSwapParam struct {
 	MinToAmount   *big.Int `json:",string"`
 	SwapSize      *big.Int  `json:",string"`
 	Targes        []Address
+	Time		  *big.Int
 }
 
 // RecallSwapParam wacom

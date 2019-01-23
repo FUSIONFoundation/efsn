@@ -76,6 +76,7 @@ type MakeSwapArgs struct {
 	MinToAmount   *hexutil.Big
 	SwapSize      *big.Int
 	Targes        []common.Address
+	Time          *big.Int
 }
 
 // RecallSwapArgs wacom
@@ -173,7 +174,7 @@ func (args *MakeSwapArgs) init() {
 	}
 }
 
-func (args *MakeSwapArgs) toData() ([]byte, error) {
+func (args *MakeSwapArgs) toData(time *big.Int) ([]byte, error) {
 	param := common.MakeSwapParam{
 		FromAssetID:   args.FromAssetID,
 		FromStartTime: uint64(*args.FromStartTime),
@@ -185,6 +186,7 @@ func (args *MakeSwapArgs) toData() ([]byte, error) {
 		MinToAmount:   args.MinToAmount.ToInt(),
 		SwapSize:      args.SwapSize,
 		Targes:        args.Targes,
+		Time:  		   time,
 	}
 	return param.ToBytes()
 }
@@ -764,7 +766,12 @@ func (s *PrivateFusionAPI) MakeSwap(ctx context.Context, args MakeSwapArgs, pass
 		}
 	}
 
-	funcData, err := args.toData()
+	block, err := s.b.BlockByNumber(ctx, rpc.LatestBlockNumber)
+	if block == nil || err != nil {
+		return common.Hash{}, err
+	}
+
+	funcData, err := args.toData(block.Time())
 	if err != nil {
 		return common.Hash{}, err
 	}
@@ -1380,7 +1387,13 @@ func (s *FusionTransactionAPI) BuildMakeSwapTx(ctx context.Context, args MakeSwa
 		}
 	}
 
-	funcData, err := args.toData()
+
+	block, err := s.b.BlockByNumber(ctx, rpc.LatestBlockNumber)
+	if block == nil || err != nil {
+		return nil, err
+	}
+
+	funcData, err := args.toData(block.Time())
 	if err != nil {
 		return nil, err
 	}
