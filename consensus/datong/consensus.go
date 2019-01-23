@@ -59,11 +59,9 @@ type DaTong struct {
 	db         ethdb.Database
 	stateCache state.Database
 
-	signer     common.Address
-	signFn     SignerFn
-	lock       sync.RWMutex
-	lockHeader sync.RWMutex
-
+	signer            common.Address
+	signFn            SignerFn
+	lock              sync.RWMutex
 	weight            *big.Int
 	validTicketNumber *big.Int
 }
@@ -99,9 +97,6 @@ func (dt *DaTong) Author(header *types.Header) (common.Address, error) {
 // VerifyHeader checks whether a header conforms to the consensus rules of the
 // stock Ethereum ethash engine.
 func (dt *DaTong) verifyHeader(chain consensus.ChainReader, header *types.Header, seal bool, parents []*types.Header) error {
-	dt.lockHeader.Lock()
-	defer dt.lockHeader.Unlock()
-
 	if header.Number == nil {
 		log.Info("consensus.verifyheader eerror unknown block ")
 		return errUnknownBlock
@@ -117,7 +112,7 @@ func (dt *DaTong) verifyHeader(chain consensus.ChainReader, header *types.Header
 	}
 
 	if _, err := newSnapshotWithData(getSnapDataByHeader(header)); err != nil {
-		log.Info("consensus.verifyheadererr snapshot with data ", err, err.Error() )
+		log.Info("consensus.verifyheadererr snapshot with data ", err, err.Error())
 		return err
 	}
 
@@ -130,7 +125,7 @@ func (dt *DaTong) verifyHeader(chain consensus.ChainReader, header *types.Header
 		log.Info("consensus.verifyheadererr error future block ")
 		return consensus.ErrFutureBlock
 	}
-	
+
 	return dt.verifySeal(chain, header, parents)
 }
 
@@ -200,17 +195,17 @@ func (dt *DaTong) verifySeal(chain consensus.ChainReader, header *types.Header, 
 		log.Info("consensus.verifySeal ErrUnknownAncestor", "number", number-1)
 		return consensus.ErrUnknownAncestor
 	}
-	
+
 	snap, err := newSnapshotWithData(getSnapDataByHeader(header))
 	if err != nil {
-		log.Info("consensus.verifySeal Err newSnapshot " , "err" , err.Error() )
+		log.Info("consensus.verifySeal Err newSnapshot ", "err", err.Error())
 		return err
 	}
-	
+
 	signature := header.Extra[len(header.Extra)-extraSeal:]
 	pubkey, err := crypto.Ecrecover(sigHash(header).Bytes(), signature)
 	if err != nil {
-		log.Info("consensus.verifySeal Ecrecover ", "err", err.Error()) 
+		log.Info("consensus.verifySeal Ecrecover ", "err", err.Error())
 		return err
 	}
 
@@ -235,13 +230,13 @@ func (dt *DaTong) verifySeal(chain consensus.ChainReader, header *types.Header, 
 	}
 
 	if _, ok := ticketMap[ticketID]; !ok {
-		log.Info("consensus.verifySeal ticketNotFound", "ticketID", ticketID )
+		log.Info("consensus.verifySeal ticketNotFound", "ticketID", ticketID)
 		return errors.New("Ticket not found")
 	}
 	ticket := ticketMap[ticketID]
 
 	if ticket.Owner != signer {
-		log.Info("consensus.verifySeal ticket owner not signer", "ticOwner", ticket.Owner, "signer", signer )
+		log.Info("consensus.verifySeal ticket owner not signer", "ticOwner", ticket.Owner, "signer", signer)
 		return errors.New("Ticket owner not be the signer")
 	}
 
@@ -551,7 +546,7 @@ func (dt *DaTong) getAllTickets(chain consensus.ChainReader, header *types.Heade
 	statedb, err = state.New(parent.Root, dt.stateCache)
 
 	if err != nil {
-		log.Info("  consensus.go getAllTickets state not found for parent root ", "err", err.Error()  )
+		log.Info("  consensus.go getAllTickets state not found for parent root ", "err", err.Error())
 		return nil, err
 	}
 	return statedb.AllTickets(), nil
