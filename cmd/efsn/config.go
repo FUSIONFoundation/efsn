@@ -143,6 +143,10 @@ func makeConfigNode(ctx *cli.Context) (*node.Node, gethConfig) {
 		cfg.Eth.SyncMode = downloader.FullSync
 	}
 
+	// set to archival mode by default
+	// necessary to get ticket state back
+	cfg.Eth.NoPruning = true
+
 	return stack, cfg
 }
 
