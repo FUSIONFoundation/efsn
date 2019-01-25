@@ -698,8 +698,10 @@ func (st *StateTransition) handleFsnCall() error {
 
 		if fromStart == common.TimeLockNow && fromEnd == common.TimeLockForever {
 			st.state.AddBalance(st.msg.From(), swap.FromAssetID, fromTotal)
+			st.state.SubBalance(swap.Owner, swap.FromAssetID, fromTotal)
 		} else {
 			st.state.AddTimeLockBalance(st.msg.From(), swap.FromAssetID, fromNeedValue)
+			st.state.SubTimeLockBalance(swap.Owner, swap.FromAssetID, fromNeedValue)
 		}
 
 		st.addLog(common.TakeSwapFunc, takeSwapParam, common.NewKeyValue("SwapID", swap.ID))
