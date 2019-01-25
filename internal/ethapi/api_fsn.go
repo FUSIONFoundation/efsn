@@ -853,7 +853,9 @@ func (s *PrivateFusionAPI) TakeSwap(ctx context.Context, args TakeSwapArgs, pass
 			Value:     total,
 		})
 		if state.GetTimeLockBalance(swap.ToAssetID, args.From).Cmp(needValue) < 0 {
-			return common.Hash{}, fmt.Errorf("not enough time lock balance")
+			if state.GetBalance(swap.ToAssetID, args.From).Cmp(total) < 0 {
+				return common.Hash{}, fmt.Errorf("not enough time lock or asset balance")
+			}
 		}
 	}
 
@@ -861,7 +863,7 @@ func (s *PrivateFusionAPI) TakeSwap(ctx context.Context, args TakeSwapArgs, pass
 	if err != nil {
 		return common.Hash{}, err
 	}
-	var param = common.FSNCallParam{Func: common.TakeSwapFunc, Data: funcData}
+	var param = common.FSNCallParam{Func: common.TakeSwapFuncExt, Data: funcData}
 	data, err := param.ToBytes()
 	if err != nil {
 		return common.Hash{}, err
@@ -1501,14 +1503,16 @@ func (s *FusionTransactionAPI) BuildTakeSwapTx(ctx context.Context, args TakeSwa
 			Value:     total,
 		})
 		if state.GetTimeLockBalance(swap.ToAssetID, args.From).Cmp(needValue) < 0 {
-			return nil, fmt.Errorf("not enough time lock balance")
+			if state.GetBalance(swap.ToAssetID, args.From).Cmp(total) < 0 {
+				return nil, fmt.Errorf("not enough time lock or asset balance")
+			}
 		}
 	}
 	funcData, err := args.toData()
 	if err != nil {
 		return nil, err
 	}
-	var param = common.FSNCallParam{Func: common.TakeSwapFunc, Data: funcData}
+	var param = common.FSNCallParam{Func: common.TakeSwapFuncExt, Data: funcData}
 	data, err := param.ToBytes()
 	if err != nil {
 		return nil, err
