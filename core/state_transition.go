@@ -487,38 +487,49 @@ func (st *StateTransition) handleFsnCall() error {
 			Value:     total,
 		})
 
-		useAsset := false
+
 		if start == common.TimeLockNow && end == common.TimeLockForever {
 			if st.state.GetBalance(makeSwapParam.FromAssetID, st.msg.From()).Cmp(total) < 0 {
 				st.addLog(common.MakeSwapFunc, makeSwapParam, common.NewKeyValue("Error", "not enough from asset"))
 				return fmt.Errorf("not enough from asset")
 			}
 		} else {
-			if st.state.GetTimeLockBalance(makeSwapParam.FromAssetID,  st.msg.From()).Cmp(needValue) < 0 {
+			available := st.state.GetTimeLockBalance(makeSwapParam.FromAssetID,  st.msg.From())
+			if available.Cmp(needValue) < 0 {
 				if param.Func == common.MakeSwapFunc {
 					// this was the legacy swap do not do
 					// time lock and just return an error
 					st.addLog(common.MakeSwapFunc, makeSwapParam, common.NewKeyValue("Error", "not enough time lock or asset balance"))
 					return fmt.Errorf("not enough time lock balance")
 				}
+				
 				if st.state.GetBalance(makeSwapParam.FromAssetID,  st.msg.From()).Cmp(total) < 0 {
 					st.addLog(common.MakeSwapFunc, makeSwapParam, common.NewKeyValue("Error", "not enough time lock or asset balance"))
 					return fmt.Errorf("not enough time lock or asset balance")
 				}
-				useAsset = true
-			}
-		}
 
-		if useAsset {
-			st.state.SubBalance(  st.msg.From(), makeSwapParam.FromAssetID, total)
-			totalValue := common.NewTimeLock(&common.TimeLockItem{
-				StartTime: common.TimeLockNow,
-				EndTime:   common.TimeLockForever,
-				Value:     total,
-			})
-			surplusValue := new(common.TimeLock).Sub(totalValue, needValue)
-			if !surplusValue.IsEmpty() {
-				st.state.AddTimeLockBalance(  st.msg.From(), makeSwapParam.FromAssetID, surplusValue)
+				// subtract the asset from the balance
+				st.state.SubBalance(  st.msg.From(), makeSwapParam.FromAssetID, total)
+				// see if we need timelock from to start
+				if start != common.TimeLockNow {
+					todayValue := common.NewTimeLock(&common.TimeLockItem{
+						StartTime:  common.TimeLockNow ,
+						EndTime:   start - 1,
+						Value:     total,
+					})
+					st.state.AddTimeLockBalance(  st.msg.From(), makeSwapParam.FromAssetID, todayValue )
+				}
+				//lock needed portion
+				st.state.AddTimeLockBalance(  st.msg.From(), makeSwapParam.FromAssetID, needValue )
+				// then make sure from end to forever is set
+				if ( end != common.TimeLockForever){
+					totalValue := common.NewTimeLock(&common.TimeLockItem{
+						StartTime: end + 1,
+						EndTime:   common.TimeLockForever,
+						Value:     total,
+					})
+					st.state.AddTimeLockBalance(  st.msg.From(), makeSwapParam.FromAssetID, totalValue )
+				}
 			}
 		}
 
