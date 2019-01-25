@@ -762,7 +762,9 @@ func (s *PrivateFusionAPI) MakeSwap(ctx context.Context, args MakeSwapArgs, pass
 			Value:     total,
 		})
 		if state.GetTimeLockBalance(args.FromAssetID, args.From).Cmp(needValue) < 0 {
-			return common.Hash{}, fmt.Errorf("not enough time lock balance")
+			if state.GetBalance(args.FromAssetID, args.From).Cmp(total) < 0 {
+				return common.Hash{}, fmt.Errorf("not enough time lock or asset balance")
+			}
 		}
 	}
 
@@ -1383,7 +1385,9 @@ func (s *FusionTransactionAPI) BuildMakeSwapTx(ctx context.Context, args MakeSwa
 			Value:     total,
 		})
 		if state.GetTimeLockBalance(args.FromAssetID, args.From).Cmp(needValue) < 0 {
-			return nil, fmt.Errorf("not enough time lock balance")
+			if state.GetBalance(args.FromAssetID, args.From).Cmp(total) < 0 {
+				return nil, fmt.Errorf("not enough time lock or asset balance")
+			}
 		}
 	}
 
