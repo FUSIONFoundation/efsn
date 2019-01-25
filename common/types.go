@@ -389,7 +389,7 @@ const (
 	RecallSwapFunc
 	// TakeSwapFunc wacom
 	TakeSwapFunc
-	// MakeSwapFuncExt
+	// MakeSwapFuncExt wacom
 	MakeSwapFuncExt
 )
 
@@ -466,16 +466,16 @@ type TimeLockParam struct {
 // MakeSwapParam wacom
 type MakeSwapParam struct {
 	FromAssetID   Hash
-	FromStartTime uint64  
+	FromStartTime uint64
 	FromEndTime   uint64
 	MinFromAmount *big.Int `json:",string"`
 	ToAssetID     Hash
 	ToStartTime   uint64
 	ToEndTime     uint64
 	MinToAmount   *big.Int `json:",string"`
-	SwapSize      *big.Int  `json:",string"`
+	SwapSize      *big.Int `json:",string"`
 	Targes        []Address
-	Time		  *big.Int
+	Time          *big.Int
 }
 
 // RecallSwapParam wacom
@@ -589,11 +589,11 @@ var SystemAsset = Asset{
 type Ticket struct {
 	ID         Hash
 	Owner      Address
-	Height     *big.Int  `json:",string"`
+	Height     *big.Int `json:",string"`
 	StartTime  uint64
 	ExpireTime uint64
-	Value      *big.Int  `json:",string"`
-	weight     *big.Int  `json:",string"`
+	Value      *big.Int `json:",string"`
+	weight     *big.Int `json:",string"`
 }
 
 // SetWeight wacom
@@ -613,12 +613,12 @@ type Swap struct {
 	FromAssetID   Hash
 	FromStartTime uint64
 	FromEndTime   uint64
-	MinFromAmount *big.Int  `json:",string"`
+	MinFromAmount *big.Int `json:",string"`
 	ToAssetID     Hash
 	ToStartTime   uint64
 	ToEndTime     uint64
 	MinToAmount   *big.Int `json:",string"`
-	SwapSize      *big.Int  `json:",string"`
+	SwapSize      *big.Int `json:",string"`
 	Targes        []Address
 	Time          *big.Int // Provides information for TIME
 }
