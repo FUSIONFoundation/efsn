@@ -467,6 +467,7 @@ func (st *StateTransition) handleFsnCall() error {
 			st.addLog(common.AssetValueChangeFunc, assetValueChangeParam, common.NewKeyValue("AssetID", assetValueChangeParam.AssetID))
 		}
 		return err
+	case common.EmptyFunc:
 	case common.MakeSwapFunc, common.MakeSwapFuncExt:
 		outputCommandInfo("MakeSwapFunc", "from", st.msg.From() )
 		makeSwapParam := common.MakeSwapParam{}

@@ -389,6 +389,8 @@ const (
 	RecallSwapFunc
 	// TakeSwapFunc wacom
 	TakeSwapFunc
+	// EmptyFunc wacom
+	EmptyFunc
 	// MakeSwapFuncExt wacom
 	MakeSwapFuncExt
 )
