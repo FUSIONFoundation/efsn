@@ -389,6 +389,8 @@ const (
 	RecallSwapFunc
 	// TakeSwapFunc wacom
 	TakeSwapFunc
+	// MakeSwapFuncExt
+	MakeSwapFuncExt
 )
 
 // ParseBig256 parses s as a 256 bit integer in decimal or hexadecimal syntax.

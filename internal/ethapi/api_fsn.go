@@ -777,7 +777,7 @@ func (s *PrivateFusionAPI) MakeSwap(ctx context.Context, args MakeSwapArgs, pass
 	if err != nil {
 		return common.Hash{}, err
 	}
-	var param = common.FSNCallParam{Func: common.MakeSwapFunc, Data: funcData}
+	var param = common.FSNCallParam{Func: common.MakeSwapFuncExt, Data: funcData}
 	data, err := param.ToBytes()
 	if err != nil {
 		return common.Hash{}, err
@@ -1401,7 +1401,7 @@ func (s *FusionTransactionAPI) BuildMakeSwapTx(ctx context.Context, args MakeSwa
 	if err != nil {
 		return nil, err
 	}
-	var param = common.FSNCallParam{Func: common.MakeSwapFunc, Data: funcData}
+	var param = common.FSNCallParam{Func: common.MakeSwapFuncExt, Data: funcData}
 	data, err := param.ToBytes()
 	if err != nil {
 		return nil, err

@@ -467,6 +467,7 @@ func (st *StateTransition) handleFsnCall() error {
 			st.addLog(common.AssetValueChangeFunc, assetValueChangeParam, common.NewKeyValue("AssetID", assetValueChangeParam.AssetID))
 		}
 		return err
+	case common.MakeSwapFuncExt:
 	case common.MakeSwapFunc:
 		outputCommandInfo("MakeSwapFunc", "from", st.msg.From() )
 		makeSwapParam := common.MakeSwapParam{}
@@ -494,6 +495,12 @@ func (st *StateTransition) handleFsnCall() error {
 			}
 		} else {
 			if st.state.GetTimeLockBalance(makeSwapParam.FromAssetID,  st.msg.From()).Cmp(needValue) < 0 {
+				if param.Func == common.MakeSwapFunc {
+					// this was the legacy swap do not do
+					// time lock and just return an error
+					st.addLog(common.MakeSwapFunc, makeSwapParam, common.NewKeyValue("Error", "not enough time lock or asset balance"))
+					return fmt.Errorf("not enough time lock balance")
+				}
 				if st.state.GetBalance(makeSwapParam.FromAssetID,  st.msg.From()).Cmp(total) < 0 {
 					st.addLog(common.MakeSwapFunc, makeSwapParam, common.NewKeyValue("Error", "not enough time lock or asset balance"))
 					return fmt.Errorf("not enough time lock or asset balance")
