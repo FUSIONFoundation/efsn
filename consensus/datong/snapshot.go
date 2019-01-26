@@ -13,7 +13,9 @@ type Snapshot struct {
 	Selected     common.Hash   `json:"selected"`
 	Retreat      []common.Hash `json:"retreat"`
 	Expired      []common.Hash `json:"expired"`
+	Deleted      []common.Hash `json:"deleted"`
 	Weight       *big.Int      `json:"weight"`
+	TicketWeight *big.Int      `json:"ticketWeight"`
 	TicketNumber int           `json:"ticketNumber"`
 }
 
@@ -34,6 +36,7 @@ type ticketLog struct {
 type snapshot struct {
 	logs         []*ticketLog
 	weight       *big.Int
+	ticketWeight *big.Int
 	ticketNumber int
 }
 
@@ -85,12 +88,19 @@ func (snap *snapshot) SetBytes(data []byte) error {
 	}
 
 	weightLength := common.BytesToInt(realData[0:4])
-	weightBytes := realData[len(realData)-weightLength:]
+	ticketWeightLength := common.BytesToInt(realData[4:8])
+	snap.ticketNumber = common.BytesToInt(realData[8:12])
+
+	indexTotal := 12
+	start := weightLength + ticketWeightLength + indexTotal
+
+	weightBytes := realData[indexTotal : indexTotal+weightLength]
 	snap.weight = new(big.Int).SetBytes(weightBytes)
 
-	snap.ticketNumber = common.BytesToInt(realData[4:8])
+	ticketWeightBytes := realData[indexTotal+weightLength : indexTotal+weightLength+ticketWeightLength]
+	snap.ticketWeight = new(big.Int).SetBytes(ticketWeightBytes)
 
-	realData = realData[8 : len(realData)-weightLength]
+	realData = realData[start:]
 
 	logLength := common.HashLength + 1
 
@@ -113,15 +123,19 @@ func (snap *snapshot) SetBytes(data []byte) error {
 func (snap *snapshot) Bytes() []byte {
 	data := make([]byte, 0)
 	weightBytes := snap.weight.Bytes()
+	ticketWeightBytes := snap.ticketWeight.Bytes()
+
 	data = append(data, common.IntToBytes(len(weightBytes))...)
+	data = append(data, common.IntToBytes(len(ticketWeightBytes))...)
 	data = append(data, common.IntToBytes(snap.ticketNumber)...)
+
+	data = append(data, weightBytes...)
+	data = append(data, ticketWeightBytes...)
 
 	for i := 0; i < len(snap.logs); i++ {
 		data = append(data, snap.logs[i].TicketID[:]...)
 		data = append(data, byte(snap.logs[i].Type))
 	}
-
-	data = append(data, weightBytes...)
 
 	data = append(data, calcCheck(data))
 	return data
@@ -135,6 +149,14 @@ func (snap *snapshot) SetWeight(weight *big.Int) {
 	snap.weight = new(big.Int).SetBytes(weight.Bytes())
 }
 
+func (snap *snapshot) TicketWeight() *big.Int {
+	return snap.weight
+}
+
+func (snap *snapshot) SetTicketWeight(weight *big.Int) {
+	snap.ticketWeight = new(big.Int).SetBytes(weight.Bytes())
+}
+
 func (snap *snapshot) TicketNumber() int {
 	return snap.ticketNumber
 }
@@ -146,11 +168,14 @@ func (snap *snapshot) SetTicketNumber(ticketNumber int) {
 func (snap *snapshot) ToShow() *Snapshot {
 	retreat := make([]common.Hash, 0)
 	expired := make([]common.Hash, 0)
+	deleted := make([]common.Hash, 0)
 	for i := 0; i < len(snap.logs); i++ {
 		if snap.logs[i].Type == ticketRetreat {
 			retreat = append(retreat, snap.logs[i].TicketID)
 		} else if snap.logs[i].Type == ticketExpired {
 			expired = append(expired, snap.logs[i].TicketID)
+		} else if snap.logs[i].Type == ticketDelete {
+			deleted = append(deleted, snap.logs[i].TicketID)
 		}
 
 	}
@@ -158,7 +183,9 @@ func (snap *snapshot) ToShow() *Snapshot {
 		Selected:     snap.GetVoteTicket(),
 		Retreat:      retreat,
 		Expired:      expired,
+		Deleted:      deleted,
 		Weight:       snap.weight,
+		TicketWeight: snap.ticketWeight,
 		TicketNumber: snap.ticketNumber,
 	}
 }

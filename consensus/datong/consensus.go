@@ -40,13 +40,14 @@ var (
 type SignerFn func(accounts.Account, []byte) ([]byte, error)
 
 var (
-	maxBytes            = bytes.Repeat([]byte{0xff}, common.HashLength)
-	maxDiff             = new(big.Int).SetBytes(maxBytes)
-	maxProb             = new(big.Int)
-	extraVanity         = 32
-	extraSeal           = 65
-	minTickets          = 6
-	maxBlockTime uint64 = 120 // 2 minutes
+	maxBytes                = bytes.Repeat([]byte{0xff}, common.HashLength)
+	maxDiff                 = new(big.Int).SetBytes(maxBytes)
+	maxProb                 = new(big.Int)
+	extraVanity             = 32
+	extraSeal               = 65
+	minTickets              = 6
+	maxBlockTime     uint64 = 120 // 2 minutes
+	ticketWeightStep        = 2   // 2%
 )
 
 var (
@@ -410,6 +411,9 @@ func (dt *DaTong) Finalize(chain consensus.ChainReader, header *types.Header, st
 	}
 
 	remainingWeight := new(big.Int)
+	totalBalance := new(big.Int)
+	balanceTemp := make(map[common.Address]bool)
+
 	ticketNumber := 0
 
 	for _, t := range ticketMap {
@@ -423,15 +427,27 @@ func (dt *DaTong) Finalize(chain consensus.ChainReader, header *types.Header, st
 		} else {
 			ticketNumber++
 			weight := new(big.Int).Sub(header.Number, t.Height)
-			remainingWeight.Add(remainingWeight, weight.Add(weight, common.Big1))
+			weight = weight.Mul(weight, big.NewInt(int64(ticketWeightStep))) // one ticket every block add weight eq number * setp
+			weight = weight.Add(weight, common.Big100)                       // one ticket weight eq 100
+			remainingWeight = remainingWeight.Add(remainingWeight, weight)
+
+			if _, exist := balanceTemp[t.Owner]; !exist {
+				balanceTemp[t.Owner] = true
+				balance := state.GetBalance(common.SystemAssetID, t.Owner)
+				totalBalance = totalBalance.Add(totalBalance, balance)
+			}
+
 		}
 	}
 
 	if remainingWeight.Cmp(common.Big0) <= 0 {
 		return nil, errors.New("Next block don't have ticket, wait buy ticket")
 	}
-	snap.SetWeight(remainingWeight)
+
+	snap.SetWeight(new(big.Int).Add(totalBalance, remainingWeight))
+	snap.SetTicketWeight(remainingWeight)
 	snap.SetTicketNumber(ticketNumber)
+
 	snapBytes := snap.Bytes()
 	header.Extra = header.Extra[:extraVanity]
 	header.Extra = append(header.Extra, snapBytes...)
@@ -582,7 +598,7 @@ func (dt *DaTong) selectTickets(tickets []*common.Ticket, parent *types.Header, 
 	if err != nil {
 		return selectedTickets
 	}
-	weight := sanp.Weight()
+	weight := sanp.TicketWeight()
 	distance := new(big.Int).Sub(new(big.Int).SetUint64(time), parent.Time)
 	prob := dt.getProbability(distance)
 	length := new(big.Int).Div(maxDiff, weight)
@@ -594,8 +610,11 @@ func (dt *DaTong) selectTickets(tickets []*common.Ticket, parent *types.Header, 
 	expireTime := parent.Time.Uint64()
 	for i := 0; i < len(tickets); i++ {
 		if time >= tickets[i].StartTime && tickets[i].ExpireTime > expireTime {
+
 			times := new(big.Int).Sub(parent.Number, tickets[i].Height)
-			times = times.Add(times, common.Big1)
+			times = times.Mul(times, big.NewInt(int64(ticketWeightStep)))
+			times = times.Add(times, common.Big100)
+
 			if dt.validateTicket(tickets[i], point, length, times) {
 				tickets[i].SetWeight(times)
 				selectedTickets = append(selectedTickets, tickets[i])
