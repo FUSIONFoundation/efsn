@@ -611,9 +611,9 @@ func (dt *DaTong) selectTickets(tickets []*common.Ticket, parent *types.Header, 
 		if time >= tickets[i].StartTime && tickets[i].ExpireTime > expireTime {
 
 			times := new(big.Int).Sub(parent.Number, tickets[i].Height)
-			times = times.Add(times, common.Big1)
-			// times = times.Mul(times, big.NewInt(int64(ticketWeightStep)))
-			// times = times.Add(times, common.Big100)
+			//times = times.Add(times, common.Big1)
+			times = times.Mul(times, big.NewInt(int64(ticketWeightStep)))
+			times = times.Add(times, common.Big100)
 
 			if dt.validateTicket(tickets[i], point, length, times) {
 				tickets[i].SetWeight(times)
