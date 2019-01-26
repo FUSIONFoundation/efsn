@@ -45,7 +45,6 @@ var (
 	maxProb                 = new(big.Int)
 	extraVanity             = 32
 	extraSeal               = 65
-	minTickets              = 6
 	maxBlockTime     uint64 = 120 // 2 minutes
 	ticketWeightStep        = 2   // 2%
 )
@@ -351,7 +350,7 @@ func (dt *DaTong) Finalize(chain consensus.ChainReader, header *types.Header, st
 			break
 		}
 		time++
-		if (time-parentTime) > maxBlockTime && len(ticketMap) < minTickets {
+		if (time - parentTime) > maxBlockTime {
 			deleteAll = true
 			break
 		}
