@@ -150,11 +150,11 @@ func (snap *snapshot) SetWeight(weight *big.Int) {
 }
 
 func (snap *snapshot) TicketWeight() *big.Int {
-	return snap.weight
+	return snap.ticketWeight
 }
 
-func (snap *snapshot) SetTicketWeight(weight *big.Int) {
-	snap.ticketWeight = new(big.Int).SetBytes(weight.Bytes())
+func (snap *snapshot) SetTicketWeight(ticketWeight *big.Int) {
+	snap.ticketWeight = new(big.Int).SetBytes(ticketWeight.Bytes())
 }
 
 func (snap *snapshot) TicketNumber() int {
