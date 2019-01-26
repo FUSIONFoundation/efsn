@@ -704,6 +704,7 @@ func GenGenesisExtraData(number *big.Int) []byte {
 	data := make([]byte, extraVanity)
 	snap := newSnapshot()
 	snap.SetWeight(number)
+	snap.SetTicketWeight(number)
 	data = append(data, snap.Bytes()...)
 	data = append(data, bytes.Repeat([]byte{0x00}, extraSeal)...)
 	return data
