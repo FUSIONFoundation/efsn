@@ -424,47 +424,61 @@ func (st *StateTransition) handleFsnCall() error {
 		}
 		st.addLog(common.BuyTicketFunc, param.Data, common.NewKeyValue("Ticket", ticket.ID))
 		return nil
-	case common.AssetValueChangeFunc:
+	case common.AssetValueChangeFunc, common.OldAssetValueChangeFunc:
 		outputCommandInfo("AssetValueChangeFunc", "from", st.msg.From() )
-		assetValueChangeParam := common.AssetValueChangeParam{}
-		rlp.DecodeBytes(param.Data, &assetValueChangeParam)
+		var assetValueChangeParamEx common.AssetValueChangeExParam
+		if param.Func == common.OldAssetValueChangeFunc {
+			// convert old data to new format
+			assetValueChangeParam := common.AssetValueChangeParam{}
+			rlp.DecodeBytes(param.Data, &assetValueChangeParam)
+			assetValueChangeParamEx = common.AssetValueChangeExParam{
+				AssetID : assetValueChangeParam.AssetID,
+				To : assetValueChangeParam.To,
+				Value : assetValueChangeParam.Value,
+				IsInc : assetValueChangeParam.IsInc,
+				TransacData : "",
+			}
+		} else {
+			assetValueChangeParamEx = common.AssetValueChangeExParam{}
+			rlp.DecodeBytes(param.Data, &assetValueChangeParamEx)
+		}
 		big0 := big.NewInt(0)
-		if (assetValueChangeParam.IsInc && assetValueChangeParam.Value.Cmp(big0) <= 0) || (!assetValueChangeParam.IsInc && assetValueChangeParam.Value.Cmp(big0) >= 0) {
-			st.addLog(common.AssetValueChangeFunc, assetValueChangeParam, common.NewKeyValue("Error", "illegal operation"))
+		if (assetValueChangeParamEx.IsInc && assetValueChangeParamEx.Value.Cmp(big0) <= 0) || (!assetValueChangeParamEx.IsInc && assetValueChangeParamEx.Value.Cmp(big0) >= 0) {
+			st.addLog(common.AssetValueChangeFunc, assetValueChangeParamEx, common.NewKeyValue("Error", "illegal operation"))
 			return fmt.Errorf("illegal operation")
 		}
 		assets := st.state.AllAssets()
 
-		asset, ok := assets[assetValueChangeParam.AssetID]
+		asset, ok := assets[assetValueChangeParamEx.AssetID]
 		if !ok {
-			st.addLog(common.AssetValueChangeFunc, assetValueChangeParam, common.NewKeyValue("Error", "asset not found"))
+			st.addLog(common.AssetValueChangeFunc, assetValueChangeParamEx, common.NewKeyValue("Error", "asset not found"))
 			return fmt.Errorf("asset not found")
 		}
 
 		if !asset.CanChange {
-			st.addLog(common.AssetValueChangeFunc, assetValueChangeParam, common.NewKeyValue("Error", "asset can't inc or dec"))
+			st.addLog(common.AssetValueChangeFunc, assetValueChangeParamEx, common.NewKeyValue("Error", "asset can't inc or dec"))
 			return fmt.Errorf("asset can't inc or dec")
 		}
 
 		if asset.Owner != st.msg.From() {
-			st.addLog(common.AssetValueChangeFunc, assetValueChangeParam, common.NewKeyValue("Error", "must be change by owner"))
+			st.addLog(common.AssetValueChangeFunc, assetValueChangeParamEx, common.NewKeyValue("Error", "must be change by owner"))
 			return fmt.Errorf("must be change by owner")
 		}
 
-		if assetValueChangeParam.IsInc {
-			st.state.AddBalance(assetValueChangeParam.To, assetValueChangeParam.AssetID, assetValueChangeParam.Value)
-			asset.Total = asset.Total.Add(asset.Total, assetValueChangeParam.Value)
+		if assetValueChangeParamEx.IsInc {
+			st.state.AddBalance(assetValueChangeParamEx.To, assetValueChangeParamEx.AssetID, assetValueChangeParamEx.Value)
+			asset.Total = asset.Total.Add(asset.Total, assetValueChangeParamEx.Value)
 		} else {
-			if st.state.GetBalance(assetValueChangeParam.AssetID, assetValueChangeParam.To).Cmp(assetValueChangeParam.Value) < 0 {
-				st.addLog(common.AssetValueChangeFunc, assetValueChangeParam, common.NewKeyValue("Error", "not enough asset"))
+			if st.state.GetBalance(assetValueChangeParamEx.AssetID, assetValueChangeParamEx.To).Cmp(assetValueChangeParamEx.Value) < 0 {
+				st.addLog(common.AssetValueChangeFunc, assetValueChangeParamEx, common.NewKeyValue("Error", "not enough asset"))
 				return fmt.Errorf("not enough asset")
 			}
-			st.state.SubBalance(assetValueChangeParam.To, assetValueChangeParam.AssetID, assetValueChangeParam.Value)
-			asset.Total = asset.Total.Sub(asset.Total, assetValueChangeParam.Value)
+			st.state.SubBalance(assetValueChangeParamEx.To, assetValueChangeParamEx.AssetID, assetValueChangeParamEx.Value)
+			asset.Total = asset.Total.Sub(asset.Total, assetValueChangeParamEx.Value)
 		}
 		err := st.state.UpdateAsset(asset)
 		if err == nil {
-			st.addLog(common.AssetValueChangeFunc, assetValueChangeParam, common.NewKeyValue("AssetID", assetValueChangeParam.AssetID))
+			st.addLog(common.AssetValueChangeFunc, assetValueChangeParamEx, common.NewKeyValue("AssetID", assetValueChangeParamEx.AssetID))
 		}
 		return err
 	case common.EmptyFunc:

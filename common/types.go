@@ -381,8 +381,8 @@ const (
 	TimeLockFunc
 	// BuyTicketFunc wacom
 	BuyTicketFunc
-	// AssetValueChangeFunc wacom
-	AssetValueChangeFunc
+	// OldAssetValueChangeFunc wacom
+	OldAssetValueChangeFunc
 	// MakeSwapFunc wacom
 	MakeSwapFunc
 	// RecallSwapFunc wacom
@@ -395,6 +395,8 @@ const (
 	MakeSwapFuncExt
 	// TakeSwapFuncExt wacom
 	TakeSwapFuncExt
+	// AssetValueChangeFunc wacom
+	AssetValueChangeFunc
 )
 
 // ParseBig256 parses s as a 256 bit integer in decimal or hexadecimal syntax.
@@ -455,6 +457,15 @@ type AssetValueChangeParam struct {
 	To      Address
 	Value   *big.Int `json:",string"`
 	IsInc   bool
+}
+
+// AssetValueChangeExParam wacom
+type AssetValueChangeExParam struct {
+	AssetID Hash
+	To      Address
+	Value   *big.Int `json:",string"`
+	IsInc   bool
+	TransacData string 
 }
 
 // TimeLockParam wacom
@@ -520,6 +531,11 @@ func (p *BuyTicketParam) ToBytes() ([]byte, error) {
 
 // ToBytes wacom
 func (p *AssetValueChangeParam) ToBytes() ([]byte, error) {
+	return rlp.EncodeToBytes(p)
+}
+
+// ToBytes wacom
+func (p *AssetValueChangeExParam) ToBytes() ([]byte, error) {
 	return rlp.EncodeToBytes(p)
 }
 

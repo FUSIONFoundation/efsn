@@ -63,6 +63,15 @@ type AssetValueChangeArgs struct {
 	IsInc   bool           `json:"isInc"`
 }
 
+type AssetValueChangeExArgs struct {
+	FusionBaseArgs
+	AssetID common.Hash    `json:"asset"`
+	To      common.Address `json:"to"`
+	Value   *hexutil.Big   `json:"value"`
+	IsInc   bool           `json:"isInc"`
+	TransacData string     `json:"transacData"`
+}
+
 // MakeSwapArgs wacom
 type MakeSwapArgs struct {
 	FusionBaseArgs
@@ -147,6 +156,17 @@ func (args *AssetValueChangeArgs) toData() ([]byte, error) {
 		To:      args.To,
 		Value:   args.Value.ToInt(),
 		IsInc:   args.IsInc,
+	}
+	return param.ToBytes()
+}
+
+func (args *AssetValueChangeExArgs) toData() ([]byte, error) {
+	param := common.AssetValueChangeExParam{
+		AssetID: args.AssetID,
+		To:      args.To,
+		Value:   args.Value.ToInt(),
+		IsInc:   args.IsInc,
+		TransacData : args.TransacData,
 	}
 	return param.ToBytes()
 }
@@ -648,18 +668,18 @@ func (s *PrivateFusionAPI) BuyTicket(ctx context.Context, args BuyTicketArgs, pa
 }
 
 // IncAsset ss
-func (s *PrivateFusionAPI) IncAsset(ctx context.Context, args AssetValueChangeArgs, passwd string) (common.Hash, error) {
+func (s *PrivateFusionAPI) IncAsset(ctx context.Context, args AssetValueChangeExArgs, passwd string) (common.Hash, error) {
 	args.IsInc = true
 	return s.checkAssetValueChange(ctx, args, passwd)
 }
 
 // DecAsset ss
-func (s *PrivateFusionAPI) DecAsset(ctx context.Context, args AssetValueChangeArgs, passwd string) (common.Hash, error) {
+func (s *PrivateFusionAPI) DecAsset(ctx context.Context, args AssetValueChangeExArgs, passwd string) (common.Hash, error) {
 	args.IsInc = false
 	return s.checkAssetValueChange(ctx, args, passwd)
 }
 
-func (s *PrivateFusionAPI) checkAssetValueChange(ctx context.Context, args AssetValueChangeArgs, passwd string) (common.Hash, error) {
+func (s *PrivateFusionAPI) checkAssetValueChange(ctx context.Context, args AssetValueChangeExArgs, passwd string) (common.Hash, error) {
 
 	big0 := big.NewInt(0)
 
@@ -675,6 +695,10 @@ func (s *PrivateFusionAPI) checkAssetValueChange(ctx context.Context, args Asset
 	assets := state.AllAssets()
 
 	asset, ok := assets[args.AssetID]
+
+	if len(args.TransacData) > 256 {
+		return common.Hash{}, fmt.Errorf("transacData cannot be greater than 256")
+	}
 
 	if !ok {
 		return common.Hash{}, fmt.Errorf("asset not found")
@@ -1260,7 +1284,7 @@ func (s *FusionTransactionAPI) BuyTicket(ctx context.Context, args BuyTicketArgs
 	return s.sendTransaction(ctx, args.From, tx)
 }
 
-func (s *FusionTransactionAPI) buildAssetValueChangeTx(ctx context.Context, args AssetValueChangeArgs) (*types.Transaction, error) {
+func (s *FusionTransactionAPI) buildAssetValueChangeTx(ctx context.Context, args AssetValueChangeExArgs) (*types.Transaction, error) {
 
 	big0 := big.NewInt(0)
 
@@ -1276,6 +1300,10 @@ func (s *FusionTransactionAPI) buildAssetValueChangeTx(ctx context.Context, args
 	assets := state.AllAssets()
 
 	asset, ok := assets[args.AssetID]
+
+	if len(args.TransacData) > 256 {
+		return nil, fmt.Errorf("transacData cannot be greater than 256")
+	}
 
 	if !ok {
 		return nil, fmt.Errorf("asset not found")
@@ -1312,13 +1340,13 @@ func (s *FusionTransactionAPI) buildAssetValueChangeTx(ctx context.Context, args
 }
 
 // BuildIncAssetTx ss
-func (s *FusionTransactionAPI) BuildIncAssetTx(ctx context.Context, args AssetValueChangeArgs) (*types.Transaction, error) {
+func (s *FusionTransactionAPI) BuildIncAssetTx(ctx context.Context, args AssetValueChangeExArgs) (*types.Transaction, error) {
 	args.IsInc = true
 	return s.buildAssetValueChangeTx(ctx, args)
 }
 
 // IncAsset ss
-func (s *FusionTransactionAPI) IncAsset(ctx context.Context, args AssetValueChangeArgs) (common.Hash, error) {
+func (s *FusionTransactionAPI) IncAsset(ctx context.Context, args AssetValueChangeExArgs) (common.Hash, error) {
 	tx, err := s.BuildIncAssetTx(ctx, args)
 	if err != nil {
 		return common.Hash{}, err
@@ -1327,13 +1355,13 @@ func (s *FusionTransactionAPI) IncAsset(ctx context.Context, args AssetValueChan
 }
 
 // BuildDecAssetTx ss
-func (s *FusionTransactionAPI) BuildDecAssetTx(ctx context.Context, args AssetValueChangeArgs) (*types.Transaction, error) {
+func (s *FusionTransactionAPI) BuildDecAssetTx(ctx context.Context, args AssetValueChangeExArgs) (*types.Transaction, error) {
 	args.IsInc = false
 	return s.buildAssetValueChangeTx(ctx, args)
 }
 
 // DecAsset ss
-func (s *FusionTransactionAPI) DecAsset(ctx context.Context, args AssetValueChangeArgs) (common.Hash, error) {
+func (s *FusionTransactionAPI) DecAsset(ctx context.Context, args AssetValueChangeExArgs) (common.Hash, error) {
 	tx, err := s.BuildDecAssetTx(ctx, args)
 	if err != nil {
 		return common.Hash{}, err
