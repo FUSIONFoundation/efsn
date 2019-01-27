@@ -18,6 +18,7 @@
 package state
 
 import (
+	"encoding/hex"
 	"fmt"
 	"math/big"
 	"sort"
@@ -873,6 +874,7 @@ func (db *StateDB) AllTickets() (map[common.Hash]common.Ticket, error) {
 		tickets = make(map[common.Hash]common.Ticket, 0)
 	} else {
 		if err := rlp.DecodeBytes(data, &tickets); err != nil {
+			log.Error("AllTickets failed to decode", "data", hex.EncodeToString(data))
 			return nil, err
 		}
 	}
