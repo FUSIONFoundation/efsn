@@ -308,7 +308,11 @@ func (s *PublicFusionAPI) GetAddressByNotation(ctx context.Context, notation uin
 		return common.Address{}, err
 	}
 	temp := notation / 100
-	notations := state.AllNotation()
+	notations, err := state.AllNotation()
+	if err != nil {
+		log.Error("GetAddressByNotation: Unable to decode bytes in AllNotation")
+		return common.Address{}, err
+	}
 	if temp <= 0 || temp > uint64(len(notations)) {
 		return common.Address{}, fmt.Errorf("Notation Not Found")
 	}
@@ -324,7 +328,11 @@ func (s *PublicFusionAPI) AllNotation(ctx context.Context, blockNr rpc.BlockNumb
 	if state == nil || err != nil {
 		return nil, err
 	}
-	notations := state.AllNotation()
+	notations, err := state.AllNotation()
+	if err != nil {
+		log.Error("AllNotations: Unable to decode bytes in AllNotation")
+		return nil, err
+	}
 	b := make(map[common.Address]uint64, len(notations))
 	for i := 0; i < len(notations); i++ {
 		b[notations[i]] = calcNotationDisplay(uint64(i + 1))
