@@ -836,9 +836,9 @@ func (db *StateDB) updateAssets(assets map[common.Hash]common.Asset) error {
 }
 
 // AllAssets wacom
-func (db *StateDB) AllAssets() map[common.Hash]common.Asset {
+func (db *StateDB) AllAssets() (map[common.Hash]common.Asset, error) {
 	if db.assets != nil {
-		return db.assets
+		return db.assets, nil
 	}
 	data := db.GetData(common.AssetKeyAddress)
 	var assets map[common.Hash]common.Asset
@@ -846,7 +846,10 @@ func (db *StateDB) AllAssets() map[common.Hash]common.Asset {
 		assets = make(map[common.Hash]common.Asset, 0)
 	} else {
 		var list sortableAssetLURSlice
-		rlp.DecodeBytes(data, &list)
+		if err := rlp.DecodeBytes(data, &list); err != nil {
+			log.Error("Unable to decode bytes in all AllAssets")
+			return nil, err
+		}
 		//fmt.Printf("rlp.DecodeBytes assets, list: %+v\n", list)
 		assets = make(map[common.Hash]common.Asset, 0)
 		for _, va := range list {
@@ -856,12 +859,16 @@ func (db *StateDB) AllAssets() map[common.Hash]common.Asset {
 		}
 	}
 	db.assets = assets
-	return assets
+	return assets, nil
 }
 
 // GenAsset wacom
 func (db *StateDB) GenAsset(asset common.Asset) error {
-	assets := db.AllAssets()
+	assets, err := db.AllAssets()
+	if err != nil {
+		log.Debug("GenAsset unable to retrieve previous assets")
+		return err
+	}
 	if _, ok := assets[asset.ID]; ok {
 		return fmt.Errorf("%s Asset exists", asset.ID.String())
 	}
@@ -871,7 +878,12 @@ func (db *StateDB) GenAsset(asset common.Asset) error {
 
 // UpdateAsset wacom
 func (db *StateDB) UpdateAsset(asset common.Asset) error {
-	assets := db.AllAssets()
+	assets,err := db.AllAssets()
+	if err != nil {
+		log.Debug("UpdateAsset unable to retrieve previous assets")
+		return err
+	}
+
 	if _, ok := assets[asset.ID]; !ok {
 		return fmt.Errorf("%s Asset not found", asset.ID.String())
 	}
@@ -892,9 +904,9 @@ func (db *StateDB) copyOfTickets() map[common.Hash]common.Ticket {
 }
 
 // AllTickets wacom
-func (db *StateDB) AllTickets() map[common.Hash]common.Ticket {
+func (db *StateDB) AllTickets() (map[common.Hash]common.Ticket, error) {
 	if db.tickets != nil {
-		return db.copyOfTickets()
+		return db.copyOfTickets(),nil
 	}
 	data := db.GetData(common.TicketKeyAddress)
 	var tickets map[common.Hash]common.Ticket
@@ -902,7 +914,10 @@ func (db *StateDB) AllTickets() map[common.Hash]common.Ticket {
 		tickets = make(map[common.Hash]common.Ticket, 0)
 	} else {
 		var list sortableTicketsLURSlice
-		rlp.DecodeBytes(data, &list)
+		if err := rlp.DecodeBytes(data, &list); err != nil {
+			log.Error("Unable to decode bytes in all tickets")
+			return nil, err
+		}
 		// fmt.Printf("rlp.DecodeBytes, list: %+v\n", list)
 		tickets = make(map[common.Hash]common.Ticket, 0)
 		for _, va := range list {
@@ -912,12 +927,16 @@ func (db *StateDB) AllTickets() map[common.Hash]common.Ticket {
 		}
 	}
 	db.tickets = tickets
-	return db.copyOfTickets()
+	return db.copyOfTickets(),nil
 }
 
 // AddTicket wacom
 func (db *StateDB) AddTicket(ticket common.Ticket) error {
-	tickets := db.AllTickets()
+	tickets,err := db.AllTickets()
+	if err != nil {
+		log.Debug("AddTicket: unable to retrieve previous tickets")
+		return err
+	}
 	if _, ok := tickets[ticket.ID]; ok {
 		return fmt.Errorf("%s Ticket exists", ticket.ID.String())
 	}
@@ -927,7 +946,11 @@ func (db *StateDB) AddTicket(ticket common.Ticket) error {
 
 // RemoveTicket wacom
 func (db *StateDB) RemoveTicket(id common.Hash) error {
-	tickets := db.AllTickets()
+	tickets,err := db.AllTickets()
+	if err != nil {
+		log.Debug("RemoveTicket unable to retrieve previous tickets")
+		return err
+	}
 	if _, ok := tickets[id]; !ok {
 		return fmt.Errorf("%s Ticket not found", id.String())
 	}
@@ -958,9 +981,9 @@ func (db *StateDB) updateTickets(tickets map[common.Hash]common.Ticket) error {
 }
 
 // AllSwaps wacom
-func (db *StateDB) AllSwaps() map[common.Hash]common.Swap {
+func (db *StateDB) AllSwaps() (map[common.Hash]common.Swap, error) {
 	if db.swaps != nil {
-		return db.swaps
+		return db.swaps, nil
 	}
 	data := db.GetData(common.SwapKeyAddress)
 
@@ -969,7 +992,10 @@ func (db *StateDB) AllSwaps() map[common.Hash]common.Swap {
 		swaps = make(map[common.Hash]common.Swap, 0)
 	} else {
 		var list sortableSwapLURSlice
-		rlp.DecodeBytes(data, &list)
+		if err := rlp.DecodeBytes(data, &list); err != nil {
+			log.Error("Unable to decode bytes in all AllSwaps")
+			return nil, err
+		}
 		// fmt.Printf("rlp.DecodeBytes swap, list: %+v\n", list)
 		swaps = make(map[common.Hash]common.Swap, 0)
 		for _, va := range list {
@@ -979,12 +1005,16 @@ func (db *StateDB) AllSwaps() map[common.Hash]common.Swap {
 		}
 	}
 	db.swaps = swaps
-	return swaps
+	return swaps, nil
 }
 
 // AddSwap wacom
 func (db *StateDB) AddSwap(swap common.Swap) error {
-	swaps := db.AllSwaps()
+	swaps,err := db.AllSwaps()
+	if err != nil {
+		log.Debug("AddSwap unable to retrieve previous swaps")
+		return err
+	}
 	if _, ok := swaps[swap.ID]; ok {
 		return fmt.Errorf("%s Ticket exists", swap.ID.String())
 	}
@@ -994,7 +1024,11 @@ func (db *StateDB) AddSwap(swap common.Swap) error {
 
 // UpdateSwap wacom
 func (db *StateDB) UpdateSwap(swap common.Swap) error {
-	swaps := db.AllSwaps()
+	swaps, err := db.AllSwaps()
+	if err != nil {
+		log.Debug("UpdateSwap unable to retrieve previous swaps")
+		return err
+	}
 	if _, ok := swaps[swap.ID]; !ok {
 		return fmt.Errorf("%s Swap not found", swap.ID.String())
 	}
@@ -1004,7 +1038,11 @@ func (db *StateDB) UpdateSwap(swap common.Swap) error {
 
 // RemoveSwap wacom
 func (db *StateDB) RemoveSwap(id common.Hash) error {
-	swaps := db.AllSwaps()
+	swaps,err := db.AllSwaps()
+	if err != nil {
+		log.Debug("RemoveSwap unable to retrieve previous swaps")
+		return err
+	}
 	if _, ok := swaps[id]; !ok {
 		return fmt.Errorf("%s Swap not found", id.String())
 	}

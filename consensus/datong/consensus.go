@@ -300,7 +300,12 @@ func (dt *DaTong) Finalize(chain consensus.ChainReader, header *types.Header, st
 		return nil, consensus.ErrUnknownAncestor
 	}
 
-	ticketMap := state.AllTickets()
+	ticketMap,err := state.AllTickets()
+	if err != nil {
+		log.Error( "unable to retrieve tickets in Finalize:Consensus.go")
+		return nil,err
+	}
+
 	if len(ticketMap) == 1 {
 		return nil, errors.New("Next block don't have ticket, wait buy ticket")
 	}
@@ -564,7 +569,9 @@ func (dt *DaTong) getAllTickets(chain consensus.ChainReader, header *types.Heade
 		log.Info("  consensus.go getAllTickets state not found for parent root ", "err", err.Error())
 		return nil, err
 	}
-	return statedb.AllTickets(), nil
+
+	allTickets, err := statedb.AllTickets()
+	return  allTickets, err
 }
 
 type ticketSlice struct {

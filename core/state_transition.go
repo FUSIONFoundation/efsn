@@ -369,7 +369,12 @@ func (st *StateTransition) handleFsnCall() error {
 		hash := st.evm.GetHash(height.Uint64() - 1)
 		id := crypto.Keccak256Hash(from[:], hash[:])
 
-		tickets := st.state.AllTickets()
+		tickets,err := st.state.AllTickets()
+
+		if err != nil {
+			log.Debug("BuyTicketFunc unable to retrieve previous tickets")
+			return err
+		}
 
 		if _, ok := tickets[id]; ok {
 			st.addLog(common.BuyTicketFunc, param.Data, common.NewKeyValue("Error", "one block just can buy one ticket"))
@@ -447,7 +452,11 @@ func (st *StateTransition) handleFsnCall() error {
 			st.addLog(common.AssetValueChangeFunc, assetValueChangeParamEx, common.NewKeyValue("Error", "illegal operation"))
 			return fmt.Errorf("illegal operation")
 		}
-		assets := st.state.AllAssets()
+		assets, err := st.state.AllAssets()
+		if err != nil {
+			log.Debug("AssetValueChange unable to retrieve previous assets")
+			return err
+		}
 
 		asset, ok := assets[assetValueChangeParamEx.AssetID]
 		if !ok {
@@ -476,7 +485,7 @@ func (st *StateTransition) handleFsnCall() error {
 			st.state.SubBalance(assetValueChangeParamEx.To, assetValueChangeParamEx.AssetID, assetValueChangeParamEx.Value)
 			asset.Total = asset.Total.Sub(asset.Total, assetValueChangeParamEx.Value)
 		}
-		err := st.state.UpdateAsset(asset)
+		err = st.state.UpdateAsset(asset)
 		if err == nil {
 			st.addLog(common.AssetValueChangeFunc, assetValueChangeParamEx, common.NewKeyValue("AssetID", assetValueChangeParamEx.AssetID))
 		}
@@ -577,7 +586,11 @@ func (st *StateTransition) handleFsnCall() error {
 		outputCommandInfo("RecallSwapFunc", "from", st.msg.From() )
 		recallSwapParam := common.RecallSwapParam{}
 		rlp.DecodeBytes(param.Data, &recallSwapParam)
-		swaps := st.state.AllSwaps()
+		swaps,err := st.state.AllSwaps()
+		if err != nil {
+			log.Debug("RecallSwapFunc unable to retrieve previous swaps")
+			return err
+		}
 		swap, ok := swaps[recallSwapParam.SwapID]
 		if !ok {
 			st.addLog(common.RecallSwapFunc, recallSwapParam, common.NewKeyValue("Error", "Swap not found"))
@@ -613,7 +626,11 @@ func (st *StateTransition) handleFsnCall() error {
 		outputCommandInfo("TakeeSwapFunc", "from", st.msg.From() )
 		takeSwapParam := common.TakeSwapParam{}
 		rlp.DecodeBytes(param.Data, &takeSwapParam)
-		swaps := st.state.AllSwaps()
+		swaps,err := st.state.AllSwaps()
+		if err != nil {
+			log.Debug("TakeSwapFunc unable to retrieve previous swaps")
+			return err
+		}
 		swap, ok := swaps[takeSwapParam.SwapID]
 		if !ok {
 			st.addLog(common.TakeSwapFunc, takeSwapParam, common.NewKeyValue("Error", "swap not found"))
