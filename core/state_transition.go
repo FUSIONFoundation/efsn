@@ -352,7 +352,11 @@ func (st *StateTransition) handleFsnCall() error {
 		hash := st.evm.GetHash(height.Uint64() - 1)
 		id := crypto.Keccak256Hash(from[:], hash[:])
 
-		tickets := st.state.AllTickets()
+		tickets, err := st.state.AllTickets()
+
+		if err != nil {
+			return err
+		}
 
 		if _, ok := tickets[id]; ok {
 			return fmt.Errorf("one block just can buy one ticket")

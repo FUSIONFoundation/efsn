@@ -777,7 +777,7 @@ func (db *StateDB) GetNotation(addr common.Address) uint64 {
 
 // AllNotation wacom
 func (db *StateDB) AllNotation() []common.Address {
-        //fmt.Printf("=========AllNotation=============\n")//caihaijun
+	//fmt.Printf("=========AllNotation=============\n")//caihaijun
 	db.rwlock.RLock()
 	defer db.rwlock.RUnlock()
 	data := db.GetData(common.FSNCallAddress, common.NotationKey)
@@ -792,7 +792,7 @@ func (db *StateDB) AllNotation() []common.Address {
 
 // GenNotation wacom
 func (db *StateDB) GenNotation(addr common.Address) error {
-        //fmt.Printf("=========GenNotation=============\n")//caihaijun
+	//fmt.Printf("=========GenNotation=============\n")//caihaijun
 	stateObject := db.GetOrNewStateObject(addr)
 	if stateObject != nil {
 		if n := db.GetNotation(addr); n != 0 {
@@ -823,7 +823,7 @@ func (db *StateDB) updateAssets(assets map[common.Hash]common.Asset) error {
 
 // AllAssets wacom
 func (db *StateDB) AllAssets() map[common.Hash]common.Asset {
-        //fmt.Printf("=========AllAssets=============\n")//caihaijun
+	//fmt.Printf("=========AllAssets=============\n")//caihaijun
 	db.rwlock.RLock()
 	defer db.rwlock.RUnlock()
 	data := db.GetData(common.FSNCallAddress, common.AssetKey)
@@ -838,7 +838,7 @@ func (db *StateDB) AllAssets() map[common.Hash]common.Asset {
 
 // GenAsset wacom
 func (db *StateDB) GenAsset(asset common.Asset) error {
-        //fmt.Printf("=========GenAsset=============\n")//caihaijun
+	//fmt.Printf("=========GenAsset=============\n")//caihaijun
 	assets := db.AllAssets()
 	if _, ok := assets[asset.ID]; ok {
 		return fmt.Errorf("%s Asset exists", asset.ID.String())
@@ -851,7 +851,7 @@ func (db *StateDB) GenAsset(asset common.Asset) error {
 
 // UpdateAsset wacom
 func (db *StateDB) UpdateAsset(asset common.Asset) error {
-        //fmt.Printf("=========UpdateAsset=============\n")//caihaijun
+	//fmt.Printf("=========UpdateAsset=============\n")//caihaijun
 	assets := db.AllAssets()
 	if _, ok := assets[asset.ID]; !ok {
 		return fmt.Errorf("%s Asset not found", asset.ID.String())
@@ -863,8 +863,8 @@ func (db *StateDB) UpdateAsset(asset common.Asset) error {
 }
 
 // AllTickets wacom
-func (db *StateDB) AllTickets() map[common.Hash]common.Ticket {
-        //fmt.Printf("=========AllTickets=============\n")//caihaijun
+func (db *StateDB) AllTickets() (map[common.Hash]common.Ticket, error) {
+	//fmt.Printf("=========AllTickets=============\n")//caihaijun
 	db.rwlock.RLock()
 	defer db.rwlock.RUnlock()
 	data := db.GetData(common.FSNCallAddress, common.TicketKey)
@@ -872,15 +872,22 @@ func (db *StateDB) AllTickets() map[common.Hash]common.Ticket {
 	if len(data) == 0 || data == nil {
 		tickets = make(map[common.Hash]common.Ticket, 0)
 	} else {
-		rlp.DecodeBytes(data, &tickets)
+		if err := rlp.DecodeBytes(data, &tickets); err != nil {
+			return nil, err
+		}
 	}
-	return tickets
+	return tickets, nil
 }
 
 // AddTicket wacom
 func (db *StateDB) AddTicket(ticket common.Ticket) error {
-        //fmt.Printf("=========AddTicket=============\n")//caihaijun
-	tickets := db.AllTickets()
+	//fmt.Printf("=========AddTicket=============\n")//caihaijun
+	tickets, err := db.AllTickets()
+
+	if err != nil {
+		return err
+	}
+
 	if _, ok := tickets[ticket.ID]; ok {
 		return fmt.Errorf("%s Ticket exists", ticket.ID.String())
 	}
@@ -892,8 +899,13 @@ func (db *StateDB) AddTicket(ticket common.Ticket) error {
 
 // RemoveTicket wacom
 func (db *StateDB) RemoveTicket(id common.Hash) error {
-        //fmt.Printf("=========RemoveTicket=============\n")//caihaijun
-	tickets := db.AllTickets()
+	//fmt.Printf("=========RemoveTicket=============\n")//caihaijun
+	tickets, err := db.AllTickets()
+
+	if err != nil {
+		return err
+	}
+
 	if _, ok := tickets[id]; !ok {
 		return fmt.Errorf("%s Ticket not found", id.String())
 	}
@@ -914,7 +926,7 @@ func (db *StateDB) updateTickets(tickets map[common.Hash]common.Ticket) error {
 
 // AllSwaps wacom
 func (db *StateDB) AllSwaps() map[common.Hash]common.Swap {
-        //fmt.Printf("=========AllSwaps=============\n")//caihaijun
+	//fmt.Printf("=========AllSwaps=============\n")//caihaijun
 	db.rwlock.RLock()
 	defer db.rwlock.RUnlock()
 	data := db.GetData(common.FSNCallAddress, common.SwapKey)
@@ -929,7 +941,7 @@ func (db *StateDB) AllSwaps() map[common.Hash]common.Swap {
 
 // AddSwap wacom
 func (db *StateDB) AddSwap(swap common.Swap) error {
-        //fmt.Printf("=========AddSwap=============\n")//caihaijun
+	//fmt.Printf("=========AddSwap=============\n")//caihaijun
 	swaps := db.AllSwaps()
 	if _, ok := swaps[swap.ID]; ok {
 		return fmt.Errorf("%s Ticket exists", swap.ID.String())
@@ -942,7 +954,7 @@ func (db *StateDB) AddSwap(swap common.Swap) error {
 
 // UpdateSwap wacom
 func (db *StateDB) UpdateSwap(swap common.Swap) error {
-        //fmt.Printf("=========UpdateSwap=============\n")//caihaijun
+	//fmt.Printf("=========UpdateSwap=============\n")//caihaijun
 	swaps := db.AllSwaps()
 	if _, ok := swaps[swap.ID]; !ok {
 		return fmt.Errorf("%s Swap not found", swap.ID.String())
@@ -955,7 +967,7 @@ func (db *StateDB) UpdateSwap(swap common.Swap) error {
 
 // RemoveSwap wacom
 func (db *StateDB) RemoveSwap(id common.Hash) error {
-        //fmt.Printf("=========RemoveSwap=============\n")//caihaijun
+	//fmt.Printf("=========RemoveSwap=============\n")//caihaijun
 	swaps := db.AllSwaps()
 	if _, ok := swaps[id]; !ok {
 		return fmt.Errorf("%s Swap not found", id.String())

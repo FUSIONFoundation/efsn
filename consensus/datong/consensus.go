@@ -251,7 +251,12 @@ func (dt *DaTong) Finalize(chain consensus.ChainReader, header *types.Header, st
 	if parent == nil {
 		return nil, consensus.ErrUnknownAncestor
 	}
-	ticketMap := state.AllTickets()
+	ticketMap, err := state.AllTickets()
+
+	if err != nil {
+		return nil, err
+	}
+
 	if len(ticketMap) == 1 {
 		return nil, errors.New("Next block don't have ticket, wait buy ticket")
 	}
@@ -474,6 +479,8 @@ func (dt *DaTong) Close() error {
 }
 
 func (dt *DaTong) getAllTickets(chain consensus.ChainReader, header *types.Header) (map[common.Hash]common.Ticket, error) {
+	var tickets map[common.Hash]common.Ticket
+
 	parent := chain.GetHeader(header.ParentHash, header.Number.Uint64()-1)
 	if parent == nil {
 		return nil, consensus.ErrUnknownAncestor
@@ -482,7 +489,14 @@ func (dt *DaTong) getAllTickets(chain consensus.ChainReader, header *types.Heade
 	if err != nil {
 		return nil, err
 	}
-	return statedb.AllTickets(), nil
+
+	tickets, err = statedb.AllTickets()
+
+	if err != nil {
+		return nil, err
+	}
+
+	return tickets, nil
 }
 
 type ticketSlice struct {

@@ -336,11 +336,18 @@ func (s *PublicFusionAPI) AllAssets(ctx context.Context, blockNr rpc.BlockNumber
 
 // AllTickets wacom
 func (s *PublicFusionAPI) AllTickets(ctx context.Context, blockNr rpc.BlockNumber) (map[common.Hash]common.Ticket, error) {
+	var tickets map[common.Hash]common.Ticket
+
 	state, _, err := s.b.StateAndHeaderByNumber(ctx, blockNr)
 	if state == nil || err != nil {
 		return nil, err
 	}
-	tickets := state.AllTickets()
+	tickets, err = state.AllTickets()
+
+	if err != nil {
+		return nil, err
+	}
+
 	return tickets, state.Error()
 }
 
@@ -363,12 +370,19 @@ func (s *PublicFusionAPI) TicketPrice(ctx context.Context) (string, error) {
 
 // AllTicketsByAddress wacom
 func (s *PublicFusionAPI) AllTicketsByAddress(ctx context.Context, address common.Address, blockNr rpc.BlockNumber) (map[common.Hash]common.Ticket, error) {
+	var tickets map[common.Hash]common.Ticket
+
 	state, _, err := s.b.StateAndHeaderByNumber(ctx, blockNr)
 	var ret = make(map[common.Hash]common.Ticket)
 	if state == nil || err != nil {
 		return nil, err
 	}
-	tickets := state.AllTickets()
+	tickets, err = state.AllTickets()
+
+	if err != nil {
+		return nil, err
+	}
+
 	for k, v := range tickets {
 		if v.Owner == address {
 			ret[k] = v
