@@ -300,10 +300,10 @@ func (dt *DaTong) Finalize(chain consensus.ChainReader, header *types.Header, st
 		return nil, consensus.ErrUnknownAncestor
 	}
 
-	ticketMap,err := state.AllTickets()
+	ticketMap, err := state.AllTickets()
 	if err != nil {
-		log.Error( "unable to retrieve tickets in Finalize:Consensus.go")
-		return nil,err
+		log.Error("unable to retrieve tickets in Finalize:Consensus.go")
+		return nil, err
 	}
 
 	if len(ticketMap) == 1 {
@@ -571,7 +571,7 @@ func (dt *DaTong) getAllTickets(chain consensus.ChainReader, header *types.Heade
 	}
 
 	allTickets, err := statedb.AllTickets()
-	return  allTickets, err
+	return allTickets, err
 }
 
 type ticketSlice struct {
@@ -637,6 +637,13 @@ func (dt *DaTong) selectTickets(tickets []*common.Ticket, parent *types.Header, 
 
 func (dt *DaTong) getProbability(distance *big.Int) *big.Int {
 	d := distance.Uint64()
+	if d > dt.config.Period {
+		d = d - dt.config.Period + 1
+		max := maxProb.Uint64()
+		temp := uint64(math.Pow(2, float64(d)))
+		value := max - max/temp
+		return new(big.Int).SetUint64(value)
+	}
 	return new(big.Int).SetUint64(uint64(math.Pow(2, float64(d))))
 }
 
