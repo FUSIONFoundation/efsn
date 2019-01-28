@@ -307,8 +307,8 @@ func (dt *DaTong) Finalize(chain consensus.ChainReader, header *types.Header, st
 	}
 
 	if len(ticketMap) == 1 {
-		log.Error("Next block don't have ticket, wait buy ticket")
-		return nil, errors.New("Next block don't have ticket, wait buy ticket")
+		log.Error("Next block doesn't have ticket, wait buy ticket")
+		return nil, errors.New("Next block doesn't have ticket, wait buy ticket")
 	}
 
 	tickets := make([]*common.Ticket, 0)
@@ -332,7 +332,8 @@ func (dt *DaTong) Finalize(chain consensus.ChainReader, header *types.Header, st
 	dt.validTicketNumber.SetUint64(number)
 
 	if !haveTicket {
-		return nil, errors.New("Miner don't have ticket")
+		log.Error("Miner doesn't have ticket")
+		return nil, errors.New("Miner doesn't have ticket")
 	}
 	parentTime := parent.Time.Uint64()
 	time := header.Time.Uint64()
