@@ -307,6 +307,7 @@ func (dt *DaTong) Finalize(chain consensus.ChainReader, header *types.Header, st
 	}
 
 	if len(ticketMap) == 1 {
+		log.Error("Next block don't have ticket, wait buy ticket")
 		return nil, errors.New("Next block don't have ticket, wait buy ticket")
 	}
 

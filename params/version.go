@@ -21,10 +21,17 @@ import (
 )
 
 const (
-	VersionMajor = 1          // Major version component of the current release
-	VersionMinor = 8          // Minor version component of the current release
-	VersionPatch = 16         // Patch version component of the current release
-	VersionMeta  = "unstable" // Version metadata to append to the version string
+	VersionMajor = 1     // Major version component of the current release
+	VersionMinor = 8     // Minor version component of the current release
+	
+	// EFSN will take ethereum version
+	// multiple patch version by a 1000
+	// and put its version into the hundreds place
+	// so 16001 means ethereum VersionPath=16
+	// efsn patch = 001
+	VersionPatch = 16001 // Patch version component of the current release
+	
+	VersionMeta = "unstable" // Version metadata to append to the version string
 )
 
 // Version holds the textual version string.
