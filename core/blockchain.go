@@ -1442,11 +1442,12 @@ Chain config: %v
 
 Number: %v
 Hash: 0x%x
+Miner: 0x%x
 %v
 
 Error: %v
 ##############################
-`, bc.chainConfig, block.Number(), block.Hash(), receiptString, err))
+`, bc.chainConfig, block.Number(), block.Hash(), block.Header().Coinbase, receiptString, err))
 }
 
 // InsertHeaderChain attempts to insert the given header chain in to the local
