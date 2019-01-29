@@ -13,7 +13,6 @@ import (
 	"github.com/FusionFoundation/efsn/core/types"
 	"github.com/FusionFoundation/efsn/rlp"
 	"github.com/FusionFoundation/efsn/rpc"
-	"github.com/FusionFoundation/efsn/common/overflow"
 )
 
 var lastBlockOfBuyTickets = int64(0)
@@ -511,12 +510,14 @@ func (s *PrivateFusionAPI) GenNotation(ctx context.Context, args FusionBaseArgs,
 
 // GenAsset ss
 func (s *PrivateFusionAPI) GenAsset(ctx context.Context, args GenAssetArgs, passwd string) (common.Hash, error) {
+	big0 := big.NewInt(0)
+
 	funcData, err := args.toData()
 	if err != nil {
 		return common.Hash{}, err
 	}
 
-	if len(args.Name)==0 || len(args.Symbol) == 0 || args.Total == nil || args.Total.ToInt().Int64() < 0 {
+	if len(args.Name)==0 || len(args.Symbol) == 0 || args.Total == nil || args.Total.Cmp(big0) <= 0 {
 		log.Info( "BuildGenAsset name, symbol and total must be set")
 		return  common.Hash{}, fmt.Errorf("GenAsset name, symbol and total must be set or greater than 0")
 	}
@@ -797,15 +798,6 @@ func (s *PrivateFusionAPI) checkAssetValueChange(ctx context.Context, args Asset
 		if currentBalance.Cmp( val ) < 0 {
 			return common.Hash{}, fmt.Errorf("not enough asset")
 		}
-		_ , ok := overflow.Sub64( currentBalance.Int64() , val.Int64() )
-		if !ok {
-			return common.Hash{}, fmt.Errorf("decrement will result in an overflow")
-		}
-	} else {
-		_ , ok := overflow.Add64( currentBalance.Int64() , val.Int64() )
-		if !ok {
-			return common.Hash{}, fmt.Errorf("increment will result in an overflow")
-		}
 	}
 
 	funcData, err := args.toData()
@@ -860,11 +852,7 @@ func (s *PrivateFusionAPI) MakeSwap(ctx context.Context, args MakeSwapArgs, pass
 		return common.Hash{}, err
 	}
 
-	intVal, ok := overflow.Mul64( args.MinFromAmount.ToInt().Int64() , args.SwapSize.Int64() )
-	if !ok || intVal <= 0 {
-		return  common.Hash{}, fmt.Errorf("SwapSize * minFromAmount too large")
-	}
-	total := big.NewInt(intVal)
+	total :=  new(big.Int).Mul( args.MinFromAmount.ToInt(), args.SwapSize )
 
 	start := uint64(*args.FromStartTime)
 	end := uint64(*args.FromEndTime)
@@ -963,11 +951,7 @@ func (s *PrivateFusionAPI) TakeSwap(ctx context.Context, args TakeSwapArgs, pass
 		return common.Hash{}, fmt.Errorf("SwapSize must le and Size must be ge 1")
 	}
 
-	intVal, ok := overflow.Mul64( swap.MinToAmount.Int64() , args.Size.Int64() )
-	if !ok || intVal <= 0 {
-		return  common.Hash{}, fmt.Errorf("SwapSize * minToAmount too large")
-	}
-	total := big.NewInt(intVal)
+	total := new(big.Int).Mul( swap.MinToAmount , args.Size )
 
 	start := swap.ToStartTime
 	end := swap.ToEndTime
@@ -1108,7 +1092,9 @@ func (s *FusionTransactionAPI) BuildGenAssetTx(ctx context.Context, args GenAsse
 		return nil, err
 	}
 
-	if len(args.Name)==0 || len(args.Symbol) == 0 || args.Total == nil || args.Total.ToInt().Int64() < 0 {
+	big0 := big.NewInt(0)
+
+	if len(args.Name)==0 || len(args.Symbol) == 0 || args.Total == nil || args.Total.Cmp(big0) <= 0 {
 		log.Info( "BuildGenAsset name, symbol and total must be set")
 		return nil, fmt.Errorf("BuildGenAsset name, symbol and total must be set or greater than 0")
 	}
@@ -1442,15 +1428,6 @@ func (s *FusionTransactionAPI) buildAssetValueChangeTx(ctx context.Context, args
 		if currentBalance.Cmp( val ) < 0 {
 			return nil, fmt.Errorf("not enough asset")
 		}
-		_ , ok := overflow.Sub64( currentBalance.Int64() , val.Int64() )
-		if !ok {
-			return nil, fmt.Errorf("decrement will result in an overflow")
-		}
-	} else {
-		_ , ok := overflow.Add64( currentBalance.Int64() , val.Int64() )
-		if !ok {
-			return nil, fmt.Errorf("increment will result in an overflow")
-		}
 	}
 
 	funcData, err := args.toData()
@@ -1529,11 +1506,7 @@ func (s *FusionTransactionAPI) BuildMakeSwapTx(ctx context.Context, args MakeSwa
 		return nil, err
 	}
 
-	intVal, ok := overflow.Mul64( args.MinFromAmount.ToInt().Int64() , args.SwapSize.Int64() )
-	if !ok || intVal <= 0 {
-		return  nil, fmt.Errorf("SwapSize * minFromAmount too large")
-	}
-	total := big.NewInt(intVal)
+	total := new(big.Int).Mul( args.MinFromAmount.ToInt() , args.SwapSize  )
 
 	start := uint64(*args.FromStartTime)
 	end := uint64(*args.FromEndTime)
@@ -1657,11 +1630,7 @@ func (s *FusionTransactionAPI) BuildTakeSwapTx(ctx context.Context, args TakeSwa
 		return nil, fmt.Errorf("SwapSize must le and Size must be ge 1")
 	}
 
-	intVal, ok := overflow.Mul64( swap.MinToAmount.Int64() , args.Size.Int64() )
-	if !ok || intVal <= 0 {
-		return  nil, fmt.Errorf("SwapSize * minToAmount too large")
-	}
-	total := big.NewInt(intVal)
+	total := new(big.Int).Mul( swap.MinToAmount , args.Size )
 
 	start := swap.ToStartTime
 	end := swap.ToEndTime
