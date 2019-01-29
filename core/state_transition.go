@@ -667,6 +667,8 @@ func (st *StateTransition) handleFsnCall() error {
 			Value:     fromTotal,
 		})
 
+	
+
 		toTotal := new(big.Int).Mul(swap.MinToAmount, takeSwapParam.Size)
 		if toTotal.Cmp(big0) <= 0 {
 			st.addLog(common.TakeSwapFunc, takeSwapParam, common.NewKeyValue("Error", "toTotal less than  equal to zero"))
@@ -679,6 +681,8 @@ func (st *StateTransition) handleFsnCall() error {
 			EndTime:   toEnd,
 			Value:     toTotal,
 		})
+
+		log.Debug( "Swap", "fromTotal", fromTotal, " toTotal", toTotal, "takeSwapParam" , takeSwapParam )
 
 		if toStart == common.TimeLockNow && toEnd == common.TimeLockForever {
 			if st.state.GetBalance(swap.ToAssetID, st.msg.From()).Cmp(toTotal) < 0 {
