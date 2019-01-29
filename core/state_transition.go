@@ -625,16 +625,16 @@ func (st *StateTransition) handleFsnCall() error {
 	case common.TakeSwapFunc, common.TakeSwapFuncExt:
 		outputCommandInfo("TakeSwapFunc", "from", st.msg.From())
 		takeSwapParam := common.TakeSwapParam{}
-		log.Debug("calling decode bytes")
+		log.Info("calling decode bytes")
 
 		rlp.DecodeBytes(param.Data, &takeSwapParam)
-		log.Debug("back from decode bytes")
+		log.Info("back from decode bytes")
 		swaps, err := st.state.AllSwaps()
 		if err != nil {
-			log.Debug("TakeSwapFunc unable to retrieve previous swaps")
+			log.Info("TakeSwapFunc unable to retrieve previous swaps")
 			return err
 		}
-		log.Debug("step1 ")
+		log.Info("step1 ")
 		swap, ok := swaps[takeSwapParam.SwapID]
 		if !ok {
 			st.addLog(common.TakeSwapFunc, takeSwapParam, common.NewKeyValue("Error", "swap not found"))
@@ -645,7 +645,7 @@ func (st *StateTransition) handleFsnCall() error {
 			st.addLog(common.TakeSwapFunc, takeSwapParam, common.NewKeyValue("Error", "swapsize must be le and Size must be ge 1"))
 			return fmt.Errorf("SwapSize must le and Size must be ge 1")
 		}
-		log.Debug("step2 ")
+		log.Info("step2 ")
 		if swap.MinFromAmount.Cmp(big0) <= 0 {
 			st.addLog(common.TakeSwapFunc, takeSwapParam, common.NewKeyValue("Error", "MinFromAmount less than  equal to zero"))
 			return fmt.Errorf("MinFromAmount less than  equal to zero")
@@ -656,7 +656,7 @@ func (st *StateTransition) handleFsnCall() error {
 			return fmt.Errorf("MinToAmount less than  equal to zero")
 		}
 
-		log.Debug("step3 ")
+		log.Info("step3 ")
 		fromTotal := new(big.Int).Mul(swap.MinFromAmount, takeSwapParam.Size)
 
 		if fromTotal.Cmp(big0) <= 0 {
@@ -685,7 +685,7 @@ func (st *StateTransition) handleFsnCall() error {
 			Value:     toTotal,
 		})
 
-		log.Debug("Swap", "fromTotal", fromTotal, " toTotal", toTotal, "takeSwapParam", takeSwapParam)
+		log.Info("Swap", "fromTotal", fromTotal, " toTotal", toTotal, "takeSwapParam", takeSwapParam)
 
 		if toStart == common.TimeLockNow && toEnd == common.TimeLockForever {
 			if st.state.GetBalance(swap.ToAssetID, st.msg.From()).Cmp(toTotal) < 0 {
