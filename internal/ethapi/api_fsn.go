@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"math/big"
+	"sync"
 
 	"github.com/FusionFoundation/efsn/accounts"
 	"github.com/FusionFoundation/efsn/common"
@@ -14,6 +15,10 @@ import (
 	"github.com/FusionFoundation/efsn/rpc"
 	"github.com/FusionFoundation/efsn/common/overflow"
 )
+
+var lastBlockOfBuyTickets = int64(0)
+var buyTicketOnBlockMap map[common.Address]bool
+var buyTicketOnBlockMapMutex sync.Mutex
 
 // FusionBaseArgs wacom
 type FusionBaseArgs struct {
@@ -660,6 +665,27 @@ func (s *PrivateFusionAPI) TimeLockToAsset(ctx context.Context, args TimeLockArg
 	return s.papi.SendTransaction(ctx, sendArgs, passwd)
 }
 
+/** on our public gateways too many buyTickets are past through
+	this cache of purchase on block will stop multiple purchase
+	attempt on a block (which state_transistion also flags).
+	the goals is to limit the number of buytickets being processed
+	if it is know that they will fail anyway
+*/	
+func  doesTicketPurchaseExistsForBlock( blockNbr int64, from common.Address  ) bool {
+	buyTicketOnBlockMapMutex.Lock()
+	defer buyTicketOnBlockMapMutex.Unlock()
+	if lastBlockOfBuyTickets == 0 || lastBlockOfBuyTickets != blockNbr {
+		lastBlockOfBuyTickets = blockNbr
+		buyTicketOnBlockMap =  make(map[common.Address]bool)
+	}
+	_, found := buyTicketOnBlockMap[from]
+	if found {
+		return true
+	}
+	buyTicketOnBlockMap[from] = true
+	return false
+}
+
 // BuyTicket ss
 func (s *PrivateFusionAPI) BuyTicket(ctx context.Context, args BuyTicketArgs, passwd string) (common.Hash, error) {
 	state, _, err := s.b.StateAndHeaderByNumber(ctx, rpc.LatestBlockNumber)
@@ -670,6 +696,11 @@ func (s *PrivateFusionAPI) BuyTicket(ctx context.Context, args BuyTicketArgs, pa
 	block, err := s.b.BlockByNumber(ctx, rpc.LatestBlockNumber)
 	if block == nil || err != nil {
 		return common.Hash{}, err
+	}
+
+	if doesTicketPurchaseExistsForBlock(  block.Header().Number.Int64() , args.From ) {
+		log.Info( "Purchase of BuyTicket for this block already submitted")
+		return common.Hash{}, fmt.Errorf("Purchase of BuyTicket for this block already submitted")
 	}
 
 	if args.Start == nil {
@@ -1312,6 +1343,10 @@ func (s *FusionTransactionAPI) BuildBuyTicketTx(ctx context.Context, args BuyTic
 	block, err := s.b.BlockByNumber(ctx, rpc.LatestBlockNumber)
 	if block == nil || err != nil {
 		return nil, err
+	}
+
+	if doesTicketPurchaseExistsForBlock(  block.Header().Number.Int64() , args.From ) {
+		return nil, fmt.Errorf("Purchase of BuyTicket for this block already submitted")
 	}
 
 	if args.Start == nil {

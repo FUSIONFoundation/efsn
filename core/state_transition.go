@@ -532,6 +532,7 @@ func (st *StateTransition) handleFsnCall() error {
 
 		intVal, ok := overflow.Mul64( makeSwapParam.MinFromAmount.Int64() , makeSwapParam.SwapSize.Int64() )
 		if !ok || intVal <= 0 {
+			log.Info("make swap overflow 1" , "MinFromAmount", makeSwapParam.MinFromAmount,  "Swap", makeSwapParam.SwapSize.Int64()  )
 			st.addLog(common.MakeSwapFunc, makeSwapParam, common.NewKeyValue("Error", "size * minToAmount too large"))
 			return fmt.Errorf("Error", "size * minToAmount too large")
 		}
