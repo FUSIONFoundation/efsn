@@ -263,7 +263,7 @@ func (st *StateTransition) gasUsed() uint64 {
 	return st.initialGas - st.gas
 }
 
-var outputCommands = false
+var outputCommands = true
 func outputCommandInfo( param1 string, param2 string , param3 interface{} ) {
 	if outputCommands {
 		log.Info( param1, param2, param3 )
