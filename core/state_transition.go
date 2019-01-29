@@ -673,7 +673,7 @@ func (st *StateTransition) handleFsnCall() error {
 		})
 
 		toTotal := new(big.Int).Mul(swap.MinToAmount, takeSwapParam.Size)
-		if toTotal.Int64() <= 0 {
+		if toTotal.Uint64() > 9223372036854775807 || toTotal.Cmp(big0) <= 0 {
 			log.Info("total too big")
 			st.addLog(common.TakeSwapFunc, takeSwapParam, common.NewKeyValue("Error", "toTotal less than  equal to zero"))
 			return fmt.Errorf("toTotal less than  equal to zero")
