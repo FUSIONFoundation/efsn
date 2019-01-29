@@ -263,6 +263,22 @@ func (st *StateTransition) gasUsed() uint64 {
 	return st.initialGas - st.gas
 }
 
+
+// Mul64 performs * operation on two int64 operands
+// returning a result and status
+func Mul64(a, b int64) (int64, bool) {
+	if a == 0 || b == 0 {
+			return 0, true
+	}
+	c := a * b
+	if (c < 0) == ((a < 0) != (b < 0)) {
+			if c/b == a {
+					return c, true
+			}
+	}
+	return c, false
+}
+
 var outputCommands = true
 
 func outputCommandInfo(param1 string, param2 string, param3 interface{}) {
@@ -672,12 +688,15 @@ func (st *StateTransition) handleFsnCall() error {
 			Value:     fromTotal,
 		})
 
-		toTotal := new(big.Int).Mul(swap.MinToAmount, takeSwapParam.Size)
-		if toTotal.Uint64() > 9223372036854775807 || toTotal.Cmp(big0) <= 0 {
+		intVal, ok := Mul64( swap.MinToAmount.Int64() , takeSwapParam.Size.Int64() )
+
+		if !ok || intVal <= 0 {
 			log.Info("total too big")
 			st.addLog(common.TakeSwapFunc, takeSwapParam, common.NewKeyValue("Error", "toTotal less than  equal to zero"))
 			return fmt.Errorf("toTotal less than  equal to zero")
 		}
+		toTotal := big.NewInt(intVal)
+
 		toStart := swap.ToStartTime
 		toEnd := swap.ToEndTime
 		toNeedValue := common.NewTimeLock(&common.TimeLockItem{
