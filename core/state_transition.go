@@ -673,7 +673,7 @@ func (st *StateTransition) handleFsnCall() error {
 		})
 
 		toTotal := new(big.Int).Mul(swap.MinToAmount, takeSwapParam.Size)
-		if toTotal.Cmp(big0) <= 0 {
+		if cmp := toTotal.Cmp(big0); cmp == -1 {
 			st.addLog(common.TakeSwapFunc, takeSwapParam, common.NewKeyValue("Error", "toTotal less than  equal to zero"))
 			return fmt.Errorf("toTotal less than  equal to zero")
 		}
