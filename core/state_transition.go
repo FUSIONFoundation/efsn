@@ -264,10 +264,11 @@ func (st *StateTransition) gasUsed() uint64 {
 }
 
 var outputCommands = true
-func outputCommandInfo( param1 string, param2 string , param3 interface{} ) {
+
+func outputCommandInfo(param1 string, param2 string, param3 interface{}) {
 	if outputCommands {
-		log.Info( param1, param2, param3 )
-	} 
+		log.Info(param1, param2, param3)
+	}
 }
 
 func (st *StateTransition) handleFsnCall() error {
@@ -275,14 +276,14 @@ func (st *StateTransition) handleFsnCall() error {
 	rlp.DecodeBytes(st.msg.Data(), &param)
 	switch param.Func {
 	case common.GenNotationFunc:
-		outputCommandInfo("GenNotationFunc", "from", st.msg.From() )
+		outputCommandInfo("GenNotationFunc", "from", st.msg.From())
 		err := st.state.GenNotation(st.msg.From())
 		if err == nil {
 			st.addLog(common.GenNotationFunc, []byte{})
 		}
 		return err
 	case common.GenAssetFunc:
-		outputCommandInfo("GenAssetFunc", "from", st.msg.From() )
+		outputCommandInfo("GenAssetFunc", "from", st.msg.From())
 		genAssetParam := common.GenAssetParam{}
 		rlp.DecodeBytes(param.Data, &genAssetParam)
 		asset := genAssetParam.ToAsset()
@@ -296,7 +297,7 @@ func (st *StateTransition) handleFsnCall() error {
 		st.addLog(common.GenAssetFunc, genAssetParam, common.NewKeyValue("AssetID", asset.ID))
 		return nil
 	case common.SendAssetFunc:
-		outputCommandInfo("SendAssetFunc", "from", st.msg.From() )
+		outputCommandInfo("SendAssetFunc", "from", st.msg.From())
 		sendAssetParam := common.SendAssetParam{}
 		rlp.DecodeBytes(param.Data, &sendAssetParam)
 		if st.state.GetBalance(sendAssetParam.AssetID, st.msg.From()).Cmp(sendAssetParam.Value) < 0 {
@@ -308,7 +309,7 @@ func (st *StateTransition) handleFsnCall() error {
 		st.addLog(common.SendAssetFunc, sendAssetParam, common.NewKeyValue("AssetID", sendAssetParam.AssetID))
 		return nil
 	case common.TimeLockFunc:
-		outputCommandInfo("TimeLockFunc", "from", st.msg.From() )
+		outputCommandInfo("TimeLockFunc", "from", st.msg.From())
 		timeLockParam := common.TimeLockParam{}
 		rlp.DecodeBytes(param.Data, &timeLockParam)
 		if timeLockParam.Type == common.TimeLockToAsset {
@@ -362,14 +363,14 @@ func (st *StateTransition) handleFsnCall() error {
 			return nil
 		}
 	case common.BuyTicketFunc:
-		outputCommandInfo("BuyTicketFunc", "from", st.msg.From() )
+		outputCommandInfo("BuyTicketFunc", "from", st.msg.From())
 		// log.Info( "Buy a ticket func called")
 		from := st.msg.From()
 		height := st.evm.Context.BlockNumber
 		hash := st.evm.GetHash(height.Uint64() - 1)
 		id := crypto.Keccak256Hash(from[:], hash[:])
 
-		tickets,err := st.state.AllTickets()
+		tickets, err := st.state.AllTickets()
 
 		if err != nil {
 			log.Debug("BuyTicketFunc unable to retrieve previous tickets")
@@ -430,18 +431,18 @@ func (st *StateTransition) handleFsnCall() error {
 		st.addLog(common.BuyTicketFunc, param.Data, common.NewKeyValue("Ticket", ticket.ID))
 		return nil
 	case common.AssetValueChangeFunc, common.OldAssetValueChangeFunc:
-		outputCommandInfo("AssetValueChangeFunc", "from", st.msg.From() )
+		outputCommandInfo("AssetValueChangeFunc", "from", st.msg.From())
 		var assetValueChangeParamEx common.AssetValueChangeExParam
 		if param.Func == common.OldAssetValueChangeFunc {
 			// convert old data to new format
 			assetValueChangeParam := common.AssetValueChangeParam{}
 			rlp.DecodeBytes(param.Data, &assetValueChangeParam)
 			assetValueChangeParamEx = common.AssetValueChangeExParam{
-				AssetID : assetValueChangeParam.AssetID,
-				To : assetValueChangeParam.To,
-				Value : assetValueChangeParam.Value,
-				IsInc : assetValueChangeParam.IsInc,
-				TransacData : "",
+				AssetID:     assetValueChangeParam.AssetID,
+				To:          assetValueChangeParam.To,
+				Value:       assetValueChangeParam.Value,
+				IsInc:       assetValueChangeParam.IsInc,
+				TransacData: "",
 			}
 		} else {
 			assetValueChangeParamEx = common.AssetValueChangeExParam{}
@@ -492,7 +493,7 @@ func (st *StateTransition) handleFsnCall() error {
 		return err
 	case common.EmptyFunc:
 	case common.MakeSwapFunc, common.MakeSwapFuncExt:
-		outputCommandInfo("MakeSwapFunc", "from", st.msg.From() )
+		outputCommandInfo("MakeSwapFunc", "from", st.msg.From())
 		makeSwapParam := common.MakeSwapParam{}
 		rlp.DecodeBytes(param.Data, &makeSwapParam)
 		big0 := big.NewInt(0)
@@ -510,14 +511,13 @@ func (st *StateTransition) handleFsnCall() error {
 			Value:     total,
 		})
 
-
 		if start == common.TimeLockNow && end == common.TimeLockForever {
 			if st.state.GetBalance(makeSwapParam.FromAssetID, st.msg.From()).Cmp(total) < 0 {
 				st.addLog(common.MakeSwapFunc, makeSwapParam, common.NewKeyValue("Error", "not enough from asset"))
 				return fmt.Errorf("not enough from asset")
 			}
 		} else {
-			available := st.state.GetTimeLockBalance(makeSwapParam.FromAssetID,  st.msg.From())
+			available := st.state.GetTimeLockBalance(makeSwapParam.FromAssetID, st.msg.From())
 			if available.Cmp(needValue) < 0 {
 				if param.Func == common.MakeSwapFunc {
 					// this was the legacy swap do not do
@@ -525,33 +525,33 @@ func (st *StateTransition) handleFsnCall() error {
 					st.addLog(common.MakeSwapFunc, makeSwapParam, common.NewKeyValue("Error", "not enough time lock or asset balance"))
 					return fmt.Errorf("not enough time lock balance")
 				}
-				
-				if st.state.GetBalance(makeSwapParam.FromAssetID,  st.msg.From()).Cmp(total) < 0 {
+
+				if st.state.GetBalance(makeSwapParam.FromAssetID, st.msg.From()).Cmp(total) < 0 {
 					st.addLog(common.MakeSwapFunc, makeSwapParam, common.NewKeyValue("Error", "not enough time lock or asset balance"))
 					return fmt.Errorf("not enough time lock or asset balance")
 				}
 
 				// subtract the asset from the balance
-				st.state.SubBalance(  st.msg.From(), makeSwapParam.FromAssetID, total)
+				st.state.SubBalance(st.msg.From(), makeSwapParam.FromAssetID, total)
 				// see if we need timelock from to start
 				if start != common.TimeLockNow {
 					todayValue := common.NewTimeLock(&common.TimeLockItem{
-						StartTime:  common.TimeLockNow ,
+						StartTime: common.TimeLockNow,
 						EndTime:   start - 1,
 						Value:     total,
 					})
-					st.state.AddTimeLockBalance(  st.msg.From(), makeSwapParam.FromAssetID, todayValue )
+					st.state.AddTimeLockBalance(st.msg.From(), makeSwapParam.FromAssetID, todayValue)
 				}
 				//lock needed portion
-				st.state.AddTimeLockBalance(  st.msg.From(), makeSwapParam.FromAssetID, needValue )
+				st.state.AddTimeLockBalance(st.msg.From(), makeSwapParam.FromAssetID, needValue)
 				// then make sure from end to forever is set
-				if ( end != common.TimeLockForever){
+				if end != common.TimeLockForever {
 					totalValue := common.NewTimeLock(&common.TimeLockItem{
 						StartTime: end + 1,
 						EndTime:   common.TimeLockForever,
 						Value:     total,
 					})
-					st.state.AddTimeLockBalance(  st.msg.From(), makeSwapParam.FromAssetID, totalValue )
+					st.state.AddTimeLockBalance(st.msg.From(), makeSwapParam.FromAssetID, totalValue)
 				}
 			}
 		}
@@ -583,10 +583,10 @@ func (st *StateTransition) handleFsnCall() error {
 		st.addLog(common.MakeSwapFunc, makeSwapParam, common.NewKeyValue("SwapID", swap.ID))
 		return nil
 	case common.RecallSwapFunc:
-		outputCommandInfo("RecallSwapFunc", "from", st.msg.From() )
+		outputCommandInfo("RecallSwapFunc", "from", st.msg.From())
 		recallSwapParam := common.RecallSwapParam{}
 		rlp.DecodeBytes(param.Data, &recallSwapParam)
-		swaps,err := st.state.AllSwaps()
+		swaps, err := st.state.AllSwaps()
 		if err != nil {
 			log.Debug("RecallSwapFunc unable to retrieve previous swaps")
 			return err
@@ -623,10 +623,10 @@ func (st *StateTransition) handleFsnCall() error {
 		st.addLog(common.RecallSwapFunc, recallSwapParam, common.NewKeyValue("SwapID", swap.ID))
 		return nil
 	case common.TakeSwapFunc, common.TakeSwapFuncExt:
-		outputCommandInfo("TakeeSwapFunc", "from", st.msg.From() )
+		outputCommandInfo("TakeeSwapFunc", "from", st.msg.From())
 		takeSwapParam := common.TakeSwapParam{}
 		rlp.DecodeBytes(param.Data, &takeSwapParam)
-		swaps,err := st.state.AllSwaps()
+		swaps, err := st.state.AllSwaps()
 		if err != nil {
 			log.Debug("TakeSwapFunc unable to retrieve previous swaps")
 			return err
@@ -640,6 +640,16 @@ func (st *StateTransition) handleFsnCall() error {
 		if swap.SwapSize.Cmp(takeSwapParam.Size) < 0 || takeSwapParam.Size.Cmp(big0) <= 0 {
 			st.addLog(common.TakeSwapFunc, takeSwapParam, common.NewKeyValue("Error", "swapsize must be le and Size must be ge 1"))
 			return fmt.Errorf("SwapSize must le and Size must be ge 1")
+		}
+
+		if swap.MinFromAmount.Cmp(big0) <= 0 {
+			st.addLog(common.TakeSwapFunc, takeSwapParam, common.NewKeyValue("Error", "MinFromAmount less than  equal to zero"))
+			return fmt.Errorf("MinFromAmount less than  equal to zero")
+		}
+
+		if swap.MinToAmount.Cmp(big0) <= 0 {
+			st.addLog(common.TakeSwapFunc, takeSwapParam, common.NewKeyValue("Error", "MinToAmount less than  equal to zero"))
+			return fmt.Errorf("MinToAmount less than  equal to zero")
 		}
 
 		fromTotal := new(big.Int).Mul(swap.MinFromAmount, takeSwapParam.Size)
@@ -666,8 +676,8 @@ func (st *StateTransition) handleFsnCall() error {
 				return fmt.Errorf("not enough from asset")
 			}
 		} else {
-			
-			available := st.state.GetTimeLockBalance( swap.ToAssetID,  st.msg.From())
+
+			available := st.state.GetTimeLockBalance(swap.ToAssetID, st.msg.From())
 			if available.Cmp(toNeedValue) < 0 {
 				if param.Func == common.TakeSwapFunc {
 					// this was the legacy swap do not do
@@ -675,33 +685,33 @@ func (st *StateTransition) handleFsnCall() error {
 					st.addLog(common.TakeSwapFunc, takeSwapParam, common.NewKeyValue("Error", "not enough time lock balance"))
 					return fmt.Errorf("not enough time lock balance")
 				}
-				
-				if st.state.GetBalance(swap.ToAssetID,  st.msg.From()).Cmp(toTotal) < 0 {
+
+				if st.state.GetBalance(swap.ToAssetID, st.msg.From()).Cmp(toTotal) < 0 {
 					st.addLog(common.TakeSwapFunc, takeSwapParam, common.NewKeyValue("Error", "not enough time lock balance"))
 					return fmt.Errorf("not enough time lock or asset balance")
 				}
 
 				// subtract the asset from the balance
-				st.state.SubBalance(  st.msg.From(), swap.ToAssetID, toTotal)
+				st.state.SubBalance(st.msg.From(), swap.ToAssetID, toTotal)
 				// see if we need timelock from to start
 				if toStart != common.TimeLockNow {
 					todayValue := common.NewTimeLock(&common.TimeLockItem{
-						StartTime:  common.TimeLockNow ,
+						StartTime: common.TimeLockNow,
 						EndTime:   toStart - 1,
 						Value:     toTotal,
 					})
-					st.state.AddTimeLockBalance(  st.msg.From(), swap.ToAssetID, todayValue )
+					st.state.AddTimeLockBalance(st.msg.From(), swap.ToAssetID, todayValue)
 				}
 				//lock needed portion
-				st.state.AddTimeLockBalance(  st.msg.From(), swap.ToAssetID, toNeedValue )
+				st.state.AddTimeLockBalance(st.msg.From(), swap.ToAssetID, toNeedValue)
 				// then make sure from end to forever is set
-				if ( toEnd != common.TimeLockForever){
+				if toEnd != common.TimeLockForever {
 					totalValue := common.NewTimeLock(&common.TimeLockItem{
 						StartTime: toEnd + 1,
 						EndTime:   common.TimeLockForever,
 						Value:     toTotal,
 					})
-					st.state.AddTimeLockBalance(  st.msg.From(), swap.ToAssetID, totalValue )
+					st.state.AddTimeLockBalance(st.msg.From(), swap.ToAssetID, totalValue)
 				}
 			}
 		}
