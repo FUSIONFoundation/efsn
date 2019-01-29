@@ -653,6 +653,12 @@ func (st *StateTransition) handleFsnCall() error {
 		}
 
 		fromTotal := new(big.Int).Mul(swap.MinFromAmount, takeSwapParam.Size)
+
+		if fromTotal.Cmp(big0) <= 0 {
+			st.addLog(common.TakeSwapFunc, takeSwapParam, common.NewKeyValue("Error", "fromTotal less than  equal to zero"))
+			return fmt.Errorf("fromTotal less than  equal to zero")
+		}
+
 		fromStart := swap.FromStartTime
 		fromEnd := swap.FromEndTime
 		fromNeedValue := common.NewTimeLock(&common.TimeLockItem{
@@ -662,6 +668,10 @@ func (st *StateTransition) handleFsnCall() error {
 		})
 
 		toTotal := new(big.Int).Mul(swap.MinToAmount, takeSwapParam.Size)
+		if toTotal.Cmp(big0) <= 0 {
+			st.addLog(common.TakeSwapFunc, takeSwapParam, common.NewKeyValue("Error", "toTotal less than  equal to zero"))
+			return fmt.Errorf("toTotal less than  equal to zero")
+		}
 		toStart := swap.ToStartTime
 		toEnd := swap.ToEndTime
 		toNeedValue := common.NewTimeLock(&common.TimeLockItem{
