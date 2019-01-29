@@ -32,7 +32,6 @@ import (
 	"github.com/FusionFoundation/efsn/log"
 	"github.com/FusionFoundation/efsn/params"
 	"github.com/FusionFoundation/efsn/rlp"
-	"github.com/FusionFoundation/efsn/common/overflow"
 )
 
 var (
@@ -492,15 +491,6 @@ func (st *StateTransition) handleFsnCall() error {
 			if currentBalance.Cmp( val ) < 0 {
 				return fmt.Errorf("not enough asset")
 			}
-			_ , ok := overflow.Sub64( currentBalance.Int64() , val.Int64() )
-			if !ok {
-				return fmt.Errorf("decrement will result in an overflow")
-			}
-		} else {
-			_ , ok := overflow.Add64( currentBalance.Int64() , val.Int64() )
-			if !ok {
-				return fmt.Errorf("increment will result in an overflow")
-			}
 		}
 
 		if assetValueChangeParamEx.IsInc {
@@ -530,14 +520,12 @@ func (st *StateTransition) handleFsnCall() error {
 			return fmt.Errorf("MinFromAmount,MinToAmount and SwapSize must be ge 1")
 		}
 
-		intVal, ok := overflow.Mul64( makeSwapParam.MinFromAmount.Int64() , makeSwapParam.SwapSize.Int64() )
-		if !ok || intVal <= 0 {
+		total := new(big.Int).Mul(  makeSwapParam.MinFromAmount , makeSwapParam.SwapSize )
+		if total.Cmp(big0) <= 0 {
 			log.Info("make swap overflow 1" , "MinFromAmount", makeSwapParam.MinFromAmount,  "Swap", makeSwapParam.SwapSize.Int64()  )
 			st.addLog(common.MakeSwapFunc, makeSwapParam, common.NewKeyValue("Error", "size * minToAmount too large"))
 			return fmt.Errorf("Error", "size * minToAmount too large")
 		}
-		total := big.NewInt(intVal)
-
 		start := makeSwapParam.FromStartTime
 		end := makeSwapParam.FromEndTime
 		needValue := common.NewTimeLock(&common.TimeLockItem{
@@ -620,6 +608,7 @@ func (st *StateTransition) handleFsnCall() error {
 	case common.RecallSwapFunc:
 		outputCommandInfo("RecallSwapFunc", "from", st.msg.From())
 		recallSwapParam := common.RecallSwapParam{}
+		big0 := big.NewInt(0)
 		rlp.DecodeBytes(param.Data, &recallSwapParam)
 		swaps, err := st.state.AllSwaps()
 		if err != nil {
@@ -637,12 +626,11 @@ func (st *StateTransition) handleFsnCall() error {
 			return fmt.Errorf("Must be swap onwer can recall")
 		}
 
-		intVal, ok := overflow.Mul64( swap.MinFromAmount.Int64() , swap.SwapSize.Int64() )
-		if !ok || intVal <= 0 {
+		total := new(big.Int).Mul( swap.MinFromAmount , swap.SwapSize )
+		if total.Cmp(big0) <= 0 {
 			st.addLog(common.RecallSwapFunc, recallSwapParam, common.NewKeyValue("Error", "size * minFromAmount too large"))
 			return fmt.Errorf("Error", "size * minToAmount too large")
 		}
-		total := big.NewInt(intVal)
 
 		start := swap.FromStartTime
 		end := swap.FromEndTime
@@ -696,12 +684,7 @@ func (st *StateTransition) handleFsnCall() error {
 		}
 
 		
-		intVal, ok := overflow.Mul64( swap.MinFromAmount.Int64() , takeSwapParam.Size.Int64() )
-		if !ok || intVal <= 0 {
-			st.addLog(common.TakeSwapFunc, takeSwapParam, common.NewKeyValue("Error", "SwapSize * minFromAmount too large"))
-			return fmt.Errorf("Error", "SwapSize * minToAmount too large")
-		}
-		fromTotal := big.NewInt(intVal)
+		fromTotal := new(big.Int).Mul( swap.MinFromAmount , takeSwapParam.Size  )
 
 		if fromTotal.Cmp(big0) <= 0 {
 			st.addLog(common.TakeSwapFunc, takeSwapParam, common.NewKeyValue("Error", "fromTotal less than  equal to zero"))
@@ -716,13 +699,12 @@ func (st *StateTransition) handleFsnCall() error {
 			Value:     fromTotal,
 		})
 
-		intVal, ok = overflow.Mul64( swap.MinToAmount.Int64() , takeSwapParam.Size.Int64() )
-		if !ok || intVal <= 0 {
+		toTotal := new(big.Int).Mul( swap.MinToAmount , takeSwapParam.Size )
+		if toTotal.Cmp(big0) <= 0 {
 			log.Info("total too big")
 			st.addLog(common.TakeSwapFunc, takeSwapParam, common.NewKeyValue("Error", "toTotal less than  equal to zero"))
 			return fmt.Errorf("toTotal less than  equal to zero")
 		}
-		toTotal := big.NewInt(intVal)
 
 		toStart := swap.ToStartTime
 		toEnd := swap.ToEndTime
