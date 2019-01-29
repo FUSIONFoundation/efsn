@@ -623,7 +623,7 @@ func (st *StateTransition) handleFsnCall() error {
 		st.addLog(common.RecallSwapFunc, recallSwapParam, common.NewKeyValue("SwapID", swap.ID))
 		return nil
 	case common.TakeSwapFunc, common.TakeSwapFuncExt:
-		outputCommandInfo("TakeewapFunc", "from", st.msg.From())
+		outputCommandInfo("TakeSwapFunc", "from", st.msg.From())
 		takeSwapParam := common.TakeSwapParam{}
 		log.Debug("calling decode bytes")
 
