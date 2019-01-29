@@ -290,6 +290,15 @@ func (st *StateTransition) handleFsnCall() error {
 		asset := genAssetParam.ToAsset()
 		asset.ID = st.msg.AsTransaction().Hash()
 		asset.Owner = st.msg.From()
+
+		if len(genAssetParam.Name)==0 || len(genAssetParam.Symbol) == 0 || genAssetParam.Total == nil || genAssetParam.Total.Int64() < 0 {
+			log.Info( "GenAssetFunc name, symbol and total must be set")
+			return fmt.Errorf("BuildGenAsset name, symbol and total must be set or greater than 0")
+		}
+
+		if genAssetParam.Decimals > 18 || int(genAssetParam.Decimals) < 0 {
+			return fmt.Errorf("GenAssetFunc decimals must be between 0 and 18")
+		}
 		if err := st.state.GenAsset(asset); err != nil {
 			st.addLog(common.GenAssetFunc, genAssetParam, common.NewKeyValue("Error", "unable to gen asset"))
 			return err

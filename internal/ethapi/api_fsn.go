@@ -510,6 +510,16 @@ func (s *PrivateFusionAPI) GenAsset(ctx context.Context, args GenAssetArgs, pass
 	if err != nil {
 		return common.Hash{}, err
 	}
+
+	if len(args.Name)==0 || len(args.Symbol) == 0 || args.Total == nil || args.Total.ToInt().Int64() < 0 {
+		log.Info( "BuildGenAsset name, symbol and total must be set")
+		return  common.Hash{}, fmt.Errorf("GenAsset name, symbol and total must be set or greater than 0")
+	}
+
+	if args.Decimals > 18 || int(args.Decimals) < 0 {
+		return  common.Hash{}, fmt.Errorf("GenAsset decimals must be between 0 and 18")
+	}
+	
 	var param = common.FSNCallParam{Func: common.GenAssetFunc, Data: funcData}
 	data, err := param.ToBytes()
 	if err != nil {
@@ -1066,9 +1076,14 @@ func (s *FusionTransactionAPI) BuildGenAssetTx(ctx context.Context, args GenAsse
 	if err != nil {
 		return nil, err
 	}
-	if len(args.Name)==0 || len(args.Symbol) == 0 || args.Total == nil {
+
+	if len(args.Name)==0 || len(args.Symbol) == 0 || args.Total == nil || args.Total.ToInt().Int64() < 0 {
 		log.Info( "BuildGenAsset name, symbol and total must be set")
-		return nil, fmt.Errorf("BuildGenAsset name, symbol and total must be set")
+		return nil, fmt.Errorf("BuildGenAsset name, symbol and total must be set or greater than 0")
+	}
+
+	if args.Decimals > 18 || int(args.Decimals) < 0 {
+		return nil, fmt.Errorf("BuildGenAsset decimals must be between 0 and 18")
 	}
 
 	var param = common.FSNCallParam{Func: common.GenAssetFunc, Data: funcData}
