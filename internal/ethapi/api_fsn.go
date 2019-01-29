@@ -750,9 +750,20 @@ func (s *PrivateFusionAPI) checkAssetValueChange(ctx context.Context, args Asset
 		return common.Hash{}, fmt.Errorf("must be change by onwer")
 	}
 
+	currentBalance := state.GetBalance(args.AssetID, args.To)
+	val := args.Value.ToInt()
 	if !args.IsInc {
-		if state.GetBalance(args.AssetID, args.To).Cmp(args.Value.ToInt()) < 0 {
+		if currentBalance.Cmp( val ) < 0 {
 			return common.Hash{}, fmt.Errorf("not enough asset")
+		}
+		_ , ok := overflow.Sub64( currentBalance.Int64() , val.Int64() )
+		if !ok {
+			return common.Hash{}, fmt.Errorf("decrement will result in an overflow")
+		}
+	} else {
+		_ , ok := overflow.Add64( currentBalance.Int64() , val.Int64() )
+		if !ok {
+			return common.Hash{}, fmt.Errorf("increment will result in an overflow")
 		}
 	}
 
@@ -1375,9 +1386,20 @@ func (s *FusionTransactionAPI) buildAssetValueChangeTx(ctx context.Context, args
 		return nil, fmt.Errorf("must be change by onwer")
 	}
 
+	currentBalance := state.GetBalance(args.AssetID, args.To)
+	val := args.Value.ToInt()
 	if !args.IsInc {
-		if state.GetBalance(args.AssetID, args.To).Cmp(args.Value.ToInt()) < 0 {
+		if currentBalance.Cmp( val ) < 0 {
 			return nil, fmt.Errorf("not enough asset")
+		}
+		_ , ok := overflow.Sub64( currentBalance.Int64() , val.Int64() )
+		if !ok {
+			return nil, fmt.Errorf("decrement will result in an overflow")
+		}
+	} else {
+		_ , ok := overflow.Add64( currentBalance.Int64() , val.Int64() )
+		if !ok {
+			return nil, fmt.Errorf("increment will result in an overflow")
 		}
 	}
 

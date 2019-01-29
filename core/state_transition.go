@@ -476,6 +476,24 @@ func (st *StateTransition) handleFsnCall() error {
 			return fmt.Errorf("must be change by owner")
 		}
 
+
+		currentBalance := st.state.GetBalance( assetValueChangeParamEx.AssetID, assetValueChangeParamEx.To)
+		val := assetValueChangeParamEx.Value
+		if !assetValueChangeParamEx.IsInc {
+			if currentBalance.Cmp( val ) < 0 {
+				return fmt.Errorf("not enough asset")
+			}
+			_ , ok := overflow.Sub64( currentBalance.Int64() , val.Int64() )
+			if !ok {
+				return fmt.Errorf("decrement will result in an overflow")
+			}
+		} else {
+			_ , ok := overflow.Add64( currentBalance.Int64() , val.Int64() )
+			if !ok {
+				return fmt.Errorf("increment will result in an overflow")
+			}
+		}
+
 		if assetValueChangeParamEx.IsInc {
 			st.state.AddBalance(assetValueChangeParamEx.To, assetValueChangeParamEx.AssetID, assetValueChangeParamEx.Value)
 			asset.Total = asset.Total.Add(asset.Total, assetValueChangeParamEx.Value)
