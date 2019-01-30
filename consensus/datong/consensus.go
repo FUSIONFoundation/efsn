@@ -639,13 +639,6 @@ func (dt *DaTong) selectTickets(tickets []*common.Ticket, parent *types.Header, 
 
 func (dt *DaTong) getProbability(distance *big.Int) *big.Int {
 	d := distance.Uint64()
-	if d > dt.config.Period {
-		d = d - dt.config.Period + 1
-		max := maxProb.Uint64()
-		temp := uint64(math.Pow(2, float64(d)))
-		value := max - max/temp
-		return new(big.Int).SetUint64(value)
-	}
 	return new(big.Int).SetUint64(uint64(math.Pow(2, float64(d))))
 }
 
