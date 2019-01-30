@@ -433,7 +433,7 @@ func writeBigIntNoPtr(val reflect.Value, w *encbuf) error {
 
 func writeBigInt(i *big.Int, w *encbuf) error {
 	if cmp := i.Cmp(big0); cmp == -1 {
-		log.Info( "negative bit int value past in", i.Uint64(), "int ", i.Int64() )
+		log.Info( "negative big int value past in", "i",  i, "int ", i.Int64() )
 		return fmt.Errorf("rlp: cannot encode negative *big.Int")
 	} else if cmp == 0 {
 		w.str = append(w.str, 0x80)
