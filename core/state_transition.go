@@ -289,9 +289,10 @@ func (st *StateTransition) handleFsnCall() error {
 		asset := genAssetParam.ToAsset()
 		asset.ID = st.msg.AsTransaction().Hash()
 		asset.Owner = st.msg.From()
+		big0 := big.NewInt(0)
 
-		if len(genAssetParam.Name)==0 || len(genAssetParam.Symbol) == 0 || genAssetParam.Total == nil || genAssetParam.Total.Int64() < 0 {
-			log.Info( "GenAssetFunc name, symbol and total must be set")
+		if len(genAssetParam.Name) == 0 || len(genAssetParam.Symbol) == 0 || genAssetParam.Total == nil || genAssetParam.Total.Cmp(big0) <= 0 {
+			log.Info("GenAssetFunc name, symbol and total must be set")
 			return fmt.Errorf("BuildGenAsset name, symbol and total must be set or greater than 0")
 		}
 
@@ -484,11 +485,10 @@ func (st *StateTransition) handleFsnCall() error {
 			return fmt.Errorf("must be change by owner")
 		}
 
-
-		currentBalance := st.state.GetBalance( assetValueChangeParamEx.AssetID, assetValueChangeParamEx.To)
+		currentBalance := st.state.GetBalance(assetValueChangeParamEx.AssetID, assetValueChangeParamEx.To)
 		val := assetValueChangeParamEx.Value
 		if !assetValueChangeParamEx.IsInc {
-			if currentBalance.Cmp( val ) < 0 {
+			if currentBalance.Cmp(val) < 0 {
 				return fmt.Errorf("not enough asset")
 			}
 		}
@@ -520,9 +520,9 @@ func (st *StateTransition) handleFsnCall() error {
 			return fmt.Errorf("MinFromAmount,MinToAmount and SwapSize must be ge 1")
 		}
 
-		total := new(big.Int).Mul(  makeSwapParam.MinFromAmount , makeSwapParam.SwapSize )
+		total := new(big.Int).Mul(makeSwapParam.MinFromAmount, makeSwapParam.SwapSize)
 		if total.Cmp(big0) <= 0 {
-			log.Info("make swap overflow 1" , "MinFromAmount", makeSwapParam.MinFromAmount,  "Swap", makeSwapParam.SwapSize.Int64()  )
+			log.Info("make swap overflow 1", "MinFromAmount", makeSwapParam.MinFromAmount, "Swap", makeSwapParam.SwapSize)
 			st.addLog(common.MakeSwapFunc, makeSwapParam, common.NewKeyValue("Error", "size * minToAmount too large"))
 			return fmt.Errorf("Error", "size * minToAmount too large")
 		}
@@ -598,6 +598,9 @@ func (st *StateTransition) handleFsnCall() error {
 			st.addLog(common.MakeSwapFunc, makeSwapParam, common.NewKeyValue("Error", "System error can't add swap"))
 			return err
 		}
+
+		// take from the owner the asset
+		//
 		if start == common.TimeLockNow && end == common.TimeLockForever {
 			st.state.SubBalance(st.msg.From(), makeSwapParam.FromAssetID, total)
 		} else {
@@ -626,7 +629,7 @@ func (st *StateTransition) handleFsnCall() error {
 			return fmt.Errorf("Must be swap onwer can recall")
 		}
 
-		total := new(big.Int).Mul( swap.MinFromAmount , swap.SwapSize )
+		total := new(big.Int).Mul(swap.MinFromAmount, swap.SwapSize)
 		if total.Cmp(big0) <= 0 {
 			st.addLog(common.RecallSwapFunc, recallSwapParam, common.NewKeyValue("Error", "size * minFromAmount too large"))
 			return fmt.Errorf("Error", "size * minToAmount too large")
@@ -644,6 +647,8 @@ func (st *StateTransition) handleFsnCall() error {
 			st.addLog(common.RecallSwapFunc, recallSwapParam, common.NewKeyValue("Error", "Unable to remove swap"))
 			return err
 		}
+
+		// return to the owner the balance
 		if start == common.TimeLockNow && end == common.TimeLockForever {
 			st.state.AddBalance(st.msg.From(), swap.FromAssetID, total)
 		} else {
@@ -661,18 +666,19 @@ func (st *StateTransition) handleFsnCall() error {
 			log.Info("TakeSwapFunc unable to retrieve previous swaps")
 			return err
 		}
-		
+
 		swap, ok := swaps[takeSwapParam.SwapID]
 		if !ok {
 			st.addLog(common.TakeSwapFunc, takeSwapParam, common.NewKeyValue("Error", "swap not found"))
 			return fmt.Errorf("Swap not found")
 		}
+
 		big0 := big.NewInt(0)
 		if swap.SwapSize.Cmp(takeSwapParam.Size) < 0 || takeSwapParam.Size.Cmp(big0) <= 0 {
 			st.addLog(common.TakeSwapFunc, takeSwapParam, common.NewKeyValue("Error", "swapsize must be le and Size must be ge 1"))
 			return fmt.Errorf("SwapSize must le and Size must be ge 1")
 		}
-		
+
 		if swap.MinFromAmount.Cmp(big0) <= 0 {
 			st.addLog(common.TakeSwapFunc, takeSwapParam, common.NewKeyValue("Error", "MinFromAmount less than  equal to zero"))
 			return fmt.Errorf("MinFromAmount less than  equal to zero")
@@ -683,8 +689,7 @@ func (st *StateTransition) handleFsnCall() error {
 			return fmt.Errorf("MinToAmount less than  equal to zero")
 		}
 
-		
-		fromTotal := new(big.Int).Mul( swap.MinFromAmount , takeSwapParam.Size  )
+		fromTotal := new(big.Int).Mul(swap.MinFromAmount, takeSwapParam.Size)
 
 		if fromTotal.Cmp(big0) <= 0 {
 			st.addLog(common.TakeSwapFunc, takeSwapParam, common.NewKeyValue("Error", "fromTotal less than  equal to zero"))
@@ -699,7 +704,7 @@ func (st *StateTransition) handleFsnCall() error {
 			Value:     fromTotal,
 		})
 
-		toTotal := new(big.Int).Mul( swap.MinToAmount , takeSwapParam.Size )
+		toTotal := new(big.Int).Mul(swap.MinToAmount, takeSwapParam.Size)
 		if toTotal.Cmp(big0) <= 0 {
 			log.Info("total too big")
 			st.addLog(common.TakeSwapFunc, takeSwapParam, common.NewKeyValue("Error", "toTotal less than  equal to zero"))
@@ -784,16 +789,21 @@ func (st *StateTransition) handleFsnCall() error {
 
 		if fromStart == common.TimeLockNow && fromEnd == common.TimeLockForever {
 			st.state.AddBalance(st.msg.From(), swap.FromAssetID, fromTotal)
-			st.state.SubBalance(swap.Owner, swap.FromAssetID, fromTotal)
+			// the owner of the swap already had their balance taken away
+			// in MakeSwapFunc
+			// there is no need to subtract this balance again
+			//st.state.SubBalance(swap.Owner, swap.FromAssetID, fromTotal)
 		} else {
 			st.state.AddTimeLockBalance(st.msg.From(), swap.FromAssetID, fromNeedValue)
-			st.state.SubTimeLockBalance(swap.Owner, swap.FromAssetID, fromNeedValue)
+			// the owner of the swap already had their timelock balance taken away
+			// in MakeSwapFunc
+			// there is no need to subtract this balance again
+			// st.state.SubTimeLockBalance(swap.Owner, swap.FromAssetID, fromNeedValue)
 		}
-
 		st.addLog(common.TakeSwapFunc, takeSwapParam, common.NewKeyValue("SwapID", swap.ID))
 		return nil
 	}
-	return fmt.Errorf("Unsupport")
+	return fmt.Errorf("Unsupported")
 }
 
 func (st *StateTransition) addLog(typ common.FSNCallFunc, value interface{}, keyValues ...*common.KeyValue) {
