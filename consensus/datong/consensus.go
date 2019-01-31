@@ -251,9 +251,11 @@ func (dt *DaTong) verifySeal(chain consensus.ChainReader, header *types.Header, 
 		}
 	}
 
+	//log.Info("Number of tickets to try and select ", "#", i, "ticketsToSelectFrom_ticketMap", len(ticketMap))
+
 	if i == 0 {
 		log.Info("consensus.verifySeal no tickets with correct header number, ticket not selected")
-		return errors.New("the ticket not selected")
+		return errors.New("verifySeal:  no tickets with correct header number, ticket not selected")
 	}
 
 	selectedTickets := dt.selectTickets(tickets, parent, header.Time.Uint64())
@@ -379,9 +381,16 @@ func (dt *DaTong) Finalize(chain consensus.ChainReader, header *types.Header, st
 					TicketID: t.ID,
 					Type:     ticketDelete,
 				})
+				if selected.Height.Cmp(common.Big0) > 0 {
+					value := common.NewTimeLock(&common.TimeLockItem{
+						StartTime: t.StartTime,
+						EndTime:   t.ExpireTime,
+						Value:     t.Value,
+					})
+					state.AddTimeLockBalance( t.Owner, common.SystemAssetID, value)
+				}
 			}
 		}
-
 	} else {
 		delete(ticketMap, selected.ID)
 		state.RemoveTicket(selected.ID)
@@ -391,7 +400,7 @@ func (dt *DaTong) Finalize(chain consensus.ChainReader, header *types.Header, st
 				EndTime:   selected.ExpireTime,
 				Value:     selected.Value,
 			})
-			state.AddTimeLockBalance(header.Coinbase, common.SystemAssetID, value)
+			state.AddTimeLockBalance(selected.Owner, common.SystemAssetID, value)
 		}
 		snap.AddLog(&ticketLog{
 			TicketID: selected.ID,
@@ -430,6 +439,14 @@ func (dt *DaTong) Finalize(chain consensus.ChainReader, header *types.Header, st
 				TicketID: t.ID,
 				Type:     ticketExpired,
 			})
+			if selected.Height.Cmp(common.Big0) > 0 {
+				value := common.NewTimeLock(&common.TimeLockItem{
+					StartTime: t.StartTime,
+					EndTime:   t.ExpireTime,
+					Value:     t.Value,
+				})
+				state.AddTimeLockBalance( t.Owner, common.SystemAssetID, value)
+			}
 		} else {
 			ticketNumber++
 			weight := new(big.Int).Sub(header.Number, t.Height)
