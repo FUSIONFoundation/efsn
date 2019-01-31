@@ -381,7 +381,7 @@ func (dt *DaTong) Finalize(chain consensus.ChainReader, header *types.Header, st
 					TicketID: t.ID,
 					Type:     ticketDelete,
 				})
-				if selected.Height.Cmp(common.Big0) > 0 {
+				if t.Height.Cmp(common.Big0) > 0 {
 					value := common.NewTimeLock(&common.TimeLockItem{
 						StartTime: t.StartTime,
 						EndTime:   t.ExpireTime,
@@ -439,7 +439,7 @@ func (dt *DaTong) Finalize(chain consensus.ChainReader, header *types.Header, st
 				TicketID: t.ID,
 				Type:     ticketExpired,
 			})
-			if selected.Height.Cmp(common.Big0) > 0 {
+			if t.Height.Cmp(common.Big0) > 0 {
 				value := common.NewTimeLock(&common.TimeLockItem{
 					StartTime: t.StartTime,
 					EndTime:   t.ExpireTime,
