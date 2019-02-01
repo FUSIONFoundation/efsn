@@ -293,10 +293,12 @@ func (st *StateTransition) handleFsnCall() error {
 
 		if len(genAssetParam.Name) == 0 || len(genAssetParam.Symbol) == 0 || genAssetParam.Total == nil || genAssetParam.Total.Cmp(big0) <= 0 {
 			log.Info("GenAssetFunc name, symbol and total must be set")
+			st.addLog(common.GenAssetFunc, genAssetParam, common.NewKeyValue("Error", "GenAssetFunc name, symbol and total must be set"))
 			return fmt.Errorf("BuildGenAsset name, symbol and total must be set or greater than 0")
 		}
 
 		if genAssetParam.Decimals > 18 || int(genAssetParam.Decimals) < 0 {
+			st.addLog(common.GenAssetFunc, genAssetParam, common.NewKeyValue("Error", "GenAssetFunc decimals must be between 0 and 18"))
 			return fmt.Errorf("GenAssetFunc decimals must be between 0 and 18")
 		}
 		if err := st.state.GenAsset(asset); err != nil {
@@ -383,6 +385,7 @@ func (st *StateTransition) handleFsnCall() error {
 		tickets, err := st.state.AllTickets()
 
 		if err != nil {
+			st.addLog(common.BuyTicketFunc, param.Data, common.NewKeyValue("Error", "unable to retrieve previous tickets"))
 			log.Debug("BuyTicketFunc unable to retrieve previous tickets")
 			return err
 		}
@@ -436,6 +439,7 @@ func (st *StateTransition) handleFsnCall() error {
 			Value:      value,
 		}
 		if err := st.state.AddTicket(ticket); err != nil {
+			st.addLog(common.BuyTicketFunc, param.Data, common.NewKeyValue("Error", "unable to add ticket"))
 			return err
 		}
 		st.addLog(common.BuyTicketFunc, param.Data, common.NewKeyValue("Ticket", ticket.ID))
@@ -466,6 +470,7 @@ func (st *StateTransition) handleFsnCall() error {
 		assets, err := st.state.AllAssets()
 		if err != nil {
 			log.Debug("AssetValueChange unable to retrieve previous assets")
+			st.addLog(common.AssetValueChangeFunc, assetValueChangeParamEx, common.NewKeyValue("Error", "unable to retrieve previous assets"))
 			return err
 		}
 
@@ -489,6 +494,7 @@ func (st *StateTransition) handleFsnCall() error {
 		val := assetValueChangeParamEx.Value
 		if !assetValueChangeParamEx.IsInc {
 			if currentBalance.Cmp(val) < 0 {
+				st.addLog(common.AssetValueChangeFunc, assetValueChangeParamEx, common.NewKeyValue("Error", "not enough asset"))
 				return fmt.Errorf("not enough asset")
 			}
 		}
@@ -507,6 +513,8 @@ func (st *StateTransition) handleFsnCall() error {
 		err = st.state.UpdateAsset(asset)
 		if err == nil {
 			st.addLog(common.AssetValueChangeFunc, assetValueChangeParamEx, common.NewKeyValue("AssetID", assetValueChangeParamEx.AssetID))
+		} else {
+			st.addLog(common.AssetValueChangeFunc, assetValueChangeParamEx, common.NewKeyValue("Error", "error update asset"))
 		}
 		return err
 	case common.EmptyFunc:
@@ -616,6 +624,7 @@ func (st *StateTransition) handleFsnCall() error {
 		swaps, err := st.state.AllSwaps()
 		if err != nil {
 			log.Debug("RecallSwapFunc unable to retrieve previous swaps")
+			st.addLog(common.RecallSwapFunc, recallSwapParam, common.NewKeyValue("Error", "unable to retrieve previous swaps"))
 			return err
 		}
 		swap, ok := swaps[recallSwapParam.SwapID]
@@ -664,6 +673,7 @@ func (st *StateTransition) handleFsnCall() error {
 		swaps, err := st.state.AllSwaps()
 		if err != nil {
 			log.Info("TakeSwapFunc unable to retrieve previous swaps")
+			st.addLog(common.TakeSwapFunc, takeSwapParam, common.NewKeyValue("Error", "Swap not found"))
 			return err
 		}
 
