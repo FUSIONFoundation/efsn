@@ -470,7 +470,7 @@ func (dt *DaTong) Finalize(chain consensus.ChainReader, header *types.Header, st
 
 	snap.SetWeight(remainingWeight)
 	// snap.SetWeight(new(big.Int).Add(totalBalance, remainingWeight))
-	// snap.SetTicketWeight(remainingWeight)
+	snap.SetTicketWeight(remainingWeight) // leaving this here it just fills out ticket weight does nothing
 	snap.SetTicketNumber(ticketNumber)
 
 	snapBytes := snap.Bytes()
