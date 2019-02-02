@@ -27,7 +27,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/FusionFoundation/efsn/swarm"
+	"github.com/ethereum/go-ethereum/swarm"
 )
 
 // TestCLISwarmExportImport perform the following test:

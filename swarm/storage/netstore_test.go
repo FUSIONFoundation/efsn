@@ -24,7 +24,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/FusionFoundation/efsn/swarm/network"
+	"github.com/ethereum/go-ethereum/swarm/network"
 )
 
 var (

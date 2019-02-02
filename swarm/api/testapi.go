@@ -17,7 +17,7 @@
 package api
 
 import (
-	"github.com/FusionFoundation/efsn/swarm/network"
+	"github.com/ethereum/go-ethereum/swarm/network"
 )
 
 type Control struct {

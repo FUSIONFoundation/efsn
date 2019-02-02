@@ -22,9 +22,9 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/FusionFoundation/efsn/metrics"
-	"github.com/FusionFoundation/efsn/swarm/log"
-	"github.com/FusionFoundation/efsn/swarm/storage"
+	"github.com/ethereum/go-ethereum/metrics"
+	"github.com/ethereum/go-ethereum/swarm/log"
+	"github.com/ethereum/go-ethereum/swarm/storage"
 )
 
 const (

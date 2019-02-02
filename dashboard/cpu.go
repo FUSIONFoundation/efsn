@@ -21,7 +21,7 @@ package dashboard
 import (
 	"syscall"
 
-	"github.com/FusionFoundation/efsn/log"
+	"github.com/ethereum/go-ethereum/log"
 )
 
 // getProcessCPUTime retrieves the process' CPU time since program startup.

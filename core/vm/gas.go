@@ -19,7 +19,7 @@ package vm
 import (
 	"math/big"
 
-	"github.com/FusionFoundation/efsn/params"
+	"github.com/ethereum/go-ethereum/params"
 )
 
 // Gas costs

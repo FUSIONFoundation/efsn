@@ -30,9 +30,9 @@ import (
 
 	"bazil.org/fuse"
 	"bazil.org/fuse/fs"
-	"github.com/FusionFoundation/efsn/common"
-	"github.com/FusionFoundation/efsn/swarm/api"
-	"github.com/FusionFoundation/efsn/swarm/log"
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/swarm/api"
+	"github.com/ethereum/go-ethereum/swarm/log"
 )
 
 var (

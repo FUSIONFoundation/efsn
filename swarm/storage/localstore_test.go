@@ -21,7 +21,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/FusionFoundation/efsn/swarm/chunk"
+	"github.com/ethereum/go-ethereum/swarm/chunk"
 )
 
 var (

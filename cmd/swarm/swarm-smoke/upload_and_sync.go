@@ -30,7 +30,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/FusionFoundation/efsn/log"
+	"github.com/ethereum/go-ethereum/log"
 	"github.com/pborman/uuid"
 
 	cli "gopkg.in/urfave/cli.v1"

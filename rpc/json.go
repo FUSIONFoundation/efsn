@@ -26,7 +26,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/FusionFoundation/efsn/log"
+	"github.com/ethereum/go-ethereum/log"
 )
 
 const (

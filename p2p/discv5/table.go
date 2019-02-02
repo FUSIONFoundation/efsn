@@ -29,7 +29,7 @@ import (
 	"net"
 	"sort"
 
-	"github.com/FusionFoundation/efsn/common"
+	"github.com/ethereum/go-ethereum/common"
 )
 
 const (

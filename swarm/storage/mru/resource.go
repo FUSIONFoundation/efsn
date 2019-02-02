@@ -21,7 +21,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/FusionFoundation/efsn/swarm/storage"
+	"github.com/ethereum/go-ethereum/swarm/storage"
 )
 
 const (

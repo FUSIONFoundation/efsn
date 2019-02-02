@@ -1,8 +1,8 @@
 package log
 
 import (
-	l "github.com/FusionFoundation/efsn/log"
-	"github.com/FusionFoundation/efsn/metrics"
+	l "github.com/ethereum/go-ethereum/log"
+	"github.com/ethereum/go-ethereum/metrics"
 )
 
 const (

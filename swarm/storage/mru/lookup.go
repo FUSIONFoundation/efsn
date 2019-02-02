@@ -20,7 +20,7 @@ import (
 	"encoding/binary"
 	"hash"
 
-	"github.com/FusionFoundation/efsn/swarm/storage"
+	"github.com/ethereum/go-ethereum/swarm/storage"
 )
 
 // LookupParams is used to specify constraints when performing an update lookup

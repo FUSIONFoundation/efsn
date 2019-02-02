@@ -24,9 +24,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/FusionFoundation/efsn/common"
-	"github.com/FusionFoundation/efsn/swarm/log"
-	"github.com/FusionFoundation/efsn/swarm/pot"
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/swarm/log"
+	"github.com/ethereum/go-ethereum/swarm/pot"
 )
 
 /*

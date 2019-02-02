@@ -26,7 +26,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/FusionFoundation/efsn/common"
+	"github.com/ethereum/go-ethereum/common"
 	"golang.org/x/tools/imports"
 )
 
