@@ -19,7 +19,6 @@ package miner
 
 import (
 	"fmt"
-	"math/big"
 	"sync/atomic"
 	"time"
 
@@ -53,13 +52,13 @@ type Miner struct {
 	shouldStart int32 // should start indicates whether we should start after sync
 }
 
-func New(eth Backend, config *params.ChainConfig, mux *event.TypeMux, engine consensus.Engine, recommit time.Duration, gasFloor, gasCeil uint64) *Miner {
+func New(eth Backend, config *params.ChainConfig, mux *event.TypeMux, engine consensus.Engine, recommit time.Duration, gasFloor, gasCeil uint64, isLocalBlock func(block *types.Block) bool) *Miner {
 	miner := &Miner{
 		eth:      eth,
 		mux:      mux,
 		engine:   engine,
 		exitCh:   make(chan struct{}),
-		worker:   newWorker(config, engine, eth, mux, recommit, gasFloor, gasCeil),
+		worker:   newWorker(config, engine, eth, mux, recommit, gasFloor, gasCeil, isLocalBlock),
 		canStart: 1,
 	}
 	go miner.update()
@@ -136,13 +135,6 @@ func (self *Miner) HashRate() uint64 {
 		return uint64(pow.Hashrate())
 	}
 	return 0
-}
-
-func (self *Miner) ConsensusData() []*big.Int {
-	if noPow, ok := self.engine.(consensus.NoPow); ok {
-		return noPow.ConsensusData()
-	}
-	return nil
 }
 
 func (self *Miner) SetExtra(extra []byte) error {

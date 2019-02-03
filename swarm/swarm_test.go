@@ -82,17 +82,14 @@ func TestNewSwarm(t *testing.T) {
 				if s.dns != nil {
 					t.Error("dns initialized, but it should not be")
 				}
-				if s.lstore == nil {
-					t.Error("localstore not initialized")
+				if s.netStore == nil {
+					t.Error("netStore not initialized")
 				}
 				if s.streamer == nil {
 					t.Error("streamer not initialized")
 				}
 				if s.fileStore == nil {
 					t.Error("fileStore not initialized")
-				}
-				if s.lstore.Validators == nil {
-					t.Error("localstore validators not initialized")
 				}
 				if s.bzz == nil {
 					t.Error("bzz not initialized")
@@ -202,8 +199,8 @@ func TestParseEnsAPIAddress(t *testing.T) {
 	}{
 		{
 			description: "IPC endpoint",
-			value:       "/data/testnet/efsn.ipc",
-			endpoint:    "/data/testnet/efsn.ipc",
+			value:       "/data/testnet/geth.ipc",
+			endpoint:    "/data/testnet/geth.ipc",
 		},
 		{
 			description: "HTTP endpoint",
@@ -217,8 +214,8 @@ func TestParseEnsAPIAddress(t *testing.T) {
 		},
 		{
 			description: "IPC Endpoint and TLD",
-			value:       "test:/data/testnet/efsn.ipc",
-			endpoint:    "/data/testnet/efsn.ipc",
+			value:       "test:/data/testnet/geth.ipc",
+			endpoint:    "/data/testnet/geth.ipc",
 			tld:         "test",
 		},
 		{
@@ -235,8 +232,8 @@ func TestParseEnsAPIAddress(t *testing.T) {
 		},
 		{
 			description: "IPC Endpoint and contract address",
-			value:       "314159265dD8dbb310642f98f50C066173C1259b@/data/testnet/efsn.ipc",
-			endpoint:    "/data/testnet/efsn.ipc",
+			value:       "314159265dD8dbb310642f98f50C066173C1259b@/data/testnet/geth.ipc",
+			endpoint:    "/data/testnet/geth.ipc",
 			addr:        common.HexToAddress("314159265dD8dbb310642f98f50C066173C1259b"),
 		},
 		{
@@ -253,8 +250,8 @@ func TestParseEnsAPIAddress(t *testing.T) {
 		},
 		{
 			description: "IPC Endpoint, TLD and contract address",
-			value:       "test:314159265dD8dbb310642f98f50C066173C1259b@/data/testnet/efsn.ipc",
-			endpoint:    "/data/testnet/efsn.ipc",
+			value:       "test:314159265dD8dbb310642f98f50C066173C1259b@/data/testnet/geth.ipc",
+			endpoint:    "/data/testnet/geth.ipc",
 			addr:        common.HexToAddress("314159265dD8dbb310642f98f50C066173C1259b"),
 			tld:         "test",
 		},
