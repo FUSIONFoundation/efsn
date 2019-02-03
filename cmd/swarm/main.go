@@ -18,6 +18,7 @@ package main
 
 import (
 	"crypto/ecdsa"
+	"encoding/hex"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -208,6 +209,10 @@ var (
 		Name:  "data",
 		Usage: "Initializes the resource with the given hex-encoded data. Data must be prefixed by 0x",
 	}
+	SwarmCompressedFlag = cli.BoolFlag{
+		Name:  "compressed",
+		Usage: "Prints encryption keys in compressed form",
+	}
 )
 
 //declare a few constant error messages, useful for later error check comparisons in test
@@ -227,7 +232,7 @@ var defaultSubcommandHelp = cli.Command{
 
 var defaultNodeConfig = node.DefaultConfig
 
-// This init function sets defaults so cmd/swarm can run alongside efsn.
+// This init function sets defaults so cmd/swarm can run alongside geth.
 func init() {
 	defaultNodeConfig.Name = clientIdentifier
 	defaultNodeConfig.Version = sv.VersionWithCommit(gitCommit)
@@ -250,6 +255,14 @@ func init() {
 			CustomHelpTemplate: helpTemplate,
 			Name:               "version",
 			Usage:              "Print version numbers",
+			Description:        "The output of this command is supposed to be machine-readable",
+		},
+		{
+			Action:             keys,
+			CustomHelpTemplate: helpTemplate,
+			Name:               "print-keys",
+			Flags:              []cli.Flag{SwarmCompressedFlag},
+			Usage:              "Print public key information",
 			Description:        "The output of this command is supposed to be machine-readable",
 		},
 		{
@@ -306,6 +319,7 @@ func init() {
 							Flags: []cli.Flag{
 								SwarmAccessGrantKeysFlag,
 								SwarmDryRunFlag,
+								utils.PasswordFileFlag,
 							},
 							Name:        "act",
 							Usage:       "encrypts a reference with the node's private key and a given grantee's public key and embeds it into a root manifest",
@@ -580,6 +594,17 @@ func main() {
 	}
 }
 
+func keys(ctx *cli.Context) error {
+	privateKey := getPrivKey(ctx)
+	pub := hex.EncodeToString(crypto.FromECDSAPub(&privateKey.PublicKey))
+	pubCompressed := hex.EncodeToString(crypto.CompressPubkey(&privateKey.PublicKey))
+	if !ctx.Bool(SwarmCompressedFlag.Name) {
+		fmt.Println(fmt.Sprintf("publicKey=%s", pub))
+	}
+	fmt.Println(fmt.Sprintf("publicKeyCompressed=%s", pubCompressed))
+	return nil
+}
+
 func version(ctx *cli.Context) error {
 	fmt.Println(strings.Title(clientIdentifier))
 	fmt.Println("Version:", sv.VersionWithMeta)
@@ -605,9 +630,9 @@ func bzzd(ctx *cli.Context) error {
 	//pss operates on ws
 	cfg.WSModules = append(cfg.WSModules, "pss")
 
-	//efsn only supports --datadir via command line
+	//geth only supports --datadir via command line
 	//in order to be consistent within swarm, if we pass --datadir via environment variable
-	//or via config file, we get the same directory for efsn and swarm
+	//or via config file, we get the same directory for geth and swarm
 	if _, err := os.Stat(bzzconfig.Path); err == nil {
 		cfg.DataDir = bzzconfig.Path
 	}
