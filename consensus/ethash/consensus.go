@@ -25,15 +25,15 @@ import (
 	"time"
 
 	mapset "github.com/deckarep/golang-set"
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/common/math"
-	"github.com/ethereum/go-ethereum/consensus"
-	"github.com/ethereum/go-ethereum/consensus/misc"
-	"github.com/ethereum/go-ethereum/core/state"
-	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/crypto/sha3"
-	"github.com/ethereum/go-ethereum/params"
-	"github.com/ethereum/go-ethereum/rlp"
+	"github.com/FusionFoundation/efsn/common"
+	"github.com/FusionFoundation/efsn/common/math"
+	"github.com/FusionFoundation/efsn/consensus"
+	"github.com/FusionFoundation/efsn/consensus/misc"
+	"github.com/FusionFoundation/efsn/core/state"
+	"github.com/FusionFoundation/efsn/core/types"
+	"github.com/FusionFoundation/efsn/crypto/sha3"
+	"github.com/FusionFoundation/efsn/params"
+	"github.com/FusionFoundation/efsn/rlp"
 )
 
 // Ethash proof-of-work protocol constants.
@@ -622,10 +622,10 @@ func accumulateRewards(config *params.ChainConfig, state *state.StateDB, header 
 		r.Sub(r, header.Number)
 		r.Mul(r, blockReward)
 		r.Div(r, big8)
-		state.AddBalance(uncle.Coinbase, r)
+		state.AddBalance( uncle.Coinbase, common.SystemAssetID, r)
 
 		r.Div(blockReward, big32)
 		reward.Add(reward, r)
 	}
-	state.AddBalance(header.Coinbase, reward)
+	state.AddBalance(header.Coinbase, common.SystemAssetID,  reward)
 }

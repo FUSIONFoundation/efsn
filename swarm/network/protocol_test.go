@@ -23,11 +23,11 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/ethereum/go-ethereum/log"
-	"github.com/ethereum/go-ethereum/p2p"
-	"github.com/ethereum/go-ethereum/p2p/discover"
-	"github.com/ethereum/go-ethereum/p2p/protocols"
-	p2ptest "github.com/ethereum/go-ethereum/p2p/testing"
+	"github.com/FusionFoundation/efsn/log"
+	"github.com/FusionFoundation/efsn/p2p"
+	"github.com/FusionFoundation/efsn/p2p/discover"
+	"github.com/FusionFoundation/efsn/p2p/protocols"
+	p2ptest "github.com/FusionFoundation/efsn/p2p/testing"
 )
 
 const (

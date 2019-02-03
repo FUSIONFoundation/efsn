@@ -22,9 +22,9 @@ import (
 	"path/filepath"
 	"sync"
 
-	"github.com/ethereum/go-ethereum/p2p/discover"
+	"github.com/FusionFoundation/efsn/p2p/discover"
 
-	"github.com/ethereum/go-ethereum/swarm/storage"
+	"github.com/FusionFoundation/efsn/swarm/storage"
 )
 
 const (

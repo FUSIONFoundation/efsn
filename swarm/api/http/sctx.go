@@ -3,8 +3,8 @@ package http
 import (
 	"context"
 
-	"github.com/ethereum/go-ethereum/swarm/api"
-	"github.com/ethereum/go-ethereum/swarm/sctx"
+	"github.com/FusionFoundation/efsn/swarm/api"
+	"github.com/FusionFoundation/efsn/swarm/sctx"
 )
 
 type contextKey int

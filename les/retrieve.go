@@ -26,8 +26,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ethereum/go-ethereum/common/mclock"
-	"github.com/ethereum/go-ethereum/light"
+	"github.com/FusionFoundation/efsn/common/mclock"
+	"github.com/FusionFoundation/efsn/light"
 )
 
 var (

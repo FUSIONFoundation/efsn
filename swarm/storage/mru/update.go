@@ -20,9 +20,9 @@ import (
 	"encoding/binary"
 	"errors"
 
-	"github.com/ethereum/go-ethereum/swarm/chunk"
-	"github.com/ethereum/go-ethereum/swarm/log"
-	"github.com/ethereum/go-ethereum/swarm/multihash"
+	"github.com/FusionFoundation/efsn/swarm/chunk"
+	"github.com/FusionFoundation/efsn/swarm/log"
+	"github.com/FusionFoundation/efsn/swarm/multihash"
 )
 
 // resourceUpdate encapsulates the information sent as part of a resource update

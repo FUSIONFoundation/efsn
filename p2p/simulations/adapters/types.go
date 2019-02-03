@@ -26,11 +26,11 @@ import (
 	"strconv"
 
 	"github.com/docker/docker/pkg/reexec"
-	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/ethereum/go-ethereum/node"
-	"github.com/ethereum/go-ethereum/p2p"
-	"github.com/ethereum/go-ethereum/p2p/discover"
-	"github.com/ethereum/go-ethereum/rpc"
+	"github.com/FusionFoundation/efsn/crypto"
+	"github.com/FusionFoundation/efsn/node"
+	"github.com/FusionFoundation/efsn/p2p"
+	"github.com/FusionFoundation/efsn/p2p/discover"
+	"github.com/FusionFoundation/efsn/rpc"
 )
 
 // Node represents a node in a simulation network which is created by a

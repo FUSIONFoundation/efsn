@@ -17,9 +17,9 @@
 package simulation
 
 import (
-	"github.com/ethereum/go-ethereum/node"
-	"github.com/ethereum/go-ethereum/p2p/discover"
-	"github.com/ethereum/go-ethereum/p2p/simulations/adapters"
+	"github.com/FusionFoundation/efsn/node"
+	"github.com/FusionFoundation/efsn/p2p/discover"
+	"github.com/FusionFoundation/efsn/p2p/simulations/adapters"
 )
 
 // Service returns a single Service by name on a particular node

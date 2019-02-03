@@ -24,16 +24,16 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/consensus"
-	"github.com/ethereum/go-ethereum/consensus/ethash"
-	"github.com/ethereum/go-ethereum/core/rawdb"
-	"github.com/ethereum/go-ethereum/core/state"
-	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/core/vm"
-	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/ethereum/go-ethereum/ethdb"
-	"github.com/ethereum/go-ethereum/params"
+	"github.com/FusionFoundation/efsn/common"
+	"github.com/FusionFoundation/efsn/consensus"
+	"github.com/FusionFoundation/efsn/consensus/ethash"
+	"github.com/FusionFoundation/efsn/core/rawdb"
+	"github.com/FusionFoundation/efsn/core/state"
+	"github.com/FusionFoundation/efsn/core/types"
+	"github.com/FusionFoundation/efsn/core/vm"
+	"github.com/FusionFoundation/efsn/crypto"
+	"github.com/FusionFoundation/efsn/ethdb"
+	"github.com/FusionFoundation/efsn/params"
 )
 
 // So we can deterministically seed different blockchains
@@ -1230,7 +1230,7 @@ func TestEIP161AccountRemoval(t *testing.T) {
 // tests that under weird reorg conditions the blockchain and its internal header-
 // chain return the same latest block/header.
 //
-// https://github.com/ethereum/go-ethereum/pull/15941
+// https://github.com/FusionFoundation/efsn/pull/15941
 func TestBlockchainHeaderchainReorgConsistency(t *testing.T) {
 	// Generate a canonical chain to act as the main dataset
 	engine := ethash.NewFaker()

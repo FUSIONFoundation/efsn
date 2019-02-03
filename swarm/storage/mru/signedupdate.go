@@ -20,9 +20,9 @@ import (
 	"bytes"
 	"hash"
 
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/ethereum/go-ethereum/swarm/storage"
+	"github.com/FusionFoundation/efsn/common"
+	"github.com/FusionFoundation/efsn/crypto"
+	"github.com/FusionFoundation/efsn/swarm/storage"
 )
 
 // SignedResourceUpdate represents a resource update with all the necessary information to prove ownership of the resource

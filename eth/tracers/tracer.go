@@ -25,11 +25,11 @@ import (
 	"time"
 	"unsafe"
 
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/common/hexutil"
-	"github.com/ethereum/go-ethereum/core/vm"
-	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/ethereum/go-ethereum/log"
+	"github.com/FusionFoundation/efsn/common"
+	"github.com/FusionFoundation/efsn/common/hexutil"
+	"github.com/FusionFoundation/efsn/core/vm"
+	"github.com/FusionFoundation/efsn/crypto"
+	"github.com/FusionFoundation/efsn/log"
 	duktape "gopkg.in/olebedev/go-duktape.v3"
 )
 
@@ -187,7 +187,7 @@ func (dw *dbWrapper) pushObject(vm *duktape.Context) {
 
 	// Push the wrapper for statedb.GetBalance
 	vm.PushGoFunction(func(ctx *duktape.Context) int {
-		pushBigInt(dw.db.GetBalance(common.BytesToAddress(popSlice(ctx))), ctx)
+		pushBigInt(dw.db.GetBalance(common.SystemAssetID,common.BytesToAddress(popSlice(ctx))), ctx)
 		return 1
 	})
 	vm.PutPropString(obj, "getBalance")

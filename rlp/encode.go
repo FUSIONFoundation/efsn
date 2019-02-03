@@ -24,7 +24,7 @@ import (
 	"sort"
 	"sync"
 
-	"github.com/ethereum/go-ethereum/log"
+	"github.com/FusionFoundation/efsn/log"
 )
 
 var (

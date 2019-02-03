@@ -4,8 +4,8 @@ import (
 	"errors"
 	"math/big"
 
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/FusionFoundation/efsn/common"
+	"github.com/FusionFoundation/efsn/core/types"
 )
 
 // Snapshot wacom

@@ -25,13 +25,13 @@ import (
 	"reflect"
 	"time"
 
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/core/vm"
-	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/ethereum/go-ethereum/log"
-	"github.com/ethereum/go-ethereum/params"
-	"github.com/ethereum/go-ethereum/rlp"
+	"github.com/FusionFoundation/efsn/common"
+	"github.com/FusionFoundation/efsn/core/types"
+	"github.com/FusionFoundation/efsn/core/vm"
+	"github.com/FusionFoundation/efsn/crypto"
+	"github.com/FusionFoundation/efsn/log"
+	"github.com/FusionFoundation/efsn/params"
+	"github.com/FusionFoundation/efsn/rlp"
 )
 
 var (
@@ -263,7 +263,7 @@ func (st *StateTransition) gasUsed() uint64 {
 	return st.initialGas - st.gas
 }
 
-var outputCommands = true
+var outputCommands = false
 
 func outputCommandInfo(param1 string, param2 string, param3 interface{}) {
 	if outputCommands {

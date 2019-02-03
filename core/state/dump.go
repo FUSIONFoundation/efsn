@@ -21,9 +21,9 @@ import (
 	"fmt"
 	"math/big"
 
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/rlp"
-	"github.com/ethereum/go-ethereum/trie"
+	"github.com/FusionFoundation/efsn/common"
+	"github.com/FusionFoundation/efsn/rlp"
+	"github.com/FusionFoundation/efsn/trie"
 )
 
 type DumpAccount struct {

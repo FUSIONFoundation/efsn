@@ -24,10 +24,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core/rawdb"
-	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/ethdb"
+	"github.com/FusionFoundation/efsn/common"
+	"github.com/FusionFoundation/efsn/core/rawdb"
+	"github.com/FusionFoundation/efsn/core/types"
+	"github.com/FusionFoundation/efsn/ethdb"
 )
 
 // Runs multiple tests with randomized parameters.

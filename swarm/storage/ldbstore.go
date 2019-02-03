@@ -35,11 +35,11 @@ import (
 	"sort"
 	"sync"
 
-	"github.com/ethereum/go-ethereum/metrics"
-	"github.com/ethereum/go-ethereum/rlp"
-	ch "github.com/ethereum/go-ethereum/swarm/chunk"
-	"github.com/ethereum/go-ethereum/swarm/log"
-	"github.com/ethereum/go-ethereum/swarm/storage/mock"
+	"github.com/FusionFoundation/efsn/metrics"
+	"github.com/FusionFoundation/efsn/rlp"
+	ch "github.com/FusionFoundation/efsn/swarm/chunk"
+	"github.com/FusionFoundation/efsn/swarm/log"
+	"github.com/FusionFoundation/efsn/swarm/storage/mock"
 	"github.com/syndtr/goleveldb/leveldb"
 	"github.com/syndtr/goleveldb/leveldb/opt"
 )

@@ -24,9 +24,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ethereum/go-ethereum/log"
-	"github.com/ethereum/go-ethereum/node"
-	"github.com/ethereum/go-ethereum/p2p/simulations/adapters"
+	"github.com/FusionFoundation/efsn/log"
+	"github.com/FusionFoundation/efsn/node"
+	"github.com/FusionFoundation/efsn/p2p/simulations/adapters"
 )
 
 func TestSimulationWithHTTPServer(t *testing.T) {

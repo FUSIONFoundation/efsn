@@ -23,10 +23,10 @@ import (
 	"io"
 	"sync"
 
-	"github.com/ethereum/go-ethereum/metrics"
-	ch "github.com/ethereum/go-ethereum/swarm/chunk"
-	"github.com/ethereum/go-ethereum/swarm/log"
-	"github.com/ethereum/go-ethereum/swarm/spancontext"
+	"github.com/FusionFoundation/efsn/metrics"
+	ch "github.com/FusionFoundation/efsn/swarm/chunk"
+	"github.com/FusionFoundation/efsn/swarm/log"
+	"github.com/FusionFoundation/efsn/swarm/spancontext"
 	opentracing "github.com/opentracing/opentracing-go"
 	olog "github.com/opentracing/opentracing-go/log"
 )
