@@ -291,7 +291,7 @@ func (st *StateTransition) handleFsnCall() error {
 		asset.Owner = st.msg.From()
 		big0 := big.NewInt(0)
 
-		if len(genAssetParam.Name) == 0 || len(genAssetParam.Symbol) == 0 || genAssetParam.Total == nil || genAssetParam.Total.Cmp(big0) <= 0 {
+		if len(genAssetParam.Name) == 0 || len(genAssetParam.Symbol) == 0 || genAssetParam.Total == nil || genAssetParam.Total.Cmp(big0) < 0 {
 			log.Info("GenAssetFunc name, symbol and total must be set")
 			st.addLog(common.GenAssetFunc, genAssetParam, common.NewKeyValue("Error", "GenAssetFunc name, symbol and total must be set"))
 			return fmt.Errorf("BuildGenAsset name, symbol and total must be set or greater than 0")

@@ -1094,9 +1094,9 @@ func (s *FusionTransactionAPI) BuildGenAssetTx(ctx context.Context, args GenAsse
 
 	big0 := big.NewInt(0)
 
-	if len(args.Name)==0 || len(args.Symbol) == 0 || args.Total == nil || args.Total.ToInt().Cmp(big0) <= 0 {
+	if len(args.Name)==0 || len(args.Symbol) == 0 || args.Total == nil || args.Total.ToInt().Cmp(big0) < 0 {
 		log.Info( "BuildGenAsset name, symbol and total must be set")
-		return nil, fmt.Errorf("BuildGenAsset name, symbol and total must be set or greater than 0")
+		return nil, fmt.Errorf("BuildGenAsset name, symbol and total must be set or greater than = 0")
 	}
 
 	if args.Decimals > 18 || int(args.Decimals) < 0 {
