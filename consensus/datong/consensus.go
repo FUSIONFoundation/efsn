@@ -131,22 +131,19 @@ func (dt *DaTong) verifyHeader(chain consensus.ChainReader, header *types.Header
 
 // PreProcess update state if needed from various block info
 // used with some PoS Systems
-func (c *DaTong) PreProcess( chain consensus.ChainReader, header *types.Header, statedb *state.StateDB ) error {
-	
-	// this code is here in case we decide to delete tickets on next block
-	// snapData := getSnapDataByHeader(header)
-	// snap, err := newSnapshotWithData(snapData)
-	// if err != nil {
-	// 	return err
-	// }
-	// deleteMap := make( []common.Hash, 0 )
-	// for _, tik := range snap.logs {
-	// 	deleteMap = append(deleteMap, tik.TicketID )
-	// }
-	// statedb.RemoveTicket( deleteMap )
+func (c *DaTong) PreProcess(chain consensus.ChainReader, header *types.Header, statedb *state.StateDB) error {
+	snapData := getSnapDataByHeader(header)
+	snap, err := newSnapshotWithData(snapData)
+	if err != nil {
+		return err
+	}
+	deleteMap := make([]common.Hash, 0)
+	for _, tik := range snap.logs {
+		deleteMap = append(deleteMap, tik.TicketID)
+	}
+	statedb.RemoveTickets(deleteMap)
 	return nil
 }
-
 
 // VerifyHeader checks whether a header conforms to the consensus rules of the
 // stock Ethereum ethash engine.
@@ -386,7 +383,7 @@ func (dt *DaTong) Finalize(chain consensus.ChainReader, header *types.Header, st
 	header.Time = new(big.Int).SetUint64(time)
 	snap := newSnapshot()
 
-	deleteMap := make( []common.Hash, 0 )
+	deleteMap := make([]common.Hash, 0)
 
 	if deleteAll {
 		snap.AddLog(&ticketLog{
@@ -397,7 +394,7 @@ func (dt *DaTong) Finalize(chain consensus.ChainReader, header *types.Header, st
 		for _, t := range ticketMap {
 			if t.Height.Cmp(header.Number) < 0 {
 				delete(ticketMap, t.ID)
-				deleteMap = append( deleteMap , t.ID )
+				deleteMap = append(deleteMap, t.ID)
 				snap.AddLog(&ticketLog{
 					TicketID: t.ID,
 					Type:     ticketDelete,
@@ -408,13 +405,13 @@ func (dt *DaTong) Finalize(chain consensus.ChainReader, header *types.Header, st
 						EndTime:   t.ExpireTime,
 						Value:     t.Value,
 					})
-					state.AddTimeLockBalance( t.Owner, common.SystemAssetID, value)
+					state.AddTimeLockBalance(t.Owner, common.SystemAssetID, value)
 				}
 			}
 		}
 	} else {
 		delete(ticketMap, selected.ID)
-		deleteMap = append( deleteMap , selected.ID )
+		deleteMap = append(deleteMap, selected.ID)
 		if selected.Height.Cmp(common.Big0) > 0 {
 			value := common.NewTimeLock(&common.TimeLockItem{
 				StartTime: selected.StartTime,
@@ -430,7 +427,7 @@ func (dt *DaTong) Finalize(chain consensus.ChainReader, header *types.Header, st
 
 		for _, t := range retreat {
 			delete(ticketMap, t.ID)
-			deleteMap = append( deleteMap , t.ID )
+			deleteMap = append(deleteMap, t.ID)
 			if t.Height.Cmp(common.Big0) > 0 {
 				value := common.NewTimeLock(&common.TimeLockItem{
 					StartTime: t.StartTime,
@@ -455,7 +452,7 @@ func (dt *DaTong) Finalize(chain consensus.ChainReader, header *types.Header, st
 	for _, t := range ticketMap {
 		if t.ExpireTime <= time {
 			delete(ticketMap, t.ID)
-			deleteMap = append( deleteMap , t.ID )
+			deleteMap = append(deleteMap, t.ID)
 			snap.AddLog(&ticketLog{
 				TicketID: t.ID,
 				Type:     ticketExpired,
@@ -466,7 +463,7 @@ func (dt *DaTong) Finalize(chain consensus.ChainReader, header *types.Header, st
 					EndTime:   t.ExpireTime,
 					Value:     t.Value,
 				})
-				state.AddTimeLockBalance( t.Owner, common.SystemAssetID, value)
+				state.AddTimeLockBalance(t.Owner, common.SystemAssetID, value)
 			}
 		} else {
 			ticketNumber++
@@ -485,7 +482,7 @@ func (dt *DaTong) Finalize(chain consensus.ChainReader, header *types.Header, st
 		}
 	}
 
-	state.RemoveTickets( deleteMap )
+	// this is done in preprocess of next block state.RemoveTickets( deleteMap )
 
 	if remainingWeight.Cmp(common.Big0) <= 0 {
 		return nil, errors.New("Next block don't have ticket, wait buy ticket")
