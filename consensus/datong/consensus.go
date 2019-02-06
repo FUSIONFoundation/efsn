@@ -141,7 +141,7 @@ func (c *DaTong) PreProcess(chain consensus.ChainReader, header *types.Header, s
 	for _, tik := range snap.logs {
 		deleteMap = append(deleteMap, tik.TicketID)
 	}
-	statedb.RemoveTickets(deleteMap)
+	// statedb.RemoveTickets(deleteMap)
 	return nil
 }
 
@@ -482,7 +482,7 @@ func (dt *DaTong) Finalize(chain consensus.ChainReader, header *types.Header, st
 		}
 	}
 
-	// this is done in preprocess of next block state.RemoveTickets( deleteMap )
+	state.RemoveTickets( deleteMap )
 
 	if remainingWeight.Cmp(common.Big0) <= 0 {
 		return nil, errors.New("Next block don't have ticket, wait buy ticket")
