@@ -729,7 +729,7 @@ func (st *StateTransition) handleFsnCall() error {
 			Value:     toTotal,
 		})
 
-		log.Info("Swap", "fromTotal", fromTotal, " toTotal", toTotal, "takeSwapParam", takeSwapParam, "swap", swap)
+		//log.Info("Swap", "fromTotal", fromTotal, " toTotal", toTotal, "takeSwapParam", takeSwapParam, "swap", swap)
 
 		if toStart == common.TimeLockNow && toEnd == common.TimeLockForever {
 			if st.state.GetBalance(swap.ToAssetID, st.msg.From()).Cmp(toTotal) < 0 {
