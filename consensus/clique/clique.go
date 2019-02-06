@@ -247,6 +247,13 @@ func (c *Clique) VerifyHeader(chain consensus.ChainReader, header *types.Header,
 	return c.verifyHeader(chain, header, nil)
 }
 
+
+// PreProcess update state if needed from various block info
+// used with some PoS Systems
+func (c *Clique) PreProcess( chain consensus.ChainReader, header *types.Header, statedb *state.StateDB ) error {
+	return nil
+}
+
 // VerifyHeaders is similar to VerifyHeader, but verifies a batch of headers. The
 // method returns a quit channel to abort the operations and a results channel to
 // retrieve the async verifications (the order is that of the input slice).

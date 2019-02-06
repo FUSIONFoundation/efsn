@@ -789,7 +789,7 @@ func (db *StateDB) GetNotation(addr common.Address) uint64 {
 // AllNotation wacom
 func (db *StateDB) AllNotation() ([]common.Address, error) {
 	if db.notations != nil {
-		return db.notations,nil
+		return db.notations, nil
 	}
 	data := db.GetData(common.NotationKeyAddress)
 	var notations []common.Address
@@ -802,7 +802,7 @@ func (db *StateDB) AllNotation() ([]common.Address, error) {
 		}
 	}
 	db.notations = notations
-	return notations,nil
+	return notations, nil
 }
 
 // GenNotation wacom
@@ -901,7 +901,7 @@ func (db *StateDB) GenAsset(asset common.Asset) error {
 
 // UpdateAsset wacom
 func (db *StateDB) UpdateAsset(asset common.Asset) error {
-	assets,err := db.AllAssets()
+	assets, err := db.AllAssets()
 	if err != nil {
 		log.Debug("UpdateAsset unable to retrieve previous assets")
 		return err
@@ -929,7 +929,7 @@ func (db *StateDB) copyOfTickets() map[common.Hash]common.Ticket {
 // AllTickets wacom
 func (db *StateDB) AllTickets() (map[common.Hash]common.Ticket, error) {
 	if db.tickets != nil {
-		return db.copyOfTickets(),nil
+		return db.copyOfTickets(), nil
 	}
 	data := db.GetData(common.TicketKeyAddress)
 	var tickets map[common.Hash]common.Ticket
@@ -950,12 +950,12 @@ func (db *StateDB) AllTickets() (map[common.Hash]common.Ticket, error) {
 		}
 	}
 	db.tickets = tickets
-	return db.copyOfTickets(),nil
+	return db.copyOfTickets(), nil
 }
 
 // AddTicket wacom
 func (db *StateDB) AddTicket(ticket common.Ticket) error {
-	tickets,err := db.AllTickets()
+	tickets, err := db.AllTickets()
 	if err != nil {
 		log.Debug("AddTicket: unable to retrieve previous tickets")
 		return err
@@ -969,7 +969,7 @@ func (db *StateDB) AddTicket(ticket common.Ticket) error {
 
 // RemoveTicket wacom
 func (db *StateDB) RemoveTicket(id common.Hash) error {
-	tickets,err := db.AllTickets()
+	tickets, err := db.AllTickets()
 	if err != nil {
 		log.Debug("RemoveTicket unable to retrieve previous tickets")
 		return err
@@ -978,6 +978,24 @@ func (db *StateDB) RemoveTicket(id common.Hash) error {
 		return fmt.Errorf("%s Ticket not found", id.String())
 	}
 	delete(tickets, id)
+	return db.updateTickets(tickets)
+}
+
+// RemoveTicket wacom
+func (db *StateDB) RemoveTickets(deleteMap []common.Hash) error {
+	tickets, err := db.AllTickets()
+	if err != nil {
+		log.Debug("RemoveTicket unable to retrieve previous tickets")
+		return err
+	}
+	for _, id := range deleteMap {
+		if _, ok := tickets[id]; !ok {
+			log.Info("RemoveTickets failed", "Not Found", id)
+			return fmt.Errorf("%s Ticket not found", id.String())
+		}
+		delete(tickets, id)
+	}
+	// log.Info("Removed ", "tickets", len(deleteMap))
 	return db.updateTickets(tickets)
 }
 
@@ -1033,7 +1051,7 @@ func (db *StateDB) AllSwaps() (map[common.Hash]common.Swap, error) {
 
 // AddSwap wacom
 func (db *StateDB) AddSwap(swap common.Swap) error {
-	swaps,err := db.AllSwaps()
+	swaps, err := db.AllSwaps()
 	if err != nil {
 		log.Debug("AddSwap unable to retrieve previous swaps")
 		return err
@@ -1061,7 +1079,7 @@ func (db *StateDB) UpdateSwap(swap common.Swap) error {
 
 // RemoveSwap wacom
 func (db *StateDB) RemoveSwap(id common.Hash) error {
-	swaps,err := db.AllSwaps()
+	swaps, err := db.AllSwaps()
 	if err != nil {
 		log.Debug("RemoveSwap unable to retrieve previous swaps")
 		return err

@@ -61,6 +61,10 @@ type Engine interface {
 	// via the VerifySeal method.
 	VerifyHeader(chain ChainReader, header *types.Header, seal bool) error
 
+	// PreProcess update state if needed from various block info
+	// used with some PoS Systems
+	PreProcess( chain ChainReader, header *types.Header, statedb *state.StateDB ) error
+
 	// VerifyHeaders is similar to VerifyHeader, but verifies a batch of headers
 	// concurrently. The method returns a quit channel to abort the operations and
 	// a results channel to retrieve the async verifications (the order is that of
