@@ -1389,7 +1389,7 @@ func (s *FusionTransactionAPI) buildAssetValueChangeTx(ctx context.Context, args
 
 	big0 := big.NewInt(0)
 
-	if (args.IsInc && args.Value.ToInt().Cmp(big0) <= 0) || (!args.IsInc && args.Value.ToInt().Cmp(big0) >= 0) {
+	if ( args.Value.ToInt().Cmp(big0) <= 0 ) {
 		return nil, fmt.Errorf("illegal operation")
 	}
 

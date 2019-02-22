@@ -463,7 +463,7 @@ func (st *StateTransition) handleFsnCall() error {
 			rlp.DecodeBytes(param.Data, &assetValueChangeParamEx)
 		}
 		big0 := big.NewInt(0)
-		if (assetValueChangeParamEx.IsInc && assetValueChangeParamEx.Value.Cmp(big0) <= 0) || (!assetValueChangeParamEx.IsInc && assetValueChangeParamEx.Value.Cmp(big0) >= 0) {
+		if (  assetValueChangeParamEx.Value.Cmp(big0) <= 0 ) {
 			st.addLog(common.AssetValueChangeFunc, assetValueChangeParamEx, common.NewKeyValue("Error", "illegal operation"))
 			return fmt.Errorf("illegal operation")
 		}
