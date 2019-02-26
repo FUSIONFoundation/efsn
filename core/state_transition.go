@@ -301,6 +301,22 @@ func (st *StateTransition) handleFsnCall() error {
 			st.addLog(common.GenAssetFunc, genAssetParam, common.NewKeyValue("Error", "GenAssetFunc decimals must be between 0 and 18"))
 			return fmt.Errorf("GenAssetFunc decimals must be between 0 and 18")
 		}
+
+		if ( len(genAssetParam.Description) > 1024 ) {
+			st.addLog(common.GenAssetFunc, genAssetParam, common.NewKeyValue("Error", "GenAsset description length is greater than 1024 chars"))
+			return  fmt.Errorf("GenAsset description lenght is greater than 1024 chars")
+		}
+	
+		if ( len(genAssetParam.Name) > 128 ) {
+			st.addLog(common.GenAssetFunc, genAssetParam, common.NewKeyValue("Error", "GenAsset description length is greater than 128 chars"))
+			return fmt.Errorf("GenAsset description lenght is greater than 128 chars")
+		}
+		
+		if ( len(genAssetParam.Symbol) > 64 ) {
+			st.addLog(common.GenAssetFunc, genAssetParam, common.NewKeyValue("Error", "GenAsset description lenght is greater than 64 chars"))
+			return   fmt.Errorf("GenAsset description lenght is greater than 64")
+		}
+
 		if err := st.state.GenAsset(asset); err != nil {
 			st.addLog(common.GenAssetFunc, genAssetParam, common.NewKeyValue("Error", "unable to gen asset"))
 			return err

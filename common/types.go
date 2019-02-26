@@ -436,6 +436,7 @@ type GenAssetParam struct {
 	Decimals  uint8
 	Total     *big.Int `json:",string"`
 	CanChange bool
+	Description string
 }
 
 // BuyTicketParam wacom
@@ -562,6 +563,7 @@ func (p *GenAssetParam) ToAsset() Asset {
 		Decimals:  p.Decimals,
 		Total:     p.Total,
 		CanChange: p.CanChange,
+		Description: p.Description,
 	}
 }
 
@@ -574,6 +576,7 @@ type Asset struct {
 	Decimals  uint8
 	Total     *big.Int `json:",string"`
 	CanChange bool
+	Description string
 }
 
 func (u *Asset) MarshalJSON() ([]byte, error) {
@@ -585,6 +588,7 @@ func (u *Asset) MarshalJSON() ([]byte, error) {
 		Decimals  uint8
 		Total     string
 		CanChange bool
+		Description string
 	}{
 		ID:        u.ID,
 		Owner:     u.Owner,
@@ -593,6 +597,7 @@ func (u *Asset) MarshalJSON() ([]byte, error) {
 		Decimals:  u.Decimals,
 		Total:     u.Total.String(),
 		CanChange: u.CanChange,
+		Description: u.Description,
 	})
 }
 
@@ -603,6 +608,7 @@ var SystemAsset = Asset{
 	Decimals: 18,
 	Total:    new(big.Int).Mul(big.NewInt(81920000), big.NewInt(1000000000000000000)),
 	ID:       SystemAssetID,
+	Description : "https://fusion.org",
 }
 
 // Ticket wacom

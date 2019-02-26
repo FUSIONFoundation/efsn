@@ -35,6 +35,7 @@ type GenAssetArgs struct {
 	Decimals  uint8        `json:"decimals"`
 	Total     *hexutil.Big `json:"total"`
 	CanChange bool         `json:"canChange"`
+	Description  string    `json:"description"`
 }
 
 // SendAssetArgs wacom
@@ -143,6 +144,7 @@ func (args *GenAssetArgs) toData() ([]byte, error) {
 		Decimals:  args.Decimals,
 		Total:     args.Total.ToInt(),
 		CanChange: args.CanChange,
+		Description : args.Description,
 	}
 	return param.ToBytes()
 }
@@ -525,6 +527,19 @@ func (s *PrivateFusionAPI) GenAsset(ctx context.Context, args GenAssetArgs, pass
 	if args.Decimals > 18 || int(args.Decimals) < 0 {
 		return  common.Hash{}, fmt.Errorf("GenAsset decimals must be between 0 and 18")
 	}
+
+	if ( len(args.Description) > 1024 ) {
+		return  common.Hash{}, fmt.Errorf("GenAsset description lenght is greater than 1024 chars")
+	}
+
+	if ( len(args.Name) > 128 ) {
+		return  common.Hash{}, fmt.Errorf("GenAsset description lenght is greater than 128 chars")
+	}
+	
+	if ( len(args.Symbol) > 64 ) {
+		return  common.Hash{}, fmt.Errorf("GenAsset description lenght is greater than 64")
+	}
+	
 	
 	var param = common.FSNCallParam{Func: common.GenAssetFunc, Data: funcData}
 	data, err := param.ToBytes()
@@ -1101,6 +1116,18 @@ func (s *FusionTransactionAPI) BuildGenAssetTx(ctx context.Context, args GenAsse
 
 	if args.Decimals > 18 || int(args.Decimals) < 0 {
 		return nil, fmt.Errorf("BuildGenAsset decimals must be between 0 and 18")
+	}
+
+	if ( len(args.Description) > 1024 ) {
+		return  nil, fmt.Errorf("GenAsset description length is greater than 1024 chars")
+	}
+
+	if ( len(args.Name) > 128 ) {
+		return  nil, fmt.Errorf("GenAsset description length is greater than 128 chars")
+	}
+	
+	if ( len(args.Symbol) > 64 ) {
+		return  nil, fmt.Errorf("GenAsset description length is greater than 64")
 	}
 
 	var param = common.FSNCallParam{Func: common.GenAssetFunc, Data: funcData}
