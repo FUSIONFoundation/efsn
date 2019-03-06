@@ -626,16 +626,16 @@ func (self *StateDB) Copy() *StateDB {
 	}
 
 	if self.assets != nil {
-		state.assets = make(map[common.Hash]common.Asset)
+		state.assets = make(map[common.Hash]common.Asset, len(self.assets))
 		for hash, asset := range self.assets {
-			state.assets[hash] = asset
+			state.assets[hash] = asset.DeepCopy()
 		}
 	}
 
 	if self.tickets != nil {
-		state.tickets = make(map[common.Hash]common.Ticket)
+		state.tickets = make(map[common.Hash]common.Ticket, len(self.tickets))
 		for hash, ticket := range self.tickets {
-			state.tickets[hash] = ticket
+			state.tickets[hash] = ticket.DeepCopy()
 		}
 	}
 

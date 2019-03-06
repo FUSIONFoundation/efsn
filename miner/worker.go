@@ -445,7 +445,7 @@ func (w *worker) mainLoop() {
 						uncles = append(uncles, uncle.Header())
 						return false
 					})
-					w.commit(uncles, nil, true, start)
+					w.commitNewWork(nil, false, start.Unix())
 				}
 			}
 
@@ -561,6 +561,10 @@ func (w *worker) resultLoop() {
 				log.Error("Block found but no relative pending task", "number", block.Number(), "sealhash", sealhash, "hash", hash)
 				continue
 			}
+			if w.engine.HaveBroaded(block.Header(), block) {
+				log.Warn("resultLoop", "dt.HaveBroaded", "", "number", block.NumberU64())
+				continue
+			}
 			// Different block could share same sealhash, deep copy here to prevent write-write conflict.
 			var (
 				receipts = make([]*types.Receipt, len(task.receipts))
@@ -582,6 +586,7 @@ func (w *worker) resultLoop() {
 				log.Error("Failed writing block to chain", "err", err)
 				continue
 			}
+			w.engine.UpdateCurrentCommit(w.current.header, block, true)
 			log.Info("Successfully sealed new block", "number", block.Number(), "sealhash", sealhash, "hash", hash,
 				"elapsed", common.PrettyDuration(time.Since(task.createdAt)))
 
@@ -957,6 +962,7 @@ func (w *worker) commit(uncles []*types.Header, interval func(), update bool, st
 	if err != nil {
 		return err
 	}
+	w.engine.UpdateCurrentCommit(w.current.header, block, false)
 	if w.isRunning() {
 		if interval != nil {
 			interval()
