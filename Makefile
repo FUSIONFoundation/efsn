@@ -23,6 +23,9 @@ debug:
 	@echo end building debug version
 	@echo "Run \"$(GOBIN)/efsn\" to launch efsn."
 
+bootnode:
+	build/env.sh go run build/ci.go install ./cmd/bootnode
+
 swarm:
 	build/env.sh go run build/ci.go install ./cmd/swarm
 	@echo "Done building."

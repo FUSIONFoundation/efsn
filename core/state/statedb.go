@@ -620,6 +620,10 @@ func (self *StateDB) Copy() *StateDB {
 		state.preimages[hash] = preimage
 	}
 
+	// Above, we don't copy the actual notation/assets/tickets/swap.
+ 	// This means that if the copy is copied, the loop above will be a no-op, since the
+ 	// copy's notation/assets/tickets/swap is empty.
+ 	// Thus, here we iterate over them, to enable copies of copies
 	if self.notations != nil {
 		state.notations = make([]common.Address, len(self.notations))
 		copy(state.notations, self.notations)
@@ -640,9 +644,9 @@ func (self *StateDB) Copy() *StateDB {
 	}
 
 	if self.swaps != nil {
-		state.swaps = make(map[common.Hash]common.Swap)
+		state.swaps = make(map[common.Hash]common.Swap, len(self.swaps))
 		for hash, swap := range self.swaps {
-			state.swaps[hash] = swap
+			state.swaps[hash] = swap.DeepCopy()
 		}
 	}
 	return state
@@ -1175,4 +1179,26 @@ func (s sortableSwapLURSlice) Less(i, j int) bool {
 
 func (s sortableSwapLURSlice) Swap(i, j int) {
 	s[i], s[j] = s[j], s[i]
+}
+
+func (self *StateDB) GetStateObject(addr common.Address) *stateObject {
+	return self.getStateObject(addr)
+}
+
+func (self *StateDB) GetAccounts() []common.Address {
+	ret := make([]common.Address, 0)
+	for k, _ := range self.stateObjects {
+		ret = append(ret, k)
+	}
+
+	return ret
+}
+
+func (self *StateDB) GetTrieValueByKey(key []byte) []byte {
+	ret, err := self.trie.TryGet(key)
+	if err == nil {
+		return ret
+	} else {
+		return nil
+	}
 }

@@ -681,6 +681,31 @@ type Swap struct {
 	Time          *big.Int // Provides information for TIME
 }
 
+func (s *Swap) DeepCopy() Swap {
+	minFromAmount := *s.MinFromAmount
+	minToAmount := *s.MinToAmount
+	swapSize := *s.SwapSize
+	swapTime := *s.Time
+	targets := make([]Address, len(s.Targes))
+	copy(targets, s.Targes)
+
+	 return Swap{
+		ID:            s.ID,
+		Owner:         s.Owner,
+		FromAssetID:   s.FromAssetID,
+		FromStartTime: s.FromStartTime,
+		FromEndTime:   s.FromEndTime,
+		MinFromAmount: &minFromAmount,
+		ToAssetID:     s.ToAssetID,
+		ToStartTime:   s.ToStartTime,
+		ToEndTime:     s.ToEndTime,
+		MinToAmount:   &minToAmount,
+		SwapSize:      &swapSize,
+		Targes:        targets,
+		Time:          &swapTime,
+	}
+}
+
 // KeyValue wacom
 type KeyValue struct {
 	Key   string
