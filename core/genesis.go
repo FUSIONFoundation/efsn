@@ -342,7 +342,7 @@ func DefaultGenesisBlock() *Genesis {
 			Time:  1582742698, // Feb 26 2020
 			Count: 5,
 		},
-		Alloc: jsonPrealloc(mainnetAllocData),
+		Alloc: decodePrealloc(mainnetAllocData),
 	}
 }
 
