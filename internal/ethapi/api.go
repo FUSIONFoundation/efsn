@@ -33,7 +33,6 @@ import (
 	"github.com/FusionFoundation/efsn/consensus/ethash"
 	"github.com/FusionFoundation/efsn/core"
 	"github.com/FusionFoundation/efsn/core/rawdb"
-	"github.com/FusionFoundation/efsn/core/state"
 	"github.com/FusionFoundation/efsn/core/types"
 	"github.com/FusionFoundation/efsn/core/vm"
 	"github.com/FusionFoundation/efsn/crypto"
@@ -1489,41 +1488,4 @@ func (s *PublicNetAPI) PeerCount() hexutil.Uint {
 // Version returns the current ethereum protocol version.
 func (s *PublicNetAPI) Version() string {
 	return fmt.Sprintf("%d", s.networkVersion)
-}
-
-// PublicFsnAPI provides an API to access the Fsn blockchain.
-// It offers only methods that operate on public data that is freely available to anyone.
-type PublicFsnAPI struct {
-	b Backend
-}
-
-// NewPublicFsnAPI creates a new Fsn blockchain API.
-func NewPublicFsnAPI(b Backend) *PublicDebugAPI {
-	//return &PublicFsnAPI{b}
-	return &PublicDebugAPI{b}
-}
-
-func (api *PublicDebugAPI) GetBlockStateTrie(ctx context.Context, root common.Hash) (map[string]interface{}, error) {
-	res := make(map[string]interface{}, 0)
-	statedb, _, err := api.b.StateAndHeaderByNumber(ctx, rpc.LatestBlockNumber)
-	if statedb == nil || err != nil {
-		return res, err
-	}
-
-	db := state.NewDatabase(api.b.ChainDb())
-	tr, err := db.OpenTrie(root)
-	keys := statedb.GetAccounts()
-	for _, key := range keys {
-		v, _ := tr.TryGet(key[:])
-		res[key.Hex()] = crypto.Keccak256Hash(v)
-		s := key.Hex() + "-obj"
-		obj := statedb.GetStateObject(key)
-		if obj != nil {
-			res[s] = spew.Sdump(obj)
-		} else {
-			res[s] = "nil"
-		}
-	}
-
-	return res, nil
 }

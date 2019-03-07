@@ -339,19 +339,11 @@ func DefaultGenesisBlock() *Genesis {
 		Timestamp:  1551206698, // Feb 26 2019
 		TicketCreateInfo: &TicketsCreate{
 			Owner: common.HexToAddress("0xd2452651834e8f0c19c9d85e0bf09fe99283dabc"),
-			Time:  1582742698, // Feb 26 2020
+			Time:  1551206698, // 1582742698, // Feb 26 2020
 			Count: 5,
 		},
 		Alloc: decodePrealloc(mainnetAllocData),
 	}
-}
-
-func jsonPrealloc(data string) GenesisAlloc {
-	var ga GenesisAlloc
-	if err := json.Unmarshal([]byte(data), &ga); err != nil {
-		panic(err)
-	}
-	return ga
 }
 
 // DefaultTestnetGenesisBlock returns the Ropsten network genesis block.
