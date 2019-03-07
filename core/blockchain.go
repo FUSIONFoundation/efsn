@@ -1254,9 +1254,14 @@ func (st *insertStats) report(chain []*types.Block, index int, cache common.Stor
 			txs = countTransactions(chain[st.lastIndex : index+1])
 		)
 		context := []interface{}{
-			"blocks", st.processed, "txs", txs, "mgas", float64(st.usedGas) / 1000000,
-			"elapsed", common.PrettyDuration(elapsed), "mgasps", float64(st.usedGas) * 1000 / float64(elapsed),
-			"number", end.Number(), "hash", end.Hash(),
+				"blocks", st.processed, "txs", txs, "mgas", float64(st.usedGas) / 1000000,
+				"elapsed", common.PrettyDuration(elapsed), "mgasps", float64(st.usedGas) * 1000 / float64(elapsed),
+				"number", end.Number(), "hash", end.Hash(), "cache", cache,
+				"difficulty", end.Difficulty(),
+				"miner", end.Coinbase(),
+				"end.root", end.Root(),
+				"parentHash", end.ParentHash(),
+				"time", end.Time(),
 		}
 		if timestamp := time.Unix(end.Time().Int64(), 0); time.Since(timestamp) > time.Minute {
 			context = append(context, []interface{}{"age", common.PrettyAge(timestamp)}...)
@@ -1464,11 +1469,12 @@ Chain config: %v
 Number: %v
 Hash: 0x%x
 Miner: 0x%x
+Difficulty: %v
 %v
 
 Error: %v
 ##############################
-`, bc.chainConfig, block.Number(), block.Hash(), block.Header().Coinbase, receiptString, err))
+`, bc.chainConfig, block.Number(), block.Hash(), block.Header().Coinbase, block.Difficulty(), receiptString, err))
 }
 
 // InsertHeaderChain attempts to insert the given header chain in to the local
