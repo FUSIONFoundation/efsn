@@ -709,16 +709,17 @@ func (dt *DaTong) selectTickets(tickets []*common.Ticket, parent *types.Header, 
 	point := new(big.Int).SetBytes(crypto.Keccak256(parentHash[:], prob.Bytes()))
 	expireTime := parent.Time.Uint64()
 	for i := 0; i < len(tickets); i++ {
-		if time >= tickets[i].StartTime && tickets[i].ExpireTime > expireTime {
+		tik := tickets[i]
+		if time >= tik.StartTime && tik.ExpireTime > expireTime {
 
-			times := new(big.Int).Sub(parent.Number, tickets[i].Height)
+			times := new(big.Int).Sub(parent.Number, tik.Height)
 			//times = times.Add(times, common.Big1)
 			times = times.Mul(times, big.NewInt(int64(ticketWeightStep)))
 			times = times.Add(times, common.Big100)
 
-			if dt.validateTicket(tickets[i], point, length, times) {
-				tickets[i].SetWeight(times)
-				selectedTickets = append(selectedTickets, tickets[i])
+			if dt.validateTicket(tik, point, length, times) {
+				tik.SetWeight(times)
+				selectedTickets = append(selectedTickets, tik )
 			}
 		}
 	}
@@ -747,10 +748,14 @@ func (dt *DaTong) validateTicket(ticket *common.Ticket, point, length, times *bi
 		return true
 	}
 
+	tickBytes := ticket.ID[:]
+	pointBytes := point.Bytes()
+	tempPoint := new(big.Int).Div(point, length)
+
 	for times.Cmp(common.Big0) > 0 {
-		ticketPoint := new(big.Int).SetBytes(crypto.Keccak256(ticket.ID[:], point.Bytes(), times.Bytes()))
+		ticketPoint := new(big.Int).SetBytes(crypto.Keccak256( tickBytes, pointBytes, times.Bytes()))
 		ticketPoint = ticketPoint.Div(ticketPoint, length)
-		tempPoint := new(big.Int).Div(point, length)
+		
 		if ticketPoint.Cmp(tempPoint) == 0 {
 			return true
 		}
