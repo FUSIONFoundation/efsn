@@ -445,7 +445,8 @@ func (w *worker) mainLoop() {
 						uncles = append(uncles, uncle.Header())
 						return false
 					})
-					w.commitNewWork(nil, false, start.Unix())
+					// w.commit(uncles, nil, true, start)
+					w.commitNewWork( nil, false, start.Unix() )
 				}
 			}
 
@@ -588,6 +589,7 @@ func (w *worker) resultLoop() {
 			}
 			w.engine.UpdateCurrentCommit(w.current.header, block, true)
 			log.Info("Successfully sealed new block", "number", block.Number(), "sealhash", sealhash, "hash", hash,
+				"difficulty", block.Difficulty(),
 				"elapsed", common.PrettyDuration(time.Since(task.createdAt)))
 
 			// Broadcast the block and announce chain insertion event
