@@ -5,7 +5,6 @@ import (
 	"errors"
 	"math"
 	"math/big"
-	"math/rand"
 	"sort"
 	"sync"
 	"time"
@@ -25,8 +24,9 @@ import (
 )
 
 const (
-	wiggleTime        = 500 * time.Millisecond // Random delay (per commit) to allow concurrent commits
-	delayTimeModifier = 20
+	wiggleTime = 500 * time.Millisecond // Random delay (per commit) to allow concurrent commits
+	modifier   = uint64(80960000)       // 80960000 * e 18
+	delayTimeModifier	= 20
 )
 
 var (
@@ -55,7 +55,7 @@ var (
 	extraSeal                 = 65
 	maxBlockTime       uint64 = 120 // 2 minutes
 	ticketWeightStep          = 2   // 2%
-	SelectedTicketTime        = &selectedTicketTime{time: make(map[common.Hash]*big.Int)}
+	SelectedTicketTime        = &selectedTicketTime{time: make(map[common.Hash]*selectedInfo)}
 )
 
 var (
@@ -409,9 +409,9 @@ func (dt *DaTong) Finalize(chain consensus.ChainReader, header *types.Header, st
 	if selected == nil {
 		return nil, errors.New("myself tickets not selected in maxBlockTime")
 	}
-	sealDelayTime := header.Time.Uint64() + (headerTime - parentTime) + (selectedTime * uint64(delayTimeModifier))
+	log.Info("Finalize time", "htime", htime, "selectedRound", htime - parentTime)
 
-	updateSelectedTicketTime(header, selected.ID, new(big.Int).SetUint64(sealDelayTime))
+	updateSelectedTicketTime(header, selected.ID, htime - parentTime, selectedTime)
 	snap := newSnapshot()
 
 	//update tickets
@@ -554,6 +554,7 @@ func (dt *DaTong) Seal(chain consensus.ChainReader, block *types.Block, results 
 	if number == 0 {
 		return errUnknownBlock
 	}
+	log.Debug("Seal", "block number", number, "block hash", block.Hash().Hex(), "block coinbase", block.Coinbase())
 	dt.lock.RLock()
 	signer, signFn := dt.signer, dt.signFn
 	dt.lock.RUnlock()
@@ -568,17 +569,10 @@ func (dt *DaTong) Seal(chain consensus.ChainReader, block *types.Block, results 
 	}
 	copy(header.Extra[len(header.Extra)-extraSeal:], sighash)
 
-	ticketTime := new(big.Int)
-	if header.Number.Cmp(common.Big1) > 0 {
-		ticketTime, err = haveSelectedTicketTime(header)
-		if err != nil {
-			return err
-		}
-	}
-	delay := time.Unix(ticketTime.Int64(), 0).Sub(time.Now())
-	if header.Number.Cmp(common.Big1) > 0 && delay < 0 {
-		wiggle := time.Duration(4) * wiggleTime
-		delay = time.Duration(rand.Int63n(int64(wiggle)))
+	delay, errc := dt.calcDelayTime(chain, header)
+	log.Info("Seal()", "delay", delay)
+	if errc != nil {
+		return errc
 	}
 	go func() {
 		select {
@@ -824,14 +818,20 @@ func GenGenesisExtraData(number *big.Int) []byte {
 	return data
 }
 
+type selectedInfo struct {
+	round uint64// selected round
+	list  uint64// tickets number before myself in selected list
+}
+
 // store selected-ticket spend time
 type selectedTicketTime struct {
-	time map[common.Hash]*big.Int
+	time map[common.Hash]*selectedInfo
 	sync.Mutex
 }
 
-func updateSelectedTicketTime(header *types.Header, ticketID common.Hash, time *big.Int) {
-	if (header == nil || time == nil || ticketID == common.Hash{}) {
+func updateSelectedTicketTime(header *types.Header, ticketID common.Hash, round uint64, list uint64) {
+	if (header == nil || ticketID == common.Hash{}) {
+		log.Warn("updateSelectedTicketTime", "input error", "")
 		return
 	}
 	SelectedTicketTime.Lock()
@@ -840,15 +840,18 @@ func updateSelectedTicketTime(header *types.Header, ticketID common.Hash, time *
 	// hash (header.Number + ticketID + header.Coinbase)
 	sum := header.Number.String() + ticketID.String() + header.Coinbase.String()
 	hash := crypto.Keccak256([]byte(sum))
-	SelectedTicketTime.time[common.BytesToHash(hash)] = time
+	sl := &selectedInfo{round: round, list: list}
+	SelectedTicketTime.time[common.BytesToHash(hash)] = sl
+	log.Info("updateSelectedTicketTime", "header.Number", header.Number, "ticketID", ticketID, "round", round, "list", list)
 }
 
-func haveSelectedTicketTime(header *types.Header) (*big.Int, error) {
+func haveSelectedTicketTime(header *types.Header) (uint64, uint64, error) {
 	SelectedTicketTime.Lock()
 	defer SelectedTicketTime.Unlock()
 	snap, err := newSnapshotWithData(getSnapDataByHeader(header))
 	if err != nil {
-		return new(big.Int).SetUint64(uint64(0)), err
+		log.Info("consensus.verifySeal Err newSnapshot ", "err", err.Error())
+		return uint64(0), uint64(0), err
 	}
 
 	ticketID := snap.GetVoteTicket()
@@ -856,9 +859,11 @@ func haveSelectedTicketTime(header *types.Header) (*big.Int, error) {
 	hash := crypto.Keccak256([]byte(sum))
 	ticketTime := SelectedTicketTime.time[common.BytesToHash(hash)]
 	if ticketTime != nil {
-		return ticketTime, nil
+		log.Info("haveSelectedTicketTime", "header.Number", header.Number, "header.Root", header.Root, "time", ticketTime)
+		return ticketTime.round, ticketTime.list, nil
 	}
-	return new(big.Int).SetUint64(uint64(0)), errors.New("Mismatched SealHash")
+	log.Info("Error: not found ticketTime. haveSelectedTicketTime", "header.Number", header.Number, "header.Root", header.Root)
+	return uint64(0), uint64(0), errors.New("Mismatched SealHash")
 }
 
 type currentCommit struct {
@@ -1077,4 +1082,42 @@ func (c *DaTong) PreProcess(chain consensus.ChainReader, header *types.Header, s
 	// }
 	// statedb.RemoveTickets(deleteMap)
 	return nil
+}
+
+func (dt *DaTong) calcDelayTime(chain consensus.ChainReader, header *types.Header) (time.Duration, error) {
+	list := uint64(0)
+	err := errors.New("")
+	_, list, err = haveSelectedTicketTime(header)
+	if err != nil {
+		return time.Duration(int64(0)) * time.Millisecond, err
+	}
+
+	// delayTime = headerTime + (15 - 2) - time.Now
+	newBlockTime := new(big.Int).Add(header.Time, new(big.Int).SetUint64(dt.config.Period - 2))
+	delayTime := time.Unix(newBlockTime.Int64(), 0).Sub(time.Now())
+	delayTime += time.Duration(list * uint64(delayTimeModifier)) * time.Second
+	if delayTime < 0 {
+		if list > 0 {
+			delayTime = time.Duration(list * uint64(delayTimeModifier)) * time.Second
+		}else {
+			delayTime = time.Duration(1) * time.Second
+		}
+	}else if delayTime < delayTimeModifier {
+		if list > 0 {
+			delayTime += time.Duration(list * uint64(delayTimeModifier)) * time.Second
+		}
+	}
+	if header.Number.Uint64() < 4 {
+		return delayTime, nil
+	}
+
+	// adjust = ( ( parent - gparent ) / 2 - (dt.config.Period) ) / dt.config.Period
+	parent := chain.GetHeaderByNumber(header.Number.Uint64()-1)
+	gparent := chain.GetHeaderByNumber(header.Number.Uint64()-3)
+	adjust := ((time.Unix(parent.Time.Int64(), 0).Sub(time.Unix(gparent.Time.Int64(), 0)) / 2) -
+			time.Duration(int64(dt.config.Period)) * time.Second) /
+			time.Duration(int64(dt.config.Period))
+	delayTime -= adjust
+
+	return delayTime, nil
 }
