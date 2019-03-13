@@ -492,6 +492,7 @@ type MakeSwapParam struct {
 	SwapSize      *big.Int `json:",string"`
 	Targes        []Address
 	Time          *big.Int
+	Description   string
 }
 
 // RecallSwapParam wacom
@@ -679,6 +680,7 @@ type Swap struct {
 	SwapSize      *big.Int `json:",string"`
 	Targes        []Address
 	Time          *big.Int // Provides information for TIME
+	Description   string
 }
 
 func (s *Swap) DeepCopy() Swap {
@@ -703,6 +705,7 @@ func (s *Swap) DeepCopy() Swap {
 		SwapSize:      &swapSize,
 		Targes:        targets,
 		Time:          &swapTime,
+		Description:   s.Description,
 	}
 }
 

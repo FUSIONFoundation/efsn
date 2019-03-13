@@ -544,6 +544,11 @@ func (st *StateTransition) handleFsnCall() error {
 			return fmt.Errorf("MinFromAmount,MinToAmount and SwapSize must be ge 1")
 		}
 
+		if ( len(makeSwapParam.Description) > 1024 ) {
+			st.addLog(common.MakeSwapFunc, makeSwapParam, common.NewKeyValue("Error", "MakeSwap description length is greater than 1024 chars"))
+			return  fmt.Errorf("makeSwap description lenght is greater than 1024 chars")
+		}
+
 		total := new(big.Int).Mul(makeSwapParam.MinFromAmount, makeSwapParam.SwapSize)
 		if total.Cmp(big0) <= 0 {
 			log.Info("make swap overflow 1", "MinFromAmount", makeSwapParam.MinFromAmount, "Swap", makeSwapParam.SwapSize)
@@ -617,6 +622,7 @@ func (st *StateTransition) handleFsnCall() error {
 			SwapSize:      makeSwapParam.SwapSize,
 			Targes:        makeSwapParam.Targes,
 			Time:          makeSwapParam.Time, // this will mean the block time
+			Description:   makeSwapParam.Description,
 		}
 		if err := st.state.AddSwap(swap); err != nil {
 			st.addLog(common.MakeSwapFunc, makeSwapParam, common.NewKeyValue("Error", "System error can't add swap"))
