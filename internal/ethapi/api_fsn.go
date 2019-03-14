@@ -92,6 +92,7 @@ type MakeSwapArgs struct {
 	SwapSize      *big.Int
 	Targes        []common.Address
 	Time          *big.Int
+	Description	  string
 }
 
 // RecallSwapArgs wacom
@@ -214,6 +215,7 @@ func (args *MakeSwapArgs) toData(time *big.Int) ([]byte, error) {
 		SwapSize:      args.SwapSize,
 		Targes:        args.Targes,
 		Time:  		   time,
+		Description:   args.Description,
 	}
 	return param.ToBytes()
 }
@@ -849,6 +851,11 @@ func (s *PrivateFusionAPI) MakeSwap(ctx context.Context, args MakeSwapArgs, pass
 	if args.SwapSize == nil {
 		log.Info( "SwapSize missing in make swap" )
 		return common.Hash{}, fmt.Errorf("SwapSize missing in make swap")
+	}
+
+	if len(args.Description) > 1024 {
+		log.Info( "MakeSwap description length is greater than 1024 chars")
+		return  common.Hash{}, fmt.Errorf("makeSwap description lenght is greater than 1024 chars")
 	}
 
 	if args.MinFromAmount.ToInt().Cmp(big0) <= 0 || args.MinToAmount.ToInt().Cmp(big0) <= 0 || args.SwapSize.Cmp(big0) <= 0 {
@@ -1521,6 +1528,11 @@ func (s *FusionTransactionAPI) BuildMakeSwapTx(ctx context.Context, args MakeSwa
 	if args.SwapSize == nil {
 		log.Info( "SwapSize missing in make swap" )
 		return nil, fmt.Errorf("SwapSize missing in make swap")
+	}
+
+	if  len(args.Description) > 1024  {
+		log.Info( "MakeSwap description length is greater than 1024 chars")
+		return  nil, fmt.Errorf("makeSwap description lenght is greater than 1024 chars")
 	}
 
 	if args.MinFromAmount.ToInt().Cmp(big0) <= 0 || args.MinToAmount.ToInt().Cmp(big0) <= 0 || args.SwapSize.Cmp(big0) <= 0 {

@@ -512,46 +512,6 @@ func (dt *DaTong) Finalize(chain consensus.ChainReader, header *types.Header, st
 	    }
 	    PrintTime("total calc time",tmp)
 	}
-
-	if IsPsnTestnet == true {
-	    tmp := time.Now()
-	    selectedTime = uint64(0)
-	    parentHash := parent.Hash()
-	    sel := make(chan *DisInfo, len(tickets))
-	    for i := 0; i < len(tickets); i++ {
-		ticket := tickets[i]
-		w := new(big.Int).Sub(parent.Number, ticket.Height)
-		w = new(big.Int).Add(w,common.Big1)
-		w2 := new(big.Int).Mul(w,w)
-
-		id := new(big.Int).SetBytes(crypto.Keccak256(parentHash[:], ticket.ID[:],[]byte(ticket.Owner.Hex())))
-		id2 := new(big.Int).Mul(id,id)
-		s := new(big.Int).Add(w2,id2)
-
-		ht := &DisInfo{owner:ticket,res:s}
-		sel <- ht
-	    }
-	    var list DistanceSlice
-	    tt := len(sel)
-	    for i:=0;i<tt;i++ {
-		v := <- sel
-		list = append(list, v)
-	}
-	    sort.Sort(list)
-	    for _, t := range list {
-		    if t.owner.Owner == header.Coinbase {
-			    htime = parentTime
-			    selected = t.owner
-			    spew.Printf("selected ticket: %#v, coinbase: 0x%x\n", t, header.Coinbase)
-			    break
-		    } else {
-			    selectedTime++//ticket queue in selectedList
-			    retreat = append(retreat, t.owner)
-		    }
-
-	    }
-	    PrintTime("total calc time",tmp)
-	}
 	if selected == nil {
 		return nil, errors.New("myself tickets not selected in maxBlockTime")
 	}
