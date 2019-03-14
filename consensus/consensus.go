@@ -100,8 +100,8 @@ type Engine interface {
 	// SealHash returns the hash of a block prior to it being sealed.
 	SealHash(header *types.Header) common.Hash
 
-	UpdateCurrentCommit(header *types.Header, block *types.Block, fromResult bool)
-	HaveBroaded(header *types.Header, block *types.Block) bool
+	UpdateBlockBroadcast(header *types.Header)
+	HaveBlockBroaded(header *types.Header) bool
 
 	// CalcDifficulty is the difficulty adjustment algorithm. It returns the difficulty
 	// that a new block should have.

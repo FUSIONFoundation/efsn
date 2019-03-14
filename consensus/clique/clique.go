@@ -723,3 +723,8 @@ func (dt *Clique) UpdateCurrentCommit(header *types.Header, block *types.Block, 
 func (dt *Clique) HaveBroaded(header *types.Header, block *types.Block) bool { //TODO
 	return false
 }
+func (c *Clique) UpdateBlockBroadcast(header *types.Header) {}
+func (c *Clique) HaveBlockBroaded(header *types.Header) bool {
+	return false
+}
+
