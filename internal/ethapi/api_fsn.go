@@ -9,8 +9,8 @@ import (
 	"github.com/FusionFoundation/efsn/accounts"
 	"github.com/FusionFoundation/efsn/common"
 	"github.com/FusionFoundation/efsn/common/hexutil"
-	"github.com/FusionFoundation/efsn/log"
 	"github.com/FusionFoundation/efsn/core/types"
+	"github.com/FusionFoundation/efsn/log"
 	"github.com/FusionFoundation/efsn/rlp"
 	"github.com/FusionFoundation/efsn/rpc"
 )
@@ -30,12 +30,12 @@ type FusionBaseArgs struct {
 // GenAssetArgs wacom
 type GenAssetArgs struct {
 	FusionBaseArgs
-	Name      string       `json:"name"`
-	Symbol    string       `json:"symbol"`
-	Decimals  uint8        `json:"decimals"`
-	Total     *hexutil.Big `json:"total"`
-	CanChange bool         `json:"canChange"`
-	Description  string    `json:"description"`
+	Name        string       `json:"name"`
+	Symbol      string       `json:"symbol"`
+	Decimals    uint8        `json:"decimals"`
+	Total       *hexutil.Big `json:"total"`
+	CanChange   bool         `json:"canChange"`
+	Description string       `json:"description"`
 }
 
 // SendAssetArgs wacom
@@ -71,11 +71,11 @@ type AssetValueChangeArgs struct {
 
 type AssetValueChangeExArgs struct {
 	FusionBaseArgs
-	AssetID common.Hash    `json:"asset"`
-	To      common.Address `json:"to"`
-	Value   *hexutil.Big   `json:"value"`
-	IsInc   bool           `json:"isInc"`
-	TransacData string     `json:"transacData"`
+	AssetID     common.Hash    `json:"asset"`
+	To          common.Address `json:"to"`
+	Value       *hexutil.Big   `json:"value"`
+	IsInc       bool           `json:"isInc"`
+	TransacData string         `json:"transacData"`
 }
 
 // MakeSwapArgs wacom
@@ -92,7 +92,7 @@ type MakeSwapArgs struct {
 	SwapSize      *big.Int
 	Targes        []common.Address
 	Time          *big.Int
-	Description	  string
+	Description   string
 }
 
 // RecallSwapArgs wacom
@@ -140,12 +140,12 @@ func (args *TimeLockArgs) toData(typ common.TimeLockType) ([]byte, error) {
 
 func (args *GenAssetArgs) toData() ([]byte, error) {
 	param := common.GenAssetParam{
-		Name:      args.Name,
-		Symbol:    args.Symbol,
-		Decimals:  args.Decimals,
-		Total:     args.Total.ToInt(),
-		CanChange: args.CanChange,
-		Description : args.Description,
+		Name:        args.Name,
+		Symbol:      args.Symbol,
+		Decimals:    args.Decimals,
+		Total:       args.Total.ToInt(),
+		CanChange:   args.CanChange,
+		Description: args.Description,
 	}
 	return param.ToBytes()
 }
@@ -170,11 +170,11 @@ func (args *AssetValueChangeArgs) toData() ([]byte, error) {
 
 func (args *AssetValueChangeExArgs) toData() ([]byte, error) {
 	param := common.AssetValueChangeExParam{
-		AssetID: args.AssetID,
-		To:      args.To,
-		Value:   args.Value.ToInt(),
-		IsInc:   args.IsInc,
-		TransacData : args.TransacData,
+		AssetID:     args.AssetID,
+		To:          args.To,
+		Value:       args.Value.ToInt(),
+		IsInc:       args.IsInc,
+		TransacData: args.TransacData,
 	}
 	return param.ToBytes()
 }
@@ -214,7 +214,7 @@ func (args *MakeSwapArgs) toData(time *big.Int) ([]byte, error) {
 		MinToAmount:   args.MinToAmount.ToInt(),
 		SwapSize:      args.SwapSize,
 		Targes:        args.Targes,
-		Time:  		   time,
+		Time:          time,
 		Description:   args.Description,
 	}
 	return param.ToBytes()
@@ -355,7 +355,7 @@ func (s *PublicFusionAPI) GetAsset(ctx context.Context, assetID common.Hash, blo
 	if state == nil || err != nil {
 		return nil, err
 	}
-	assets,err := state.AllAssets()
+	assets, err := state.AllAssets()
 	if err != nil {
 		log.Debug("GetAsset:api_fsn.go unable to retrieve previous assets")
 		return nil, err
@@ -375,12 +375,54 @@ func (s *PublicFusionAPI) AllAssets(ctx context.Context, blockNr rpc.BlockNumber
 	if state == nil || err != nil {
 		return nil, err
 	}
-	assets,err := state.AllAssets()
+	assets, err := state.AllAssets()
 	if err != nil {
 		log.Debug("AllAssets:api_fsn.go unable to retrieve previous assets")
-		return nil,err
+		return nil, err
 	}
 	return assets, state.Error()
+}
+
+// AllAssetsByAddress wacom
+func (s *PublicFusionAPI) AllAssetsByAddress(ctx context.Context, address common.Address, blockNr rpc.BlockNumber) (map[common.Hash]common.Asset, error) {
+	state, _, err := s.b.StateAndHeaderByNumber(ctx, blockNr)
+	if state == nil || err != nil {
+		return nil, err
+	}
+	var ret = make(map[common.Hash]common.Asset)
+	assets, err := state.AllAssets()
+	if err != nil {
+		log.Debug("AllAssetsByAddress:api_fsn.go unable to retrieve previous assets")
+		return nil, err
+	}
+	for k, v := range assets {
+		if v.Owner == address {
+			ret[k] = v
+		}
+	}
+	return ret, state.Error()
+}
+
+// AssetExistForAddress wacom
+func (s *PublicFusionAPI) AssetExistForAddress(ctx context.Context, assetName string, address common.Address, blockNr rpc.BlockNumber) (bool, error) {
+	state, _, err := s.b.StateAndHeaderByNumber(ctx, blockNr)
+	if state == nil || err != nil {
+		return false, err
+	}
+
+	assets, err := state.AllAssets()
+	if err != nil {
+		log.Debug("AssetExistForAddress:api_fsn.go unable to retrieve previous assets")
+		return false, err
+	}
+	for _, v := range assets {
+		if v.Owner == address {
+			if v.Symbol == assetName {
+				return true, state.Error()
+			}
+		}
+	}
+	return false, state.Error()
 }
 
 // AllTickets wacom
@@ -389,10 +431,10 @@ func (s *PublicFusionAPI) AllTickets(ctx context.Context, blockNr rpc.BlockNumbe
 	if state == nil || err != nil {
 		return nil, err
 	}
-	tickets,err := state.AllTickets()
+	tickets, err := state.AllTickets()
 	if err != nil {
 		log.Debug("AllTickets:apifsn.go unable to retrieve previous tickets")
-		return nil,err
+		return nil, err
 	}
 	return tickets, state.Error()
 }
@@ -421,7 +463,7 @@ func (s *PublicFusionAPI) AllTicketsByAddress(ctx context.Context, address commo
 	if state == nil || err != nil {
 		return nil, err
 	}
-	tickets,err := state.AllTickets()
+	tickets, err := state.AllTickets()
 	if err != nil {
 		log.Debug("AllTicketsByAddress:api_fsn.go unable to retrieve previous tickets")
 		return nil, err
@@ -454,7 +496,7 @@ func (s *PublicFusionAPI) AllSwapsByAddress(ctx context.Context, address common.
 	if state == nil || err != nil {
 		return nil, err
 	}
-	swaps,err := state.AllSwaps()
+	swaps, err := state.AllSwaps()
 	if err != nil {
 		log.Debug("AllSwaps:api_fsn.go unable to retrieve previous swaps")
 		return nil, err
@@ -521,28 +563,27 @@ func (s *PrivateFusionAPI) GenAsset(ctx context.Context, args GenAssetArgs, pass
 		return common.Hash{}, err
 	}
 
-	if len(args.Name)==0 || len(args.Symbol) == 0 || args.Total == nil || args.Total.ToInt().Cmp(big0) <= 0 {
-		log.Info( "BuildGenAsset name, symbol and total must be set")
-		return  common.Hash{}, fmt.Errorf("GenAsset name, symbol and total must be set or greater than 0")
+	if len(args.Name) == 0 || len(args.Symbol) == 0 || args.Total == nil || args.Total.ToInt().Cmp(big0) <= 0 {
+		log.Info("BuildGenAsset name, symbol and total must be set")
+		return common.Hash{}, fmt.Errorf("GenAsset name, symbol and total must be set or greater than 0")
 	}
 
 	if args.Decimals > 18 || int(args.Decimals) < 0 {
-		return  common.Hash{}, fmt.Errorf("GenAsset decimals must be between 0 and 18")
+		return common.Hash{}, fmt.Errorf("GenAsset decimals must be between 0 and 18")
 	}
 
-	if ( len(args.Description) > 1024 ) {
-		return  common.Hash{}, fmt.Errorf("GenAsset description lenght is greater than 1024 chars")
+	if len(args.Description) > 1024 {
+		return common.Hash{}, fmt.Errorf("GenAsset description lenght is greater than 1024 chars")
 	}
 
-	if ( len(args.Name) > 128 ) {
-		return  common.Hash{}, fmt.Errorf("GenAsset description lenght is greater than 128 chars")
+	if len(args.Name) > 128 {
+		return common.Hash{}, fmt.Errorf("GenAsset description lenght is greater than 128 chars")
 	}
-	
-	if ( len(args.Symbol) > 64 ) {
-		return  common.Hash{}, fmt.Errorf("GenAsset description lenght is greater than 64")
+
+	if len(args.Symbol) > 64 {
+		return common.Hash{}, fmt.Errorf("GenAsset description lenght is greater than 64")
 	}
-	
-	
+
 	var param = common.FSNCallParam{Func: common.GenAssetFunc, Data: funcData}
 	data, err := param.ToBytes()
 	if err != nil {
@@ -684,17 +725,17 @@ func (s *PrivateFusionAPI) TimeLockToAsset(ctx context.Context, args TimeLockArg
 }
 
 /** on our public gateways too many buyTickets are past through
-	this cache of purchase on block will stop multiple purchase
-	attempt on a block (which state_transistion also flags).
-	the goals is to limit the number of buytickets being processed
-	if it is know that they will fail anyway
-*/	
-func  doesTicketPurchaseExistsForBlock( blockNbr int64, from common.Address  ) bool {
+this cache of purchase on block will stop multiple purchase
+attempt on a block (which state_transistion also flags).
+the goals is to limit the number of buytickets being processed
+if it is know that they will fail anyway
+*/
+func doesTicketPurchaseExistsForBlock(blockNbr int64, from common.Address) bool {
 	buyTicketOnBlockMapMutex.Lock()
 	defer buyTicketOnBlockMapMutex.Unlock()
 	if lastBlockOfBuyTickets == 0 || lastBlockOfBuyTickets != blockNbr {
 		lastBlockOfBuyTickets = blockNbr
-		buyTicketOnBlockMap =  make(map[common.Address]bool)
+		buyTicketOnBlockMap = make(map[common.Address]bool)
 	}
 	_, found := buyTicketOnBlockMap[from]
 	if found {
@@ -716,8 +757,8 @@ func (s *PrivateFusionAPI) BuyTicket(ctx context.Context, args BuyTicketArgs, pa
 		return common.Hash{}, err
 	}
 
-	if doesTicketPurchaseExistsForBlock(  block.Header().Number.Int64() , args.From ) {
-		log.Info( "Purchase of BuyTicket for this block already submitted")
+	if doesTicketPurchaseExistsForBlock(block.Header().Number.Int64(), args.From) {
+		log.Info("Purchase of BuyTicket for this block already submitted")
 		return common.Hash{}, fmt.Errorf("Purchase of BuyTicket for this block already submitted")
 	}
 
@@ -785,10 +826,10 @@ func (s *PrivateFusionAPI) checkAssetValueChange(ctx context.Context, args Asset
 		return common.Hash{}, err
 	}
 
-	assets,err := state.AllAssets()
+	assets, err := state.AllAssets()
 	if err != nil {
 		log.Debug("CheckAssetValueChange:api_fsn.go unable to retrieve previous assets")
-		return common.Hash{},err
+		return common.Hash{}, err
 	}
 
 	asset, ok := assets[args.AssetID]
@@ -812,7 +853,7 @@ func (s *PrivateFusionAPI) checkAssetValueChange(ctx context.Context, args Asset
 	currentBalance := state.GetBalance(args.AssetID, args.To)
 	val := args.Value.ToInt()
 	if !args.IsInc {
-		if currentBalance.Cmp( val ) < 0 {
+		if currentBalance.Cmp(val) < 0 {
 			return common.Hash{}, fmt.Errorf("not enough asset")
 		}
 	}
@@ -841,31 +882,31 @@ func (s *PrivateFusionAPI) MakeSwap(ctx context.Context, args MakeSwapArgs, pass
 	big0 := big.NewInt(0)
 
 	if args.MinFromAmount == nil {
-		log.Info( "MinFromAmount missing in make swap" )
+		log.Info("MinFromAmount missing in make swap")
 		return common.Hash{}, fmt.Errorf("MinFromAmount missing in make swap")
 	}
 	if args.MinToAmount == nil {
-		log.Info( "MinToAmount missing in make swap" )
+		log.Info("MinToAmount missing in make swap")
 		return common.Hash{}, fmt.Errorf("MinToAmount missing in make swap")
 	}
 	if args.SwapSize == nil {
-		log.Info( "SwapSize missing in make swap" )
+		log.Info("SwapSize missing in make swap")
 		return common.Hash{}, fmt.Errorf("SwapSize missing in make swap")
 	}
 
 	if len(args.Description) > 1024 {
-		log.Info( "MakeSwap description length is greater than 1024 chars")
-		return  common.Hash{}, fmt.Errorf("makeSwap description lenght is greater than 1024 chars")
+		log.Info("MakeSwap description length is greater than 1024 chars")
+		return common.Hash{}, fmt.Errorf("makeSwap description lenght is greater than 1024 chars")
 	}
 
 	if args.MinFromAmount.ToInt().Cmp(big0) <= 0 || args.MinToAmount.ToInt().Cmp(big0) <= 0 || args.SwapSize.Cmp(big0) <= 0 {
-		log.Info( "MinFromAmount,MinToAmount and SwapSize must be ge 1" )
+		log.Info("MinFromAmount,MinToAmount and SwapSize must be ge 1")
 		return common.Hash{}, fmt.Errorf("MinFromAmount,MinToAmount and SwapSize must be ge 1")
 	}
 
-	if  args.FromStartTime == nil || args.FromEndTime  == nil  || 
+	if args.FromStartTime == nil || args.FromEndTime == nil ||
 		args.ToStartTime == nil || args.ToEndTime == nil {
-			log.Info( "time fields must be set" )
+		log.Info("time fields must be set")
 		return common.Hash{}, fmt.Errorf("time fields must be set")
 	}
 
@@ -874,7 +915,7 @@ func (s *PrivateFusionAPI) MakeSwap(ctx context.Context, args MakeSwapArgs, pass
 		return common.Hash{}, err
 	}
 
-	total :=  new(big.Int).Mul( args.MinFromAmount.ToInt(), args.SwapSize )
+	total := new(big.Int).Mul(args.MinFromAmount.ToInt(), args.SwapSize)
 
 	start := uint64(*args.FromStartTime)
 	end := uint64(*args.FromEndTime)
@@ -923,7 +964,7 @@ func (s *PrivateFusionAPI) RecallSwap(ctx context.Context, args RecallSwapArgs, 
 	if state == nil || err != nil {
 		return common.Hash{}, err
 	}
-	swaps,err := state.AllSwaps()
+	swaps, err := state.AllSwaps()
 	if err != nil {
 		log.Debug("RecallSwap:api_fsn.go unable to retrieve previous swaps")
 		return common.Hash{}, err
@@ -959,7 +1000,7 @@ func (s *PrivateFusionAPI) TakeSwap(ctx context.Context, args TakeSwapArgs, pass
 	if state == nil || err != nil {
 		return common.Hash{}, err
 	}
-	swaps,err := state.AllSwaps()
+	swaps, err := state.AllSwaps()
 	if err != nil {
 		log.Debug("TakeSwap:api_fsn.go unable to retrieve previous swaps")
 		return common.Hash{}, err
@@ -973,7 +1014,7 @@ func (s *PrivateFusionAPI) TakeSwap(ctx context.Context, args TakeSwapArgs, pass
 		return common.Hash{}, fmt.Errorf("SwapSize must le and Size must be ge 1")
 	}
 
-	total := new(big.Int).Mul( swap.MinToAmount , args.Size )
+	total := new(big.Int).Mul(swap.MinToAmount, args.Size)
 
 	start := swap.ToStartTime
 	end := swap.ToEndTime
@@ -1116,8 +1157,8 @@ func (s *FusionTransactionAPI) BuildGenAssetTx(ctx context.Context, args GenAsse
 
 	big0 := big.NewInt(0)
 
-	if len(args.Name)==0 || len(args.Symbol) == 0 || args.Total == nil || args.Total.ToInt().Cmp(big0) < 0 {
-		log.Info( "BuildGenAsset name, symbol and total must be set")
+	if len(args.Name) == 0 || len(args.Symbol) == 0 || args.Total == nil || args.Total.ToInt().Cmp(big0) < 0 {
+		log.Info("BuildGenAsset name, symbol and total must be set")
 		return nil, fmt.Errorf("BuildGenAsset name, symbol and total must be set or greater than = 0")
 	}
 
@@ -1125,16 +1166,16 @@ func (s *FusionTransactionAPI) BuildGenAssetTx(ctx context.Context, args GenAsse
 		return nil, fmt.Errorf("BuildGenAsset decimals must be between 0 and 18")
 	}
 
-	if ( len(args.Description) > 1024 ) {
-		return  nil, fmt.Errorf("GenAsset description length is greater than 1024 chars")
+	if len(args.Description) > 1024 {
+		return nil, fmt.Errorf("GenAsset description length is greater than 1024 chars")
 	}
 
-	if ( len(args.Name) > 128 ) {
-		return  nil, fmt.Errorf("GenAsset description length is greater than 128 chars")
+	if len(args.Name) > 128 {
+		return nil, fmt.Errorf("GenAsset description length is greater than 128 chars")
 	}
-	
-	if ( len(args.Symbol) > 64 ) {
-		return  nil, fmt.Errorf("GenAsset description length is greater than 64")
+
+	if len(args.Symbol) > 64 {
+		return nil, fmt.Errorf("GenAsset description length is greater than 64")
 	}
 
 	var param = common.FSNCallParam{Func: common.GenAssetFunc, Data: funcData}
@@ -1365,7 +1406,7 @@ func (s *FusionTransactionAPI) BuildBuyTicketTx(ctx context.Context, args BuyTic
 		return nil, err
 	}
 
-	if doesTicketPurchaseExistsForBlock(  block.Header().Number.Int64() , args.From ) {
+	if doesTicketPurchaseExistsForBlock(block.Header().Number.Int64(), args.From) {
 		return nil, fmt.Errorf("Purchase of BuyTicket for this block already submitted")
 	}
 
@@ -1423,7 +1464,7 @@ func (s *FusionTransactionAPI) buildAssetValueChangeTx(ctx context.Context, args
 
 	big0 := big.NewInt(0)
 
-	if ( args.Value.ToInt().Cmp(big0) <= 0 ) {
+	if args.Value.ToInt().Cmp(big0) <= 0 {
 		return nil, fmt.Errorf("illegal operation")
 	}
 
@@ -1432,10 +1473,10 @@ func (s *FusionTransactionAPI) buildAssetValueChangeTx(ctx context.Context, args
 		return nil, err
 	}
 
-	assets,err := state.AllAssets()
+	assets, err := state.AllAssets()
 	if err != nil {
 		log.Debug("buildAssetValueChangeTx:api_fsn.go unable to retrieve previous assets")
-		return nil,err
+		return nil, err
 	}
 
 	asset, ok := assets[args.AssetID]
@@ -1459,7 +1500,7 @@ func (s *FusionTransactionAPI) buildAssetValueChangeTx(ctx context.Context, args
 	currentBalance := state.GetBalance(args.AssetID, args.To)
 	val := args.Value.ToInt()
 	if !args.IsInc {
-		if currentBalance.Cmp( val ) < 0 {
+		if currentBalance.Cmp(val) < 0 {
 			return nil, fmt.Errorf("not enough asset")
 		}
 	}
@@ -1518,25 +1559,25 @@ func (s *FusionTransactionAPI) BuildMakeSwapTx(ctx context.Context, args MakeSwa
 	big0 := big.NewInt(0)
 
 	if args.MinFromAmount == nil {
-		log.Info( "MinFromAmount missing in make swap" )
+		log.Info("MinFromAmount missing in make swap")
 		return nil, fmt.Errorf("MinFromAmount missing in make swap")
 	}
 	if args.MinToAmount == nil {
-		log.Info( "MinToAmount missing in make swap" )
+		log.Info("MinToAmount missing in make swap")
 		return nil, fmt.Errorf("MinToAmount missing in make swap")
 	}
 	if args.SwapSize == nil {
-		log.Info( "SwapSize missing in make swap" )
+		log.Info("SwapSize missing in make swap")
 		return nil, fmt.Errorf("SwapSize missing in make swap")
 	}
 
-	if  len(args.Description) > 1024  {
-		log.Info( "MakeSwap description length is greater than 1024 chars")
-		return  nil, fmt.Errorf("makeSwap description lenght is greater than 1024 chars")
+	if len(args.Description) > 1024 {
+		log.Info("MakeSwap description length is greater than 1024 chars")
+		return nil, fmt.Errorf("makeSwap description lenght is greater than 1024 chars")
 	}
 
 	if args.MinFromAmount.ToInt().Cmp(big0) <= 0 || args.MinToAmount.ToInt().Cmp(big0) <= 0 || args.SwapSize.Cmp(big0) <= 0 {
-		log.Info(  "MinFromAmount,MinToAmount and SwapSize must be ge 1" )
+		log.Info("MinFromAmount,MinToAmount and SwapSize must be ge 1")
 		return nil, fmt.Errorf("MinFromAmount,MinToAmount and SwapSize must be ge 1")
 	}
 
@@ -1545,7 +1586,7 @@ func (s *FusionTransactionAPI) BuildMakeSwapTx(ctx context.Context, args MakeSwa
 		return nil, err
 	}
 
-	total := new(big.Int).Mul( args.MinFromAmount.ToInt() , args.SwapSize  )
+	total := new(big.Int).Mul(args.MinFromAmount.ToInt(), args.SwapSize)
 
 	start := uint64(*args.FromStartTime)
 	end := uint64(*args.FromEndTime)
@@ -1566,7 +1607,6 @@ func (s *FusionTransactionAPI) BuildMakeSwapTx(ctx context.Context, args MakeSwa
 			}
 		}
 	}
-
 
 	block, err := s.b.BlockByNumber(ctx, rpc.LatestBlockNumber)
 	if block == nil || err != nil {
@@ -1604,7 +1644,7 @@ func (s *FusionTransactionAPI) BuildRecallSwapTx(ctx context.Context, args Recal
 	if state == nil || err != nil {
 		return nil, err
 	}
-	swaps,err := state.AllSwaps()
+	swaps, err := state.AllSwaps()
 	if err != nil {
 		log.Debug("BuildRecallSwap unable to retrieve previous swaps")
 		return nil, err
@@ -1649,7 +1689,7 @@ func (s *FusionTransactionAPI) BuildTakeSwapTx(ctx context.Context, args TakeSwa
 	if state == nil || err != nil {
 		return nil, err
 	}
-	swaps,err := state.AllSwaps()
+	swaps, err := state.AllSwaps()
 	if err != nil {
 		log.Debug("BuildTakeSwapTx unable to retrieve previous swaps")
 		return nil, err
@@ -1669,7 +1709,7 @@ func (s *FusionTransactionAPI) BuildTakeSwapTx(ctx context.Context, args TakeSwa
 		return nil, fmt.Errorf("SwapSize must le and Size must be ge 1")
 	}
 
-	total := new(big.Int).Mul( swap.MinToAmount , args.Size )
+	total := new(big.Int).Mul(swap.MinToAmount, args.Size)
 
 	start := swap.ToStartTime
 	end := swap.ToEndTime
