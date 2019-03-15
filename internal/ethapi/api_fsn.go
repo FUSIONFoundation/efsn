@@ -404,25 +404,25 @@ func (s *PublicFusionAPI) AllAssetsByAddress(ctx context.Context, address common
 }
 
 // AssetExistForAddress wacom
-func (s *PublicFusionAPI) AssetExistForAddress(ctx context.Context, assetName string, address common.Address, blockNr rpc.BlockNumber) (bool, error) {
+func (s *PublicFusionAPI) AssetExistForAddress(ctx context.Context, assetName string, address common.Address, blockNr rpc.BlockNumber) (common.Hash, error) {
 	state, _, err := s.b.StateAndHeaderByNumber(ctx, blockNr)
 	if state == nil || err != nil {
-		return false, err
+		return common.Hash{}, err
 	}
 
 	assets, err := state.AllAssets()
 	if err != nil {
 		log.Debug("AssetExistForAddress:api_fsn.go unable to retrieve previous assets")
-		return false, err
+		return common.Hash{}, err
 	}
 	for _, v := range assets {
 		if v.Owner == address {
 			if v.Symbol == assetName {
-				return true, state.Error()
+				return v.ID, state.Error()
 			}
 		}
 	}
-	return false, state.Error()
+	return common.Hash{}, state.Error()
 }
 
 // AllTickets wacom
