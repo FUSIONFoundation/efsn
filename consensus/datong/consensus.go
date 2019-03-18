@@ -59,6 +59,7 @@ var (
 	maxBlockTime       uint64 = 120 // 2 minutes
 	ticketWeightStep          = 2   // 2%
 	SelectedTicketTime        = &selectedTicketTime{info: make(map[common.Hash]*selectedInfo)}
+	maxTickets                = new(big.Int).SetBytes(maxBytes)
 )
 
 var (
@@ -126,6 +127,10 @@ func (dt *DaTong) verifyHeader(chain consensus.ChainReader, header *types.Header
 
 	if _, err := newSnapshotWithData(getSnapDataByHeader(header)); err != nil {
 		return err
+	}
+
+	if header.UncleHash != emptyUncleHash {
+		return errInvalidUncleHash
 	}
 
 	if header.Time.Cmp(big.NewInt(time.Now().Unix())) > 0 {
@@ -265,9 +270,6 @@ func (dt *DaTong) verifySeal(chain consensus.ChainReader, header *types.Header, 
 // Prepare initializes the consensus fields of a block header according to the
 // rules of a particular engine. The changes are executed inline.
 func (dt *DaTong) Prepare(chain consensus.ChainReader, header *types.Header) error {
-	if header.Coinbase == (common.Address{}) {
-		return errCoinbase
-	}
 	number := header.Number.Uint64()
 	parent := chain.GetHeader(header.ParentHash, number-1)
 	if parent == nil {
@@ -541,17 +543,10 @@ func (dt *DaTong) Finalize(chain consensus.ChainReader, header *types.Header, st
 			TicketID: selected.ID,
 			Type:     ticketSelect,
 		})
+		//delete tickets before coinbase if selected miner did not Seal
 		for _, t := range retreat {
 			delete(ticketMap, t.ID)
 			headerState.RemoveTicket(t.ID)
-			if t.Height.Cmp(common.Big0) > 0 {
-				value := common.NewTimeLock(&common.TimeLockItem{
-					StartTime: t.StartTime,
-					EndTime:   t.ExpireTime,
-					Value:     t.Value,
-				})
-				headerState.AddTimeLockBalance(t.Owner, common.SystemAssetID, value)
-			}
 			snap.AddLog(&ticketLog{
 				TicketID: t.ID,
 				Type:     ticketRetreat,
@@ -599,7 +594,7 @@ func (dt *DaTong) Finalize(chain consensus.ChainReader, header *types.Header, st
 	headerState.AddBalance(header.Coinbase, common.SystemAssetID, calcRewards(header.Number))
 	header.Root = headerState.IntermediateRoot(chain.Config().IsEIP158(header.Number))
 
-	return types.NewBlock(header, txs, uncles, receipts), nil
+	return types.NewBlock(header, txs, nil, receipts), nil
 }
 
 // Seal generates a new sealing request for the given input block and pushes
@@ -884,6 +879,17 @@ type selectedTicketTime struct {
 	sync.Mutex
 }
 
+func calcHeaderHash(header *types.Header) []byte {
+	snap, err := newSnapshotWithData(getSnapDataByHeader(header))
+	if err != nil {
+		return nil
+	}
+	ticketID := snap.GetVoteTicket()
+	// hash (header.Number + ticketID + header.Coinbase)
+	sum := header.Number.String() + ticketID.String() + header.Coinbase.String()
+	return crypto.Keccak256([]byte(sum))
+}
+
 func updateSelectedTicketTime(header *types.Header, ticketID common.Hash, round uint64, list uint64) {
 	if (header == nil || ticketID == common.Hash{}) {
 		log.Warn("updateSelectedTicketTime", "input error", "")
@@ -895,9 +901,15 @@ func updateSelectedTicketTime(header *types.Header, ticketID common.Hash, round 
 	// hash (header.Number + ticketID + header.Coinbase)
 	sum := header.Number.String() + ticketID.String() + header.Coinbase.String()
 	hash := crypto.Keccak256([]byte(sum))
-	sl := &selectedInfo{round: round, list: list}
-	SelectedTicketTime.info[common.BytesToHash(hash)] = sl
-	log.Info("updateSelectedTicketTime", "header.Number", header.Number, "ticketID", ticketID, "round", round, "list", list)
+	ticketInfo := SelectedTicketTime.info[common.BytesToHash(hash)]
+	if ticketInfo == nil {
+		sl := &selectedInfo{round: round, list: list, broad: false}
+		SelectedTicketTime.info[common.BytesToHash(hash)] = sl
+		ticketInfo = SelectedTicketTime.info[common.BytesToHash(hash)]
+	} else {
+		ticketInfo.round = round
+		ticketInfo.list = list
+	}
 }
 
 func haveSelectedTicketTime(header *types.Header) (uint64, uint64, error) {
@@ -909,20 +921,11 @@ func haveSelectedTicketTime(header *types.Header) (uint64, uint64, error) {
 		return uint64(0), uint64(0), errors.New("Hash return nil")
 	}
 	ticketInfo := SelectedTicketTime.info[common.BytesToHash(hash)]
-	if ticketInfo != nil {
-		return ticketInfo.round, ticketInfo.list, nil
+	if ticketInfo == nil {
+		log.Warn("Error: not found ticketInfo. SelectedTicketTime", "header.Number", header.Number)
+		return uint64(0), uint64(0), errors.New("not found ticketInfo")
 	}
-	return uint64(0), uint64(0), errors.New("Mismatched SealHash")
-}
-
-func calcHeaderHash(header *types.Header) []byte {
-	snap, err := newSnapshotWithData(getSnapDataByHeader(header))
-	if err != nil {
-		return nil
-	}
-	ticketID := snap.GetVoteTicket()
-	sum := header.Number.String() + ticketID.String() + header.Coinbase.String()
-	return crypto.Keccak256([]byte(sum))
+	return ticketInfo.round, ticketInfo.list, nil
 }
 
 func (dt *DaTong) UpdateBlockBroadcast(header *types.Header) {
@@ -934,7 +937,11 @@ func (dt *DaTong) UpdateBlockBroadcast(header *types.Header) {
 		return
 	}
 	ticketInfo := SelectedTicketTime.info[common.BytesToHash(hash)]
-	if ticketInfo != nil {
+	if ticketInfo == nil {
+		sl := &selectedInfo{round: maxTickets.Uint64(), list: maxTickets.Uint64(), broad: true}
+		SelectedTicketTime.info[common.BytesToHash(hash)] = sl
+		ticketInfo = SelectedTicketTime.info[common.BytesToHash(hash)]
+	} else {
 		ticketInfo.broad = true
 	}
 }
@@ -948,10 +955,10 @@ func (dt *DaTong) HaveBlockBroaded(header *types.Header) bool {
 		return false
 	}
 	ticketInfo := SelectedTicketTime.info[common.BytesToHash(hash)]
-	if ticketInfo != nil {
-		return ticketInfo.broad
+	if ticketInfo == nil {
+		return false
 	}
-	return false
+	return ticketInfo.broad
 }
 
 func (dt *DaTong) calcTicketDifficulty(chain consensus.ChainReader, header *types.Header, statedb *state.StateDB) (*big.Int, common.Hash, error) {
@@ -1172,7 +1179,6 @@ func (dt *DaTong) calcDelayTime(chain consensus.ChainReader, header *types.Heade
 			delayTime += time.Duration(list*uint64(delayTimeModifier)) * time.Second
 		}
 	}
-	log.Info("calcDelayTime", "header.Number", header.Number, "delayTime", delayTime, "listOrder", list, "adjustTime", adjust, "header.Time", time.Unix(header.Time.Int64(), 0), "coinbase", header.Coinbase)
 
 	return delayTime, nil
 }
