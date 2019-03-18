@@ -270,9 +270,6 @@ func (dt *DaTong) verifySeal(chain consensus.ChainReader, header *types.Header, 
 // Prepare initializes the consensus fields of a block header according to the
 // rules of a particular engine. The changes are executed inline.
 func (dt *DaTong) Prepare(chain consensus.ChainReader, header *types.Header) error {
-	if header.Coinbase == (common.Address{}) {
-		return errCoinbase
-	}
 	number := header.Number.Uint64()
 	parent := chain.GetHeader(header.ParentHash, number-1)
 	if parent == nil {
