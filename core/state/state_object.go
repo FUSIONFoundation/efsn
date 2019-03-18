@@ -100,6 +100,60 @@ func (s *stateObject) empty() bool {
 	return s.data.Nonce == 0 && balanceEmpty && bytes.Equal(s.data.CodeHash, emptyCodeHash)
 }
 
+func (s *stateObject) deepCopyBalancesHash() []common.Hash {
+	ret := make([]common.Hash,0)
+	if len(s.data.BalancesHash) == 0 {
+		return ret
+	}
+
+	for _, v := range s.data.BalancesHash {
+		ret = append(ret,v)
+	}
+
+	return ret
+}
+
+func (s *stateObject) deepCopyBalancesVal() []*big.Int {
+	ret := make([]*big.Int,0)
+	if len(s.data.BalancesVal) == 0 {
+		return ret
+	}
+
+	for _, v := range s.data.BalancesVal {
+		a := new(big.Int).SetBytes(v.Bytes())
+		ret = append(ret,a)
+	}
+
+	return ret
+}
+
+func (s *stateObject) deepCopyTimeLockBalancesHash() []common.Hash {
+	ret := make([]common.Hash,0)
+	if len(s.data.TimeLockBalancesHash) == 0 {
+		return ret
+	}
+
+	for _, v := range s.data.TimeLockBalancesHash {
+		ret = append(ret,v)
+	}
+
+	return ret
+}
+
+func (s *stateObject) deepCopyTimeLockBalancesVal() []*common.TimeLock {
+	ret := make([]*common.TimeLock,0)
+	if len(s.data.TimeLockBalancesVal) == 0 {
+		return ret
+	}
+
+	for _, v := range s.data.TimeLockBalancesVal {
+		t := v.Clone()
+		ret = append(ret,t)
+	}
+
+	return ret
+}
+
 // Account is the Ethereum consensus representation of accounts.
 // These objects are stored in the main account trie.
 type Account struct {
@@ -416,6 +470,10 @@ func (self *stateObject) deepCopy(db *StateDB) *stateObject {
 	stateObject.suicided = self.suicided
 	stateObject.dirtyCode = self.dirtyCode
 	stateObject.deleted = self.deleted
+	stateObject.data.BalancesHash = self.deepCopyBalancesHash()
+	stateObject.data.BalancesVal = self.deepCopyBalancesVal()
+	stateObject.data.TimeLockBalancesHash = self.deepCopyTimeLockBalancesHash()
+	stateObject.data.TimeLockBalancesVal = self.deepCopyTimeLockBalancesVal()
 	return stateObject
 }
 

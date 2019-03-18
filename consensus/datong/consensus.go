@@ -129,6 +129,10 @@ func (dt *DaTong) verifyHeader(chain consensus.ChainReader, header *types.Header
 		return err
 	}
 
+	if header.UncleHash != emptyUncleHash {
+		return errInvalidUncleHash
+	}
+
 	if header.Time.Cmp(big.NewInt(time.Now().Unix())) > 0 {
 		return consensus.ErrFutureBlock
 	}
@@ -600,7 +604,7 @@ func (dt *DaTong) Finalize(chain consensus.ChainReader, header *types.Header, st
 	headerState.AddBalance(header.Coinbase, common.SystemAssetID, calcRewards(header.Number))
 	header.Root = headerState.IntermediateRoot(chain.Config().IsEIP158(header.Number))
 
-	return types.NewBlock(header, txs, uncles, receipts), nil
+	return types.NewBlock(header, txs, nil, receipts), nil
 }
 
 // Seal generates a new sealing request for the given input block and pushes
