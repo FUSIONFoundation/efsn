@@ -546,17 +546,10 @@ func (dt *DaTong) Finalize(chain consensus.ChainReader, header *types.Header, st
 			TicketID: selected.ID,
 			Type:     ticketSelect,
 		})
+		//delete tickets before coinbase if selected miner did not Seal
 		for _, t := range retreat {
 			delete(ticketMap, t.ID)
 			headerState.RemoveTicket(t.ID)
-			if t.Height.Cmp(common.Big0) > 0 {
-				value := common.NewTimeLock(&common.TimeLockItem{
-					StartTime: t.StartTime,
-					EndTime:   t.ExpireTime,
-					Value:     t.Value,
-				})
-				headerState.AddTimeLockBalance(t.Owner, common.SystemAssetID, value)
-			}
 			snap.AddLog(&ticketLog{
 				TicketID: t.ID,
 				Type:     ticketRetreat,
