@@ -21,7 +21,6 @@ import (
 	"github.com/FusionFoundation/efsn/params"
 	"github.com/FusionFoundation/efsn/rlp"
 	"github.com/FusionFoundation/efsn/rpc"
-	//"github.com/davecgh/go-spew/spew"
 )
 
 const (
@@ -315,7 +314,7 @@ func (s sortablehtimeSlice) Swap(i, j int) {
 }
 
 type DisInfo struct {
-	owner *common.Ticket
+	tk    *common.Ticket
 	res   *big.Int
 }
 type DistanceSlice []*DisInfo
@@ -457,7 +456,7 @@ func (dt *DaTong) Finalize(chain consensus.ChainReader, header *types.Header, st
 			id2 := new(big.Int).Mul(id, id)
 			s := new(big.Int).Add(w2, id2)
 
-			ht := &DisInfo{owner: ticket, res: s}
+			ht := &DisInfo{tk: ticket, res: s}
 			sel <- ht
 		}
 		var list DistanceSlice
@@ -467,22 +466,25 @@ func (dt *DaTong) Finalize(chain consensus.ChainReader, header *types.Header, st
 			list = append(list, v)
 		}
 		sort.Sort(list)
+		selectedNoSameTicket = make([]*common.Ticket, 0)
+		retreat = make([]*common.Ticket, 0)
 		for _, t := range list {
-			if t.owner.Owner == header.Coinbase {
+			if t.tk.Owner == header.Coinbase {
 				htime = parentTime
-				selected = t.owner
+				selected = t.tk
 				break
 			} else {
 				selectedTime++ //ticket queue in selectedList
-				retreat = append(retreat, t.owner)
+				selectedNoSameTicket = append(selectedNoSameTicket, t.tk) // temp store tickets
 			}
 		}
 		// selectedTime: remove repeat tickets with one miner
 		norep := make(map[common.Address]bool)
-		for _, nr := range retreat {
-			_, ok := norep[nr.Owner]
-			if ok == false {
+		for _, nr := range selectedNoSameTicket {
+			_, exist := norep[nr.Owner]
+			if exist == false {
 				norep[nr.Owner] = true
+				retreat = append(retreat, nr) // one owner one selected ticket
 			}
 		}
 		selectedTime = uint64(len(norep))
@@ -1075,7 +1077,7 @@ func (dt *DaTong) calcTicketDifficulty(chain consensus.ChainReader, header *type
 			id2 := new(big.Int).Mul(id, id)
 			s := new(big.Int).Add(w2, id2)
 
-			ht := &DisInfo{owner: ticket, res: s}
+			ht := &DisInfo{tk: ticket, res: s}
 			sel <- ht
 		}
 		var list DistanceSlice
@@ -1085,24 +1087,25 @@ func (dt *DaTong) calcTicketDifficulty(chain consensus.ChainReader, header *type
 			list = append(list, v)
 		}
 		sort.Sort(list)
+		selectedNoSameTicket = make([]*common.Ticket, 0)
+		retreat = make([]*common.Ticket, 0)
 		for _, t := range list {
-			if t.owner.Owner == header.Coinbase {
+			if t.tk.Owner == header.Coinbase {
 				htime = parentTime
-				selected = t.owner
-				// spew.Printf("selected ticket: %#v, coinbase: 0x%x\n", t, header.Coinbase)
+				selected = t.tk
 				break
 			} else {
 				selectedTime++ //ticket queue in selectedList
-				retreat = append(retreat, t.owner)
+				selectedNoSameTicket = append(selectedNoSameTicket, t.tk) // temp store tickets
 			}
-
 		}
 		// selectedTime: remove repeat tickets with one miner
 		norep := make(map[common.Address]bool)
-		for _, nr := range retreat {
-			_, ok := norep[nr.Owner]
-			if ok == false {
+		for _, nr := range selectedNoSameTicket {
+			_, exist := norep[nr.Owner]
+			if exist == false {
 				norep[nr.Owner] = true
+				retreat = append(retreat, nr) // one miner one selected ticket
 			}
 		}
 		selectedTime = uint64(len(norep))
