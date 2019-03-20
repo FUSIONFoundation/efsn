@@ -41,9 +41,10 @@ fi
 cp $NODES_ROOT/UTC* $KEYSTORE_DIR/
 
 # format command option
-cmd_options="--datadir $DATA_DIR --port 8001 --password /fusion-node/password.txt --mine"
+cmd_options="--datadir $DATA_DIR --password /fusion-node/password.txt --mine"
 
-cmd_options_local_gtw=' --identity 1 --rpc --ws --rpcaddr 127.0.0.1 --rpccorsdomain 127.0.0.1 --wsapi "eth,net,fsn,fsntx" --rpcapi "eth,net,fsn,fsntx" --wsaddr 127.0.0.1 --wsport 9001 --rpcport 9000'
+# cmd_options_local_gtw=' --identity 1 --rpc --ws --rpcaddr 127.0.0.1 --rpccorsdomain 127.0.0.1 --wsapi "eth,net,fsn,fsntx" --rpcapi "eth,net,fsn,fsntx" --wsaddr 127.0.0.1 --wsport 9001 --rpcport 9000'
+cmd_options_local_gtw=' --rpc --ws --rpcaddr 0.0.0.0 --rpccorsdomain 0.0.0.0  --wsapi "eth,net,fsn,fsntx" --rpcapi "eth,net,fsn,fsntx" --wsaddr 0.0.0.0 --wsport 9001 --wsorigins=* --rpcport 9000'
 
 if [ "$ethstats" ]; then
     ethstats=" --ethstats $ethstats:fusion@node.fusionnetwork.io"

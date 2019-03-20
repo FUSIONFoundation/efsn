@@ -41,7 +41,7 @@ fi
 cp $NODES_ROOT/UTC* $KEYSTORE_DIR/
 
 # format command option
-cmd_options="--datadir $DATA_DIR --port 8001 --password /fusion-node/password.txt --mine"
+cmd_options="--datadir $DATA_DIR --password /fusion-node/password.txt --mine"
 
 if [ "$ethstats" ]; then
     ethstats=" --ethstats $ethstats:fusion@node.fusionnetwork.io"

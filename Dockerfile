@@ -1,5 +1,5 @@
 # Build Efsn in a stock Go builder container
-FROM golang:1.11.4-alpine as builder
+FROM golang:1.11.6-alpine as builder
 
 RUN apk add --no-cache make gcc musl-dev linux-headers
 
@@ -13,7 +13,7 @@ RUN apk add --no-cache ca-certificates
 # RUN apk add --no-cache jq
 COPY --from=builder /efsn/build/bin/efsn /usr/local/bin/
 
-EXPOSE 40401 40401/udp 40402 40402/udp 40404 40404/udp 9001 9001/udp 8001 8001/udp 16714 16714/udp
+EXPOSE 9000 9000/udp 9001 9001/udp 40407 40407/udp 40408 40408/udp
 
 COPY ./docker-entrypoint.sh /usr/local/bin
 

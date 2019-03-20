@@ -1,5 +1,5 @@
 # Build Efsn in a stock Go builder container
-FROM golang:1.11.4-alpine as builder
+FROM golang:1.11.6-alpine as builder
 
 RUN apk add --no-cache make gcc musl-dev linux-headers
 
@@ -13,6 +13,6 @@ RUN apk add --no-cache ca-certificates
 # RUN apk add --no-cache jq
 COPY --from=builder /efsn/build/bin/efsn /usr/local/bin/
 
-EXPOSE 9001 9001/udp 40401 40401/udp 40402 40402/udp 40404 40404/udp 9001 9001/udp 8001 8001/udp 9000 9000/udp 16714 16714/udp
+EXPOSE 9000 9000/udp 9001 9001/udp 40407 40407/udp 40408 40408/udp
 
-ENTRYPOINT ["efsn", "--identity", "1", "--datadir", "/fusion-node" , "--port", "8001" , "--syncmode", "full" , "--gcmode=archive", "--rpc" , "--ws", "--rpcaddr" , "0.0.0.0", "--gasprice" , "0", "--rpccorsdomain" , "*", "--wsorigins", "*", "--wsapi", "eth,net,fsn,fsntx", "--rpcapi", "eth,net,fsn,fsntx", "--wsaddr", "0.0.0.0", "--wsport", "9001", "--rpcport", "9000"]
+ENTRYPOINT ["efsn", "--identity", "1", "--datadir", "/fusion-node", "--syncmode", "full" , "--gcmode=archive", "--rpc" , "--ws", "--rpcaddr" , "0.0.0.0", "--gasprice" , "0", "--rpccorsdomain" , "*", "--wsorigins", "*", "--wsapi", "eth,net,fsn,fsntx", "--rpcapi", "eth,net,fsn,fsntx", "--wsaddr", "0.0.0.0", "--wsport", "9001", "--rpcport", "9000"]

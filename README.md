@@ -4,6 +4,31 @@
 
 Fusion would like to extend its gratitude to the Ethereum Foundation. Fusion has used the official open-source golang implementation of the Ethereum protocol.
 
+## Run a miner
+
+Change the parameter `YOURDIRECTORY` to your local directory
+
+### Pull image from repository:
+
+`docker pull fusionnetwork/efsn2:latest`
+
+### Run a miner
+`docker run -it -p 40407:40407 -p 40408:40408 -v YOURDIRECTORY:/fusion-node fusionnetwork/efsn2 -u <account to unlock> -e MyFusionMiner`
+
+### Build your own miner image (optional)
+`docker build --file Dockerfile -t YOUR-DOCKER-HUB-ID/efsn2 .`
+
+### Run a miner using your image
+`docker run -it -p 40407:40407 -p 40408:40408 -v YOURDIRECTORY:/fusion-node fusionnetwork/efsn2 -u <account to unlock> -e MyFusionMiner`
+
+Remember to:
+1. Replace `YOUR-DOCKER-HUB-ID` string with your valid Docker Hub id.
+
+2. Put your keystore file in `YOURDIRECTORY/UTC...`
+
+3. Put the password.txt file in: `YOURDIRECTORY/password.txt`
+
+`Note: Password file must be named password.txt and the keystore file name must start with UTC... .`
 
 ## Run a Gateway
 
@@ -11,18 +36,48 @@ Change the parameter `YOURDIRECTORY` to your local directory
 
 ### Pull image from repository:
 
-`docker pull fusionnetwork/gateway:latest`
+`docker pull fusionnetwork/gateway2:latest`
 
 ### Run a Gateway
-`docker run -it -p 9001:9001 -v YOURDIRECTORY:/fusion-node  fusionnetwork/gateway`
+`docker run -it -p 9001:9001 -v YOURDIRECTORY:/fusion-node  fusionnetwork/gateway2`
 
 ### Build your own Gateway (optional)
-`docker build --file Dockerfile.gtw -t YOUR-DOCKER-HUB-ID/gateway .`
+`docker build --file Dockerfile.gtw -t YOUR-DOCKER-HUB-ID/gateway2 .`
 
 ### Run a Gateway using your image
-`docker run -it -p 9001:9001 -v YOURDIRECTORY:/fusion-node  YOUR-DOCKER-HUB-ID/gateway`
+`docker run -it -p 9001:9001 -v YOURDIRECTORY:/fusion-node  YOUR-DOCKER-HUB-ID/gateway2`
 
 Remember to replace `YOUR-DOCKER-HUB-ID` string with your valid Docker Hub id.
+
+You can now connect via `ws://localhost:9001`
+
+## Run a MinerAndLocalGateway
+
+Change the parameter `YOURDIRECTORY` to your local directory
+
+### Pull MinerAndLocalGateway image from repository:
+
+`docker pull fusionnetwork/minerandlocalgateway2:latest`
+
+### Run a MinerAndLocalGateway
+
+`docker run -it -p 127.0.0.1:9000:9000 -p 127.0.0.1:9000:9000/udp -p 127.0.0.1:9001:9001 -p 127.0.0.1:9001:9001/udp -p 40407:40407 -p 40408:40408 -v YOURDIRECTORY:/fusion-node fusionnetwork/minerandlocalgateway2 -u <account to unlock>  -e MinerAndLocalGateway`
+
+### Build your own MinerAndLocalGateway (optional)
+`docker build --file Dockerfile.minerLocalGtw -t YOUR-DOCKER-HUB-ID/minerandlocalgateway2 .`
+
+### Run a MinerAndLocalGateway using your image
+
+`docker run -it -p 127.0.0.1:9000:9000 -p 127.0.0.1:9000:9000/udp -p 127.0.0.1:9001:9001 -p 127.0.0.1:9001:9001/udp -p 40407:40407 -p 40408:40408 -v YOURDIRECTORY:/fusion-node YOUR-DOCKER-HUB-ID/minerandlocalgateway2 -u <account to unlock>  -e MinerAndLocalGateway`
+
+Remember to:
+1. Replace `YOUR-DOCKER-HUB-ID` string with your valid Docker Hub id.
+
+2. Put your keystore file in `YOURDIRECTORY/UTC...`
+
+3. Put the password.txt file in: `YOURDIRECTORY/password.txt`
+
+`Note: Password file must be named password.txt and the keystore must have UTC in it's name.`
 
 You can now connect via `ws://localhost:9001`
 
