@@ -21,7 +21,7 @@ import (
 	"github.com/FusionFoundation/efsn/params"
 	"github.com/FusionFoundation/efsn/rlp"
 	"github.com/FusionFoundation/efsn/rpc"
-	"github.com/davecgh/go-spew/spew"
+	//"github.com/davecgh/go-spew/spew"
 )
 
 const (
@@ -1089,7 +1089,7 @@ func (dt *DaTong) calcTicketDifficulty(chain consensus.ChainReader, header *type
 			if t.owner.Owner == header.Coinbase {
 				htime = parentTime
 				selected = t.owner
-				spew.Printf("selected ticket: %#v, coinbase: 0x%x\n", t, header.Coinbase)
+				// spew.Printf("selected ticket: %#v, coinbase: 0x%x\n", t, header.Coinbase)
 				break
 			} else {
 				selectedTime++ //ticket queue in selectedList
