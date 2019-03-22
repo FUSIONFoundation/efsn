@@ -929,7 +929,7 @@ func (db *StateDB) copyOfTickets() map[common.Hash]common.Ticket {
 // AllTickets wacom
 func (db *StateDB) AllTickets() (map[common.Hash]common.Ticket, error) {
 	if db.tickets != nil {
-		return db.tickets, nil
+		return db.copyOfTickets(), nil
 	}
 	data := db.GetData(common.TicketKeyAddress)
 	var tickets map[common.Hash]common.Ticket
@@ -950,7 +950,7 @@ func (db *StateDB) AllTickets() (map[common.Hash]common.Ticket, error) {
 		}
 	}
 	db.tickets = tickets
-	return db.tickets, nil
+	return db.copyOfTickets(), nil
 }
 
 // AddTicket wacom
