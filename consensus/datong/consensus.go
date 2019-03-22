@@ -581,7 +581,7 @@ func (dt *DaTong) Finalize(chain consensus.ChainReader, header *types.Header, st
 		}
 	}
 	if remainingWeight.Cmp(common.Big0) <= 0 {
-		return nil, errors.New("Next block don't have ticket, wait buy ticket")
+		log.Warn("Next block don't have ticket, wait buy ticket", "remainingWeight", remainingWeight)
 	}
 
 	snap.SetWeight(remainingWeight)
