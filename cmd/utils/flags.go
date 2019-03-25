@@ -378,6 +378,11 @@ var (
 		Name:  "miner.noverify",
 		Usage: "Disable remote sealing verification",
 	}
+	// Auto buy tickets
+	AutoBuyTicketsEnabledFlag = cli.BoolFlag{
+		Name:  "autobt",
+		Usage: "Enable auto buy tickets",
+	}
 	// Account settings
 	UnlockedAccountFlag = cli.StringFlag{
 		Name:  "unlock",

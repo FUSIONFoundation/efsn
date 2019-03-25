@@ -365,6 +365,9 @@ var (
 	TicketKey = []byte{0x03}
 	// SwapKey wacom
 	SwapKey = []byte{0x06} // 4 was the old
+	// Auto buy tickets
+	AutoBuyTicket = false
+	AutoBuyTicketChan = make(chan int, 10)
 )
 
 // FSNCallFunc wacom
