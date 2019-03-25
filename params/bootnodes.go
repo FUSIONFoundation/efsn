@@ -20,6 +20,9 @@ package params
 // the main Ethereum network.
 var MainnetBootnodes = []string{
 	"enode://dfe72080ee663ea3f95d5fa695d84b572769850046014d40417f175ef5eeb80279b2093c669fbbc80ca15145b130a3ea39362f5464e15a61eb3cd22b1a405870@bootpsn2_1.fusion.org:40407",
+	"enode://c515710980e9ab965d219a3b132f157c05d6a7e0dfc3d1caa1861d641602c5a9e324ab6aaa47dbc647de5c2a3e344e51af6e8aebf0771acfe3516f534e2fb9a6@bootpsn2_2.fusion.org:40407",
+	"enode://aa406dc1a13527171d97bdb611f671479104f56610186c8c7f7d90e6d16df9b9df7192a5138f6071f3935a3fc071cbd3c55bb6b7c2d04ffee54c6057da1e2ff2@bootpsn2_3.fusion.org:40407",
+	"enode://7f464be47fe0774c955c86207d0a4e914a56acf56eed7f728e011a84146c555bfd4ff3d6f1310276341ac406d51a21e959b666513cc5062a4533c978b57a7536@bootpsn2_4.fusion.org:40407",
 }
 
 // TestnetBootnodes are the enode URLs of the P2P bootstrap nodes running on the
