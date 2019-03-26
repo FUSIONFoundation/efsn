@@ -13,7 +13,7 @@ Change the parameter `YOURDIRECTORY` to your local directory
 `docker pull fusionnetwork/efsn2:latest`
 
 ### Run a miner
-`docker run -it -p 40407:40407 -p 40408:40408 -v YOURDIRECTORY:/fusion-node fusionnetwork/efsn2 -u <account to unlock> -e MyFusionMiner`
+`docker run -it -p 40408:40408 -v YOURDIRECTORY:/fusion-node fusionnetwork/efsn2 -u <account to unlock> -e MyFusionMiner`
 
 ### Build your own miner image (optional)
 `docker build --file Dockerfile -t YOUR-DOCKER-HUB-ID/efsn2 .`
@@ -39,7 +39,7 @@ Change the parameter `YOURDIRECTORY` to your local directory
 `docker pull fusionnetwork/gateway2:latest`
 
 ### Run a Gateway
-`docker run -it -p 9001:9001 -v YOURDIRECTORY:/fusion-node  fusionnetwork/gateway2`
+`docker run -it -p 9000:9000 -p 9001:9001 -p 40408:40408 -v YOURDIRECTORY:/fusion-node  fusionnetwork/gateway2`
 
 ### Build your own Gateway (optional)
 `docker build --file Dockerfile.gtw -t YOUR-DOCKER-HUB-ID/gateway2 .`
@@ -61,7 +61,7 @@ Change the parameter `YOURDIRECTORY` to your local directory
 
 ### Run a MinerAndLocalGateway
 
-`docker run -it -p 127.0.0.1:9000:9000 -p 127.0.0.1:9000:9000/udp -p 127.0.0.1:9001:9001 -p 127.0.0.1:9001:9001/udp -p 40407:40407 -p 40408:40408 -v YOURDIRECTORY:/fusion-node fusionnetwork/minerandlocalgateway2 -u <account to unlock>  -e MinerAndLocalGateway`
+`docker run -it -p 127.0.0.1:9000:9000 -p 127.0.0.1:9001:9001 -p 40408:40408 -v YOURDIRECTORY:/fusion-node fusionnetwork/minerandlocalgateway2 -u <account to unlock>  -e MinerAndLocalGateway`
 
 ### Build your own MinerAndLocalGateway (optional)
 `docker build --file Dockerfile.minerLocalGtw -t YOUR-DOCKER-HUB-ID/minerandlocalgateway2 .`
