@@ -42,9 +42,9 @@ Change the parameter `YOURDIRECTORY` to your local directory
 
 `docker pull fusionnetwork/gateway2:latest`
 
-### Run a gateway from the image
+### Run a Gateway from the image
 
-`docker run -it -p 9000:9000 -p 9001:9001 -v YOURDIRECTORY:/fusion-node fusionnetwork/gateway2`
+`docker run -it -p 9000:9000 -p 9001:9001 -p 40408:40408 -v YOURDIRECTORY:/fusion-node fusionnetwork/gateway2`
 
 ### Build your own Gateway image (optional)
 
@@ -52,7 +52,7 @@ Change the parameter `YOURDIRECTORY` to your local directory
 
 ### Run a Gateway using your image
 
-`docker run -it -p 9000:9000 -p 9001:9001 -v YOURDIRECTORY:/fusion-node YOUR-DOCKER-HUB-ID/gateway2`
+`docker run -it -p 9000:9000 -p 9001:9001 -p 40408:40408 -v YOURDIRECTORY:/fusion-node YOUR-DOCKER-HUB-ID/gateway2`
 
 Remember to replace `YOUR-DOCKER-HUB-ID` with your valid Docker Hub id.
 
