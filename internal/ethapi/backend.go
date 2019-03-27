@@ -69,6 +69,8 @@ type Backend interface {
 
 	ChainConfig() *params.ChainConfig
 	CurrentBlock() *types.Block
+
+	IsMining() bool
 }
 
 func GetAPIs(apiBackend Backend) []rpc.API {

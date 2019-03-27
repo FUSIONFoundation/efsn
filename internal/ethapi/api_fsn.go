@@ -528,7 +528,9 @@ func AutoBuyTicket(account common.Address, passwd string) {
 	for {
 		select {
 			case <-common.AutoBuyTicketChan:
-				privateFusionAPI.BuyTicket(nil, args, passwd)
+				if privateFusionAPI.b.IsMining() {
+					privateFusionAPI.BuyTicket(nil, args, passwd)
+				}
 		}
 	}
 }
