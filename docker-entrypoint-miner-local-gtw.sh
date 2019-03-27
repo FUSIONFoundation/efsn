@@ -51,7 +51,7 @@ cmd_options="--datadir $DATA_DIR --password /fusion-node/password.txt --mine"
 cmd_options_local_gtw=' --rpc --ws --rpcaddr 0.0.0.0 --rpccorsdomain 0.0.0.0  --wsapi "eth,net,fsn,fsntx" --rpcapi "eth,net,fsn,fsntx" --wsaddr 0.0.0.0 --wsport 9001 --wsorigins=* --rpcport 9000'
 
 if [ "$ethstats" ]; then
-    ethstats=" --ethstats $ethstats:fusion@node.fusionnetwork.io"
+    ethstats=" --ethstats $ethstats:FusionPSN2@node.fusionnetwork.io"
     cmd_options=$cmd_options$ethstats 
 fi
 

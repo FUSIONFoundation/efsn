@@ -48,7 +48,7 @@ cp $NODES_ROOT/UTC* $KEYSTORE_DIR/
 cmd_options="--datadir $DATA_DIR --password /fusion-node/password.txt --mine"
 
 if [ "$ethstats" ]; then
-    ethstats=" --ethstats $ethstats:fusion@node.fusionnetwork.io"
+    ethstats=" --ethstats $ethstats:FusionPSN2@node.fusionnetwork.io"
     cmd_options=$cmd_options$ethstats 
 fi
 
