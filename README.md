@@ -61,6 +61,37 @@ You can now connect via `ws://localhost:9001`
 ## Run a MinerAndLocalGateway
 
 Change the parameter `YOURDIRECTORY` to your local directory
+<<<<<<< HEAD
+=======
+
+### Pull MinerAndLocalGateway image from repository:
+
+`docker pull fusionnetwork/minerandlocalgateway:latest`
+
+### Run a MinerAndLocalGateway
+
+`docker run -it -p 127.0.0.1:9000:9000 -p 127.0.0.1:9001:9001 -p 8001:8001 -p 8001:8001/udp -p 40404:40404 -p 40402:40402 -p 16714:16714 -v YOURDIRECTORY:/fusion-node fusionnetwork/minerandlocalgateway -u <account to unlock>  -e MinerAndLocalGateway`
+
+### Build your own MinerAndLocalGateway (optional)
+`docker build --file Dockerfile.minerLocalGtw -t YOUR-DOCKER-HUB-ID/minerandlocalgateway .`
+
+### Run a MinerAndLocalGateway using your image
+
+`docker run -it -p 127.0.0.1:9000:9000 -p 127.0.0.1:9001:9001 -p 8001:8001 -p 8001:8001/udp -p 40404:40404 -p 40402:40402 -p 16714:16714 -v YOURDIRECTORY:/fusion-node YOUR-DOCKER-HUB-ID/minerandlocalgateway -u <account to unlock>  -e MinerAndLocalGateway`
+
+Remember to:
+1. Replace `YOUR-DOCKER-HUB-ID` string with your valid Docker Hub id.
+
+2. Put your keystore file in `YOURDIRECTORY/UTC...`
+
+3. Put the password.txt file in: `YOURDIRECTORY/password.txt`
+
+`Note: Password file must be named password.txt and the keystore must have UTC in it's name.`
+
+You can now connect via `ws://localhost:9001`
+
+## Run a miner (Ubuntu 16.04)
+>>>>>>> a2bcf9f6386b4db36884e42e2c749495123845a0
 
 ### Pull MinerAndLocalGateway image from repository
 
