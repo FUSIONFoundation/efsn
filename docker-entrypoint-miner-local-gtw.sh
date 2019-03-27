@@ -88,4 +88,4 @@ fi
 echo "flags: $cmd_options$cmd_options_local_gtw"
 
 # efsn  --unlock $unlock --ethstats 
-#efsn $cmd_options$cmd_options_local_gtw
+efsn $cmd_options$cmd_options_local_gtw
