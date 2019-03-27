@@ -314,8 +314,8 @@ func (s sortablehtimeSlice) Swap(i, j int) {
 }
 
 type DisInfo struct {
-	tk    *common.Ticket
-	res   *big.Int
+	tk  *common.Ticket
+	res *big.Int
 }
 type DistanceSlice []*DisInfo
 
@@ -474,7 +474,7 @@ func (dt *DaTong) Finalize(chain consensus.ChainReader, header *types.Header, st
 				selected = t.tk
 				break
 			} else {
-				selectedTime++ //ticket queue in selectedList
+				selectedTime++                                            //ticket queue in selectedList
 				selectedNoSameTicket = append(selectedNoSameTicket, t.tk) // temp store tickets
 			}
 		}
@@ -1095,7 +1095,7 @@ func (dt *DaTong) calcTicketDifficulty(chain consensus.ChainReader, header *type
 				selected = t.tk
 				break
 			} else {
-				selectedTime++ //ticket queue in selectedList
+				selectedTime++                                            //ticket queue in selectedList
 				selectedNoSameTicket = append(selectedNoSameTicket, t.tk) // temp store tickets
 			}
 		}
@@ -1170,12 +1170,14 @@ func (dt *DaTong) calcDelayTime(chain consensus.ChainReader, header *types.Heade
 	adjust := ((time.Unix(parent.Time.Int64(), 0).Sub(time.Unix(gparent.Time.Int64(), 0)) / adjustIntervalBlocks) -
 		time.Duration(int64(dt.config.Period))*time.Second) /
 		time.Duration(int64(adjustIntervalBlocks))
-	if adjust > (time.Duration(5) * time.Second) {
-		adjust = time.Duration(5) * time.Second
+
+	stampSecond := time.Duration(2) * time.Second
+	if adjust > stampSecond {
+		adjust = stampSecond
+	} else if adjust < -stampSecond {
+		adjust = -stampSecond
 	}
-	if adjust < (- time.Duration(5) * time.Second) {
-		adjust = - time.Duration(5) * time.Second
-	}
+
 	delayTime -= adjust
 	if delayTime < 0 {
 		if list > 0 {
