@@ -4,50 +4,57 @@
 
 Fusion would like to extend its gratitude to the Ethereum Foundation. Fusion has used the official open-source golang implementation of the Ethereum protocol.
 
-## Run a miner
+## Run a Miner
 
 Change the parameter `YOURDIRECTORY` to your local directory
 
-### Pull image from repository:
+### Pull Miner image from repository
 
 `docker pull fusionnetwork/efsn2:latest`
 
-### Run a miner
+### Run a Miner from the image
+
 `docker run -it -p 40408:40408 -v YOURDIRECTORY:/fusion-node fusionnetwork/efsn2 -u <account to unlock> -e MyFusionMiner`
 
-### Build your own miner image (optional)
+### Build your own Miner image (optional)
+
 `docker build --file Dockerfile -t YOUR-DOCKER-HUB-ID/efsn2 .`
 
-### Run a miner using your image
-`docker run -it -p 40407:40407 -p 40408:40408 -v YOURDIRECTORY:/fusion-node fusionnetwork/efsn2 -u <account to unlock> -e MyFusionMiner`
+### Run a Miner using your image
+
+`docker run -it -p 40408:40408 -v YOURDIRECTORY:/fusion-node fusionnetwork/efsn2 -u <account to unlock> -e MyFusionMiner`
 
 Remember to:
-1. Replace `YOUR-DOCKER-HUB-ID` string with your valid Docker Hub id.
+
+1. Replace `YOUR-DOCKER-HUB-ID` with your valid Docker Hub id.
 
 2. Put your keystore file in `YOURDIRECTORY/UTC...`
 
 3. Put the password.txt file in: `YOURDIRECTORY/password.txt`
 
-`Note: Password file must be named password.txt and the keystore file name must start with UTC... .`
+`Note: The password file must be named password.txt and the keystore file name must start with UTC...`
 
 ## Run a Gateway
 
 Change the parameter `YOURDIRECTORY` to your local directory
 
-### Pull image from repository:
+### Pull Gateway image from repository
 
 `docker pull fusionnetwork/gateway2:latest`
 
-### Run a Gateway
-`docker run -it -p 9000:9000 -p 9001:9001 -p 40408:40408 -v YOURDIRECTORY:/fusion-node  fusionnetwork/gateway2`
+### Run a Gateway from the image
 
-### Build your own Gateway (optional)
+`docker run -it -p 9000:9000 -p 9001:9001 -p 40408:40408 -v YOURDIRECTORY:/fusion-node fusionnetwork/gateway2`
+
+### Build your own Gateway image (optional)
+
 `docker build --file Dockerfile.gtw -t YOUR-DOCKER-HUB-ID/gateway2 .`
 
 ### Run a Gateway using your image
-`docker run -it -p 9001:9001 -v YOURDIRECTORY:/fusion-node  YOUR-DOCKER-HUB-ID/gateway2`
 
-Remember to replace `YOUR-DOCKER-HUB-ID` string with your valid Docker Hub id.
+`docker run -it -p 9000:9000 -p 9001:9001 -p 40408:40408 -v YOURDIRECTORY:/fusion-node YOUR-DOCKER-HUB-ID/gateway2`
+
+Remember to replace `YOUR-DOCKER-HUB-ID` with your valid Docker Hub id.
 
 You can now connect via `ws://localhost:9001`
 
@@ -55,100 +62,96 @@ You can now connect via `ws://localhost:9001`
 
 Change the parameter `YOURDIRECTORY` to your local directory
 
-### Pull MinerAndLocalGateway image from repository:
+### Pull MinerAndLocalGateway image from repository
 
 `docker pull fusionnetwork/minerandlocalgateway2:latest`
 
-### Run a MinerAndLocalGateway
+### Run a MinerAndLocalGateway from the image
 
-`docker run -it -p 127.0.0.1:9000:9000 -p 127.0.0.1:9001:9001 -p 40408:40408 -v YOURDIRECTORY:/fusion-node fusionnetwork/minerandlocalgateway2 -u <account to unlock>  -e MinerAndLocalGateway`
+`docker run -it -p 127.0.0.1:9000:9000 -p 127.0.0.1:9001:9001 -p 40408:40408 -v YOURDIRECTORY:/fusion-node fusionnetwork/minerandlocalgateway2 -u <account to unlock> -e MyFusionMinerAndLocalGateway`
 
-### Build your own MinerAndLocalGateway (optional)
+### Build your own MinerAndLocalGateway image (optional)
 `docker build --file Dockerfile.minerLocalGtw -t YOUR-DOCKER-HUB-ID/minerandlocalgateway2 .`
 
 ### Run a MinerAndLocalGateway using your image
 
-`docker run -it -p 127.0.0.1:9000:9000 -p 127.0.0.1:9000:9000/udp -p 127.0.0.1:9001:9001 -p 127.0.0.1:9001:9001/udp -p 40407:40407 -p 40408:40408 -v YOURDIRECTORY:/fusion-node YOUR-DOCKER-HUB-ID/minerandlocalgateway2 -u <account to unlock>  -e MinerAndLocalGateway`
+`docker run -it -p 127.0.0.1:9000:9000 -p 127.0.0.1:9001:9001 -p 40408:40408 -v YOURDIRECTORY:/fusion-node YOUR-DOCKER-HUB-ID/minerandlocalgateway2 -u <account to unlock> -e MyFusionMinerAndLocalGateway`
 
 Remember to:
-1. Replace `YOUR-DOCKER-HUB-ID` string with your valid Docker Hub id.
+1. Replace `YOUR-DOCKER-HUB-ID` with your valid Docker Hub id.
 
 2. Put your keystore file in `YOURDIRECTORY/UTC...`
 
 3. Put the password.txt file in: `YOURDIRECTORY/password.txt`
 
-`Note: Password file must be named password.txt and the keystore must have UTC in it's name.`
+`Note: The password file must be named password.txt and the keystore file name must start with UTC...`
 
 You can now connect via `ws://localhost:9001`
 
-## Run a miner (Ubuntu 16.04)
+## Run a miner (Ubuntu 18.04)
 
-Please, to run a miner on Ubuntu use the following guide.
+To run a miner on Ubuntu, please use the following guide.
 
-Open up the terminal and execute the following commands:
+Open up the terminal and execute these commands:
 
 `sudo apt-get update`
 
 `sudo apt-get install docker.io`
 
-Now it is time to pay attention since we need to have all directories set up correctly.
+Now it is time to pay attention, since we need to have all directories set up correctly.
 
-Replace the following to fit you:
+Replace the following to match your local environment:
 
-`THEDIRECTORYFORYOURNODE` = (example: /home/yourname/psn)
+`YOURDIRECTORY` = (example: /var/lib/fusion)
 
-`YOURWALLETADDRESSHERE` = (example: '0xwhatever') | Note : Single quotes must not be removed.
+`YOURWALLETADDRESS` = (example: '0x0000000000000000000000000000000000000000') | Note : Single quotes must not be removed.
 
-`NAMEOFYOURNODEHERE` = AFusionNode
+`NAMEOFYOURNODE` = (example: MyFusionNode)
 
 Type in: `sudo nano runpsn.sh`
-paste in the following line with your corresponding replacements:
+Paste the following line with your corresponding replacements:
 
-`sudo docker run -v THEDIRECTORYFORYOURNODE:/fusion-node fusionnetwork/efsn -u 'YOURWALLETADDRESSHERE' -e NAMEOFYOURNODEHERE`
+`sudo docker run -it -p 40408:40408 -v YOURDIRECTORY:/fusion-node fusionnetwork/efsn2 -u YOURWALLETADDRESS -e NAMEOFYOURNODE`
 
-Save the file by hitting `CTRL+O` and exit Nano by pressing `CTRL+X`
+Save the file by hitting `CTRL+O` and exit nano by pressing `CTRL+X`
 
-We now have to make our .sh file executable. Run the following commands:
+We now have to make the file executable. Run the following command:
 
 `sudo chmod +x runpsn.sh`
 
-Execute the sh file by running:
+Put your keystore into `YOURDIRECTORY`. If the directory doesn't exist yet, create it like this:
+
+`sudo mkdir -p YOURDIRECTORY`
+
+Also put a file called password.txt into the same directory. It must contain only the password for the keystore.
+
+`Note: The password file must be named password.txt and the keystore file name must start with UTC...`
+
+Now start the miner by running:
 
 `sudo ./runpsn.sh`
 
-You will now notice that the node doesn't run because the password file and keystore file are missing.
-
-Put your keystore in the `THEDIRECTORYFORYOURNODE/data/keystore` folder
-
-and the password.txt file in: `THEDIRECTORYFORYOURNODE/password.txt`
-
-`Note: Password file must be named password.txt and the keystore must have UTC in it's name.`
-
-After finishing the above tasks run the node again by typing.
-
-`sudo ./runpsn.sh`
-
-Your node is now set up successfully.
+Your miner is now set up successfully. Note that you also have to buy tickets to participate in staking.
 
 ## API Reference
 
-The API reference can be found [here](https://github.com/FUSIONFoundation/web3-fusion-extend) 
+The API reference can be found [here](https://fusionapi.readthedocs.io/en/latest/) 
 
-## Building the source
+## Building from source
 
-For prerequisites and detailed build instructions please read the
-[Installation Instructions](https://github.com/FusionFoundation/efsn/wiki/Building-Ethereum)
-on the wiki.
-
-Building efsn requires both a Go (version 1.7 or later) and a C compiler.
+Building efsn requires both a Go (version 1.11 or later) and a C compiler.
 You can install them using your favourite package manager.
-Once the dependencies are installed, run
 
-    make efsn
+On Ubuntu 18.04, run these commands to build efsn:
 
-or, to build the full suite of utilities:
-
-    make all
+```
+add-apt-repository ppa:longsleep/golang-backports
+apt-get update
+apt-get install golang-go build-essential
+git clone https://github.com/FUSIONFoundation/efsn.git
+cd efsn
+make efsn
+```
 
 ## Executables
 
