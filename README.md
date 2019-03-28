@@ -13,9 +13,11 @@ Change the parameter `YOURDIRECTORY` to your local directory
 `docker pull fusionnetwork/efsn2:latest`
 
 ### Run a Miner from the image
+
 1. With auto-purchase tickets disabled
 
 `docker run -it -p 40408:40408 -v YOURDIRECTORY:/fusion-node fusionnetwork/efsn2 -u <account to unlock> -e MyFusionMiner`
+
 2. With auto-purchase tickets enabled
 
 `docker run -it -p 40408:40408 -v YOURDIRECTORY:/fusion-node fusionnetwork/efsn2 -u <account to unlock> -e MyFusionMiner -a`
@@ -77,6 +79,7 @@ Change the parameter `YOURDIRECTORY` to your local directory
 1. With auto-purchase tickets disabled
 
 `docker run -it -p 127.0.0.1:9000:9000 -p 127.0.0.1:9001:9001 -p 40408:40408 -v YOURDIRECTORY:/fusion-node fusionnetwork/minerandlocalgateway2 -u <account to unlock> -e MyFusionMinerAndLocalGateway`
+
 2. With auto-purchase tickets enabled
 
 `docker run -it -p 127.0.0.1:9000:9000 -p 127.0.0.1:9001:9001 -p 40408:40408 -v YOURDIRECTORY:/fusion-node fusionnetwork/minerandlocalgateway2 -u <account to unlock> -e MyFusionMinerAndLocalGateway -a`
