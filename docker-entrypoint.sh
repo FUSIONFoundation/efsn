@@ -86,4 +86,4 @@ echo "final cmd_options updated to $cmd_options"
 
 
 # efsn  --unlock $unlock --ethstats 
-efsn $cmd_options
+eval "efsn $cmd_options"
