@@ -25,7 +25,7 @@ import (
 
 const (
 	wiggleTime           = 500 * time.Millisecond // Random delay (per commit) to allow concurrent commits
-	delayTimeModifier    = 30                     // adjust factor
+	DelayTimeModifier    = 30                     // adjust factor
 	adjustIntervalBlocks = 10                     // adjust delay time by blocks
 )
 
@@ -56,6 +56,7 @@ var (
 	extraVanity               = 32
 	extraSeal                 = 65
 	maxBlockTime       uint64 = 120 // 2 minutes
+	MaxBlockTime              = maxBlockTime
 	ticketWeightStep          = 2   // 2%
 	SelectedTicketTime        = &selectedTicketTime{info: make(map[common.Hash]*selectedInfo)}
 	maxTickets                = new(big.Int).SetBytes(maxBytes)
@@ -914,7 +915,7 @@ func updateSelectedTicketTime(header *types.Header, ticketID common.Hash, round 
 	}
 }
 
-func haveSelectedTicketTime(header *types.Header) (uint64, uint64, error) {
+func HaveSelectedTicketTime(header *types.Header) (uint64, uint64, error) {
 	SelectedTicketTime.Lock()
 	defer SelectedTicketTime.Unlock()
 
@@ -1151,7 +1152,7 @@ func (c *DaTong) PreProcess(chain consensus.ChainReader, header *types.Header, s
 func (dt *DaTong) calcDelayTime(chain consensus.ChainReader, header *types.Header) (time.Duration, error) {
 	list := uint64(0)
 	err := errors.New("")
-	_, list, err = haveSelectedTicketTime(header)
+	_, list, err = HaveSelectedTicketTime(header)
 	if err != nil {
 		return time.Duration(int64(0)) * time.Millisecond, err
 	}
@@ -1159,7 +1160,7 @@ func (dt *DaTong) calcDelayTime(chain consensus.ChainReader, header *types.Heade
 	// delayTime = headerTime + (15 - 2) - time.Now
 	newBlockTime := new(big.Int).Add(header.Time, new(big.Int).SetUint64(dt.config.Period-2))
 	delayTime := time.Unix(newBlockTime.Int64(), 0).Sub(time.Now())
-	delayTime += time.Duration(list*uint64(delayTimeModifier)) * time.Second
+	delayTime += time.Duration(list * uint64(DelayTimeModifier)) * time.Second
 	if header.Number.Uint64() < (adjustIntervalBlocks + 2) {
 		return delayTime, nil
 	}
@@ -1181,13 +1182,13 @@ func (dt *DaTong) calcDelayTime(chain consensus.ChainReader, header *types.Heade
 	delayTime -= adjust
 	if delayTime < 0 {
 		if list > 0 {
-			delayTime = time.Duration(list*uint64(delayTimeModifier)) * time.Second
+			delayTime = time.Duration(list*uint64(DelayTimeModifier)) * time.Second
 		} else {
 			delayTime = time.Duration(1) * time.Second
 		}
-	} else if delayTime < (time.Duration(list*uint64(delayTimeModifier)) * time.Second) {
+	} else if delayTime < (time.Duration(list*uint64(DelayTimeModifier)) * time.Second) {
 		if list > 0 {
-			delayTime += time.Duration(list*uint64(delayTimeModifier)) * time.Second
+			delayTime += time.Duration(list*uint64(DelayTimeModifier)) * time.Second
 		}
 	}
 
