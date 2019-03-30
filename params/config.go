@@ -57,19 +57,21 @@ var (
 		BloomRoot:    common.HexToHash("0xd38be1a06aabd568e10957fee4fcc523bc64996bcf31bae3f55f86e0a583919f"),
 	}
 
-	// TestnetChainConfig contains the chain parameters to run a node on the Ropsten test network.
+	// TestnetChainConfig contains the chain parameters to run a node on the fusion test network.
 	TestnetChainConfig = &ChainConfig{
-		ChainID:             big.NewInt(3),
+		ChainID:             big.NewInt(66688),
 		HomesteadBlock:      big.NewInt(0),
-		DAOForkBlock:        nil,
-		DAOForkSupport:      true,
+		DAOForkBlock:        big.NewInt(0),
+		DAOForkSupport:      false,
 		EIP150Block:         big.NewInt(0),
-		EIP150Hash:          common.HexToHash("0x41941023680923e0fe4d74a34bdac8141f2540e3ae90623718e47d66d1ca4a2d"),
-		EIP155Block:         big.NewInt(10),
-		EIP158Block:         big.NewInt(10),
-		ByzantiumBlock:      big.NewInt(1700000),
+		EIP150Hash:          common.HexToHash("0x0"),
+		EIP155Block:         big.NewInt(0),
+		EIP158Block:         big.NewInt(0),
+		ByzantiumBlock:      big.NewInt(0),
 		ConstantinopleBlock: nil,
-		Ethash:              new(EthashConfig),
+		DaTong: &DaTongConfig{
+			Period: 15,
+		},
 	}
 
 	// TestnetTrustedCheckpoint contains the light client trusted checkpoint for the Ropsten test network.

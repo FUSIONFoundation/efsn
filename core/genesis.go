@@ -350,11 +350,17 @@ func DefaultGenesisBlock() *Genesis {
 func DefaultTestnetGenesisBlock() *Genesis {
 	return &Genesis{
 		Config:     params.TestnetChainConfig,
-		Nonce:      66,
-		ExtraData:  hexutil.MustDecode("0x3535353535353535353535353535353535353535353535353535353535353535"),
+		Nonce:      2,
+		ExtraData:  hexutil.MustDecode("0x00000000000000000000000000000000000000000000000000000000000000000000000100000001000000000101040000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"),
 		GasLimit:   16777216,
-		Difficulty: big.NewInt(1048576),
-		Alloc:      decodePrealloc(testnetAllocData),
+		Difficulty: big.NewInt(2),
+		Timestamp:  1553943405, // Mar 30 2019
+		TicketCreateInfo: &TicketsCreate{
+			Owner: common.HexToAddress("0xd2452651834e8f0c19c9d85e0bf09fe99283dabc"),
+			Time:  1553943405, // Mar 30 2019
+			Count: 5,
+		},
+		Alloc: decodePrealloc(testnetAllocData),
 	}
 }
 
