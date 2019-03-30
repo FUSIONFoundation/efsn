@@ -522,13 +522,12 @@ type PrivateFusionAPI struct {
 var privateFusionAPI = &PrivateFusionAPI{}
 
 func AutoBuyTicket(account common.Address, passwd string) {
-	common.AutoBuyTicketChan <- 1 // buy 1 ticket first
-	fbase := FusionBaseArgs{From:account}
-	args := BuyTicketArgs{FusionBaseArgs:fbase}
 	for {
 		select {
 			case <-common.AutoBuyTicketChan:
 				if privateFusionAPI.b.IsMining() {
+					fbase := FusionBaseArgs{From:account}
+					args := BuyTicketArgs{FusionBaseArgs:fbase}
 					privateFusionAPI.BuyTicket(nil, args, passwd)
 				}
 		}

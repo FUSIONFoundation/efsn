@@ -1194,6 +1194,24 @@ func (bc *BlockChain) insertChain(chain types.Blocks) (int, []interface{}, []*ty
 		}
 		proctime := time.Since(bstart)
 
+		// check block squence
+		_, list, err := datong.HaveSelectedTicketTime(block.Header()) // ticket list count before me
+		if list > 0 { // No.1 pass, check others
+			if err == nil && bc.chainConfig.DaTong != nil {
+				parentChk := bc.GetHeaderByNumber(block.Header().Number.Uint64() - 1)
+				recvTime := time.Now().Sub(time.Unix(parentChk.Time.Int64(), 0))
+				if recvTime < (time.Duration(int64(datong.MaxBlockTime + bc.chainConfig.DaTong.Period))*time.Second) { // < 120 s
+					eventTime := time.Duration(bc.chainConfig.DaTong.Period - 4)*time.Second + time.Duration(list * uint64(datong.DelayTimeModifier)) * time.Second // period - 4 + list * 30
+					if recvTime < eventTime {
+						bc.futureBlocks.Remove(block.Hash()) // discard
+						return i, events, coalescedLogs, errors.New("check block sync error")
+					}
+				}
+			} else {
+				return i, events, coalescedLogs, errors.New("check block sync error")
+			}
+		}
+
 		// Write the block to the chain and get the status.
 		status, err := bc.WriteBlockWithState(block, receipts, state)
 		if err != nil {
