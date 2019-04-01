@@ -208,12 +208,12 @@ func (dt *DaTong) verifySeal(chain consensus.ChainReader, header *types.Header, 
 	}
 	var signer common.Address
 	copy(signer[:], crypto.Keccak256(pubkey[1:])[12:])
+	if header.Coinbase != signer {
+		return errors.New("Ticket owner not be the signer")
+	}
 	parentTime := parent.Time.Uint64()
 	time := header.Time.Uint64()
 	if time-parentTime > maxBlockTime {
-		if header.Coinbase != signer {
-			return errors.New("Ticket owner not be the signer")
-		}
 		return nil
 	}
 	// verify ticket
@@ -235,13 +235,11 @@ func (dt *DaTong) verifySeal(chain consensus.ChainReader, header *types.Header, 
 		return errors.New("Ticket owner not be the signer")
 	}
 	// verify tickets pool
-	tickets := make([]*common.Ticket, 0)
 	i := 0
 	for _, v := range ticketMap {
 		if v.Height.Cmp(header.Number) < 0 {
-			temp := v
-			tickets = append(tickets, &temp)
 			i++
+			break
 		}
 	}
 	if i == 0 {
@@ -642,6 +640,7 @@ func (dt *DaTong) Seal(chain consensus.ChainReader, block *types.Block, results 
 	if errc != nil {
 		return errc
 	}
+	log.Info("Seal", "delay", delay, "header.Time", time.Unix(header.Time.Int64(), 0), "number", header.Number, "coinbase", header.Coinbase)
 	go func() {
 		select {
 		case <-stop:
@@ -1173,6 +1172,7 @@ func (dt *DaTong) calcDelayTime(chain consensus.ChainReader, header *types.Heade
 	listTime := time.Duration(list*uint64(DelayTimeModifier)) * time.Second
 	newBlockTime := new(big.Int).Add(header.Time, new(big.Int).SetUint64(dt.config.Period-2))
 	delayTime := time.Unix(newBlockTime.Int64(), 0).Sub(time.Now())
+	log.Info("calcDelayTime", "list", list, "(before +list) delayTime", delayTime, "number", header.Number, "coinbase", header.Coinbase, "header.hash", header.Hash().Hex())
 	delayTime += listTime
 	if header.Number.Uint64() < (adjustIntervalBlocks + 2) {
 		return delayTime, nil
@@ -1208,6 +1208,7 @@ func (dt *DaTong) calcDelayTime(chain consensus.ChainReader, header *types.Heade
 	maxTime := time.Duration(maxBlockTime) * time.Second
 	if delayTime > maxTime {
 		delayTime = maxTime
+		log.Info("calcDelayTime", "(> 2 minutes) delayTime", delayTime, "list", list, "(before +list) delayTime", delayTime, "number", header.Number, "coinbase", header.Coinbase, "header.hash", header.Hash().Hex())
 	}
 
 	return delayTime, nil
@@ -1218,12 +1219,14 @@ func (dt *DaTong) checkListSquence(chain consensus.ChainReader, header *types.He
 	if list > 0 { // No.1 pass, check others
 		parentChk := chain.GetHeaderByNumber(header.Number.Uint64() - 1)
 		recvTime := time.Now().Sub(time.Unix(parentChk.Time.Int64(), 0))
-		if recvTime < (time.Duration(int64(maxBlockTime + dt.config.Period))*time.Second) { // < 120 s
+		//if recvTime < (time.Duration(int64(maxBlockTime + dt.config.Period))*time.Second) { // < 120 s
 			eventTime := time.Duration(dt.config.Period - 4)*time.Second + time.Duration(list * uint64(DelayTimeModifier)) * time.Second // period - 4 + list * 30
+			log.Info("checkListSquence", "header.Number.Uint64()", header.Number.Uint64(), "recvTime", recvTime, "eventTime", eventTime, "header.hash", header.Hash().Hex())
 			if recvTime < eventTime {
+				log.Warn("checkListSquence, discard", "header.Number.Uint64()", header.Number.Uint64(), "recvTime", recvTime, "eventTime", eventTime, "header.hash", header.Hash().Hex())
 				return consensus.ErrFutureBlock
 			}
-		}
+		//}
 	}
 	return nil
 }
@@ -1232,16 +1235,19 @@ func (dt *DaTong) checkListSquence(chain consensus.ChainReader, header *types.He
 func (dt *DaTong) checkTicketInfo(header *types.Header, ticket *common.Ticket) error {
 	// check height
 	if ticket.Height.Cmp(header.Number) >= 0 {
+		log.Warn("checkTicketInfo ticket height mismatch")
 		return errors.New("checkTicketInfo ticket height mismatch")
 	}
 	// check start and expire time
 	if ticket.ExpireTime <= ticket.StartTime ||
 	   ticket.ExpireTime > (ticket.StartTime + 30*24*3600) ||
 	   ticket.ExpireTime < header.Time.Uint64() {
+		log.Warn("checkTicketInfo ticket ExpireTime mismatch")
 		return errors.New("checkTicketInfo ticket ExpireTime mismatch")
 	}
 	// check value
 	if ticket.Value.Cmp(common.TicketPrice()) != 0 {
+		log.Warn("checkTicketInfo ticket Value mismatch")
 		return errors.New("checkTicketInfo ticket Value mismatch")
 	}
 
