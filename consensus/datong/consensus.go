@@ -25,7 +25,7 @@ import (
 
 const (
 	wiggleTime           = 500 * time.Millisecond // Random delay (per commit) to allow concurrent commits
-	delayTimeModifier    = 30                     // adjust factor
+	delayTimeModifier    = 20                     // adjust factor
 	adjustIntervalBlocks = 10                     // adjust delay time by blocks
 )
 
@@ -1160,40 +1160,35 @@ func (dt *DaTong) calcDelayTime(chain consensus.ChainReader, header *types.Heade
 		return time.Duration(int64(0)) * time.Millisecond, err
 	}
 
-	// delayTime = headerTime + (15 - 2) - time.Now
-	newBlockTime := new(big.Int).Add(header.Time, new(big.Int).SetUint64(dt.config.Period-2))
-	delayTime := time.Unix(newBlockTime.Int64(), 0).Sub(time.Now())
-	delayTime += time.Duration(list*uint64(delayTimeModifier)) * time.Second
-	if header.Number.Uint64() < (adjustIntervalBlocks + 2) {
-		return delayTime, nil
-	}
-
-	// adjust = ( ( parent - gparent ) / 2 - (dt.config.Period) ) / dt.config.Period
+	// delayTime = ParentTime + (15 - 2) - time.Now
 	parent := chain.GetHeaderByNumber(header.Number.Uint64() - 1)
-	gparent := chain.GetHeaderByNumber(header.Number.Uint64() - 1 - adjustIntervalBlocks)
-	adjust := ((time.Unix(parent.Time.Int64(), 0).Sub(time.Unix(gparent.Time.Int64(), 0)) / adjustIntervalBlocks) -
-		time.Duration(int64(dt.config.Period))*time.Second) /
-		time.Duration(int64(adjustIntervalBlocks))
+	endTime := new(big.Int).Add(header.Time, new(big.Int).SetUint64(list * uint64(delayTimeModifier) + dt.config.Period-2))
+	delayTime := time.Unix(endTime.Int64(), 0).Sub(time.Now())
+	log.Info("calcDelayTime", "list", list, "delayTime", delayTime, "parent.Time", time.Unix(parent.Time.Int64(), 0), "header.Time", time.Unix(header.Time.Int64(), 0), "number", header.Number, "coinbase", header.Coinbase, "header.hash", header.Hash().Hex())
 
-	stampSecond := time.Duration(2) * time.Second
-	if adjust > stampSecond {
-		adjust = stampSecond
-	} else if adjust < -stampSecond {
-		adjust = -stampSecond
-	}
+	// delay maximum is 2 minuts
 
-	delayTime -= adjust
-	if delayTime < 0 {
-		if list > 0 {
-			delayTime = time.Duration(list*uint64(delayTimeModifier)) * time.Second
-		} else {
-			delayTime = time.Duration(1) * time.Second
-		}
-	} else if delayTime < (time.Duration(list*uint64(delayTimeModifier)) * time.Second) {
-		if list > 0 {
-			delayTime += time.Duration(list*uint64(delayTimeModifier)) * time.Second
-		}
+	if (new(big.Int).Sub(endTime, header.Time)).Uint64() > maxBlockTime {
+		endTime = new(big.Int).Add(header.Time, new(big.Int).SetUint64(maxBlockTime + dt.config.Period - 2 + list))
+		delayTime = time.Unix(endTime.Int64(), 0).Sub(time.Now())
+		log.Info("calcDelayTime", "(> 2 minutes) delayTime", delayTime, "list", list, "number", header.Number, "coinbase", header.Coinbase, "header.hash", header.Hash().Hex())
 	}
+	if header.Number.Uint64() > (adjustIntervalBlocks + 1) {
+		// adjust = ( ( parent - gparent ) / 2 - (dt.config.Period) ) / dt.config.Period
+		gparent := chain.GetHeaderByNumber(header.Number.Uint64() - 1 - adjustIntervalBlocks)
+		adjust := ((time.Unix(parent.Time.Int64(), 0).Sub(time.Unix(gparent.Time.Int64(), 0)) / adjustIntervalBlocks) -
+			time.Duration(int64(dt.config.Period))*time.Second) /
+			time.Duration(int64(adjustIntervalBlocks))
+
+		stampSecond := time.Duration(2) * time.Second
+		if adjust > stampSecond {
+			adjust = stampSecond
+		} else if adjust < -stampSecond {
+			adjust = -stampSecond
+		}
+		delayTime -= adjust
+	}
+	log.Info("calcDelayTime end", "list", list, "delayTime", delayTime, "number", header.Number, "coinbase", header.Coinbase, "header.hash", header.Hash().Hex())
 
 	return delayTime, nil
 }
