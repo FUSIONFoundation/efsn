@@ -1168,54 +1168,41 @@ func (dt *DaTong) calcDelayTime(chain consensus.ChainReader, header *types.Heade
 		return time.Duration(int64(0)) * time.Millisecond, err
 	}
 
-	// delayTime = headerTime + (15 - 2) - time.Now
-	listTime := time.Duration(list*uint64(DelayTimeModifier)) * time.Second
-	newBlockTime := new(big.Int).Add(header.Time, new(big.Int).SetUint64(dt.config.Period-2))
-	delayTime := time.Unix(newBlockTime.Int64(), 0).Sub(time.Now())
-	log.Info("calcDelayTime", "list", list, "(before +list) delayTime", delayTime, "number", header.Number, "coinbase", header.Coinbase, "header.hash", header.Hash().Hex())
-	delayTime += listTime
-	if header.Number.Uint64() < (adjustIntervalBlocks + 2) {
-		return delayTime, nil
-	}
-
-	// adjust = ( ( parent - gparent ) / 2 - (dt.config.Period) ) / dt.config.Period
+	// delayTime = ParentTime + (15 - 2) - time.Now
 	parent := chain.GetHeaderByNumber(header.Number.Uint64() - 1)
-	gparent := chain.GetHeaderByNumber(header.Number.Uint64() - 1 - adjustIntervalBlocks)
-	adjust := ((time.Unix(parent.Time.Int64(), 0).Sub(time.Unix(gparent.Time.Int64(), 0)) / adjustIntervalBlocks) -
-		time.Duration(int64(dt.config.Period))*time.Second) /
-		time.Duration(int64(adjustIntervalBlocks))
+	endTime := new(big.Int).Add(parent.Time, new(big.Int).SetUint64(list * uint64(DelayTimeModifier) + dt.config.Period-2))
+	delayTime := time.Unix(endTime.Int64(), 0).Sub(time.Now())
+	log.Info("calcDelayTime", "list", list, "delayTime", delayTime, "parent.Time", time.Unix(parent.Time.Int64(), 0), "header.Time", time.Unix(header.Time.Int64(), 0), "number", header.Number, "coinbase", header.Coinbase, "header.hash", header.Hash().Hex())
 
-	stampSecond := time.Duration(2) * time.Second
-	if adjust > stampSecond {
-		adjust = stampSecond
-	} else if adjust < -stampSecond {
-		adjust = -stampSecond
-	}
-
-	delayTime -= adjust
-	if delayTime < 0 {
-		if list > 0 {
-			delayTime = listTime
-		} else {
-			delayTime = time.Duration(1) * time.Second
-		}
-	} else if delayTime < listTime {
-		if list > 0 {
-			delayTime += listTime
-		}
-	}
 	// delay maximum is 2 minuts
-	maxTime := time.Duration(maxBlockTime) * time.Second
-	if delayTime > maxTime {
-		delayTime = maxTime
-		log.Info("calcDelayTime", "(> 2 minutes) delayTime", delayTime, "list", list, "(before +list) delayTime", delayTime, "number", header.Number, "coinbase", header.Coinbase, "header.hash", header.Hash().Hex())
+	if (list * uint64(DelayTimeModifier)) > maxBlockTime {
+		endTime := new(big.Int).Add(parent.Time, new(big.Int).SetUint64(maxBlockTime + dt.config.Period-2))
+		delayTime = time.Unix(endTime.Int64(), 0).Sub(time.Now())
+		log.Info("calcDelayTime", "(> 2 minutes) delayTime", delayTime, "list", list, "number", header.Number, "coinbase", header.Coinbase, "header.hash", header.Hash().Hex())
 	}
+	if header.Number.Uint64() > (adjustIntervalBlocks + 1) {
+		// adjust = ( ( parent - gparent ) / 2 - (dt.config.Period) ) / dt.config.Period
+		gparent := chain.GetHeaderByNumber(header.Number.Uint64() - 1 - adjustIntervalBlocks)
+		adjust := ((time.Unix(parent.Time.Int64(), 0).Sub(time.Unix(gparent.Time.Int64(), 0)) / adjustIntervalBlocks) -
+			time.Duration(int64(dt.config.Period))*time.Second) /
+			time.Duration(int64(adjustIntervalBlocks))
+
+		stampSecond := time.Duration(2) * time.Second
+		if adjust > stampSecond {
+			adjust = stampSecond
+		} else if adjust < -stampSecond {
+			adjust = -stampSecond
+		}
+		delayTime -= adjust
+	}
+	log.Info("calcDelayTime end", "list", list, "delayTime", delayTime, "number", header.Number, "coinbase", header.Coinbase, "header.hash", header.Hash().Hex())
 
 	return delayTime, nil
 }
 
 // check list squence
 func (dt *DaTong) checkListSquence(chain consensus.ChainReader, header *types.Header, list uint64) error {
+	log.Info("checkListSquence", "list", list, "header.Number.Uint64()", header.Number.Uint64(), "header.hash", header.Hash().Hex())
 	if list > 0 { // No.1 pass, check others
 		parentChk := chain.GetHeaderByNumber(header.Number.Uint64() - 1)
 		recvTime := time.Now().Sub(time.Unix(parentChk.Time.Int64(), 0))
