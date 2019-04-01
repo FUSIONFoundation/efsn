@@ -197,7 +197,7 @@ func (dt *DaTong) verifySeal(chain consensus.ChainReader, header *types.Header, 
 	} else {
 		parent = chain.GetHeader(header.ParentHash, number-1)
 	}
-	if parent == nil {
+	if parent == nil || parent.Number.Uint64() != number-1 || parent.Hash() != header.ParentHash {
 		return consensus.ErrUnknownAncestor
 	}
 	// verify signature
@@ -235,13 +235,11 @@ func (dt *DaTong) verifySeal(chain consensus.ChainReader, header *types.Header, 
 		return errors.New("Ticket owner not be the signer")
 	}
 	// verify tickets pool
-	tickets := make([]*common.Ticket, 0)
 	i := 0
 	for _, v := range ticketMap {
 		if v.Height.Cmp(header.Number) < 0 {
-			temp := v
-			tickets = append(tickets, &temp)
 			i++
+			break
 		}
 	}
 	if i == 0 {
@@ -252,13 +250,19 @@ func (dt *DaTong) verifySeal(chain consensus.ChainReader, header *types.Header, 
 	if errs != nil {
 		return errs
 	}
-	diff, tid, errv := dt.calcTicketDifficulty(chain, header, statedb)
+	diff, tk, _, errv := dt.calcTicketDifficulty(chain, header, statedb)
 	if errv != nil {
 		return errv
 	}
-	if tid != ticketID {
+	if tk.ID != ticketID {
 		return errors.New("verifySeal ticketID mismatch")
 	}
+	// check ticket info
+	errt := dt.checkTicketInfo(header, tk)
+	if errt != nil {
+		return errt
+	}
+	// check difficulty
 	if diff.Cmp(header.Difficulty) != 0 {
 		return errors.New("verifySeal difficulty mismatch")
 	}
@@ -963,18 +967,18 @@ func (dt *DaTong) HaveBlockBroaded(header *types.Header) bool {
 	return ticketInfo.broad
 }
 
-func (dt *DaTong) calcTicketDifficulty(chain consensus.ChainReader, header *types.Header, statedb *state.StateDB) (*big.Int, common.Hash, error) {
+func (dt *DaTong) calcTicketDifficulty(chain consensus.ChainReader, header *types.Header, statedb *state.StateDB) (*big.Int, *common.Ticket, uint64, error) {
 	parent := chain.GetHeader(header.ParentHash, header.Number.Uint64()-1)
 	if parent == nil {
-		return nil, common.Hash{}, consensus.ErrUnknownAncestor
+		return nil, nil, 0, consensus.ErrUnknownAncestor
 	}
 	parentState, errs := state.New(parent.Root, dt.stateCache)
 	if errs != nil {
-		return nil, common.Hash{}, errs
+		return nil, nil, 0, errs
 	}
 	parentTicketMap, err := parentState.AllTickets()
 	if err != nil {
-		return nil, common.Hash{}, err
+		return nil, nil, 0, err
 	}
 	tickets := make([]*common.Ticket, 0)
 	haveTicket := false
@@ -993,7 +997,7 @@ func (dt *DaTong) calcTicketDifficulty(chain consensus.ChainReader, header *type
 	dt.weight.SetUint64(weight)
 	dt.validTicketNumber.SetUint64(number)
 	if !haveTicket {
-		return nil, common.Hash{}, errors.New("Miner doesn't have ticket")
+		return nil, nil, 0, errors.New("Miner doesn't have ticket")
 	}
 
 	// calc balance before selected ticket from stored tickets list
@@ -1111,12 +1115,12 @@ func (dt *DaTong) calcTicketDifficulty(chain consensus.ChainReader, header *type
 		selectedTime = uint64(len(norep))
 	}
 	if selected == nil {
-		return nil, common.Hash{}, errors.New("myself tickets not selected in maxBlockTime")
+		return nil, nil, 0, errors.New("myself tickets not selected in maxBlockTime")
 	}
 
 	// cacl difficulty
 	ticketsTotal := ticketsTotalAmount - selectedTime
-	return new(big.Int).SetUint64(ticketsTotal), selected.ID, nil
+	return new(big.Int).SetUint64(ticketsTotal), selected, selectedTime, nil
 }
 
 func (dt *DaTong) sortByWeightAndID(tickets []*common.Ticket, parent *types.Header, time uint64) []*common.Ticket {
@@ -1193,3 +1197,24 @@ func (dt *DaTong) calcDelayTime(chain consensus.ChainReader, header *types.Heade
 
 	return delayTime, nil
 }
+
+// check ticket info
+func (dt *DaTong) checkTicketInfo(header *types.Header, ticket *common.Ticket) error {
+	// check height
+	if ticket.Height.Cmp(header.Number) >= 0 {
+		return errors.New("checkTicketInfo ticket height mismatch")
+	}
+	// check start and expire time
+	if ticket.ExpireTime <= ticket.StartTime ||
+	   ticket.ExpireTime < (ticket.StartTime + 30*24*3600) ||
+	   ticket.ExpireTime < header.Time.Uint64() {
+		return errors.New("checkTicketInfo ticket ExpireTime mismatch")
+	}
+	// check value
+	if ticket.Value.Cmp(common.TicketPrice()) < 0 {
+		return errors.New("checkTicketInfo ticket Value mismatch")
+	}
+	return nil
+}
+
+
