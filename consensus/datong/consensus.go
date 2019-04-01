@@ -1211,7 +1211,7 @@ func (dt *DaTong) checkListSquence(chain consensus.ChainReader, header *types.He
 			log.Info("checkListSquence", "header.Number.Uint64()", header.Number.Uint64(), "recvTime", recvTime, "eventTime", eventTime, "header.hash", header.Hash().Hex())
 			if recvTime < eventTime {
 				log.Warn("checkListSquence, discard", "header.Number.Uint64()", header.Number.Uint64(), "recvTime", recvTime, "eventTime", eventTime, "header.hash", header.Hash().Hex())
-				return consensus.ErrFutureBlock
+				return errors.New("check Squence mismatch")
 			}
 		//}
 	}
