@@ -33,6 +33,7 @@ import (
 	"github.com/FusionFoundation/efsn/log"
 	"github.com/FusionFoundation/efsn/metrics"
 	"github.com/FusionFoundation/efsn/params"
+	"github.com/FusionFoundation/efsn/rlp"
 )
 
 const (
@@ -608,6 +609,60 @@ func (pool *TxPool) validateTx(tx *types.Transaction, local bool) error {
 	return nil
 }
 
+func isBuyTicketTx(tx *types.Transaction) bool {
+	param := common.FSNCallParam{}
+	rlp.DecodeBytes(tx.Data(), &param)
+	return param.Func == common.BuyTicketFunc
+}
+
+func getBuyTicketParam(tx *types.Transaction) *common.BuyTicketParam {
+	param := common.FSNCallParam{}
+	rlp.DecodeBytes(tx.Data(), &param)
+	if param.Func == common.BuyTicketFunc {
+		buyTicketParam := common.BuyTicketParam{}
+		rlp.DecodeBytes(param.Data, &buyTicketParam)
+		return &buyTicketParam
+	}
+	return nil
+}
+
+func (pool *TxPool) validateBuyTicketTx(tx *types.Transaction) error {
+	buyTicketParam := getBuyTicketParam(tx)
+	if buyTicketParam == nil {
+		return nil
+	}
+	start := buyTicketParam.Start
+	end := buyTicketParam.End
+	sender, _ := types.Sender(pool.signer, tx)
+
+	if start > uint64(time.Now().Add(pool.config.Lifetime).Unix()) {
+		return fmt.Errorf("wrong buy ticket param, start > now + 3 hour. start: %v, end: %v, sender: %v", start, end, sender.String())
+	}
+	if end <= start || end < start+30*24*3600 {
+		return fmt.Errorf("wrong buy ticket param, end < start + 1 month. start: %v, end: %v, sender: %v", start, end, sender.String())
+	}
+	if end < uint64(time.Now().Unix()+7*24*3600) {
+		return fmt.Errorf("wrong buy ticket param, end < now + 1 week. start: %v, end: %v, sender: %v", start, end, sender.String())
+	}
+
+	found := false
+	pool.all.Range(func(hash common.Hash, tx *types.Transaction) bool {
+		if isBuyTicketTx(tx) {
+			from, _ := types.Sender(pool.signer, tx)
+			if from == sender {
+				found = true
+				return false
+			}
+		}
+		return true
+	})
+	if found == true {
+		return fmt.Errorf("the sender has already bought a ticket in txpool. sender: %v", sender.String())
+	}
+
+	return nil
+}
+
 // add validates a transaction and inserts it into the non-executable queue for
 // later pending promotion and execution. If the transaction is a replacement for
 // an already pending or queued one, it overwrites the previous and returns this
@@ -626,6 +681,11 @@ func (pool *TxPool) add(tx *types.Transaction, local bool) (bool, error) {
 	// If the transaction fails basic validation, discard it
 	if err := pool.validateTx(tx, local); err != nil {
 		log.Trace("Discarding invalid transaction", "hash", hash, "err", err)
+		invalidTxCounter.Inc(1)
+		return false, err
+	}
+	// If the transaction is an invalid buy-ticket tx, discard it
+	if err := pool.validateBuyTicketTx(tx); err != nil {
 		invalidTxCounter.Inc(1)
 		return false, err
 	}
