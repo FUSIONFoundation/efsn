@@ -8,6 +8,7 @@ import (
 	"sort"
 	"sync"
 	"time"
+	"fmt"
 
 	"github.com/FusionFoundation/efsn/accounts"
 	"github.com/FusionFoundation/efsn/common"
@@ -1217,9 +1218,9 @@ func (dt *DaTong) checkBlockTime(chain consensus.ChainReader, header *types.Head
 	}
 	recvTime := time.Now().Sub(time.Unix(parent.Time.Int64(), 0))
 	if recvTime < (time.Duration(int64(maxBlockTime + dt.config.Period))*time.Second) { // < 120 s
-		eventTime := time.Duration(dt.config.Period)*time.Second + time.Duration(list * uint64(delayTimeModifier)) * time.Second
-		if recvTime < eventTime {
-			return errors.New("check Squence mismatch")
+		expectTime := time.Duration(dt.config.Period)*time.Second + time.Duration(list * uint64(delayTimeModifier)) * time.Second
+		if recvTime < expectTime {
+			return fmt.Errorf("block time mismatch: order: %v, receive: %v, expect: %v.", list, recvTime, expectTime)
 		}
 	}
 	return nil
