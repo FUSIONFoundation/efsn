@@ -33,6 +33,7 @@ import (
 	"github.com/FusionFoundation/efsn/log"
 	"github.com/FusionFoundation/efsn/metrics"
 	"github.com/FusionFoundation/efsn/params"
+	"github.com/FusionFoundation/efsn/rlp"
 )
 
 const (
@@ -136,7 +137,8 @@ type TxPoolConfig struct {
 	AccountQueue uint64 // Maximum number of non-executable transaction slots permitted per account
 	GlobalQueue  uint64 // Maximum number of non-executable transaction slots for all accounts
 
-	Lifetime time.Duration // Maximum amount of time non-executable transaction are queued
+	Lifetime         time.Duration // Maximum amount of time non-executable transaction are queued
+	TicketTxLifetime time.Duration // Maximum amount of time buy ticket transaction are queued
 }
 
 // DefaultTxPoolConfig contains the default configurations for the transaction
@@ -153,7 +155,8 @@ var DefaultTxPoolConfig = TxPoolConfig{
 	AccountQueue: 64,
 	GlobalQueue:  1024,
 
-	Lifetime: 3 * time.Hour,
+	Lifetime:         3 * time.Hour,
+	TicketTxLifetime: 10 * time.Minute,
 }
 
 // sanitize checks the provided user configurations and changes anything that's
@@ -325,6 +328,22 @@ func (pool *TxPool) loop() {
 					for _, tx := range pool.queue[addr].Flatten() {
 						pool.removeTx(tx.Hash(), true)
 					}
+				}
+			}
+			for hash, receiveTime := range pool.all.ticketTxBeats {
+				tx := pool.all.Get(hash)
+				if tx == nil {
+					delete(pool.all.ticketTxBeats, hash)
+					continue
+				}
+				// Any buy ticket tx old enough should be removed
+				if time.Since(receiveTime) > pool.config.TicketTxLifetime {
+					log.Info("remove buy ticket tx old enough",
+						"hash", hash,
+						"receive", receiveTime,
+						"passed", time.Since(receiveTime))
+					pool.removeTx(hash, true)
+					delete(pool.all.ticketTxBeats, hash)
 				}
 			}
 			pool.mu.Unlock()
@@ -608,6 +627,60 @@ func (pool *TxPool) validateTx(tx *types.Transaction, local bool) error {
 	return nil
 }
 
+func isBuyTicketTx(tx *types.Transaction) bool {
+	param := common.FSNCallParam{}
+	rlp.DecodeBytes(tx.Data(), &param)
+	return param.Func == common.BuyTicketFunc
+}
+
+func getBuyTicketParam(tx *types.Transaction) *common.BuyTicketParam {
+	param := common.FSNCallParam{}
+	rlp.DecodeBytes(tx.Data(), &param)
+	if param.Func == common.BuyTicketFunc {
+		buyTicketParam := common.BuyTicketParam{}
+		rlp.DecodeBytes(param.Data, &buyTicketParam)
+		return &buyTicketParam
+	}
+	return nil
+}
+
+func (pool *TxPool) validateBuyTicketTx(tx *types.Transaction) error {
+	buyTicketParam := getBuyTicketParam(tx)
+	if buyTicketParam == nil {
+		return nil
+	}
+	start := buyTicketParam.Start
+	end := buyTicketParam.End
+	sender, _ := types.Sender(pool.signer, tx)
+
+	if start > uint64(time.Now().Add(pool.config.Lifetime).Unix()) {
+		return fmt.Errorf("wrong buy ticket param, start > now + 3 hour. start: %v, end: %v, sender: %v", start, end, sender.String())
+	}
+	if end <= start || end < start+30*24*3600 {
+		return fmt.Errorf("wrong buy ticket param, end < start + 1 month. start: %v, end: %v, sender: %v", start, end, sender.String())
+	}
+	if end < uint64(time.Now().Unix()+7*24*3600) {
+		return fmt.Errorf("wrong buy ticket param, end < now + 1 week. start: %v, end: %v, sender: %v", start, end, sender.String())
+	}
+
+	found := false
+	pool.all.Range(func(hash common.Hash, tx *types.Transaction) bool {
+		if isBuyTicketTx(tx) {
+			from, _ := types.Sender(pool.signer, tx)
+			if from == sender {
+				found = true
+				return false
+			}
+		}
+		return true
+	})
+	if found == true {
+		return fmt.Errorf("the sender has already bought a ticket in txpool. sender: %v", sender.String())
+	}
+
+	return nil
+}
+
 // add validates a transaction and inserts it into the non-executable queue for
 // later pending promotion and execution. If the transaction is a replacement for
 // an already pending or queued one, it overwrites the previous and returns this
@@ -626,6 +699,11 @@ func (pool *TxPool) add(tx *types.Transaction, local bool) (bool, error) {
 	// If the transaction fails basic validation, discard it
 	if err := pool.validateTx(tx, local); err != nil {
 		log.Trace("Discarding invalid transaction", "hash", hash, "err", err)
+		invalidTxCounter.Inc(1)
+		return false, err
+	}
+	// If the transaction is an invalid buy-ticket tx, discard it
+	if err := pool.validateBuyTicketTx(tx); err != nil {
 		invalidTxCounter.Inc(1)
 		return false, err
 	}
@@ -1210,14 +1288,16 @@ func (as *accountSet) flatten() []common.Address {
 // peeking into the pool in TxPool.Get without having to acquire the widely scoped
 // TxPool.mu mutex.
 type txLookup struct {
-	all  map[common.Hash]*types.Transaction
-	lock sync.RWMutex
+	all           map[common.Hash]*types.Transaction
+	ticketTxBeats map[common.Hash]time.Time // heartbeat from each buy ticket transactions
+	lock          sync.RWMutex
 }
 
 // newTxLookup returns a new txLookup structure.
 func newTxLookup() *txLookup {
 	return &txLookup{
-		all: make(map[common.Hash]*types.Transaction),
+		all:           make(map[common.Hash]*types.Transaction),
+		ticketTxBeats: make(map[common.Hash]time.Time),
 	}
 }
 
@@ -1255,6 +1335,9 @@ func (t *txLookup) Add(tx *types.Transaction) {
 	defer t.lock.Unlock()
 
 	t.all[tx.Hash()] = tx
+	if isBuyTicketTx(tx) {
+		t.ticketTxBeats[tx.Hash()] = time.Now()
+	}
 }
 
 // Remove removes a transaction from the lookup.
