@@ -137,7 +137,8 @@ type TxPoolConfig struct {
 	AccountQueue uint64 // Maximum number of non-executable transaction slots permitted per account
 	GlobalQueue  uint64 // Maximum number of non-executable transaction slots for all accounts
 
-	Lifetime time.Duration // Maximum amount of time non-executable transaction are queued
+	Lifetime         time.Duration // Maximum amount of time non-executable transaction are queued
+	TicketTxLifetime time.Duration // Maximum amount of time buy ticket transaction are queued
 }
 
 // DefaultTxPoolConfig contains the default configurations for the transaction
@@ -154,7 +155,8 @@ var DefaultTxPoolConfig = TxPoolConfig{
 	AccountQueue: 64,
 	GlobalQueue:  1024,
 
-	Lifetime: 3 * time.Hour,
+	Lifetime:         3 * time.Hour,
+	TicketTxLifetime: 10 * time.Minute,
 }
 
 // sanitize checks the provided user configurations and changes anything that's
@@ -326,6 +328,22 @@ func (pool *TxPool) loop() {
 					for _, tx := range pool.queue[addr].Flatten() {
 						pool.removeTx(tx.Hash(), true)
 					}
+				}
+			}
+			for hash, receiveTime := range pool.all.ticketTxBeats {
+				tx := pool.all.Get(hash)
+				if tx == nil {
+					delete(pool.all.ticketTxBeats, hash)
+					continue
+				}
+				// Any buy ticket tx old enough should be removed
+				if time.Since(receiveTime) > pool.config.TicketTxLifetime {
+					log.Info("remove buy ticket tx old enough",
+						"hash", hash,
+						"receive", receiveTime,
+						"passed", time.Since(receiveTime))
+					pool.removeTx(hash, true)
+					delete(pool.all.ticketTxBeats, hash)
 				}
 			}
 			pool.mu.Unlock()
@@ -1270,14 +1288,16 @@ func (as *accountSet) flatten() []common.Address {
 // peeking into the pool in TxPool.Get without having to acquire the widely scoped
 // TxPool.mu mutex.
 type txLookup struct {
-	all  map[common.Hash]*types.Transaction
-	lock sync.RWMutex
+	all           map[common.Hash]*types.Transaction
+	ticketTxBeats map[common.Hash]time.Time // heartbeat from each buy ticket transactions
+	lock          sync.RWMutex
 }
 
 // newTxLookup returns a new txLookup structure.
 func newTxLookup() *txLookup {
 	return &txLookup{
-		all: make(map[common.Hash]*types.Transaction),
+		all:           make(map[common.Hash]*types.Transaction),
+		ticketTxBeats: make(map[common.Hash]time.Time),
 	}
 }
 
@@ -1315,6 +1335,9 @@ func (t *txLookup) Add(tx *types.Transaction) {
 	defer t.lock.Unlock()
 
 	t.all[tx.Hash()] = tx
+	if isBuyTicketTx(tx) {
+		t.ticketTxBeats[tx.Hash()] = time.Now()
+	}
 }
 
 // Remove removes a transaction from the lookup.
