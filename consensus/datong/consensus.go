@@ -3,12 +3,12 @@ package datong
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"math"
 	"math/big"
 	"sort"
 	"sync"
 	"time"
-	"fmt"
 
 	"github.com/FusionFoundation/efsn/accounts"
 	"github.com/FusionFoundation/efsn/common"
@@ -56,6 +56,7 @@ var (
 	maxProb                   = new(big.Int)
 	extraVanity               = 32
 	extraSeal                 = 65
+	MinBlockTime       uint64 = 15  // 15 seconds
 	maxBlockTime       uint64 = 120 // 2 minutes
 	ticketWeightStep          = 2   // 2%
 	SelectedTicketTime        = &selectedTicketTime{info: make(map[common.Hash]*selectedInfo)}
@@ -1164,13 +1165,13 @@ func (dt *DaTong) calcDelayTime(chain consensus.ChainReader, header *types.Heade
 
 	// delayTime = ParentTime + (15 - 2) - time.Now
 	parent := chain.GetHeaderByNumber(header.Number.Uint64() - 1)
-	endTime := new(big.Int).Add(header.Time, new(big.Int).SetUint64(list * uint64(delayTimeModifier) + dt.config.Period-2))
+	endTime := new(big.Int).Add(header.Time, new(big.Int).SetUint64(list*uint64(delayTimeModifier)+dt.config.Period-2))
 	delayTime := time.Unix(endTime.Int64(), 0).Sub(time.Now())
 
 	// delay maximum is 2 minuts
 
 	if (new(big.Int).Sub(endTime, header.Time)).Uint64() > maxBlockTime {
-		endTime = new(big.Int).Add(header.Time, new(big.Int).SetUint64(maxBlockTime + dt.config.Period - 2 + list))
+		endTime = new(big.Int).Add(header.Time, new(big.Int).SetUint64(maxBlockTime+dt.config.Period-2+list))
 		delayTime = time.Unix(endTime.Int64(), 0).Sub(time.Now())
 	}
 	if header.Number.Uint64() > (adjustIntervalBlocks + 1) {
@@ -1200,8 +1201,8 @@ func (dt *DaTong) checkTicketInfo(header *types.Header, ticket *common.Ticket) e
 	}
 	// check start and expire time
 	if ticket.ExpireTime <= ticket.StartTime ||
-	   ticket.ExpireTime < (ticket.StartTime + 30*24*3600) ||
-	   ticket.ExpireTime < header.Time.Uint64() {
+		ticket.ExpireTime < (ticket.StartTime+30*24*3600) ||
+		ticket.ExpireTime < header.Time.Uint64() {
 		return errors.New("checkTicketInfo ticket ExpireTime mismatch")
 	}
 	// check value
@@ -1213,16 +1214,20 @@ func (dt *DaTong) checkTicketInfo(header *types.Header, ticket *common.Ticket) e
 
 // check block time
 func (dt *DaTong) checkBlockTime(chain consensus.ChainReader, header *types.Header, parent *types.Header, list uint64) error {
+	// check the minium block time
+	if new(big.Int).Sub(header.Time, parent.Time).Cmp(big.NewInt(int64(MinBlockTime))) < 0 {
+		return fmt.Errorf("block time less than minimum: num: %v, time: %v.", header.Number, header.Time)
+	}
+
 	if list <= 0 { // No.1 pass, check others
 		return nil
 	}
 	recvTime := time.Now().Sub(time.Unix(parent.Time.Int64(), 0))
-	if recvTime < (time.Duration(int64(maxBlockTime + dt.config.Period))*time.Second) { // < 120 s
-		expectTime := time.Duration(dt.config.Period)*time.Second + time.Duration(list * uint64(delayTimeModifier)) * time.Second
+	if recvTime < (time.Duration(int64(maxBlockTime+dt.config.Period)) * time.Second) { // < 120 s
+		expectTime := time.Duration(dt.config.Period)*time.Second + time.Duration(list*uint64(delayTimeModifier))*time.Second
 		if recvTime < expectTime {
 			return fmt.Errorf("block time mismatch: order: %v, receive: %v, expect: %v.", list, recvTime, expectTime)
 		}
 	}
 	return nil
 }
-
