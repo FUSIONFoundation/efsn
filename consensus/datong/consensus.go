@@ -28,6 +28,8 @@ const (
 	wiggleTime           = 500 * time.Millisecond // Random delay (per commit) to allow concurrent commits
 	delayTimeModifier    = 20                     // adjust factor
 	adjustIntervalBlocks = 10                     // adjust delay time by blocks
+
+	PSN20CheckAttackEnableHeight = 80000 // check attack after this height
 )
 
 var (
@@ -54,6 +56,7 @@ var (
 	maxProb                   = new(big.Int)
 	extraVanity               = 32
 	extraSeal                 = 65
+	MinBlockTime       int64  = 7   // 7 seconds
 	maxBlockTime       uint64 = 120 // 2 minutes
 	ticketWeightStep          = 2   // 2%
 	SelectedTicketTime        = &selectedTicketTime{info: make(map[common.Hash]*selectedInfo)}
@@ -198,6 +201,11 @@ func (dt *DaTong) verifySeal(chain consensus.ChainReader, header *types.Header, 
 	}
 	if parent == nil || parent.Number.Uint64() != number-1 || parent.Hash() != header.ParentHash {
 		return consensus.ErrUnknownAncestor
+	}
+	if header.Time.Int64()-parent.Time.Int64() < MinBlockTime && number >= PSN20CheckAttackEnableHeight {
+		return fmt.Errorf("block %v header.Time:%v < parent.Time:%v + %v Second",
+			number, header.Time.Int64(), parent.Time.Int64(), MinBlockTime)
+
 	}
 	// verify signature
 	signature := header.Extra[len(header.Extra)-extraSeal:]
