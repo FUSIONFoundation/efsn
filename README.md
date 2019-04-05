@@ -12,7 +12,7 @@ Below are instructions on how to run the docker images of efsn to support a stak
 
 A quick setup script and example video is also provided which can be found at this link. This shows how to quickly setup a staking node.
 
-[Quick Setup](https://github.com/FusionFoundation/efsn/QuickNodeSetup),
+[Quick Setup](https://github.com/FUSIONFoundation/efsn/tree/master/QuickNodeSetup)
 
 ## Run a Miner
 
