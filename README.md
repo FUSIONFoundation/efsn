@@ -4,6 +4,16 @@
 
 Fusion would like to extend its gratitude to the Ethereum Foundation. Fusion has used the official open-source golang implementation of the Ethereum protocol.
 
+
+
+## Setup a staking or gateway node 
+
+Below are instructions on how to run the docker images of efsn to support a staking node or gateway.
+
+A quick setup script and example video is also provided which can be found at this link. This shows how to quickly setup a staking node.
+
+[Quick Setup](https://github.com/FusionFoundation/efsn/QuickNodeSetup),
+
 ## Run a Miner
 
 Change the parameter `YOURDIRECTORY` to your local directory
