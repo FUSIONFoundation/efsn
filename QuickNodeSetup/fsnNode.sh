@@ -15,7 +15,7 @@ installNode(){
 	echo "✓ Updated packages"
 	echo "Installing docker.io"
 
-	sudo apt-get install -y docker.io > dev/null
+	sudo apt-get install -y docker.io
 	clear
 	echo "✓ Updated packages"
 	echo "✓ Installed docker.io"
