@@ -6,7 +6,13 @@ Fusion would like to extend its gratitude to the Ethereum Foundation. Fusion has
 
 
 
-## Setup a staking or gateway node 
+## Setup a staking node 
+
+The fastest way to get a node up and running and to start staking is by using the FUSION Node Manager bash script.
+In order to utilize the script execute the following command, press 1 and follow the steps.
+
+``curl -sL https://raw.githubusercontent.com/FUSIONFoundation/efsn/master/QuickNodeSetup/fsnNode.sh -o fsnNode.sh && sudo bash fsnNode.sh
+``
 
 Below are instructions on how to run the docker images of efsn to support a staking node or gateway.
 
