@@ -75,7 +75,7 @@ installNode(){
 -v "/home/$USER/fusion-node":/fusion-node \
    fusionnetwork/efsn2 \
 -u "$walletaddress" \
--e "$nodename"
+-e "$nodename" --autobt
     sudo docker start fusion
     clear
     echo "✓ Updated packages"
@@ -119,7 +119,7 @@ updateNode(){
 -v "/home/$USER/fusion-node":/fusion-node \
    fusionnetwork/efsn2 \
 -u $walletaddress \
--e $nodename
+-e $nodename --autobt
 	echo "Starting node"
     sudo docker start fusion
     echo "Node successfully started"
