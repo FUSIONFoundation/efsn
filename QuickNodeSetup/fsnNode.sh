@@ -10,9 +10,9 @@ installNode(){
 	echo "NOTE: If you have an existing node installed on /home/$USER/fusion-node it will be wiped!!"
 	pause
 	echo "Updating packages"
-	sudo apt-get update > dev/null
 	curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
 	sudo add-apt-repository deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
+	sudo apt-get update > dev/null
 	clear
 	echo "✓ Updated packages"
 	echo "Installing docker.io"
