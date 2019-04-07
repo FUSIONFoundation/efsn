@@ -11,6 +11,8 @@ installNode(){
 	pause
 	echo "Updating packages"
 	sudo apt-get update > dev/null
+	curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
+	sudo add-apt-repository deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
 	clear
 	echo "✓ Updated packages"
 	echo "Installing docker.io"
@@ -51,7 +53,7 @@ installNode(){
 	echo "✓ Saved wallet address"
 	echo "✓ Saved keystore"
 	echo "✓ Saved password"
-	echo "What name do you want the node to have on node.fusionnetwork.io" ?
+	echo "What name do you want the node to have on node.fusionnetwork.io (No spaces or special characters)" ?
     read nodename
     echo $nodename >> "/home/$USER/fusion-node/nodename.txt"
     clear
