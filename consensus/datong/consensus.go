@@ -22,6 +22,8 @@ import (
 	"github.com/FusionFoundation/efsn/params"
 	"github.com/FusionFoundation/efsn/rlp"
 	"github.com/FusionFoundation/efsn/rpc"
+
+	cmath "github.com/FusionFoundation/efsn/common/math"
 )
 
 const (
@@ -291,7 +293,7 @@ func (dt *DaTong) Prepare(chain consensus.ChainReader, header *types.Header) err
 	}
 	header.Extra = header.Extra[:extraVanity]
 	header.Extra = append(header.Extra, make([]byte, extraSeal)...)
-	header.Difficulty = dt.CalcDifficulty(chain, parent.Time.Uint64(), parent)
+	header.Difficulty = common.Big0
 	return nil
 }
 
@@ -335,7 +337,7 @@ func (dt *DaTong) Finalize(chain consensus.ChainReader, header *types.Header, st
 		return nil, consensus.ErrUnknownAncestor
 	}
 	parentTime := parent.Time.Uint64()
-	ticketsTotal, selected, selectedTime, retreat, errv := dt.calcTicketDifficulty(chain, header, statedb)
+	difficulty, selected, selectedTime, retreat, errv := dt.calcTicketDifficulty(chain, header, statedb)
 	if errv != nil {
 		return nil, errv
 	}
@@ -408,7 +410,7 @@ func (dt *DaTong) Finalize(chain consensus.ChainReader, header *types.Header, st
 	snap.SetWeight(remainingWeight)
 	snap.SetTicketWeight(remainingWeight)
 	snap.SetTicketNumber(ticketNumber)
-	header.Difficulty = ticketsTotal
+	header.Difficulty = difficulty
 	snapBytes := snap.Bytes()
 	header.Extra = header.Extra[:extraVanity]
 	header.Extra = append(header.Extra, snapBytes...)
@@ -875,8 +877,26 @@ func (dt *DaTong) calcTicketDifficulty(chain consensus.ChainReader, header *type
 	}
 
 	// cacl difficulty
-	ticketsTotal := ticketsTotalAmount - selectedTime
-	return new(big.Int).SetUint64(ticketsTotal), selected, selectedTime, retreat, nil
+	difficulty := new(big.Int).SetUint64(ticketsTotalAmount - selectedTime)
+	if header.Number.Uint64() >= PSN20CheckAttackEnableHeight {
+		// base10 = base * 10 (base > 1)
+		base10 := int64(16)
+		// exponent = max(selectedTime, 50)
+		exponent := int64(selectedTime)
+		if exponent > 50 {
+			exponent = 50
+		}
+		// difficulty = ticketsTotal / pow(base, exponent)
+		//            = ticketsTotal / ( pow(base10, exponent) / pow(10, exponent) )
+		difficulty = new(big.Int).Div(
+			difficulty,
+			new(big.Int).Div(cmath.BigPow(base10, exponent), cmath.BigPow(10, exponent)))
+		if difficulty.Cmp(common.Big1) < 0 {
+			difficulty = common.Big1
+		}
+	}
+
+	return difficulty, selected, selectedTime, retreat, nil
 }
 
 func (dt *DaTong) sortByWeightAndID(tickets []*common.Ticket, parent *types.Header, time uint64) []*common.Ticket {
