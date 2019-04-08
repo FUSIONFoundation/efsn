@@ -31,6 +31,8 @@ const (
 	delayTimeModifier    = 20                     // adjust factor
 	adjustIntervalBlocks = 10                     // adjust delay time by blocks
 
+	maxNumberOfDeletedTickets = 5 // maximum number of tickets to be deleted because not mining block in time
+
 	PSN20CheckAttackEnableHeight = 80000 // check attack after this height
 )
 
@@ -370,7 +372,10 @@ func (dt *DaTong) Finalize(chain consensus.ChainReader, header *types.Header, st
 		Type:     ticketSelect,
 	})
 	//delete tickets before coinbase if selected miner did not Seal
-	for _, t := range retreat {
+	for i, t := range retreat {
+		if i >= maxNumberOfDeletedTickets && header.Number.Uint64() >= PSN20CheckAttackEnableHeight {
+			break
+		}
 		delete(ticketMap, t.ID)
 		headerState.RemoveTicket(t.ID)
 		snap.AddLog(&ticketLog{
