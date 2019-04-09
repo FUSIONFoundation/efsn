@@ -256,7 +256,7 @@ func (dt *DaTong) verifySeal(chain consensus.ChainReader, header *types.Header, 
 	if errs != nil {
 		return errs
 	}
-	diff, tk, listSq, _, errv := dt.calcTicketDifficulty(chain, header, statedb)
+	diff, tk, listSq, _, errv := dt.calcBlockDifficulty(chain, header, statedb)
 	if errv != nil {
 		return errv
 	}
@@ -339,7 +339,7 @@ func (dt *DaTong) Finalize(chain consensus.ChainReader, header *types.Header, st
 		return nil, consensus.ErrUnknownAncestor
 	}
 	parentTime := parent.Time.Uint64()
-	difficulty, selected, selectedTime, retreat, errv := dt.calcTicketDifficulty(chain, header, statedb)
+	difficulty, selected, selectedTime, retreat, errv := dt.calcBlockDifficulty(chain, header, statedb)
 	if errv != nil {
 		return nil, errv
 	}
@@ -782,7 +782,7 @@ func (dt *DaTong) HaveBlockBroaded(header *types.Header) bool {
 	return ticketInfo.broad
 }
 
-func (dt *DaTong) calcTicketDifficulty(chain consensus.ChainReader, header *types.Header, statedb *state.StateDB) (*big.Int, *common.Ticket, uint64, []*common.Ticket, error) {
+func (dt *DaTong) calcBlockDifficulty(chain consensus.ChainReader, header *types.Header, statedb *state.StateDB) (*big.Int, *common.Ticket, uint64, []*common.Ticket, error) {
 	parent := chain.GetHeader(header.ParentHash, header.Number.Uint64()-1)
 	if parent == nil {
 		return nil, nil, 0, nil, consensus.ErrUnknownAncestor
@@ -883,11 +883,10 @@ func (dt *DaTong) calcTicketDifficulty(chain consensus.ChainReader, header *type
 		if exponent > 50 {
 			exponent = 50
 		}
-		// difficulty = ticketsTotal / pow(base, exponent)
-		//            = ticketsTotal / ( pow(base10, exponent) / pow(10, exponent) )
+		// difficulty = ticketsTotal * pow(10, exponent) / pow(base10, exponent)
 		difficulty = new(big.Int).Div(
-			difficulty,
-			new(big.Int).Div(cmath.BigPow(base10, exponent), cmath.BigPow(10, exponent)))
+			new(big.Int).Mul(difficulty, cmath.BigPow(10, exponent)),
+			cmath.BigPow(base10, exponent))
 		if difficulty.Cmp(common.Big1) < 0 {
 			difficulty = common.Big1
 		}
