@@ -357,51 +357,43 @@ func (dt *DaTong) Finalize(chain consensus.ChainReader, header *types.Header, st
 	if len(ticketMap) == 1 {
 		return nil, errors.New("Next block doesn't have ticket, wait buy ticket")
 	}
-	delete(ticketMap, selected.ID)
-	headerState.RemoveTicket(selected.ID)
-	if selected.Height.Cmp(common.Big0) > 0 {
+
+	returnTicket := func(ticket *common.Ticket) {
 		value := common.NewTimeLock(&common.TimeLockItem{
-			StartTime: selected.StartTime,
-			EndTime:   selected.ExpireTime,
-			Value:     selected.Value,
+			StartTime: ticket.StartTime,
+			EndTime:   ticket.ExpireTime,
+			Value:     ticket.Value,
 		})
-		headerState.AddTimeLockBalance(selected.Owner, common.SystemAssetID, value)
+		headerState.AddTimeLockBalance(ticket.Owner, common.SystemAssetID, value)
 	}
-	snap.AddLog(&ticketLog{
-		TicketID: selected.ID,
-		Type:     ticketSelect,
-	})
+
+	deleteTicket := func(ticket *common.Ticket, logType ticketLogType, returnBack bool) {
+		delete(ticketMap, ticket.ID)
+		headerState.RemoveTicket(ticket.ID)
+		snap.AddLog(&ticketLog{
+			TicketID: ticket.ID,
+			Type:     logType,
+		})
+		if returnBack {
+			returnTicket(ticket)
+		}
+	}
+
+	deleteTicket(selected, ticketSelect, selected.Height.Cmp(common.Big0) > 0)
+
 	//delete tickets before coinbase if selected miner did not Seal
 	for i, t := range retreat {
 		if i >= maxNumberOfDeletedTickets && header.Number.Uint64() >= PSN20CheckAttackEnableHeight {
 			break
 		}
-		delete(ticketMap, t.ID)
-		headerState.RemoveTicket(t.ID)
-		snap.AddLog(&ticketLog{
-			TicketID: t.ID,
-			Type:     ticketRetreat,
-		})
+		deleteTicket(t, ticketRetreat, t.Height.Cmp(common.Big0) > 0 && header.Number.Uint64() >= PSN20CheckAttackEnableHeight)
 	}
 
 	remainingWeight := new(big.Int)
 	ticketNumber := 0
 	for _, t := range ticketMap {
 		if t.ExpireTime <= parentTime {
-			delete(ticketMap, t.ID)
-			headerState.RemoveTicket(t.ID)
-			snap.AddLog(&ticketLog{
-				TicketID: t.ID,
-				Type:     ticketExpired,
-			})
-			if t.Height.Cmp(common.Big0) > 0 {
-				value := common.NewTimeLock(&common.TimeLockItem{
-					StartTime: t.StartTime,
-					EndTime:   t.ExpireTime,
-					Value:     t.Value,
-				})
-				headerState.AddTimeLockBalance(t.Owner, common.SystemAssetID, value)
-			}
+			deleteTicket(&t, ticketExpired, t.Height.Cmp(common.Big0) > 0)
 		} else {
 			ticketNumber++
 			weight := new(big.Int).Sub(header.Number, t.Height)
