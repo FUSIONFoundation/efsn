@@ -82,7 +82,7 @@ func (v *BlockValidator) ValidateBody(block *types.Block) error {
 // ValidateRawTransaction validates the given block's raw transactions before applying them
 func (v *BlockValidator) ValidateRawTransaction(block *types.Block) error {
 	blockNumber := block.Number()
-	if blockNumber.Uint64() < datong.PSN20CheckAttackEnableHeight {
+	if blockNumber.Uint64() < datong.PSN20HardFork1EnableHeight {
 		return nil
 	}
 	header := block.Header()

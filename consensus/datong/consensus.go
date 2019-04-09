@@ -33,7 +33,7 @@ const (
 
 	maxNumberOfDeletedTickets = 7 // maximum number of tickets to be deleted because not mining block in time
 
-	PSN20CheckAttackEnableHeight = 80000 // check attack after this height
+	PSN20HardFork1EnableHeight = 90000
 )
 
 var (
@@ -206,7 +206,7 @@ func (dt *DaTong) verifySeal(chain consensus.ChainReader, header *types.Header, 
 	if parent == nil || parent.Number.Uint64() != number-1 || parent.Hash() != header.ParentHash {
 		return consensus.ErrUnknownAncestor
 	}
-	if header.Time.Int64()-parent.Time.Int64() < MinBlockTime && number >= PSN20CheckAttackEnableHeight {
+	if header.Time.Int64()-parent.Time.Int64() < MinBlockTime && number >= PSN20HardFork1EnableHeight {
 		return fmt.Errorf("block %v header.Time:%v < parent.Time:%v + %v Second",
 			number, header.Time.Int64(), parent.Time.Int64(), MinBlockTime)
 
@@ -383,10 +383,10 @@ func (dt *DaTong) Finalize(chain consensus.ChainReader, header *types.Header, st
 
 	//delete tickets before coinbase if selected miner did not Seal
 	for i, t := range retreat {
-		if i >= maxNumberOfDeletedTickets && header.Number.Uint64() >= PSN20CheckAttackEnableHeight {
+		if i >= maxNumberOfDeletedTickets && header.Number.Uint64() >= PSN20HardFork1EnableHeight {
 			break
 		}
-		deleteTicket(t, ticketRetreat, t.Height.Cmp(common.Big0) > 0 && header.Number.Uint64() >= PSN20CheckAttackEnableHeight)
+		deleteTicket(t, ticketRetreat, t.Height.Cmp(common.Big0) > 0 && header.Number.Uint64() >= PSN20HardFork1EnableHeight)
 	}
 
 	remainingWeight := new(big.Int)
@@ -875,7 +875,7 @@ func (dt *DaTong) calcBlockDifficulty(chain consensus.ChainReader, header *types
 
 	// cacl difficulty
 	difficulty := new(big.Int).SetUint64(ticketsTotalAmount - selectedTime)
-	if header.Number.Uint64() >= PSN20CheckAttackEnableHeight {
+	if header.Number.Uint64() >= PSN20HardFork1EnableHeight {
 		// base10 = base * 10 (base > 1)
 		base10 := int64(16)
 		// exponent = max(selectedTime, 50)
