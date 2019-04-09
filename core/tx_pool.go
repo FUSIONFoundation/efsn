@@ -653,7 +653,7 @@ func (pool *TxPool) validateBuyTicketTx(tx *types.Transaction) error {
 	end := buyTicketParam.End
 	sender, _ := types.Sender(pool.signer, tx)
 
-	if start > uint64(time.Now().Add(pool.config.Lifetime).Unix()) {
+	if start > uint64(time.Now().Add(3*time.Hour).Unix()) {
 		return fmt.Errorf("wrong buy ticket param, start > now + 3 hour. start: %v, end: %v, sender: %v", start, end, sender.String())
 	}
 	if end <= start || end < start+30*24*3600 {

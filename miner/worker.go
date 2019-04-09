@@ -27,6 +27,7 @@ import (
 	mapset "github.com/deckarep/golang-set"
 	"github.com/FusionFoundation/efsn/common"
 	"github.com/FusionFoundation/efsn/consensus"
+	"github.com/FusionFoundation/efsn/consensus/datong"
 	"github.com/FusionFoundation/efsn/consensus/misc"
 	"github.com/FusionFoundation/efsn/core"
 	"github.com/FusionFoundation/efsn/core/state"
@@ -830,10 +831,12 @@ func (w *worker) commitNewWork(interrupt *int32, noempty bool, timestamp int64) 
 
 	tstart := time.Now()
 	parent := w.chain.CurrentBlock()
+	minTime := new(big.Int).Add(parent.Time(), big.NewInt(datong.MinBlockTime))
 
-	if parent.Time().Cmp(new(big.Int).SetInt64(timestamp)) >= 0 {
-		timestamp = parent.Time().Int64() + 1
+	if minTime.Cmp(new(big.Int).SetInt64(timestamp)) > 0 {
+		timestamp = minTime.Int64()
 	}
+
 	// this will ensure we're not going off too far in the future
 	if now := time.Now().Unix(); timestamp > now+1 {
 		wait := time.Duration(timestamp-now) * time.Second
