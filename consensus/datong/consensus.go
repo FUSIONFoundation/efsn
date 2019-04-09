@@ -28,10 +28,10 @@ import (
 
 const (
 	wiggleTime           = 500 * time.Millisecond // Random delay (per commit) to allow concurrent commits
-	delayTimeModifier    = 20                     // adjust factor
+	delayTimeModifier    = 15                     // adjust factor
 	adjustIntervalBlocks = 10                     // adjust delay time by blocks
 
-	maxNumberOfDeletedTickets = 5 // maximum number of tickets to be deleted because not mining block in time
+	maxNumberOfDeletedTickets = 7 // maximum number of tickets to be deleted because not mining block in time
 
 	PSN20CheckAttackEnableHeight = 80000 // check attack after this height
 )
