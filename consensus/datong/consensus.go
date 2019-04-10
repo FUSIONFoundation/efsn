@@ -34,6 +34,7 @@ const (
 	maxNumberOfDeletedTickets = 7 // maximum number of tickets to be deleted because not mining block in time
 
 	PSN20HardFork1EnableHeight = 90000
+	PSN20HardFork2EnableHeight = 110000
 )
 
 var (
@@ -269,6 +270,12 @@ func (dt *DaTong) verifySeal(chain consensus.ChainReader, header *types.Header, 
 	if errt != nil {
 		return errt
 	}
+	// check ticket order
+	if number >= PSN20HardFork2EnableHeight {
+		if header.Nonce != types.EncodeNonce(listSq) {
+			return fmt.Errorf("verifySeal ticket order mismatch, have %v, want %v", header.Nonce.Uint64(), listSq)
+		}
+	}
 	// check difficulty
 	if diff.Cmp(header.Difficulty) != 0 {
 		return errors.New("verifySeal difficulty mismatch")
@@ -342,6 +349,9 @@ func (dt *DaTong) Finalize(chain consensus.ChainReader, header *types.Header, st
 	difficulty, selected, selectedTime, retreat, errv := dt.calcBlockDifficulty(chain, header, statedb)
 	if errv != nil {
 		return nil, errv
+	}
+	if header.Number.Uint64() >= PSN20HardFork2EnableHeight {
+		header.Nonce = types.EncodeNonce(selectedTime)
 	}
 
 	updateSelectedTicketTime(header, selected.ID, 0, selectedTime)
