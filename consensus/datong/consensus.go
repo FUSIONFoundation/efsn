@@ -448,17 +448,18 @@ func (dt *DaTong) Seal(chain consensus.ChainReader, block *types.Block, results 
 		return errors.New("Mismatched Signer and Coinbase")
 	}
 
+	// delay time decide block time
+	delay, errc := dt.calcDelayTime(chain, header)
+	if errc != nil {
+		return errc
+	}
+
 	sighash, err := signFn(accounts.Account{Address: header.Coinbase}, sigHash(header).Bytes())
 	if err != nil {
 		return err
 	}
 	copy(header.Extra[len(header.Extra)-extraSeal:], sighash)
 
-	// delay time decide block time
-	delay, errc := dt.calcDelayTime(chain, header)
-	if errc != nil {
-		return errc
-	}
 	go func() {
 		select {
 		case <-stop:
@@ -971,7 +972,6 @@ func (dt *DaTong) calcDelayTime(chain consensus.ChainReader, header *types.Heade
 	delayTime := time.Unix(endTime.Int64(), 0).Sub(time.Now())
 
 	// delay maximum is 2 minuts
-
 	if (new(big.Int).Sub(endTime, header.Time)).Uint64() > maxBlockTime {
 		endTime = new(big.Int).Add(header.Time, new(big.Int).SetUint64(maxBlockTime+dt.config.Period-2+list))
 		delayTime = time.Unix(endTime.Int64(), 0).Sub(time.Now())
@@ -991,7 +991,20 @@ func (dt *DaTong) calcDelayTime(chain consensus.ChainReader, header *types.Heade
 		}
 		delayTime -= adjust
 	}
-
+	// adjust block time if illegal
+	if list > 0 && header.Number.Uint64() >= PSN20HardFork2EnableHeight {
+		recvTime := header.Time.Int64() - parent.Time.Int64()
+		if recvTime < int64(maxBlockTime+dt.config.Period) { // < 120 s
+			expectTime := int64(dt.config.Period + list*delayTimeModifier)
+			if recvTime < expectTime {
+				header.Time = big.NewInt(parent.Time.Int64() + expectTime)
+				minDelayTime := time.Unix(header.Time.Int64(), 0).Sub(time.Now())
+				if delayTime < minDelayTime {
+					delayTime = minDelayTime
+				}
+			}
+		}
+	}
 	return delayTime, nil
 }
 
