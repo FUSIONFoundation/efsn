@@ -1019,7 +1019,12 @@ func (dt *DaTong) checkBlockTime(chain consensus.ChainReader, header *types.Head
 	if list <= 0 { // No.1 pass, check others
 		return nil
 	}
-	recvTime := time.Now().Sub(time.Unix(parent.Time.Int64(), 0))
+	var recvTime time.Duration
+	if header.Number.Uint64() >= PSN20HardFork2EnableHeight {
+		recvTime = time.Duration(header.Time.Int64()-parent.Time.Int64()) * time.Second
+	} else {
+		recvTime = time.Now().Sub(time.Unix(parent.Time.Int64(), 0))
+	}
 	if recvTime < (time.Duration(int64(maxBlockTime+dt.config.Period)) * time.Second) { // < 120 s
 		expectTime := time.Duration(dt.config.Period)*time.Second + time.Duration(list*uint64(delayTimeModifier))*time.Second
 		if recvTime < expectTime {
