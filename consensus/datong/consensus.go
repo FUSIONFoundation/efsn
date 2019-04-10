@@ -480,7 +480,25 @@ func (dt *DaTong) Seal(chain consensus.ChainReader, block *types.Block, results 
 
 // SealHash returns the hash of a block prior to it being sealed.
 func (dt *DaTong) SealHash(header *types.Header) (hash common.Hash) {
-	return sigHash(header)
+	hasher := sha3.NewKeccak256()
+	rlp.Encode(hasher, []interface{}{
+		header.ParentHash,
+		header.UncleHash,
+		header.Coinbase,
+		header.Root,
+		header.TxHash,
+		header.ReceiptHash,
+		header.Bloom,
+		header.Difficulty,
+		header.Number,
+		header.GasLimit,
+		header.GasUsed,
+		header.Extra[:extraVanity],
+		header.MixDigest,
+		header.Nonce,
+	})
+	hasher.Sum(hash[:0])
+	return hash
 }
 
 // CalcDifficulty is the difficulty adjustment algorithm. It returns the difficulty
