@@ -6,12 +6,14 @@ KEYSTORE_DIR=$DATA_DIR/keystore
 unlock=
 ethstats=
 autobt=false
+port=
 
 display_usage() { 
     echo "Commands for Fusion efsn:" 
     echo -e "\n-e value    Reporting name of a ethstats service" 
     echo -e "\n-u value    Account to unlock" 
     echo -e "\n-a          Auto buy tickets" 
+    echo -e "\n-p value    Network listen port" 
     } 
 
 while [ "$1" != "" ]; do
@@ -23,6 +25,9 @@ while [ "$1" != "" ]; do
                                 ethstats=$1
                                 ;;
         -a | --autobt )         autobt=true
+                                ;;
+        -p | --port )           shift
+                                port=$1
                                 ;;
         * )                     display_usage
                                 exit 1
@@ -83,6 +88,11 @@ fi
 if [ "$autobt" = true ]; then
     autobt=" --autobt"
     cmd_options=$cmd_options$autobt 
+fi
+
+if [ "$port" ]; then
+    port=" --port $port"
+    cmd_options=$cmd_options$port 
 fi
 
 echo "flags: $cmd_options$cmd_options_local_gtw"
