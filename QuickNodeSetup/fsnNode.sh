@@ -57,7 +57,7 @@ getCfgValue(){
         cfg_val="$(cat < ${cfg_files[0]} | jq -r '.nodeType')"
     elif [ "$arg" == "nodeName" ]; then
         cfg_files="$CWD_DIR/fusion-node/node.json"
-        cfg_val="$(cat < ${cfg_files[0]} | jq -r '.nodeType')"
+        cfg_val="$(cat < ${cfg_files[0]} | jq -r '.nodeName')"
     fi
     echo "$cfg_val";
 }
@@ -220,7 +220,6 @@ createDockerContainer(){
     fi
 
     if [ "$nodetype" == "minerandlocalgateway2" ]; then
-        echo "Creating $nodetype Docker container."
         sudo docker pull fusionnetwork/minerandlocalgateway2:latest
 
         sudo docker create --name fusion -it -p 127.0.0.1:9000:9000 -p 127.0.0.1:9001:9001 -p 40408:40408 \
@@ -230,7 +229,6 @@ createDockerContainer(){
             -e "$nodename" "$autobt"
 
     elif [ "$nodetype" == "gateway2" ]; then
-        echo "Creating $nodetype Docker container $nodename."        
         sudo docker pull fusionnetwork/gateway2:latest
 
         sudo docker create --name fusion -it --restart unless-stopped \
@@ -240,7 +238,6 @@ createDockerContainer(){
             $ethstats
 
     elif [ "$nodetype" == "efsn2" ]; then
-        echo "Creating $nodetype Docker container."
     	
         sudo docker pull fusionnetwork/efsn2:latest
 
