@@ -4,6 +4,22 @@
 
 Fusion would like to extend its gratitude to the Ethereum Foundation. Fusion has used the official open-source golang implementation of the Ethereum protocol.
 
+
+
+## Setup a staking node 
+
+The fastest way to get a node up and running and to start staking is by using the FUSION Node Manager bash script.
+In order to utilize the script execute the following command, press 1 and follow the steps.
+
+``curl -sL https://raw.githubusercontent.com/FUSIONFoundation/efsn/master/QuickNodeSetup/fsnNode.sh -o fsnNode.sh && sudo bash fsnNode.sh
+``
+
+Below are instructions on how to run the docker images of efsn to support a staking node or gateway.
+
+A quick setup script and example video is also provided which can be found at this link. This shows how to quickly setup a staking node.
+
+[Quick Setup](https://github.com/FUSIONFoundation/efsn/tree/master/QuickNodeSetup)
+
 ## Run a Miner
 
 Change the parameter `YOURDIRECTORY` to your local directory
