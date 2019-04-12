@@ -1,8 +1,7 @@
 #!/bin/bash
 # FUSION Foundation
 
-# CWD_DIR="/home/$USER"
-CWD_DIR="$PWD"
+CWD_DIR="/home/$USER"
 
 pause(){
   read -p "Press [Enter] key to continue..." fackEnterKey
