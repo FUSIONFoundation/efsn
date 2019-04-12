@@ -197,18 +197,10 @@ createDockerContainer(){
     nodename="$(getCfgValue 'nodeName')"
     
     if [ "$autobt" == "true" ]; then
-        # turn outobuy on
+        # turn autobuy on
         autobt="--autobt"
     else
-        # turn outobuy off
-        autobt=""
-    fi
-
-    if [ "$autobt" == "true" ]; then
-        # turn outobuy on
-        autobt=" --autobt"
-    else
-        # turn outobuy off
+        # turn autobuy off
         autobt=""
     fi
 
