@@ -66,6 +66,8 @@ var (
 	ticketWeightStep          = 2   // 2%
 	SelectedTicketTime        = &selectedTicketTime{info: make(map[common.Hash]*selectedInfo)}
 	maxTickets                = new(big.Int).SetBytes(maxBytes)
+
+	maxBlockTimeAfterFork2 uint64 = 600 // 10 minutes
 )
 
 var (
@@ -981,9 +983,13 @@ func (dt *DaTong) calcDelayTime(chain consensus.ChainReader, header *types.Heade
 	endTime := new(big.Int).Add(header.Time, new(big.Int).SetUint64(list*uint64(delayTimeModifier)+dt.config.Period-2))
 	delayTime := time.Unix(endTime.Int64(), 0).Sub(time.Now())
 
-	// delay maximum is 2 minuts
-	if (new(big.Int).Sub(endTime, header.Time)).Uint64() > maxBlockTime {
-		endTime = new(big.Int).Add(header.Time, new(big.Int).SetUint64(maxBlockTime+dt.config.Period-2+list))
+	// delay maximum
+	maxDelay := maxBlockTime
+	if header.Number.Uint64() >= PSN20HardFork2EnableHeight {
+		maxDelay = maxBlockTimeAfterFork2
+	}
+	if (new(big.Int).Sub(endTime, header.Time)).Uint64() > maxDelay {
+		endTime = new(big.Int).Add(header.Time, new(big.Int).SetUint64(maxDelay+dt.config.Period-2+list))
 		delayTime = time.Unix(endTime.Int64(), 0).Sub(time.Now())
 	}
 	if header.Number.Uint64() > (adjustIntervalBlocks + 1) {
@@ -1004,7 +1010,7 @@ func (dt *DaTong) calcDelayTime(chain consensus.ChainReader, header *types.Heade
 	// adjust block time if illegal
 	if list > 0 && header.Number.Uint64() >= PSN20HardFork2EnableHeight {
 		recvTime := header.Time.Int64() - parent.Time.Int64()
-		if recvTime < int64(maxBlockTime+dt.config.Period) { // < 120 s
+		if recvTime < int64(maxDelay+dt.config.Period) {
 			expectTime := int64(dt.config.Period + list*delayTimeModifier)
 			if recvTime < expectTime {
 				header.Time = big.NewInt(parent.Time.Int64() + expectTime)
@@ -1043,12 +1049,15 @@ func (dt *DaTong) checkBlockTime(chain consensus.ChainReader, header *types.Head
 		return nil
 	}
 	var recvTime time.Duration
+	needCheck := false
 	if header.Number.Uint64() >= PSN20HardFork2EnableHeight {
 		recvTime = time.Duration(header.Time.Int64()-parent.Time.Int64()) * time.Second
+		needCheck = recvTime < (time.Duration(int64(maxBlockTimeAfterFork2+dt.config.Period)) * time.Second) //10 min
 	} else {
 		recvTime = time.Now().Sub(time.Unix(parent.Time.Int64(), 0))
+		needCheck = recvTime < (time.Duration(int64(maxBlockTime+dt.config.Period)) * time.Second) // 2 min
 	}
-	if recvTime < (time.Duration(int64(maxBlockTime+dt.config.Period)) * time.Second) { // < 120 s
+	if needCheck {
 		expectTime := time.Duration(dt.config.Period)*time.Second + time.Duration(list*uint64(delayTimeModifier))*time.Second
 		if recvTime < expectTime {
 			return fmt.Errorf("block time mismatch: order: %v, receive: %v, expect: %v.", list, recvTime, expectTime)
