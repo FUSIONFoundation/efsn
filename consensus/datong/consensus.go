@@ -352,9 +352,10 @@ func (dt *DaTong) Finalize(chain consensus.ChainReader, header *types.Header, st
 	}
 	if header.Number.Uint64() >= PSN20HardFork2EnableHeight {
 		header.Nonce = types.EncodeNonce(selectedTime)
+	} else {
+		updateSelectedTicketTime(header, selected.ID, 0, selectedTime)
 	}
 
-	updateSelectedTicketTime(header, selected.ID, 0, selectedTime)
 	snap := newSnapshot()
 
 	//update tickets
@@ -935,11 +936,15 @@ func (c *DaTong) PreProcess(chain consensus.ChainReader, header *types.Header, s
 }
 
 func (dt *DaTong) calcDelayTime(chain consensus.ChainReader, header *types.Header) (time.Duration, error) {
-	list := uint64(0)
-	err := errors.New("")
-	_, list, err = haveSelectedTicketTime(header)
-	if err != nil {
-		return time.Duration(int64(0)) * time.Millisecond, err
+	var list uint64
+	if header.Number.Uint64() >= PSN20HardFork2EnableHeight {
+		list = header.Nonce.Uint64()
+	} else {
+		err := errors.New("")
+		_, list, err = haveSelectedTicketTime(header)
+		if err != nil {
+			return time.Duration(int64(0)) * time.Millisecond, err
+		}
 	}
 
 	// delayTime = ParentTime + (15 - 2) - time.Now
