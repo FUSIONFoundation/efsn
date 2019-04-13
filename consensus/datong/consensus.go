@@ -826,6 +826,7 @@ func (dt *DaTong) calcBlockDifficulty(chain consensus.ChainReader, header *types
 		return nil, nil, 0, nil, err
 	}
 	tickets := make([]*common.Ticket, 0)
+	ticketOwners := make(map[common.Address]struct{})
 	haveTicket := false
 	var weight, number uint64
 	for _, v := range parentTicketMap {
@@ -837,6 +838,10 @@ func (dt *DaTong) calcBlockDifficulty(chain consensus.ChainReader, header *types
 			}
 			temp := v
 			tickets = append(tickets, &temp)
+			_, exist := ticketOwners[temp.Owner]
+			if exist == false {
+				ticketOwners[temp.Owner] = struct{}{}
+			}
 		}
 	}
 	dt.weight.SetUint64(weight)
@@ -920,6 +925,11 @@ func (dt *DaTong) calcBlockDifficulty(chain consensus.ChainReader, header *types
 		if difficulty.Cmp(common.Big1) < 0 {
 			difficulty = common.Big1
 		}
+	}
+	if header.Number.Uint64() >= PSN20HardFork2EnableHeight {
+		numberOfticketOwners := uint64(len(ticketOwners))
+		adjust := new(big.Int).SetUint64(numberOfticketOwners - selectedTime)
+		difficulty = new(big.Int).Add(difficulty, adjust)
 	}
 
 	return difficulty, selected, selectedTime, retreat, nil
