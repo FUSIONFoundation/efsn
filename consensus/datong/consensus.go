@@ -34,7 +34,7 @@ const (
 	maxNumberOfDeletedTickets = 7 // maximum number of tickets to be deleted because not mining block in time
 
 	PSN20HardFork1EnableHeight = 90000
-	PSN20HardFork2EnableHeight = 110000
+	PSN20HardFork2EnableHeight = 99000
 )
 
 var (
