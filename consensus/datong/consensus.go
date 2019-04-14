@@ -34,6 +34,7 @@ const (
 	maxNumberOfDeletedTickets = 7 // maximum number of tickets to be deleted because not mining block in time
 
 	PSN20HardFork1EnableHeight = 90000
+	PSN20HardFork2EnableHeight = 99000
 )
 
 var (
@@ -65,6 +66,8 @@ var (
 	ticketWeightStep          = 2   // 2%
 	SelectedTicketTime        = &selectedTicketTime{info: make(map[common.Hash]*selectedInfo)}
 	maxTickets                = new(big.Int).SetBytes(maxBytes)
+
+	maxBlockTimeAfterFork2 uint64 = 600 // 10 minutes
 )
 
 var (
@@ -269,6 +272,12 @@ func (dt *DaTong) verifySeal(chain consensus.ChainReader, header *types.Header, 
 	if errt != nil {
 		return errt
 	}
+	// check ticket order
+	if number >= PSN20HardFork2EnableHeight {
+		if header.Nonce != types.EncodeNonce(listSq) {
+			return fmt.Errorf("verifySeal ticket order mismatch, have %v, want %v", header.Nonce.Uint64(), listSq)
+		}
+	}
 	// check difficulty
 	if diff.Cmp(header.Difficulty) != 0 {
 		return errors.New("verifySeal difficulty mismatch")
@@ -343,8 +352,12 @@ func (dt *DaTong) Finalize(chain consensus.ChainReader, header *types.Header, st
 	if errv != nil {
 		return nil, errv
 	}
+	if header.Number.Uint64() >= PSN20HardFork2EnableHeight {
+		header.Nonce = types.EncodeNonce(selectedTime)
+	} else {
+		updateSelectedTicketTime(header, selected.ID, 0, selectedTime)
+	}
 
-	updateSelectedTicketTime(header, selected.ID, 0, selectedTime)
 	snap := newSnapshot()
 
 	//update tickets
@@ -437,17 +450,18 @@ func (dt *DaTong) Seal(chain consensus.ChainReader, block *types.Block, results 
 		return errors.New("Mismatched Signer and Coinbase")
 	}
 
+	// delay time decide block time
+	delay, errc := dt.calcDelayTime(chain, header)
+	if errc != nil {
+		return errc
+	}
+
 	sighash, err := signFn(accounts.Account{Address: header.Coinbase}, sigHash(header).Bytes())
 	if err != nil {
 		return err
 	}
 	copy(header.Extra[len(header.Extra)-extraSeal:], sighash)
 
-	// delay time decide block time
-	delay, errc := dt.calcDelayTime(chain, header)
-	if errc != nil {
-		return errc
-	}
 	go func() {
 		select {
 		case <-stop:
@@ -469,7 +483,25 @@ func (dt *DaTong) Seal(chain consensus.ChainReader, block *types.Block, results 
 
 // SealHash returns the hash of a block prior to it being sealed.
 func (dt *DaTong) SealHash(header *types.Header) (hash common.Hash) {
-	return sigHash(header)
+	hasher := sha3.NewKeccak256()
+	rlp.Encode(hasher, []interface{}{
+		header.ParentHash,
+		header.UncleHash,
+		header.Coinbase,
+		header.Root,
+		header.TxHash,
+		header.ReceiptHash,
+		header.Bloom,
+		header.Difficulty,
+		header.Number,
+		header.GasLimit,
+		header.GasUsed,
+		header.Extra[:extraVanity],
+		header.MixDigest,
+		header.Nonce,
+	})
+	hasher.Sum(hash[:0])
+	return hash
 }
 
 // CalcDifficulty is the difficulty adjustment algorithm. It returns the difficulty
@@ -796,6 +828,7 @@ func (dt *DaTong) calcBlockDifficulty(chain consensus.ChainReader, header *types
 		return nil, nil, 0, nil, err
 	}
 	tickets := make([]*common.Ticket, 0)
+	ticketOwners := make(map[common.Address]struct{})
 	haveTicket := false
 	var weight, number uint64
 	for _, v := range parentTicketMap {
@@ -807,6 +840,10 @@ func (dt *DaTong) calcBlockDifficulty(chain consensus.ChainReader, header *types
 			}
 			temp := v
 			tickets = append(tickets, &temp)
+			_, exist := ticketOwners[temp.Owner]
+			if exist == false {
+				ticketOwners[temp.Owner] = struct{}{}
+			}
 		}
 	}
 	dt.weight.SetUint64(weight)
@@ -891,6 +928,11 @@ func (dt *DaTong) calcBlockDifficulty(chain consensus.ChainReader, header *types
 			difficulty = common.Big1
 		}
 	}
+	if header.Number.Uint64() >= PSN20HardFork2EnableHeight {
+		numberOfticketOwners := uint64(len(ticketOwners))
+		adjust := new(big.Int).SetUint64(numberOfticketOwners - selectedTime)
+		difficulty = new(big.Int).Add(difficulty, adjust)
+	}
 
 	return difficulty, selected, selectedTime, retreat, nil
 }
@@ -925,11 +967,15 @@ func (c *DaTong) PreProcess(chain consensus.ChainReader, header *types.Header, s
 }
 
 func (dt *DaTong) calcDelayTime(chain consensus.ChainReader, header *types.Header) (time.Duration, error) {
-	list := uint64(0)
-	err := errors.New("")
-	_, list, err = haveSelectedTicketTime(header)
-	if err != nil {
-		return time.Duration(int64(0)) * time.Millisecond, err
+	var list uint64
+	if header.Number.Uint64() >= PSN20HardFork2EnableHeight {
+		list = header.Nonce.Uint64()
+	} else {
+		err := errors.New("")
+		_, list, err = haveSelectedTicketTime(header)
+		if err != nil {
+			return time.Duration(int64(0)) * time.Millisecond, err
+		}
 	}
 
 	// delayTime = ParentTime + (15 - 2) - time.Now
@@ -937,10 +983,13 @@ func (dt *DaTong) calcDelayTime(chain consensus.ChainReader, header *types.Heade
 	endTime := new(big.Int).Add(header.Time, new(big.Int).SetUint64(list*uint64(delayTimeModifier)+dt.config.Period-2))
 	delayTime := time.Unix(endTime.Int64(), 0).Sub(time.Now())
 
-	// delay maximum is 2 minuts
-
-	if (new(big.Int).Sub(endTime, header.Time)).Uint64() > maxBlockTime {
-		endTime = new(big.Int).Add(header.Time, new(big.Int).SetUint64(maxBlockTime+dt.config.Period-2+list))
+	// delay maximum
+	maxDelay := maxBlockTime
+	if header.Number.Uint64() >= PSN20HardFork2EnableHeight {
+		maxDelay = maxBlockTimeAfterFork2
+	}
+	if (new(big.Int).Sub(endTime, header.Time)).Uint64() > maxDelay {
+		endTime = new(big.Int).Add(header.Time, new(big.Int).SetUint64(maxDelay+dt.config.Period-2+list))
 		delayTime = time.Unix(endTime.Int64(), 0).Sub(time.Now())
 	}
 	if header.Number.Uint64() > (adjustIntervalBlocks + 1) {
@@ -958,7 +1007,20 @@ func (dt *DaTong) calcDelayTime(chain consensus.ChainReader, header *types.Heade
 		}
 		delayTime -= adjust
 	}
-
+	// adjust block time if illegal
+	if list > 0 && header.Number.Uint64() >= PSN20HardFork2EnableHeight {
+		recvTime := header.Time.Int64() - parent.Time.Int64()
+		if recvTime < int64(maxDelay+dt.config.Period) {
+			expectTime := int64(dt.config.Period + list*delayTimeModifier)
+			if recvTime < expectTime {
+				header.Time = big.NewInt(parent.Time.Int64() + expectTime)
+				minDelayTime := time.Unix(header.Time.Int64(), 0).Sub(time.Now())
+				if delayTime < minDelayTime {
+					delayTime = minDelayTime
+				}
+			}
+		}
+	}
 	return delayTime, nil
 }
 
@@ -986,8 +1048,16 @@ func (dt *DaTong) checkBlockTime(chain consensus.ChainReader, header *types.Head
 	if list <= 0 { // No.1 pass, check others
 		return nil
 	}
-	recvTime := time.Now().Sub(time.Unix(parent.Time.Int64(), 0))
-	if recvTime < (time.Duration(int64(maxBlockTime+dt.config.Period)) * time.Second) { // < 120 s
+	var recvTime time.Duration
+	needCheck := false
+	if header.Number.Uint64() >= PSN20HardFork2EnableHeight {
+		recvTime = time.Duration(header.Time.Int64()-parent.Time.Int64()) * time.Second
+		needCheck = recvTime < (time.Duration(int64(maxBlockTimeAfterFork2+dt.config.Period)) * time.Second) //10 min
+	} else {
+		recvTime = time.Now().Sub(time.Unix(parent.Time.Int64(), 0))
+		needCheck = recvTime < (time.Duration(int64(maxBlockTime+dt.config.Period)) * time.Second) // 2 min
+	}
+	if needCheck {
 		expectTime := time.Duration(dt.config.Period)*time.Second + time.Duration(list*uint64(delayTimeModifier))*time.Second
 		if recvTime < expectTime {
 			return fmt.Errorf("block time mismatch: order: %v, receive: %v, expect: %v.", list, recvTime, expectTime)

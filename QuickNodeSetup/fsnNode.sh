@@ -205,7 +205,7 @@ createDockerContainer(){
 
     ethstats=""
     if [ ${#nodename} -gt 0 ]; then 
-        ethstats=" --ethstats $nodename:FusionPSN2@node.fusionnetwork.io"
+        ethstats=" --ethstats $nodename:FusionPSN2v4@node.fusionnetwork.io"
     else
         ethstats=""
     fi

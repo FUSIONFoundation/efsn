@@ -31,6 +31,7 @@ const (
 	// efsn patch = 001
 
 	VersionPatch = 16003 // Patch version component of the current release
+	VersionPatch = 16004 // Patch version component of the current release
 
 	VersionMeta = "stable" // Version metadata to append to the version string
 )
