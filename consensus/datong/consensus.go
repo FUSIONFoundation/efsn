@@ -308,17 +308,6 @@ func (dt *DaTong) Prepare(chain consensus.ChainReader, header *types.Header) err
 	return nil
 }
 
-// calc tickets total balance
-func calcTotalBalance(tickets []*common.Ticket, state *state.StateDB) *big.Int {
-	total := new(big.Int).SetUint64(uint64(0))
-	for _, t := range tickets {
-		balance := state.GetBalance(common.SystemAssetID, t.Owner)
-		balance = new(big.Int).Div(balance, new(big.Int).SetUint64(uint64(1e+18)))
-		total = total.Add(total, balance)
-	}
-	return total
-}
-
 type DisInfo struct {
 	tk  *common.Ticket
 	res *big.Int
@@ -507,12 +496,7 @@ func (dt *DaTong) SealHash(header *types.Header) (hash common.Hash) {
 // CalcDifficulty is the difficulty adjustment algorithm. It returns the difficulty
 // that a new block should have.
 func (dt *DaTong) CalcDifficulty(chain consensus.ChainReader, time uint64, parent *types.Header) *big.Int {
-	snapData := getSnapDataByHeader(parent)
-	snap, err := newSnapshotWithData(snapData)
-	if err != nil {
-		return nil
-	}
-	return calcDifficulty(snap)
+	return nil
 }
 
 // ConsensusData wacom
@@ -560,106 +544,6 @@ func (dt *DaTong) getAllTickets(chain consensus.ChainReader, header *types.Heade
 	return allTickets, err
 }
 
-type ticketSlice struct {
-	data         []*common.Ticket
-	isSortWeight bool
-}
-
-func (c ticketSlice) Len() int {
-	return len(c.data)
-}
-func (c ticketSlice) Swap(i, j int) {
-	c.data[i], c.data[j] = c.data[j], c.data[i]
-}
-
-func (c ticketSlice) Less(i, j int) bool {
-	if c.isSortWeight {
-		if c.data[i].Weight().Cmp(c.data[j].Weight()) == 0 {
-			//sort by ticketID
-			return c.data[i].ID.String() < c.data[j].ID.String()
-		}
-		return c.data[i].Weight().Cmp(c.data[j].Weight()) < 0
-	}
-	return new(big.Int).SetBytes(c.data[i].ID[:]).Cmp(new(big.Int).SetBytes(c.data[j].ID[:])) < 0
-
-}
-
-//func (dt *DaTong) selectTickets(tickets []*common.Ticket, parent *types.Header, time uint64,header *types.Header,ch chan []*common.Ticket) []*common.Ticket {
-func (dt *DaTong) selectTickets(tickets []*common.Ticket, parent *types.Header, time uint64, header *types.Header) []*common.Ticket {
-	sort.Sort(ticketSlice{
-		data:         tickets,
-		isSortWeight: false,
-	})
-	selectedTickets := make([]*common.Ticket, 0)
-	sanp, err := newSnapshotWithData(getSnapDataByHeader(parent))
-	if err != nil {
-		return selectedTickets
-	}
-	weight := sanp.TicketWeight()
-	distance := new(big.Int).Sub(new(big.Int).SetUint64(time), parent.Time)
-	prob := dt.getProbability(distance)
-	length := new(big.Int).Div(maxDiff, weight)
-	length = length.Mul(length, prob)
-	length = length.Div(length, maxProb)
-	length = length.Div(length, common.Big2)
-	parentHash := parent.Hash()
-	point := new(big.Int).SetBytes(crypto.Keccak256(parentHash[:], prob.Bytes()))
-	expireTime := parent.Time.Uint64()
-	for i := 0; i < len(tickets); i++ {
-		tik := tickets[i]
-		if time >= tik.StartTime && tik.ExpireTime > expireTime {
-			times := new(big.Int).Sub(parent.Number, tickets[i].Height)
-			times = times.Add(times, common.Big1)
-			if dt.validateTicket(tickets[i], point, length, times) {
-				tickets[i].SetWeight(times)
-				selectedTickets = append(selectedTickets, tickets[i])
-				if tickets[i].Owner == header.Coinbase {
-					break
-				}
-			}
-		}
-	}
-	if len(selectedTickets) == 0 {
-		return selectedTickets
-	}
-	sort.Sort(sort.Reverse(ticketSlice{
-		data:         selectedTickets,
-		isSortWeight: true,
-	}))
-	return selectedTickets
-}
-
-func (dt *DaTong) getProbability(distance *big.Int) *big.Int {
-	d := distance.Uint64()
-	if d > dt.config.Period {
-		d = d - dt.config.Period + 1
-		max := maxProb.Uint64()
-		temp := uint64(math.Pow(2, float64(d)))
-		value := max - max/temp
-		return new(big.Int).SetUint64(value)
-	}
-	return new(big.Int).SetUint64(uint64(math.Pow(2, float64(d))))
-}
-
-func (dt *DaTong) validateTicket(ticket *common.Ticket, point, length, times *big.Int) bool {
-	if length.Cmp(common.Big0) <= 0 {
-		return true
-	}
-
-	tickBytes := ticket.ID[:]
-	pointBytes := point.Bytes()
-	tempPoint := new(big.Int).Div(point, length)
-	for times.Cmp(common.Big0) > 0 {
-		ticketPoint := new(big.Int).SetBytes(crypto.Keccak256(tickBytes, pointBytes, times.Bytes()))
-		ticketPoint = ticketPoint.Div(ticketPoint, length)
-		if ticketPoint.Cmp(tempPoint) == 0 {
-			return true
-		}
-		times = times.Sub(times, common.Big1)
-	}
-	return false
-}
-
 func sigHash(header *types.Header) (hash common.Hash) {
 	hasher := sha3.NewKeccak256()
 	rlp.Encode(hasher, []interface{}{
@@ -690,10 +574,6 @@ func getSnapDataByHeader(header *types.Header) []byte {
 func getSnapData(data []byte) []byte {
 	extraSuffix := len(data) - extraSeal
 	return data[extraVanity:extraSuffix]
-}
-
-func calcDifficulty(snap *snapshot) *big.Int {
-	return snap.Weight()
 }
 
 func calcRewards(height *big.Int) *big.Int {
@@ -935,29 +815,6 @@ func (dt *DaTong) calcBlockDifficulty(chain consensus.ChainReader, header *types
 	}
 
 	return difficulty, selected, selectedTime, retreat, nil
-}
-
-func (dt *DaTong) sortByWeightAndID(tickets []*common.Ticket, parent *types.Header, time uint64) []*common.Ticket {
-	sort.Sort(ticketSlice{
-		data:         tickets,
-		isSortWeight: false,
-	})
-	selectedTickets := make([]*common.Ticket, 0)
-
-	expireTime := parent.Time.Uint64()
-	for i := 0; i < len(tickets); i++ {
-		if time >= tickets[i].StartTime && tickets[i].ExpireTime > expireTime {
-			times := new(big.Int).Sub(parent.Number, tickets[i].Height)
-			times = times.Add(times, common.Big1)
-			tickets[i].SetWeight(times)
-			selectedTickets = append(selectedTickets, tickets[i])
-		}
-	}
-	sort.Sort(ticketSlice{
-		data:         selectedTickets,
-		isSortWeight: true,
-	})
-	return selectedTickets
 }
 
 // PreProcess update state if needed from various block info
