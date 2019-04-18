@@ -231,7 +231,7 @@ func (dt *DaTong) verifySeal(chain consensus.ChainReader, header *types.Header, 
 		return err
 	}
 	ticketID := snap.GetVoteTicket()
-	ticketMap, err := dt.getAllTickets(chain, header, parents)
+	ticketMap, err := dt.getAllTickets(parent)
 	if err != nil {
 		return err
 	}
@@ -255,11 +255,7 @@ func (dt *DaTong) verifySeal(chain consensus.ChainReader, header *types.Header, 
 		return errors.New("verifySeal:  no tickets with correct header number, ticket not selected")
 	}
 	// verify ticket: list squence, ID , ticket Info, difficulty
-	statedb, errs := state.New(parent.Root, dt.stateCache)
-	if errs != nil {
-		return errs
-	}
-	diff, tk, listSq, _, errv := dt.calcBlockDifficulty(chain, header, statedb)
+	diff, tk, listSq, _, errv := dt.calcBlockDifficulty(chain, header)
 	if errv != nil {
 		return errv
 	}
@@ -337,7 +333,7 @@ func (dt *DaTong) Finalize(chain consensus.ChainReader, header *types.Header, st
 		return nil, consensus.ErrUnknownAncestor
 	}
 	parentTime := parent.Time.Uint64()
-	difficulty, selected, selectedTime, retreat, errv := dt.calcBlockDifficulty(chain, header, statedb)
+	difficulty, selected, selectedTime, retreat, errv := dt.calcBlockDifficulty(chain, header)
 	if errv != nil {
 		return nil, errv
 	}
@@ -519,29 +515,12 @@ func (dt *DaTong) Close() error {
 	return nil
 }
 
-func (dt *DaTong) getAllTickets(chain consensus.ChainReader, header *types.Header, parents []*types.Header) (map[common.Hash]common.Ticket, error) {
-	number := header.Number.Uint64()
-	if number == 0 {
-		return nil, errUnknownBlock
-	}
-	var parent *types.Header
-	if len(parents) > 0 {
-		parent = parents[len(parents)-1]
-	} else {
-		parent = chain.GetHeader(header.ParentHash, number-1)
-	}
-	if parent == nil {
-		return nil, consensus.ErrUnknownAncestor
-	}
-
-	var statedb *state.StateDB
-	var err error
-	statedb, err = state.New(parent.Root, dt.stateCache)
+func (dt *DaTong) getAllTickets(header *types.Header) (map[common.Hash]common.Ticket, error) {
+	statedb, err := state.New(header.Root, dt.stateCache)
 	if err != nil {
 		return nil, err
 	}
-	allTickets, err := statedb.AllTickets()
-	return allTickets, err
+	return statedb.AllTickets()
 }
 
 func sigHash(header *types.Header) (hash common.Hash) {
@@ -694,16 +673,12 @@ func (dt *DaTong) HaveBlockBroaded(header *types.Header) bool {
 	return ticketInfo.broad
 }
 
-func (dt *DaTong) calcBlockDifficulty(chain consensus.ChainReader, header *types.Header, statedb *state.StateDB) (*big.Int, *common.Ticket, uint64, []*common.Ticket, error) {
+func (dt *DaTong) calcBlockDifficulty(chain consensus.ChainReader, header *types.Header) (*big.Int, *common.Ticket, uint64, []*common.Ticket, error) {
 	parent := chain.GetHeader(header.ParentHash, header.Number.Uint64()-1)
 	if parent == nil {
 		return nil, nil, 0, nil, consensus.ErrUnknownAncestor
 	}
-	parentState, errs := state.New(parent.Root, dt.stateCache)
-	if errs != nil {
-		return nil, nil, 0, nil, errs
-	}
-	parentTicketMap, err := parentState.AllTickets()
+	parentTicketMap, err := dt.getAllTickets(parent)
 	if err != nil {
 		return nil, nil, 0, nil, err
 	}
