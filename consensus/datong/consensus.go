@@ -401,6 +401,9 @@ func (dt *DaTong) Finalize(chain consensus.ChainReader, header *types.Header, st
 	if remainingWeight.Cmp(common.Big0) <= 0 {
 		log.Warn("Next block don't have ticket, wait buy ticket", "remainingWeight", remainingWeight)
 	}
+	if err := headerState.UpdateTickets(header.Number); err != nil {
+		return nil, err
+	}
 
 	snap.SetWeight(remainingWeight)
 	snap.SetTicketWeight(remainingWeight)

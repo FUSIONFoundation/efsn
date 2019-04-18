@@ -260,6 +260,7 @@ func (g *Genesis) ToBlock(db ethdb.Database) *types.Block {
 			}
 			statedb.AddTicket(ticket)
 		}
+		statedb.UpdateTickets(new(big.Int).SetUint64(g.Number))
 	}
 
 	statedb.GenAsset(common.SystemAsset)

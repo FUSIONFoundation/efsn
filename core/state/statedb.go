@@ -982,16 +982,19 @@ func (db *StateDB) RemoveTicket(id common.Hash, blockNumber *big.Int) error {
 
 func (db *StateDB) updateTickets(tickets common.TicketSlice, blockNumber *big.Int) error {
 	db.tickets = tickets
+	return nil
+}
 
+func (db *StateDB) UpdateTickets(blockNumber *big.Int) error {
 	var data []byte
 	var err error
 
 	if blockNumber == nil || blockNumber.Cmp(new(big.Int).SetUint64(common.GetForkEnabledHeight(3))) < 0 {
-		sort.Sort(tickets)
-		ts := tickets.ToTicketStructSlice()
+		sort.Sort(db.tickets)
+		ts := db.tickets.ToTicketStructSlice()
 		data, err = rlp.EncodeToBytes(&ts)
 	} else {
-		data, err = rlp.EncodeToBytes(&tickets)
+		data, err = rlp.EncodeToBytes(&db.tickets)
 	}
 	if err != nil {
 		log.Error("updateTickets: Unable to encode tickets to bytes")
