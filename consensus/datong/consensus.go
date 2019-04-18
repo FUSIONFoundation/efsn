@@ -345,7 +345,7 @@ func (dt *DaTong) Finalize(chain consensus.ChainReader, header *types.Header, st
 	//update tickets
 	headerState := statedb
 	deletedTickets := make(map[common.Hash]struct{})
-	ticketMap, err := headerState.AllTickets()
+	ticketMap, err := headerState.AllTickets(parent.Number)
 	if err != nil {
 		return nil, err
 	}
@@ -364,7 +364,7 @@ func (dt *DaTong) Finalize(chain consensus.ChainReader, header *types.Header, st
 
 	deleteTicket := func(ticket *common.Ticket, logType ticketLogType, returnBack bool) {
 		deletedTickets[ticket.ID] = struct{}{}
-		headerState.RemoveTicket(ticket.ID)
+		headerState.RemoveTicket(ticket.ID, header.Number)
 		snap.AddLog(&ticketLog{
 			TicketID: ticket.ID,
 			Type:     logType,
@@ -520,7 +520,7 @@ func (dt *DaTong) getAllTickets(header *types.Header) (common.TicketSlice, error
 	if err != nil {
 		return nil, err
 	}
-	return statedb.AllTickets()
+	return statedb.AllTickets(header.Number)
 }
 
 func sigHash(header *types.Header) (hash common.Hash) {

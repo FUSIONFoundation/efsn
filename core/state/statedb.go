@@ -911,25 +911,46 @@ func (db *StateDB) UpdateAsset(asset common.Asset) error {
 }
 
 // AllTickets wacom
-func (db *StateDB) AllTickets() (common.TicketSlice, error) {
+func (db *StateDB) AllTickets(blockNumber *big.Int) (common.TicketSlice, error) {
+	oldWay := blockNumber == nil || blockNumber.Cmp(new(big.Int).SetUint64(common.GetForkEnabledHeight(3))) < 0
 	if db.tickets != nil {
+		if oldWay == true {
+			return db.tickets.DeepCopy(), nil
+		}
 		return db.tickets, nil
 	}
 	data := db.GetData(common.TicketKeyAddress)
-	if data != nil && len(data) != 0 {
+	if data == nil || len(data) == 0 {
+		return nil, nil
+	}
+	if oldWay == true {
 		var tickets common.TicketStructSlice
 		if err := rlp.DecodeBytes(data, &tickets); err != nil {
 			log.Error("AllTickets: Unable to decode bytes in all tickets")
 			return nil, err
 		}
 		db.tickets = tickets.ToTicketSlice()
+	} else {
+		var tickets common.TicketSlice
+		if err := rlp.DecodeBytes(data, &tickets); err != nil {
+			log.Error("AllTickets: Unable to decode bytes in all tickets")
+			return nil, err
+		}
+		db.tickets = tickets
+	}
+	if oldWay == true {
+		return db.tickets.DeepCopy(), nil
 	}
 	return db.tickets, nil
 }
 
 // AddTicket wacom
 func (db *StateDB) AddTicket(ticket common.Ticket) error {
-	tickets, err := db.AllTickets()
+	parentHeight := new(big.Int).Sub(ticket.Height, common.Big1)
+	if parentHeight.Cmp(common.Big0) < 0 {
+		parentHeight = common.Big0
+	}
+	tickets, err := db.AllTickets(parentHeight)
 	if err != nil {
 		log.Debug("AddTicket: unable to retrieve previous tickets")
 		return fmt.Errorf("AddTicket: unable to retrieve previous tickets. err: %v", err)
@@ -938,12 +959,16 @@ func (db *StateDB) AddTicket(ticket common.Ticket) error {
 		return fmt.Errorf("AddTicket: %s Ticket exists", ticket.ID.String())
 	}
 	tickets = tickets.Add(&ticket)
-	return db.updateTickets(tickets)
+	return db.updateTickets(tickets, ticket.Height)
 }
 
 // RemoveTicket wacom
-func (db *StateDB) RemoveTicket(id common.Hash) error {
-	tickets, err := db.AllTickets()
+func (db *StateDB) RemoveTicket(id common.Hash, blockNumber *big.Int) error {
+	parentHeight := new(big.Int).Sub(blockNumber, common.Big1)
+	if parentHeight.Cmp(common.Big0) < 0 {
+		parentHeight = common.Big0
+	}
+	tickets, err := db.AllTickets(parentHeight)
 	if err != nil {
 		log.Debug("RemoveTicket: unable to retrieve previous tickets")
 		return fmt.Errorf("RemoveTicket: unable to retrieve previous tickets. err: %v", err)
@@ -952,18 +977,25 @@ func (db *StateDB) RemoveTicket(id common.Hash) error {
 		return fmt.Errorf("RemoveTicket: %s Ticket not found", id.String())
 	}
 	tickets = tickets.Delete(id)
-	return db.updateTickets(tickets)
+	return db.updateTickets(tickets, blockNumber)
 }
 
-func (db *StateDB) updateTickets(tickets common.TicketSlice) error {
+func (db *StateDB) updateTickets(tickets common.TicketSlice, blockNumber *big.Int) error {
 	db.tickets = tickets
 
-	sort.Sort(tickets)
-	ts := tickets.ToTicketStructSlice()
-	data, err := rlp.EncodeToBytes(&ts)
+	var data []byte
+	var err error
 
+	if blockNumber == nil || blockNumber.Cmp(new(big.Int).SetUint64(common.GetForkEnabledHeight(3))) < 0 {
+		sort.Sort(tickets)
+		ts := tickets.ToTicketStructSlice()
+		data, err = rlp.EncodeToBytes(&ts)
+	} else {
+		data, err = rlp.EncodeToBytes(&tickets)
+	}
 	if err != nil {
-		return err
+		log.Error("updateTickets: Unable to encode tickets to bytes")
+		return fmt.Errorf("updateTickets: Unable to encode tickets to bytes. err: %v", err)
 	}
 	db.SetData(common.TicketKeyAddress, data)
 	return nil

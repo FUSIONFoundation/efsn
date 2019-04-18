@@ -398,7 +398,7 @@ func (st *StateTransition) handleFsnCall() error {
 		hash := st.evm.GetHash(height.Uint64() - 1)
 		id := crypto.Keccak256Hash(from[:], hash[:])
 
-		tickets, err := st.state.AllTickets()
+		tickets, err := st.state.AllTickets(new(big.Int).Sub(height, common.Big1))
 
 		if err != nil {
 			st.addLog(common.BuyTicketFunc, param.Data, common.NewKeyValue("Error", "unable to retrieve previous tickets"))
