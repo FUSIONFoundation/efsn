@@ -682,6 +682,91 @@ func (t *Ticket) Weight() *big.Int {
 	return t.weight
 }
 
+type TicketStruct struct {
+	Hash
+	Ticket
+}
+
+type TicketStructSlice []TicketStruct
+type TicketSlice []Ticket
+
+func (t *Ticket) toTicketStruct() TicketStruct {
+	return TicketStruct{t.ID, *t}
+}
+
+func (s TicketStructSlice) ToTicketSlice() TicketSlice {
+	r := make(TicketSlice, 0, len(s))
+	for _, t := range s {
+		r = append(r, t.Ticket)
+	}
+	return r
+}
+
+func (s TicketSlice) ToTicketStructSlice() TicketStructSlice {
+	r := make(TicketStructSlice, 0, len(s))
+	for _, t := range s {
+		r = append(r, t.toTicketStruct())
+	}
+	return r
+}
+
+func (s TicketSlice) Len() int {
+	return len(s)
+}
+
+func (s TicketSlice) Less(i, j int) bool {
+	a, _ := new(big.Int).SetString(s[i].ID.Hex(), 0)
+	b, _ := new(big.Int).SetString(s[j].ID.Hex(), 0)
+	return a.Cmp(b) < 0
+}
+
+func (s TicketSlice) Swap(i, j int) {
+	s[i], s[j] = s[j], s[i]
+}
+
+func (s TicketSlice) ToMap() map[Hash]Ticket {
+	r := make(map[Hash]Ticket, len(s))
+	for _, t := range s {
+		r[t.ID] = t
+	}
+	return r
+}
+
+func (s TicketSlice) DeepCopy() TicketSlice {
+	if s == nil || len(s) == 0 {
+		return nil
+	}
+	r := make(TicketSlice, 0, len(s))
+	for _, t := range s {
+		r = append(r, t)
+	}
+	return r
+}
+
+func (s TicketSlice) Get(tid Hash) (*Ticket, bool) {
+	for _, t := range s {
+		if t.ID == tid {
+			return &t, true
+		}
+	}
+	return nil, false
+}
+
+func (s TicketSlice) Add(ticket *Ticket) TicketSlice {
+	s = append(s, *ticket)
+	return s
+}
+
+func (s TicketSlice) Delete(tid Hash) TicketSlice {
+	for i, t := range s {
+		if t.ID == tid {
+			s = append(s[:i], s[i+1:]...)
+			break
+		}
+	}
+	return s
+}
+
 // Swap wacom
 type Swap struct {
 	ID            Hash

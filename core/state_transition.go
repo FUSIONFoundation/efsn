@@ -302,19 +302,19 @@ func (st *StateTransition) handleFsnCall() error {
 			return fmt.Errorf("GenAssetFunc decimals must be between 0 and 18")
 		}
 
-		if ( len(genAssetParam.Description) > 1024 ) {
+		if len(genAssetParam.Description) > 1024 {
 			st.addLog(common.GenAssetFunc, genAssetParam, common.NewKeyValue("Error", "GenAsset description length is greater than 1024 chars"))
-			return  fmt.Errorf("GenAsset description lenght is greater than 1024 chars")
+			return fmt.Errorf("GenAsset description lenght is greater than 1024 chars")
 		}
-	
-		if ( len(genAssetParam.Name) > 128 ) {
+
+		if len(genAssetParam.Name) > 128 {
 			st.addLog(common.GenAssetFunc, genAssetParam, common.NewKeyValue("Error", "GenAsset description length is greater than 128 chars"))
 			return fmt.Errorf("GenAsset description lenght is greater than 128 chars")
 		}
-		
-		if ( len(genAssetParam.Symbol) > 64 ) {
+
+		if len(genAssetParam.Symbol) > 64 {
 			st.addLog(common.GenAssetFunc, genAssetParam, common.NewKeyValue("Error", "GenAsset description lenght is greater than 64 chars"))
-			return   fmt.Errorf("GenAsset description lenght is greater than 64")
+			return fmt.Errorf("GenAsset description lenght is greater than 64")
 		}
 
 		if err := st.state.GenAsset(asset); err != nil {
@@ -406,7 +406,7 @@ func (st *StateTransition) handleFsnCall() error {
 			return err
 		}
 
-		if _, ok := tickets[id]; ok {
+		if _, ok := tickets.Get(id); ok {
 			st.addLog(common.BuyTicketFunc, param.Data, common.NewKeyValue("Error", "one block just can buy one ticket"))
 			return fmt.Errorf("one block just can buy one ticket")
 		}
@@ -484,7 +484,7 @@ func (st *StateTransition) handleFsnCall() error {
 			rlp.DecodeBytes(param.Data, &assetValueChangeParamEx)
 		}
 		big0 := big.NewInt(0)
-		if (  assetValueChangeParamEx.Value.Cmp(big0) <= 0 ) {
+		if assetValueChangeParamEx.Value.Cmp(big0) <= 0 {
 			st.addLog(common.AssetValueChangeFunc, assetValueChangeParamEx, common.NewKeyValue("Error", "illegal operation"))
 			return fmt.Errorf("illegal operation")
 		}
@@ -549,9 +549,9 @@ func (st *StateTransition) handleFsnCall() error {
 			return fmt.Errorf("MinFromAmount,MinToAmount and SwapSize must be ge 1")
 		}
 
-		if ( len(makeSwapParam.Description) > 1024 ) {
+		if len(makeSwapParam.Description) > 1024 {
 			st.addLog(common.MakeSwapFunc, makeSwapParam, common.NewKeyValue("Error", "MakeSwap description length is greater than 1024 chars"))
-			return  fmt.Errorf("makeSwap description lenght is greater than 1024 chars")
+			return fmt.Errorf("makeSwap description lenght is greater than 1024 chars")
 		}
 
 		total := new(big.Int).Mul(makeSwapParam.MinFromAmount, makeSwapParam.SwapSize)

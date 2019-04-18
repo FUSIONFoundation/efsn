@@ -436,7 +436,7 @@ func (s *PublicFusionAPI) AllTickets(ctx context.Context, blockNr rpc.BlockNumbe
 		log.Debug("AllTickets:apifsn.go unable to retrieve previous tickets")
 		return nil, err
 	}
-	return tickets, state.Error()
+	return tickets.ToMap(), state.Error()
 }
 
 // TotalNumberOfTickets wacom
@@ -468,7 +468,7 @@ func (s *PublicFusionAPI) AllTicketsByAddress(ctx context.Context, address commo
 		log.Debug("AllTicketsByAddress:api_fsn.go unable to retrieve previous tickets")
 		return nil, err
 	}
-	for k, v := range tickets {
+	for k, v := range tickets.ToMap() {
 		if v.Owner == address {
 			ret[k] = v
 		}

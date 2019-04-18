@@ -232,11 +232,11 @@ func (dt *DaTong) verifySeal(chain consensus.ChainReader, header *types.Header, 
 	if err != nil {
 		return err
 	}
-	if _, ok := ticketMap[ticketID]; !ok {
+	ticket, ok := ticketMap.Get(ticketID)
+	if !ok {
 		return errors.New("Ticket not found")
 	}
 	// verify ticket with signer
-	ticket := ticketMap[ticketID]
 	if ticket.Owner != signer {
 		return errors.New("Ticket owner not be the signer")
 	}
@@ -343,8 +343,8 @@ func (dt *DaTong) Finalize(chain consensus.ChainReader, header *types.Header, st
 	snap := newSnapshot()
 
 	//update tickets
-	tmpState := *statedb
-	headerState := &tmpState
+	headerState := statedb
+	deletedTickets := make(map[common.Hash]struct{})
 	ticketMap, err := headerState.AllTickets()
 	if err != nil {
 		return nil, err
@@ -363,7 +363,7 @@ func (dt *DaTong) Finalize(chain consensus.ChainReader, header *types.Header, st
 	}
 
 	deleteTicket := func(ticket *common.Ticket, logType ticketLogType, returnBack bool) {
-		delete(ticketMap, ticket.ID)
+		deletedTickets[ticket.ID] = struct{}{}
 		headerState.RemoveTicket(ticket.ID)
 		snap.AddLog(&ticketLog{
 			TicketID: ticket.ID,
@@ -387,6 +387,9 @@ func (dt *DaTong) Finalize(chain consensus.ChainReader, header *types.Header, st
 	remainingWeight := new(big.Int)
 	ticketNumber := 0
 	for _, t := range ticketMap {
+		if _, deleted := deletedTickets[t.ID]; deleted {
+			continue
+		}
 		if t.ExpireTime <= parentTime {
 			deleteTicket(&t, ticketExpired, t.Height.Cmp(common.Big0) > 0)
 		} else {
@@ -512,7 +515,7 @@ func (dt *DaTong) Close() error {
 	return nil
 }
 
-func (dt *DaTong) getAllTickets(header *types.Header) (map[common.Hash]common.Ticket, error) {
+func (dt *DaTong) getAllTickets(header *types.Header) (common.TicketSlice, error) {
 	statedb, err := state.New(header.Root, dt.stateCache)
 	if err != nil {
 		return nil, err
