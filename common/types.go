@@ -31,6 +31,20 @@ import (
 	"github.com/FusionFoundation/efsn/rlp"
 )
 
+var psn20HardForkEnableHeights = []uint64{
+	0,
+	90000,
+	99000,
+}
+
+func GetForkEnabledHeight(forkNumber int) uint64 {
+	maxForkNumber := len(psn20HardForkEnableHeights) - 1
+	if forkNumber > maxForkNumber {
+		return psn20HardForkEnableHeights[maxForkNumber]
+	}
+	return psn20HardForkEnableHeights[forkNumber]
+}
+
 // Lengths of hashes and addresses in bytes.
 const (
 	// HashLength is the expected length of the hash

@@ -21,7 +21,6 @@ import (
 
 	"github.com/FusionFoundation/efsn/common"
 	"github.com/FusionFoundation/efsn/consensus"
-	"github.com/FusionFoundation/efsn/consensus/datong"
 	"github.com/FusionFoundation/efsn/core/state"
 	"github.com/FusionFoundation/efsn/core/types"
 	"github.com/FusionFoundation/efsn/params"
@@ -82,7 +81,7 @@ func (v *BlockValidator) ValidateBody(block *types.Block) error {
 // ValidateRawTransaction validates the given block's raw transactions before applying them
 func (v *BlockValidator) ValidateRawTransaction(block *types.Block) error {
 	blockNumber := block.Number()
-	if blockNumber.Uint64() < datong.PSN20HardFork1EnableHeight {
+	if blockNumber.Uint64() < common.GetForkEnabledHeight(1) {
 		return nil
 	}
 	header := block.Header()
