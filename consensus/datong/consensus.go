@@ -189,6 +189,20 @@ func SetHeaders(parents []*types.Header) {
 	glb_parents = parents
 }
 
+func getParent(chain consensus.ChainReader, header *types.Header, parents []*types.Header) (*types.Header, error) {
+	number := header.Number.Uint64()
+	var parent *types.Header
+	if parents != nil && len(parents) > 0 {
+		parent = parents[len(parents)-1]
+	} else {
+		parent = chain.GetHeader(header.ParentHash, number-1)
+	}
+	if parent == nil || parent.Number.Uint64() != number-1 || parent.Hash() != header.ParentHash {
+		return nil, consensus.ErrUnknownAncestor
+	}
+	return parent, nil
+}
+
 // VerifySeal checks whether the crypto seal on a header is valid according to
 // the consensus rules of the given engine.
 func (dt *DaTong) verifySeal(chain consensus.ChainReader, header *types.Header, parents []*types.Header) error {
@@ -197,15 +211,11 @@ func (dt *DaTong) verifySeal(chain consensus.ChainReader, header *types.Header, 
 		return errUnknownBlock
 	}
 	// verify Ancestor
-	var parent *types.Header
-	if len(parents) > 0 {
-		parent = parents[len(parents)-1]
-	} else {
-		parent = chain.GetHeader(header.ParentHash, number-1)
+	parent, err := getParent(chain, header, parents)
+	if err != nil {
+		return err
 	}
-	if parent == nil || parent.Number.Uint64() != number-1 || parent.Hash() != header.ParentHash {
-		return consensus.ErrUnknownAncestor
-	}
+	// verify header time
 	if header.Time.Int64()-parent.Time.Int64() < MinBlockTime && number >= common.GetForkEnabledHeight(1) {
 		return fmt.Errorf("block %v header.Time:%v < parent.Time:%v + %v Second",
 			number, header.Time.Int64(), parent.Time.Int64(), MinBlockTime)
@@ -252,7 +262,7 @@ func (dt *DaTong) verifySeal(chain consensus.ChainReader, header *types.Header, 
 		return errors.New("verifySeal:  no tickets with correct header number, ticket not selected")
 	}
 	// verify ticket: list squence, ID , ticket Info, difficulty
-	diff, tk, listSq, _, errv := dt.calcBlockDifficulty(chain, header)
+	diff, tk, listSq, _, errv := dt.calcBlockDifficulty(chain, header, parent)
 	if errv != nil {
 		return errv
 	}
@@ -325,12 +335,12 @@ func (s DistanceSlice) Swap(i, j int) {
 // consensus rules that happen at finalization (e.g. block rewards).
 func (dt *DaTong) Finalize(chain consensus.ChainReader, header *types.Header, statedb *state.StateDB, txs []*types.Transaction,
 	uncles []*types.Header, receipts []*types.Receipt) (*types.Block, error) {
-	parent := chain.GetHeader(header.ParentHash, header.Number.Uint64()-1)
-	if parent == nil {
-		return nil, consensus.ErrUnknownAncestor
+	parent, err := getParent(chain, header, glb_parents)
+	if err != nil {
+		return nil, err
 	}
 	parentTime := parent.Time.Uint64()
-	difficulty, selected, selectedTime, retreat, errv := dt.calcBlockDifficulty(chain, header)
+	difficulty, selected, selectedTime, retreat, errv := dt.calcBlockDifficulty(chain, header, parent)
 	if errv != nil {
 		return nil, errv
 	}
@@ -676,11 +686,7 @@ func (dt *DaTong) HaveBlockBroaded(header *types.Header) bool {
 	return ticketInfo.broad
 }
 
-func (dt *DaTong) calcBlockDifficulty(chain consensus.ChainReader, header *types.Header) (*big.Int, *common.Ticket, uint64, []*common.Ticket, error) {
-	parent := chain.GetHeader(header.ParentHash, header.Number.Uint64()-1)
-	if parent == nil {
-		return nil, nil, 0, nil, consensus.ErrUnknownAncestor
-	}
+func (dt *DaTong) calcBlockDifficulty(chain consensus.ChainReader, header *types.Header, parent *types.Header) (*big.Int, *common.Ticket, uint64, []*common.Ticket, error) {
 	parentTicketMap, err := dt.getAllTickets(parent)
 	if err != nil {
 		return nil, nil, 0, nil, err

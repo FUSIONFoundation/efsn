@@ -912,18 +912,14 @@ func (db *StateDB) UpdateAsset(asset common.Asset) error {
 
 // AllTickets wacom
 func (db *StateDB) AllTickets(blockNumber *big.Int) (common.TicketSlice, error) {
-	oldWay := blockNumber == nil || blockNumber.Cmp(new(big.Int).SetUint64(common.GetForkEnabledHeight(3))) < 0
 	if db.tickets != nil {
-		if oldWay == true {
-			return db.tickets.DeepCopy(), nil
-		}
 		return db.tickets, nil
 	}
 	data := db.GetData(common.TicketKeyAddress)
 	if data == nil || len(data) == 0 {
 		return nil, nil
 	}
-	if oldWay == true {
+	if blockNumber == nil || blockNumber.Cmp(new(big.Int).SetUint64(common.GetForkEnabledHeight(3))) < 0 {
 		var tickets common.TicketStructSlice
 		if err := rlp.DecodeBytes(data, &tickets); err != nil {
 			log.Error("AllTickets: Unable to decode bytes in all tickets")
@@ -937,9 +933,6 @@ func (db *StateDB) AllTickets(blockNumber *big.Int) (common.TicketSlice, error) 
 			return nil, err
 		}
 		db.tickets = tickets
-	}
-	if oldWay == true {
-		return db.tickets.DeepCopy(), nil
 	}
 	return db.tickets, nil
 }

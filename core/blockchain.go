@@ -1177,15 +1177,15 @@ func (bc *BlockChain) insertChain(chain types.Blocks) (int, []interface{}, []*ty
 		err = bc.engine.PreProcess(bc, headers[i], state)
 
 		// Process block using the parent state as reference point.
+		datong.SetHeaders(headers[:i])
 		receipts, logs, usedGas, err := bc.processor.Process(block, state, bc.vmConfig)
+		datong.SetHeaders(nil)
 		if err != nil {
 			bc.reportBlock(block, receipts, err)
 			return i, events, coalescedLogs, err
 		}
 		// Validate the state using the default validator
-		datong.SetHeaders(headers[:i])
 		err = bc.Validator().ValidateState(block, parent, state, receipts, usedGas)
-		datong.SetHeaders(nil)
 		if err != nil {
 			bc.reportBlock(block, receipts, err)
 			return i, events, coalescedLogs, err
