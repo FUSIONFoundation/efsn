@@ -845,9 +845,13 @@ func (dt *DaTong) calcDelayTime(chain consensus.ChainReader, header *types.Heade
 	// adjust block time if illegal
 	if list > 0 && header.Number.Uint64() >= common.GetForkEnabledHeight(2) {
 		recvTime := header.Time.Int64() - parent.Time.Int64()
-		if recvTime < int64(maxDelay+dt.config.Period) {
+		maxDelaySeconds := int64(maxDelay + dt.config.Period)
+		if recvTime < maxDelaySeconds {
 			expectTime := int64(dt.config.Period + list*delayTimeModifier)
 			if recvTime < expectTime {
+				if expectTime > maxDelaySeconds {
+					expectTime = maxDelaySeconds
+				}
 				header.Time = big.NewInt(parent.Time.Int64() + expectTime)
 				minDelayTime := time.Unix(header.Time.Int64(), 0).Sub(time.Now())
 				if delayTime < minDelayTime {
