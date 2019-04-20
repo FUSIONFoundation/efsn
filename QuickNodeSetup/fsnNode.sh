@@ -213,7 +213,8 @@ createDockerContainer(){
     if [ "$nodetype" == "minerandlocalgateway2" ]; then
         sudo docker pull fusionnetwork/minerandlocalgateway2:latest
 
-        sudo docker create --name fusion -it -p 127.0.0.1:9000:9000 -p 127.0.0.1:9001:9001 -p 40408:40408 \
+        sudo docker create --name fusion -it --restart unless-stopped \
+	    -p 127.0.0.1:9000:9000 -p 127.0.0.1:9001:9001 -p 40408:40408 \
             -v "$CWD_DIR/fusion-node":/fusion-node \
             fusionnetwork/minerandlocalgateway2 \
             -u "$walletaddress" \
