@@ -80,12 +80,11 @@ type StateDB struct {
 	validRevisions []revision
 	nextRevisionId int
 
-	lock   sync.Mutex
-	rwlock sync.RWMutex
+	lock sync.Mutex
 
 	notations []common.Address
 	assets    map[common.Hash]common.Asset
-	tickets   map[common.Hash]common.Ticket
+	tickets   common.TicketSlice
 	swaps     map[common.Hash]common.Swap
 }
 
@@ -633,10 +632,7 @@ func (self *StateDB) Copy() *StateDB {
 	}
 
 	if self.tickets != nil {
-		state.tickets = make(map[common.Hash]common.Ticket, len(self.tickets))
-		for hash, ticket := range self.tickets {
-			state.tickets[hash] = ticket.DeepCopy()
-		}
+		state.tickets = self.tickets.DeepCopy()
 	}
 
 	if self.swaps != nil {
@@ -914,108 +910,88 @@ func (db *StateDB) UpdateAsset(asset common.Asset) error {
 	return db.updateAssets(assets)
 }
 
-func (db *StateDB) copyOfTickets() map[common.Hash]common.Ticket {
-	targetMap := make(map[common.Hash]common.Ticket)
-	if db.tickets == nil {
-		return targetMap
-	}
-	// Copy from the original map to the target map
-	for key, value := range db.tickets {
-		targetMap[key] = value
-	}
-	return targetMap
-}
-
 // AllTickets wacom
-func (db *StateDB) AllTickets() (map[common.Hash]common.Ticket, error) {
+func (db *StateDB) AllTickets(blockNumber *big.Int) (common.TicketSlice, error) {
 	if db.tickets != nil {
-		return db.copyOfTickets(), nil
+		return db.tickets, nil
 	}
 	data := db.GetData(common.TicketKeyAddress)
-	var tickets map[common.Hash]common.Ticket
-	if len(data) == 0 || data == nil {
-		tickets = make(map[common.Hash]common.Ticket, 0)
-	} else {
-		var list sortableTicketsLURSlice
-		if err := rlp.DecodeBytes(data, &list); err != nil {
-			log.Error("Unable to decode bytes in all tickets")
+	if data == nil || len(data) == 0 {
+		return nil, nil
+	}
+	if blockNumber == nil || blockNumber.Cmp(new(big.Int).SetUint64(common.GetForkEnabledHeight(3))) < 0 {
+		var tickets common.TicketStructSlice
+		if err := rlp.DecodeBytes(data, &tickets); err != nil {
+			log.Error("AllTickets: Unable to decode bytes in all tickets")
 			return nil, err
 		}
-		// fmt.Printf("rlp.DecodeBytes, list: %+v\n", list)
-		tickets = make(map[common.Hash]common.Ticket, 0)
-		for _, va := range list {
-			hash := va.HASH
-			ticket := va.TICKET
-			tickets[hash] = ticket
+		db.tickets = tickets.ToTicketSlice()
+	} else {
+		var tickets common.TicketSlice
+		if err := rlp.DecodeBytes(data, &tickets); err != nil {
+			log.Error("AllTickets: Unable to decode bytes in all tickets")
+			return nil, err
 		}
+		db.tickets = tickets
 	}
-	db.tickets = tickets
-	return db.copyOfTickets(), nil
+	return db.tickets, nil
 }
 
 // AddTicket wacom
 func (db *StateDB) AddTicket(ticket common.Ticket) error {
-	tickets, err := db.AllTickets()
+	parentHeight := new(big.Int).Sub(ticket.Height, common.Big1)
+	if parentHeight.Cmp(common.Big0) < 0 {
+		parentHeight = common.Big0
+	}
+	tickets, err := db.AllTickets(parentHeight)
 	if err != nil {
 		log.Debug("AddTicket: unable to retrieve previous tickets")
-		return err
+		return fmt.Errorf("AddTicket: unable to retrieve previous tickets. err: %v", err)
 	}
-	if _, ok := tickets[ticket.ID]; ok {
-		return fmt.Errorf("%s Ticket exists", ticket.ID.String())
+	if _, ok := tickets.Get(ticket.ID); ok {
+		return fmt.Errorf("AddTicket: %s Ticket exists", ticket.ID.String())
 	}
-	tickets[ticket.ID] = ticket
-	return db.updateTickets(tickets)
+	tickets = tickets.Add(&ticket)
+	return db.updateTickets(tickets, ticket.Height)
 }
 
 // RemoveTicket wacom
-func (db *StateDB) RemoveTicket(id common.Hash) error {
-	tickets, err := db.AllTickets()
+func (db *StateDB) RemoveTicket(id common.Hash, blockNumber *big.Int) error {
+	parentHeight := new(big.Int).Sub(blockNumber, common.Big1)
+	if parentHeight.Cmp(common.Big0) < 0 {
+		parentHeight = common.Big0
+	}
+	tickets, err := db.AllTickets(parentHeight)
 	if err != nil {
-		log.Debug("RemoveTicket unable to retrieve previous tickets")
-		return err
+		log.Debug("RemoveTicket: unable to retrieve previous tickets")
+		return fmt.Errorf("RemoveTicket: unable to retrieve previous tickets. err: %v", err)
 	}
-	if _, ok := tickets[id]; !ok {
-		return fmt.Errorf("%s Ticket not found", id.String())
+	if _, ok := tickets.Get(id); !ok {
+		return fmt.Errorf("RemoveTicket: %s Ticket not found", id.String())
 	}
-	delete(tickets, id)
-	return db.updateTickets(tickets)
+	tickets = tickets.Delete(id)
+	return db.updateTickets(tickets, blockNumber)
 }
 
-// RemoveTicket wacom
-func (db *StateDB) RemoveTickets(deleteMap []common.Hash) error {
-	tickets, err := db.AllTickets()
-	if err != nil {
-		log.Debug("RemoveTicket unable to retrieve previous tickets")
-		return err
-	}
-	for _, id := range deleteMap {
-		if _, ok := tickets[id]; !ok {
-			log.Info("RemoveTickets failed", "Not Found", id)
-			return fmt.Errorf("%s Ticket not found", id.String())
-		}
-		delete(tickets, id)
-	}
-	// log.Info("Removed ", "tickets", len(deleteMap))
-	return db.updateTickets(tickets)
-}
-
-func (db *StateDB) updateTickets(tickets map[common.Hash]common.Ticket) error {
+func (db *StateDB) updateTickets(tickets common.TicketSlice, blockNumber *big.Int) error {
 	db.tickets = tickets
+	return nil
+}
 
-	var list sortableTicketsLURSlice
-	for k, v := range tickets {
-		res := ticketsStruct{
-			HASH:   k,
-			TICKET: v,
-		}
-		list = append(list, res)
+func (db *StateDB) UpdateTickets(blockNumber *big.Int) error {
+	var data []byte
+	var err error
+
+	if blockNumber == nil || blockNumber.Cmp(new(big.Int).SetUint64(common.GetForkEnabledHeight(3))) < 0 {
+		sort.Sort(db.tickets)
+		ts := db.tickets.ToTicketStructSlice()
+		data, err = rlp.EncodeToBytes(&ts)
+	} else {
+		data, err = rlp.EncodeToBytes(&db.tickets)
 	}
-
-	sort.Sort(list)
-	data, err := rlp.EncodeToBytes(&list)
-
 	if err != nil {
-		return err
+		log.Error("updateTickets: Unable to encode tickets to bytes")
+		return fmt.Errorf("updateTickets: Unable to encode tickets to bytes. err: %v", err)
 	}
 	db.SetData(common.TicketKeyAddress, data)
 	return nil
@@ -1112,27 +1088,6 @@ func (db *StateDB) updateSwaps(swaps map[common.Hash]common.Swap) error {
 	}
 	db.SetData(common.SwapKeyAddress, data)
 	return nil
-}
-
-type ticketsStruct struct {
-	HASH   common.Hash
-	TICKET common.Ticket
-}
-
-type sortableTicketsLURSlice []ticketsStruct
-
-func (s sortableTicketsLURSlice) Len() int {
-	return len(s)
-}
-
-func (s sortableTicketsLURSlice) Less(i, j int) bool {
-	a, _ := new(big.Int).SetString(s[i].HASH.Hex(), 0)
-	b, _ := new(big.Int).SetString(s[j].HASH.Hex(), 0)
-	return a.Cmp(b) < 0
-}
-
-func (s sortableTicketsLURSlice) Swap(i, j int) {
-	s[i], s[j] = s[j], s[i]
 }
 
 type assetsStruct struct {

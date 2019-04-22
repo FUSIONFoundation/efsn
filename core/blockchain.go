@@ -47,7 +47,6 @@ import (
 	lru "github.com/hashicorp/golang-lru"
 )
 
-
 var (
 	blockInsertTimer = metrics.NewRegisteredTimer("chain/inserts", nil)
 
@@ -1002,7 +1001,6 @@ func (bc *BlockChain) WriteBlockWithState(block *types.Block, receipts []*types.
 		return NonStatTy, err
 	}
 
-	
 	// Set new head.
 	if status == CanonStatTy {
 		bc.insert(block)
@@ -1176,18 +1174,18 @@ func (bc *BlockChain) insertChain(chain types.Blocks) (int, []interface{}, []*ty
 			return i, events, coalescedLogs, err
 		}
 		// Update the state for ticket selection
-		err = bc.engine.PreProcess( bc, headers[i] , state )
+		err = bc.engine.PreProcess(bc, headers[i], state)
 
 		// Process block using the parent state as reference point.
+		datong.SetHeaders(headers[:i])
 		receipts, logs, usedGas, err := bc.processor.Process(block, state, bc.vmConfig)
+		datong.SetHeaders(nil)
 		if err != nil {
 			bc.reportBlock(block, receipts, err)
 			return i, events, coalescedLogs, err
 		}
 		// Validate the state using the default validator
-		datong.SetHeaders(headers[:i])
 		err = bc.Validator().ValidateState(block, parent, state, receipts, usedGas)
-		datong.SetHeaders(nil)
 		if err != nil {
 			bc.reportBlock(block, receipts, err)
 			return i, events, coalescedLogs, err
@@ -1259,14 +1257,14 @@ func (st *insertStats) report(chain []*types.Block, index int, cache common.Stor
 			txs = countTransactions(chain[st.lastIndex : index+1])
 		)
 		context := []interface{}{
-				"blocks", st.processed, "txs", txs, "mgas", float64(st.usedGas) / 1000000,
-				"elapsed", common.PrettyDuration(elapsed), "mgasps", float64(st.usedGas) * 1000 / float64(elapsed),
-				"number", end.Number(), "hash", end.Hash(), "cache", cache,
-				"difficulty", end.Difficulty(),
-				"miner", end.Coinbase(),
-				"end.root", end.Root(),
-				"parentHash", end.ParentHash(),
-				"time", end.Time(),
+			"blocks", st.processed, "txs", txs, "mgas", float64(st.usedGas) / 1000000,
+			"elapsed", common.PrettyDuration(elapsed), "mgasps", float64(st.usedGas) * 1000 / float64(elapsed),
+			"order", end.Nonce(), "number", end.Number(), "hash", end.Hash(), "cache", cache,
+			"difficulty", end.Difficulty(),
+			"miner", end.Coinbase(),
+			"end.root", end.Root(),
+			"parentHash", end.ParentHash(),
+			"time", end.Time(),
 		}
 		if timestamp := time.Unix(end.Time().Int64(), 0); time.Since(timestamp) > time.Minute {
 			context = append(context, []interface{}{"age", common.PrettyAge(timestamp)}...)

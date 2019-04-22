@@ -31,6 +31,21 @@ import (
 	"github.com/FusionFoundation/efsn/rlp"
 )
 
+var psn20HardForkEnableHeights = []uint64{
+	0,
+	90000,
+	99000,
+	130000,
+}
+
+func GetForkEnabledHeight(forkNumber int) uint64 {
+	maxForkNumber := len(psn20HardForkEnableHeights) - 1
+	if forkNumber > maxForkNumber {
+		return psn20HardForkEnableHeights[maxForkNumber]
+	}
+	return psn20HardForkEnableHeights[forkNumber]
+}
+
 // Lengths of hashes and addresses in bytes.
 const (
 	// HashLength is the expected length of the hash
@@ -366,7 +381,7 @@ var (
 	// SwapKey wacom
 	SwapKey = []byte{0x06} // 4 was the old
 	// Auto buy tickets
-	AutoBuyTicket = false
+	AutoBuyTicket     = false
 	AutoBuyTicketChan = make(chan int, 10)
 )
 
@@ -434,11 +449,11 @@ type FSNCallParam struct {
 
 // GenAssetParam wacom
 type GenAssetParam struct {
-	Name      string
-	Symbol    string
-	Decimals  uint8
-	Total     *big.Int `json:",string"`
-	CanChange bool
+	Name        string
+	Symbol      string
+	Decimals    uint8
+	Total       *big.Int `json:",string"`
+	CanChange   bool
 	Description string
 }
 
@@ -465,11 +480,11 @@ type AssetValueChangeParam struct {
 
 // AssetValueChangeExParam wacom
 type AssetValueChangeExParam struct {
-	AssetID Hash
-	To      Address
-	Value   *big.Int `json:",string"`
-	IsInc   bool
-	TransacData string 
+	AssetID     Hash
+	To          Address
+	Value       *big.Int `json:",string"`
+	IsInc       bool
+	TransacData string
 }
 
 // TimeLockParam wacom
@@ -562,70 +577,70 @@ func (p *TakeSwapParam) ToBytes() ([]byte, error) {
 // ToAsset wacom
 func (p *GenAssetParam) ToAsset() Asset {
 	return Asset{
-		Name:      p.Name,
-		Symbol:    p.Symbol,
-		Decimals:  p.Decimals,
-		Total:     p.Total,
-		CanChange: p.CanChange,
+		Name:        p.Name,
+		Symbol:      p.Symbol,
+		Decimals:    p.Decimals,
+		Total:       p.Total,
+		CanChange:   p.CanChange,
 		Description: p.Description,
 	}
 }
 
 // Asset wacom
 type Asset struct {
-	ID        Hash
-	Owner     Address
-	Name      string
-	Symbol    string
-	Decimals  uint8
-	Total     *big.Int `json:",string"`
-	CanChange bool
+	ID          Hash
+	Owner       Address
+	Name        string
+	Symbol      string
+	Decimals    uint8
+	Total       *big.Int `json:",string"`
+	CanChange   bool
 	Description string
 }
 
-func (u *Asset) DeepCopy() Asset{
+func (u *Asset) DeepCopy() Asset {
 	total := *u.Total
-		return Asset{
-			ID:        u.ID,
-			Owner:     u.Owner,
-			Name:      u.Name,
-			Symbol:    u.Symbol,
-			Decimals:  u.Decimals,
-			Total:     &total,
-			CanChange: u.CanChange,
-		}
-}
-
-func (u *Asset) MarshalJSON() ([]byte, error) {
-	return json.Marshal(&struct {
-		ID        Hash
-		Owner     Address
-		Name      string
-		Symbol    string
-		Decimals  uint8
-		Total     string
-		CanChange bool
-		Description string
-	}{
+	return Asset{
 		ID:        u.ID,
 		Owner:     u.Owner,
 		Name:      u.Name,
 		Symbol:    u.Symbol,
 		Decimals:  u.Decimals,
-		Total:     u.Total.String(),
+		Total:     &total,
 		CanChange: u.CanChange,
+	}
+}
+
+func (u *Asset) MarshalJSON() ([]byte, error) {
+	return json.Marshal(&struct {
+		ID          Hash
+		Owner       Address
+		Name        string
+		Symbol      string
+		Decimals    uint8
+		Total       string
+		CanChange   bool
+		Description string
+	}{
+		ID:          u.ID,
+		Owner:       u.Owner,
+		Name:        u.Name,
+		Symbol:      u.Symbol,
+		Decimals:    u.Decimals,
+		Total:       u.Total.String(),
+		CanChange:   u.CanChange,
 		Description: u.Description,
 	})
 }
 
 // SystemAsset wacom
 var SystemAsset = Asset{
-	Name:     "Fusion",
-	Symbol:   "FSN",
-	Decimals: 18,
-	Total:    new(big.Int).Mul(big.NewInt(81920000), big.NewInt(1000000000000000000)),
-	ID:       SystemAssetID,
-	Description : "https://fusion.org",
+	Name:        "Fusion",
+	Symbol:      "FSN",
+	Decimals:    18,
+	Total:       new(big.Int).Mul(big.NewInt(81920000), big.NewInt(1000000000000000000)),
+	ID:          SystemAssetID,
+	Description: "https://fusion.org",
 }
 
 // Ticket wacom
@@ -647,7 +662,7 @@ func (t *Ticket) DeepCopy() Ticket {
 	if w != nil {
 		wt = &(*w)
 	}
-	return Ticket {
+	return Ticket{
 		ID:         t.ID,
 		Owner:      t.Owner,
 		Height:     &height,
@@ -666,6 +681,91 @@ func (t *Ticket) SetWeight(value *big.Int) {
 // Weight wacom
 func (t *Ticket) Weight() *big.Int {
 	return t.weight
+}
+
+type TicketStruct struct {
+	Hash
+	Ticket
+}
+
+type TicketStructSlice []TicketStruct
+type TicketSlice []Ticket
+
+func (t *Ticket) toTicketStruct() TicketStruct {
+	return TicketStruct{t.ID, *t}
+}
+
+func (s TicketStructSlice) ToTicketSlice() TicketSlice {
+	r := make(TicketSlice, 0, len(s))
+	for _, t := range s {
+		r = append(r, t.Ticket)
+	}
+	return r
+}
+
+func (s TicketSlice) ToTicketStructSlice() TicketStructSlice {
+	r := make(TicketStructSlice, 0, len(s))
+	for _, t := range s {
+		r = append(r, t.toTicketStruct())
+	}
+	return r
+}
+
+func (s TicketSlice) Len() int {
+	return len(s)
+}
+
+func (s TicketSlice) Less(i, j int) bool {
+	a, _ := new(big.Int).SetString(s[i].ID.Hex(), 0)
+	b, _ := new(big.Int).SetString(s[j].ID.Hex(), 0)
+	return a.Cmp(b) < 0
+}
+
+func (s TicketSlice) Swap(i, j int) {
+	s[i], s[j] = s[j], s[i]
+}
+
+func (s TicketSlice) ToMap() map[Hash]Ticket {
+	r := make(map[Hash]Ticket, len(s))
+	for _, t := range s {
+		r[t.ID] = t
+	}
+	return r
+}
+
+func (s TicketSlice) DeepCopy() TicketSlice {
+	if s == nil || len(s) == 0 {
+		return nil
+	}
+	r := make(TicketSlice, 0, len(s))
+	for _, t := range s {
+		r = append(r, t)
+	}
+	return r
+}
+
+func (s TicketSlice) Get(tid Hash) (*Ticket, bool) {
+	for _, t := range s {
+		if t.ID == tid {
+			return &t, true
+		}
+	}
+	return nil, false
+}
+
+func (s TicketSlice) Add(ticket *Ticket) TicketSlice {
+	s = append(s, *ticket)
+	return s
+}
+
+func (s TicketSlice) Delete(tid Hash) TicketSlice {
+	for i, t := range s {
+		if t.ID == tid {
+			s = append(s[:i], s[i+1:]...)
+			break
+		}
+	}
+	return s
 }
 
 // Swap wacom
@@ -694,7 +794,7 @@ func (s *Swap) DeepCopy() Swap {
 	targets := make([]Address, len(s.Targes))
 	copy(targets, s.Targes)
 
-	 return Swap{
+	return Swap{
 		ID:            s.ID,
 		Owner:         s.Owner,
 		FromAssetID:   s.FromAssetID,
