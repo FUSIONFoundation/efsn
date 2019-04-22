@@ -35,7 +35,7 @@ var psn20HardForkEnableHeights = []uint64{
 	0,
 	90000,
 	99000,
-	150000,
+	130000,
 }
 
 func GetForkEnabledHeight(forkNumber int) uint64 {
