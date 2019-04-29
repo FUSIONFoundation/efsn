@@ -421,7 +421,7 @@ func (st *StateTransition) handleFsnCall() error {
 			return fmt.Errorf("wrong buy ticket param, end < start + 1 month.", "from", from, "tid", id, "blockheight", height, "start", start, "end", end)
 		}
 
-		value := common.TicketPrice()
+		value := common.TicketPrice(height)
 		needValue := common.NewTimeLock(&common.TimeLockItem{
 			StartTime: start,
 			EndTime:   end,

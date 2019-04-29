@@ -452,8 +452,12 @@ func (s *PublicFusionAPI) TotalNumberOfTicketsByAddress(ctx context.Context, add
 }
 
 // TicketPrice wacom
-func (s *PublicFusionAPI) TicketPrice(ctx context.Context) (string, error) {
-	return common.TicketPrice().String(), nil
+func (s *PublicFusionAPI) TicketPrice(ctx context.Context, blockNr rpc.BlockNumber) (string, error) {
+	state, header, err := s.b.StateAndHeaderByNumber(ctx, blockNr)
+	if state == nil || err != nil {
+		return "", err
+	}
+	return common.TicketPrice(header.Number).String(), nil
 }
 
 // AllTicketsByAddress wacom
@@ -764,7 +768,7 @@ func doesTicketPurchaseExistsForBlock(blockNbr int64, from common.Address) bool 
 
 // BuyTicket ss
 func (s *PrivateFusionAPI) BuyTicket(ctx context.Context, args BuyTicketArgs, passwd string) (common.Hash, error) {
-	state, _, err := s.b.StateAndHeaderByNumber(ctx, rpc.LatestBlockNumber)
+	state, header, err := s.b.StateAndHeaderByNumber(ctx, rpc.LatestBlockNumber)
 	if state == nil || err != nil {
 		return common.Hash{}, err
 	}
@@ -791,7 +795,7 @@ func (s *PrivateFusionAPI) BuyTicket(ctx context.Context, args BuyTicketArgs, pa
 
 	start := uint64(*args.Start)
 	end := uint64(*args.End)
-	value := common.TicketPrice()
+	value := common.TicketPrice(header.Number)
 	needValue := common.NewTimeLock(&common.TimeLockItem{
 		StartTime: start,
 		EndTime:   end,
@@ -1413,7 +1417,7 @@ func (s *FusionTransactionAPI) TimeLockToAsset(ctx context.Context, args TimeLoc
 
 // BuildBuyTicketTx ss
 func (s *FusionTransactionAPI) BuildBuyTicketTx(ctx context.Context, args BuyTicketArgs) (*types.Transaction, error) {
-	state, _, err := s.b.StateAndHeaderByNumber(ctx, rpc.LatestBlockNumber)
+	state, header, err := s.b.StateAndHeaderByNumber(ctx, rpc.LatestBlockNumber)
 	if state == nil || err != nil {
 		return nil, err
 	}
@@ -1440,7 +1444,7 @@ func (s *FusionTransactionAPI) BuildBuyTicketTx(ctx context.Context, args BuyTic
 	start := uint64(*args.Start)
 	end := uint64(*args.End)
 
-	value := common.TicketPrice()
+	value := common.TicketPrice(header.Number)
 	needValue := common.NewTimeLock(&common.TimeLockItem{
 		StartTime: start,
 		EndTime:   end,

@@ -33,9 +33,10 @@ import (
 
 var psn20HardForkEnableHeights = []uint64{
 	0,
-	90000,
-	99000,
-	130000,
+	90000,  // hard fork 1
+	99000,  // hard fork 2
+	130000, // hard fork 3
+	165000, // hard fork 4
 }
 
 func GetForkEnabledHeight(forkNumber int) uint64 {
@@ -437,8 +438,12 @@ func ParseBig256(s string) (*big.Int, bool) {
 }
 
 // TicketPrice  place holder for ticket price
-func TicketPrice() *big.Int {
-	return new(big.Int).Mul(big.NewInt(200), big.NewInt(1000000000000000000))
+func TicketPrice(blocknumber *big.Int) *big.Int {
+	oneFSN := big.NewInt(1000000000000000000)
+	if blocknumber.Cmp(new(big.Int).SetUint64(GetForkEnabledHeight(4))) < 0 {
+		return new(big.Int).Mul(big.NewInt(200), oneFSN)
+	}
+	return new(big.Int).Mul(big.NewInt(5000), oneFSN)
 }
 
 // FSNCallParam wacom
