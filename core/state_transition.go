@@ -272,6 +272,8 @@ func outputCommandInfo(param1 string, param2 string, param3 interface{}) {
 }
 
 func (st *StateTransition) handleFsnCall() error {
+	height := st.evm.Context.BlockNumber
+	isAfterFork4 := height.Uint64() >= common.GetForkEnabledHeight(4)
 	param := common.FSNCallParam{}
 	rlp.DecodeBytes(st.msg.Data(), &param)
 	switch param.Func {
@@ -340,18 +342,26 @@ func (st *StateTransition) handleFsnCall() error {
 		outputCommandInfo("TimeLockFunc", "from", st.msg.From())
 		timeLockParam := common.TimeLockParam{}
 		rlp.DecodeBytes(param.Data, &timeLockParam)
+		start := timeLockParam.StartTime
+		end := timeLockParam.EndTime
 		if timeLockParam.Type == common.TimeLockToAsset {
-			if timeLockParam.StartTime > uint64(time.Now().Unix()) {
-				st.addLog(common.TimeLockFunc, timeLockParam, common.NewKeyValue("LockType", "TimeLockToAsset"), common.NewKeyValue("Error", "Start time must be more than now"))
-				return fmt.Errorf("Start time must be more than now")
+			if start > uint64(time.Now().Unix()) {
+				st.addLog(common.TimeLockFunc, timeLockParam, common.NewKeyValue("LockType", "TimeLockToAsset"), common.NewKeyValue("Error", "Start time must be less than now"))
+				return fmt.Errorf("Start time must be less than now")
 			}
-			timeLockParam.EndTime = common.TimeLockForever
+			end = common.TimeLockForever
 		}
 		needValue := common.NewTimeLock(&common.TimeLockItem{
-			StartTime: timeLockParam.StartTime,
-			EndTime:   timeLockParam.EndTime,
+			StartTime: start,
+			EndTime:   end,
 			Value:     new(big.Int).SetBytes(timeLockParam.Value.Bytes()),
 		})
+		if isAfterFork4 {
+			if err := needValue.IsValid(); err != nil {
+				st.addLog(common.TimeLockFunc, timeLockParam, common.NewKeyValue("Error", err.Error()))
+				return fmt.Errorf(err.Error())
+			}
+		}
 		switch timeLockParam.Type {
 		case common.AssetToTimeLock:
 			if st.state.GetBalance(timeLockParam.AssetID, st.msg.From()).Cmp(timeLockParam.Value) < 0 {
@@ -394,7 +404,6 @@ func (st *StateTransition) handleFsnCall() error {
 		outputCommandInfo("BuyTicketFunc", "from", st.msg.From())
 		// log.Info( "Buy a ticket func called")
 		from := st.msg.From()
-		height := st.evm.Context.BlockNumber
 		hash := st.evm.GetHash(height.Uint64() - 1)
 		id := crypto.Keccak256Hash(from[:], hash[:])
 
@@ -421,7 +430,7 @@ func (st *StateTransition) handleFsnCall() error {
 			return fmt.Errorf("wrong buy ticket param, end < start + 1 month.", "from", from, "tid", id, "blockheight", height, "start", start, "end", end)
 		}
 
-		value := common.TicketPrice()
+		value := common.TicketPrice(height)
 		needValue := common.NewTimeLock(&common.TimeLockItem{
 			StartTime: start,
 			EndTime:   end,
@@ -559,6 +568,16 @@ func (st *StateTransition) handleFsnCall() error {
 			log.Info("make swap overflow 1", "MinFromAmount", makeSwapParam.MinFromAmount, "Swap", makeSwapParam.SwapSize)
 			st.addLog(common.MakeSwapFunc, makeSwapParam, common.NewKeyValue("Error", "size * minToAmount too large"))
 			return fmt.Errorf("Error", "size * minToAmount too large")
+		}
+		if isAfterFork4 {
+			if makeSwapParam.FromStartTime > makeSwapParam.FromEndTime {
+				st.addLog(common.MakeSwapFunc, makeSwapParam, common.NewKeyValue("Error", "MakeSwap FromStartTime > FromEndTime"))
+				return fmt.Errorf("MakeSwap FromStartTime > FromEndTime")
+			}
+			if makeSwapParam.ToStartTime > makeSwapParam.ToEndTime {
+				st.addLog(common.MakeSwapFunc, makeSwapParam, common.NewKeyValue("Error", "MakeSwap ToStartTime > ToEndTime"))
+				return fmt.Errorf("MakeSwap ToStartTime > ToEndTime")
+			}
 		}
 		start := makeSwapParam.FromStartTime
 		end := makeSwapParam.FromEndTime

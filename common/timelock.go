@@ -2,6 +2,7 @@ package common
 
 import (
 	"encoding/json"
+	"fmt"
 	"math/big"
 	"sort"
 )
@@ -27,7 +28,17 @@ const (
 type TimeLockItem struct {
 	StartTime uint64
 	EndTime   uint64
-	Value     *big.Int
+	Value     *big.Int `json:",string"`
+}
+
+func (z *TimeLockItem) IsValid() error {
+	if z.StartTime > z.EndTime {
+		return fmt.Errorf("TimeLockItem time is invalid, StartTime:%v > EndTime:%v", z.StartTime, z.EndTime)
+	}
+	if z.Value.Sign() <= 0 {
+		return fmt.Errorf("TimeLockItem value is invalid, Value:%v", z.Value)
+	}
+	return nil
 }
 
 // Sub wacom
@@ -91,6 +102,17 @@ func NewTimeLock(items ...*TimeLockItem) *TimeLock {
 // IsEmpty wacom
 func (z *TimeLock) IsEmpty() bool {
 	return len(z.Items) == 0
+}
+
+func (z *TimeLock) IsValid() error {
+	var next *TimeLockItem
+	for i := 0; i < len(z.Items); i++ {
+		next = z.Items[i]
+		if err := next.IsValid(); err != nil {
+			return fmt.Errorf("TimeLock is invalid, index:%v err:%v", i, err)
+		}
+	}
+	return nil
 }
 
 // Add wacom
@@ -170,18 +192,6 @@ func (z *TimeLock) Clone() *TimeLock {
 	return t
 }
 
-func (u *TimeLockItem) MarshalJSON() ([]byte, error) {
-	return json.Marshal(&struct {
-		StartTime  uint64 
-		Value   string 
-		EndTime uint64  
-	}{
-		StartTime:       u.StartTime,
-		EndTime:     u.EndTime,
-		Value: u.Value.String(),
-	})
-}
-
 func (z *TimeLock) Len() int {
 	return len(z.Items)
 }
@@ -193,6 +203,18 @@ func (z *TimeLock) Less(i, j int) bool {
 		return z.Items[i].StartTime < z.Items[j].StartTime || (z.Items[i].StartTime == z.Items[j].StartTime && z.Items[i].EndTime <= z.Items[j].EndTime)
 	}
 	return z.Items[i].Value.Cmp(z.Items[j].Value) > 0
+}
+
+func (u *TimeLockItem) MarshalJSON() ([]byte, error) {
+	return json.Marshal(&struct {
+		StartTime uint64
+		Value     string
+		EndTime   uint64
+	}{
+		StartTime: u.StartTime,
+		EndTime:   u.EndTime,
+		Value:     u.Value.String(),
+	})
 }
 
 // String wacom

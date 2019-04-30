@@ -882,7 +882,7 @@ func (dt *DaTong) checkTicketInfo(header *types.Header, ticket *common.Ticket) e
 		return errors.New("checkTicketInfo ticket ExpireTime mismatch")
 	}
 	// check value
-	if ticket.Value.Cmp(common.TicketPrice()) < 0 {
+	if ticket.Value.Cmp(common.TicketPrice(ticket.Height)) < 0 {
 		return errors.New("checkTicketInfo ticket Value mismatch")
 	}
 	return nil
