@@ -528,12 +528,12 @@ var privateFusionAPI = &PrivateFusionAPI{}
 func AutoBuyTicket(account common.Address, passwd string) {
 	for {
 		select {
-			case <-common.AutoBuyTicketChan:
-				if privateFusionAPI.b.IsMining() {
-					fbase := FusionBaseArgs{From:account}
-					args := BuyTicketArgs{FusionBaseArgs:fbase}
-					privateFusionAPI.BuyTicket(nil, args, passwd)
-				}
+		case <-common.AutoBuyTicketChan:
+			if privateFusionAPI.b.IsMining() {
+				fbase := FusionBaseArgs{From: account}
+				args := BuyTicketArgs{FusionBaseArgs: fbase}
+				privateFusionAPI.BuyTicket(nil, args, passwd)
+			}
 		}
 	}
 }
@@ -710,16 +710,12 @@ func (s *PrivateFusionAPI) TimeLockToTimeLock(ctx context.Context, args TimeLock
 
 // TimeLockToAsset ss
 func (s *PrivateFusionAPI) TimeLockToAsset(ctx context.Context, args TimeLockArgs, passwd string) (common.Hash, error) {
-	state, _, err := s.b.StateAndHeaderByNumber(ctx, rpc.LatestBlockNumber)
+	state, header, err := s.b.StateAndHeaderByNumber(ctx, rpc.LatestBlockNumber)
 	if state == nil || err != nil {
 		return common.Hash{}, err
 	}
-	block, err := s.b.BlockByNumber(ctx, rpc.LatestBlockNumber)
-	if block == nil || err != nil {
-		return common.Hash{}, err
-	}
 	args.init()
-	*(*uint64)(args.StartTime) = block.Time().Uint64()
+	*(*uint64)(args.StartTime) = header.Time.Uint64()
 	*(*uint64)(args.EndTime) = common.TimeLockForever
 	needValue := common.NewTimeLock(&common.TimeLockItem{
 		StartTime: uint64(*args.StartTime),
@@ -773,19 +769,14 @@ func (s *PrivateFusionAPI) BuyTicket(ctx context.Context, args BuyTicketArgs, pa
 		return common.Hash{}, err
 	}
 
-	block, err := s.b.BlockByNumber(ctx, rpc.LatestBlockNumber)
-	if block == nil || err != nil {
-		return common.Hash{}, err
-	}
-
-	if doesTicketPurchaseExistsForBlock(block.Header().Number.Int64(), args.From) {
+	if doesTicketPurchaseExistsForBlock(header.Number.Int64(), args.From) {
 		log.Info("Purchase of BuyTicket for this block already submitted")
 		return common.Hash{}, fmt.Errorf("Purchase of BuyTicket for this block already submitted")
 	}
 
 	if args.Start == nil {
 		args.Start = new(hexutil.Uint64)
-		*(*uint64)(args.Start) = block.Time().Uint64()
+		*(*uint64)(args.Start) = header.Time.Uint64()
 	}
 
 	if args.End == nil {
@@ -931,7 +922,7 @@ func (s *PrivateFusionAPI) MakeSwap(ctx context.Context, args MakeSwapArgs, pass
 		return common.Hash{}, fmt.Errorf("time fields must be set")
 	}
 
-	state, _, err := s.b.StateAndHeaderByNumber(ctx, rpc.LatestBlockNumber)
+	state, header, err := s.b.StateAndHeaderByNumber(ctx, rpc.LatestBlockNumber)
 	if state == nil || err != nil {
 		return common.Hash{}, err
 	}
@@ -958,12 +949,7 @@ func (s *PrivateFusionAPI) MakeSwap(ctx context.Context, args MakeSwapArgs, pass
 		}
 	}
 
-	block, err := s.b.BlockByNumber(ctx, rpc.LatestBlockNumber)
-	if block == nil || err != nil {
-		return common.Hash{}, err
-	}
-
-	funcData, err := args.toData(block.Time())
+	funcData, err := args.toData(header.Time)
 	if err != nil {
 		return common.Hash{}, err
 	}
@@ -1365,22 +1351,17 @@ func (s *FusionTransactionAPI) TimeLockToTimeLock(ctx context.Context, args Time
 
 // BuildTimeLockToAssetTx ss
 func (s *FusionTransactionAPI) BuildTimeLockToAssetTx(ctx context.Context, args TimeLockArgs) (*types.Transaction, error) {
-	state, _, err := s.b.StateAndHeaderByNumber(ctx, rpc.LatestBlockNumber)
+	state, header, err := s.b.StateAndHeaderByNumber(ctx, rpc.LatestBlockNumber)
 	if state == nil || err != nil {
 		return nil, err
 	}
-	block, err := s.b.BlockByNumber(ctx, rpc.LatestBlockNumber)
-	if block == nil || err != nil {
-		return nil, err
-	}
 	args.init()
-
 	if args.Value == nil {
 		log.Info("BuildTimeLockToAssetTx: Value is set improperly")
 		return nil, fmt.Errorf("Value is set improperly")
 	}
 
-	*(*uint64)(args.StartTime) = block.Time().Uint64()
+	*(*uint64)(args.StartTime) = header.Time.Uint64()
 	*(*uint64)(args.EndTime) = common.TimeLockForever
 	needValue := common.NewTimeLock(&common.TimeLockItem{
 		StartTime: uint64(*args.StartTime),
@@ -1422,18 +1403,13 @@ func (s *FusionTransactionAPI) BuildBuyTicketTx(ctx context.Context, args BuyTic
 		return nil, err
 	}
 
-	block, err := s.b.BlockByNumber(ctx, rpc.LatestBlockNumber)
-	if block == nil || err != nil {
-		return nil, err
-	}
-
-	if doesTicketPurchaseExistsForBlock(block.Header().Number.Int64(), args.From) {
+	if doesTicketPurchaseExistsForBlock(header.Number.Int64(), args.From) {
 		return nil, fmt.Errorf("Purchase of BuyTicket for this block already submitted")
 	}
 
 	if args.Start == nil {
 		args.Start = new(hexutil.Uint64)
-		*(*uint64)(args.Start) = block.Time().Uint64()
+		*(*uint64)(args.Start) = header.Time.Uint64()
 	}
 
 	if args.End == nil {
@@ -1602,7 +1578,7 @@ func (s *FusionTransactionAPI) BuildMakeSwapTx(ctx context.Context, args MakeSwa
 		return nil, fmt.Errorf("MinFromAmount,MinToAmount and SwapSize must be ge 1")
 	}
 
-	state, _, err := s.b.StateAndHeaderByNumber(ctx, rpc.LatestBlockNumber)
+	state, header, err := s.b.StateAndHeaderByNumber(ctx, rpc.LatestBlockNumber)
 	if state == nil || err != nil {
 		return nil, err
 	}
@@ -1629,12 +1605,7 @@ func (s *FusionTransactionAPI) BuildMakeSwapTx(ctx context.Context, args MakeSwa
 		}
 	}
 
-	block, err := s.b.BlockByNumber(ctx, rpc.LatestBlockNumber)
-	if block == nil || err != nil {
-		return nil, err
-	}
-
-	funcData, err := args.toData(block.Time())
+	funcData, err := args.toData(header.Time)
 	if err != nil {
 		return nil, err
 	}
