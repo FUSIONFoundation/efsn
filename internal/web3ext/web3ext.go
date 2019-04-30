@@ -906,8 +906,9 @@ web3._extend({
 		new web3._extend.Method({
 			name: 'ticketPrice',
 			call: 'fsn_ticketPrice',
-			params: 0,
+			params: 1,
 			inputFormatter: [
+				web3._extend.formatters.inputDefaultBlockNumberFormatter
 			]
 		}),
 		new web3._extend.Method({
@@ -1089,8 +1090,9 @@ web3._extend({
 		new web3._extend.Method({
 			name: 'ticketPrice',
 			call: 'fsn_ticketPrice',
-			params: 0,
+			params: 1,
 			inputFormatter: [
+				web3._extend.formatters.inputDefaultBlockNumberFormatter
 			]
 		}),
 		new web3._extend.Method({
