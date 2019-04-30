@@ -647,12 +647,18 @@ func (s *PrivateFusionAPI) SendAsset(ctx context.Context, args SendAssetArgs, pa
 
 // AssetToTimeLock ss
 func (s *PrivateFusionAPI) AssetToTimeLock(ctx context.Context, args TimeLockArgs, passwd string) (common.Hash, error) {
-
-	args.init()
-
 	state, _, err := s.b.StateAndHeaderByNumber(ctx, rpc.LatestBlockNumber)
 	if state == nil || err != nil {
 		return common.Hash{}, err
+	}
+	args.init()
+	needValue := common.NewTimeLock(&common.TimeLockItem{
+		StartTime: uint64(*args.StartTime),
+		EndTime:   uint64(*args.EndTime),
+		Value:     args.Value.ToInt(),
+	})
+	if err := needValue.IsValid(); err != nil {
+		return common.Hash{}, fmt.Errorf("AssetToTimeLock err:%v", err.Error())
 	}
 	if state.GetBalance(args.AssetID, args.From).Cmp(args.Value.ToInt()) < 0 {
 		return common.Hash{}, fmt.Errorf("not enough asset")
@@ -1262,24 +1268,22 @@ func (s *FusionTransactionAPI) SendAsset(ctx context.Context, args SendAssetArgs
 
 // BuildAssetToTimeLockTx ss
 func (s *FusionTransactionAPI) BuildAssetToTimeLockTx(ctx context.Context, args TimeLockArgs) (*types.Transaction, error) {
-
-	args.init()
 	if args.Value == nil {
 		log.Info("BuildAssetToTimeLockTx: Value is set improperly")
 		return nil, fmt.Errorf("Value is set improperly")
 	}
-	if args.StartTime == nil {
-		log.Info("BuildAssetToTimeLockTx: StartTime is not set")
-		return nil, fmt.Errorf("StartTime is not set")
-	}
-	if args.EndTime == nil {
-		log.Info("BuildAssetToTimeLockTx: EndTime is not set")
-		return nil, fmt.Errorf("EndTime is not set")
-	}
-
 	state, _, err := s.b.StateAndHeaderByNumber(ctx, rpc.LatestBlockNumber)
 	if state == nil || err != nil {
 		return nil, err
+	}
+	args.init()
+	needValue := common.NewTimeLock(&common.TimeLockItem{
+		StartTime: uint64(*args.StartTime),
+		EndTime:   uint64(*args.EndTime),
+		Value:     args.Value.ToInt(),
+	})
+	if err := needValue.IsValid(); err != nil {
+		return nil, fmt.Errorf("BuildAssetToTimeLockTx err:%v", err.Error())
 	}
 	if state.GetBalance(args.AssetID, args.From).Cmp(args.Value.ToInt()) < 0 {
 		return nil, fmt.Errorf("not enough asset")
