@@ -205,6 +205,18 @@ func (z *TimeLock) Less(i, j int) bool {
 	return z.Items[i].Value.Cmp(z.Items[j].Value) > 0
 }
 
+func (u *TimeLockItem) MarshalJSON() ([]byte, error) {
+	return json.Marshal(&struct {
+		StartTime uint64
+		Value     string
+		EndTime   uint64
+	}{
+		StartTime: u.StartTime,
+		EndTime:   u.EndTime,
+		Value:     u.Value.String(),
+	})
+}
+
 // String wacom
 func (z *TimeLock) String() string {
 	b, _ := json.Marshal(z.Items)
