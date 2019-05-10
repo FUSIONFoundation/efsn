@@ -44,6 +44,11 @@ func NewEVMContext(msg Message, header *types.Header, chain ChainContext, author
 	} else {
 		beneficiary = *author
 	}
+	parentTime := big.NewInt(0)
+	parent := chain.GetHeader(header.ParentHash, header.Number.Uint64()-1)
+	if parent != nil {
+		parentTime = parent.Time
+	}
 	return vm.Context{
 		CanTransfer: CanTransfer,
 		Transfer:    Transfer,
@@ -52,6 +57,7 @@ func NewEVMContext(msg Message, header *types.Header, chain ChainContext, author
 		Coinbase:    beneficiary,
 		BlockNumber: new(big.Int).Set(header.Number),
 		Time:        new(big.Int).Set(header.Time),
+		ParentTime:  new(big.Int).Set(parentTime),
 		Difficulty:  new(big.Int).Set(header.Difficulty),
 		GasLimit:    header.GasLimit,
 		GasPrice:    new(big.Int).Set(msg.GasPrice()),
