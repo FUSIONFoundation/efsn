@@ -287,6 +287,9 @@ func (s *PublicFusionAPI) GetTimeLockBalance(ctx context.Context, assetID common
 		return new(common.TimeLock), err
 	}
 	b := state.GetTimeLockBalance(assetID, address)
+	if state.Error() == nil {
+		b = b.ToDisplay()
+	}
 	return b, state.Error()
 }
 
@@ -297,6 +300,11 @@ func (s *PublicFusionAPI) GetAllTimeLockBalances(ctx context.Context, address co
 		return make(map[common.Hash]*common.TimeLock), err
 	}
 	b := state.GetAllTimeLockBalances(address)
+	if state.Error() == nil {
+		for k, v := range b {
+			b[k] = v.ToDisplay()
+		}
+	}
 	return b, state.Error()
 }
 

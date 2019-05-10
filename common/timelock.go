@@ -654,8 +654,8 @@ func (z *TimeLock) Less(i, j int) bool {
 func (u *TimeLockItem) MarshalJSON() ([]byte, error) {
 	return json.Marshal(&struct {
 		StartTime uint64
-		Value     string
 		EndTime   uint64
+		Value     string
 	}{
 		StartTime: u.StartTime,
 		EndTime:   u.EndTime,
