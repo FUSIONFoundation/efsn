@@ -276,16 +276,17 @@ func (st *StateTransition) handleFsnCall() error {
 	timestamp := st.evm.Context.ParentTime.Uint64()
 	isAfterFork4 := height.Uint64() >= common.GetForkEnabledHeight(4)
 	isAfterFork5 := height.Uint64() >= common.GetForkEnabledHeight(5)
+
 	param := common.FSNCallParam{}
 	rlp.DecodeBytes(st.msg.Data(), &param)
 	switch param.Func {
 	case common.GenNotationFunc:
 		outputCommandInfo("GenNotationFunc", "from", st.msg.From())
-		err := st.state.GenNotation(st.msg.From())
-		if err == nil {
-			st.addLog(common.GenNotationFunc, []byte{})
+		if err := st.state.GenNotation(st.msg.From()); err != nil {
+			return err
 		}
-		return err
+		st.addLog(common.GenNotationFunc, []byte{})
+		return nil
 	case common.GenAssetFunc:
 		outputCommandInfo("GenAssetFunc", "from", st.msg.From())
 		genAssetParam := common.GenAssetParam{}
@@ -477,6 +478,16 @@ func (st *StateTransition) handleFsnCall() error {
 				Value:     value,
 			})
 		}
+
+		ticket := common.Ticket{
+			ID:         id,
+			Owner:      from,
+			Height:     height,
+			StartTime:  buyTicketParam.Start,
+			ExpireTime: end,
+			Value:      value,
+		}
+
 		useAsset := false
 		if st.state.GetTimeLockBalance(common.SystemAssetID, from).Cmp(needValue, height) < 0 {
 			if st.state.GetBalance(common.SystemAssetID, from).Cmp(value) < 0 {
@@ -513,14 +524,6 @@ func (st *StateTransition) handleFsnCall() error {
 			st.state.SubTimeLockBalance(from, common.SystemAssetID, needValue, height, timestamp)
 		}
 
-		ticket := common.Ticket{
-			ID:         id,
-			Owner:      from,
-			Height:     height,
-			StartTime:  buyTicketParam.Start,
-			ExpireTime: end,
-			Value:      value,
-		}
 		if err := st.state.AddTicket(ticket); err != nil {
 			st.addLog(common.BuyTicketFunc, param.Data, common.NewKeyValue("Error", "unable to add ticket"))
 			return err
@@ -605,6 +608,22 @@ func (st *StateTransition) handleFsnCall() error {
 		outputCommandInfo("MakeSwapFunc", "from", st.msg.From())
 		makeSwapParam := common.MakeSwapParam{}
 		rlp.DecodeBytes(param.Data, &makeSwapParam)
+		swapId := st.msg.AsTransaction().Hash()
+
+		if isAfterFork5 {
+			swaps, err := st.state.AllSwaps()
+			if err != nil {
+				log.Info("MakeSwap unable to retrieve previous swaps")
+				st.addLog(common.MakeSwapFunc, makeSwapParam, common.NewKeyValue("Error", err.Error()))
+				return err
+			}
+
+			if _, ok := swaps[swapId]; ok {
+				st.addLog(common.MakeSwapFunc, makeSwapParam, common.NewKeyValue("Error", "Swap already exist"))
+				return fmt.Errorf("Swap already exist")
+			}
+		}
+
 		big0 := big.NewInt(0)
 		if makeSwapParam.MinFromAmount.Cmp(big0) <= 0 || makeSwapParam.MinToAmount.Cmp(big0) <= 0 || makeSwapParam.SwapSize.Cmp(big0) <= 0 {
 			st.addLog(common.MakeSwapFunc, makeSwapParam, common.NewKeyValue("Error", "MinFromAmount,MinToAmount and SwapSize must be ge 1"))
@@ -652,6 +671,23 @@ func (st *StateTransition) handleFsnCall() error {
 				EndTime:   end,
 				Value:     total,
 			})
+		}
+
+		swap := common.Swap{
+			ID:            swapId,
+			Owner:         st.msg.From(),
+			FromAssetID:   makeSwapParam.FromAssetID,
+			FromStartTime: makeSwapParam.FromStartTime,
+			FromEndTime:   makeSwapParam.FromEndTime,
+			MinFromAmount: makeSwapParam.MinFromAmount,
+			ToAssetID:     makeSwapParam.ToAssetID,
+			ToStartTime:   makeSwapParam.ToStartTime,
+			ToEndTime:     makeSwapParam.ToEndTime,
+			MinToAmount:   makeSwapParam.MinToAmount,
+			SwapSize:      makeSwapParam.SwapSize,
+			Targes:        makeSwapParam.Targes,
+			Time:          makeSwapParam.Time, // this will mean the block time
+			Description:   makeSwapParam.Description,
 		}
 
 		if useAsset == true {
@@ -708,22 +744,6 @@ func (st *StateTransition) handleFsnCall() error {
 			}
 		}
 
-		swap := common.Swap{
-			ID:            st.msg.AsTransaction().Hash(),
-			Owner:         st.msg.From(),
-			FromAssetID:   makeSwapParam.FromAssetID,
-			FromStartTime: makeSwapParam.FromStartTime,
-			FromEndTime:   makeSwapParam.FromEndTime,
-			MinFromAmount: makeSwapParam.MinFromAmount,
-			ToAssetID:     makeSwapParam.ToAssetID,
-			ToStartTime:   makeSwapParam.ToStartTime,
-			ToEndTime:     makeSwapParam.ToEndTime,
-			MinToAmount:   makeSwapParam.MinToAmount,
-			SwapSize:      makeSwapParam.SwapSize,
-			Targes:        makeSwapParam.Targes,
-			Time:          makeSwapParam.Time, // this will mean the block time
-			Description:   makeSwapParam.Description,
-		}
 		if err := st.state.AddSwap(swap); err != nil {
 			st.addLog(common.MakeSwapFunc, makeSwapParam, common.NewKeyValue("Error", "System error can't add swap"))
 			return err

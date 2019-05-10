@@ -1033,7 +1033,7 @@ func (db *StateDB) AddSwap(swap common.Swap) error {
 		return err
 	}
 	if _, ok := swaps[swap.ID]; ok {
-		return fmt.Errorf("%s Ticket exists", swap.ID.String())
+		return fmt.Errorf("%s Swap exists", swap.ID.String())
 	}
 	swaps[swap.ID] = swap
 	return db.updateSwaps(swaps)
