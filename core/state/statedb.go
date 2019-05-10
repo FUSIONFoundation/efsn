@@ -1067,6 +1067,32 @@ func (db *StateDB) RemoveSwap(id common.Hash) error {
 	return db.updateSwaps(swaps)
 }
 
+func (db *StateDB) ClearExpiredSwaps(blockNumber *big.Int, timestamp uint64) error {
+	if blockNumber.Uint64() < common.GetForkEnabledHeight(5) {
+		return nil
+	}
+	clearPeriod := uint64(5000)
+	if blockNumber.Uint64()%clearPeriod != 0 {
+		return nil
+	}
+	swaps, err := db.AllSwaps()
+	if err != nil {
+		log.Debug("ClearExpiredSwaps unable to retrieve previous swaps")
+		return err
+	}
+	changed := false
+	for id, swap := range swaps {
+		if swap.FromEndTime <= timestamp || swap.ToEndTime <= timestamp {
+			delete(swaps, id)
+			changed = true
+		}
+	}
+	if changed == true {
+		return db.updateSwaps(swaps)
+	}
+	return nil
+}
+
 func (db *StateDB) updateSwaps(swaps map[common.Hash]common.Swap) error {
 	db.swaps = swaps
 	//log.Info("COMMIT: saving swaps")

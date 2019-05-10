@@ -414,6 +414,9 @@ func (dt *DaTong) Finalize(chain consensus.ChainReader, header *types.Header, st
 	if err := headerState.UpdateTickets(header.Number); err != nil {
 		return nil, err
 	}
+	if err := headerState.ClearExpiredSwaps(header.Number, parentTime); err != nil {
+		return nil, err
+	}
 
 	snap.SetWeight(remainingWeight)
 	snap.SetTicketWeight(remainingWeight)
