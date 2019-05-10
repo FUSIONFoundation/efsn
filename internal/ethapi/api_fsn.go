@@ -766,11 +766,14 @@ func doesTicketPurchaseExistsForBlock(blockNbr int64, from common.Address) bool 
 		buyTicketOnBlockMap = make(map[common.Address]bool)
 	}
 	_, found := buyTicketOnBlockMap[from]
-	if found {
-		return true
-	}
+	return found
+}
+
+// only record on purchase ticket successfully
+func addTicketPurchaseForBlock(from common.Address) {
+	buyTicketOnBlockMapMutex.Lock()
+	defer buyTicketOnBlockMapMutex.Unlock()
 	buyTicketOnBlockMap[from] = true
-	return false
 }
 
 // BuyTicket ss
@@ -824,7 +827,12 @@ func (s *PrivateFusionAPI) BuyTicket(ctx context.Context, args BuyTicketArgs, pa
 	sendArgs := args.toSendArgs()
 	sendArgs.To = &common.FSNCallAddress
 	sendArgs.Data = &argsData
-	return s.papi.SendTransaction(ctx, sendArgs, passwd)
+	hash, err := s.papi.SendTransaction(ctx, sendArgs, passwd)
+	if err != nil {
+		return common.Hash{}, err
+	}
+	addTicketPurchaseForBlock(args.From)
+	return hash, err
 }
 
 // IncAsset ss
@@ -1475,7 +1483,12 @@ func (s *FusionTransactionAPI) BuyTicket(ctx context.Context, args BuyTicketArgs
 	if err != nil {
 		return common.Hash{}, err
 	}
-	return s.sendTransaction(ctx, args.From, tx)
+	hash, err := s.sendTransaction(ctx, args.From, tx)
+	if err != nil {
+		return common.Hash{}, err
+	}
+	addTicketPurchaseForBlock(args.From)
+	return hash, err
 }
 
 func (s *FusionTransactionAPI) buildAssetValueChangeTx(ctx context.Context, args AssetValueChangeExArgs) (*types.Transaction, error) {
