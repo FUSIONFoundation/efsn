@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math/big"
 	"sync"
+	"time"
 
 	"github.com/FusionFoundation/efsn/accounts"
 	"github.com/FusionFoundation/efsn/common"
@@ -117,17 +118,20 @@ func (args *FusionBaseArgs) toSendArgs() SendTxArgs {
 	}
 }
 
-func (args *SendAssetArgs) toData() ([]byte, error) {
-	param := common.SendAssetParam{
+func (args *SendAssetArgs) toParam() *common.SendAssetParam {
+	return &common.SendAssetParam{
 		AssetID: args.AssetID,
 		To:      args.To,
 		Value:   args.Value.ToInt(),
 	}
-	return param.ToBytes()
 }
 
-func (args *TimeLockArgs) toData(typ common.TimeLockType) ([]byte, error) {
-	param := common.TimeLockParam{
+func (args *SendAssetArgs) toData() ([]byte, error) {
+	return args.toParam().ToBytes()
+}
+
+func (args *TimeLockArgs) toParam(typ common.TimeLockType) *common.TimeLockParam {
+	return &common.TimeLockParam{
 		Type:      typ,
 		AssetID:   args.AssetID,
 		To:        args.To,
@@ -135,11 +139,14 @@ func (args *TimeLockArgs) toData(typ common.TimeLockType) ([]byte, error) {
 		EndTime:   uint64(*args.EndTime),
 		Value:     args.Value.ToInt(),
 	}
-	return param.ToBytes()
 }
 
-func (args *GenAssetArgs) toData() ([]byte, error) {
-	param := common.GenAssetParam{
+func (args *TimeLockArgs) toData(typ common.TimeLockType) ([]byte, error) {
+	return args.toParam(typ).ToBytes()
+}
+
+func (args *GenAssetArgs) toParam() *common.GenAssetParam {
+	return &common.GenAssetParam{
 		Name:        args.Name,
 		Symbol:      args.Symbol,
 		Decimals:    args.Decimals,
@@ -147,15 +154,34 @@ func (args *GenAssetArgs) toData() ([]byte, error) {
 		CanChange:   args.CanChange,
 		Description: args.Description,
 	}
-	return param.ToBytes()
 }
 
-func (args *BuyTicketArgs) toData() ([]byte, error) {
-	param := common.BuyTicketParam{
+func (args *GenAssetArgs) toData() ([]byte, error) {
+	return args.toParam().ToBytes()
+}
+
+func (args *BuyTicketArgs) toParam() *common.BuyTicketParam {
+	return &common.BuyTicketParam{
 		Start: uint64(*args.Start),
 		End:   uint64(*args.End),
 	}
-	return param.ToBytes()
+}
+
+func (args *BuyTicketArgs) toData() ([]byte, error) {
+	return args.toParam().ToBytes()
+}
+
+func (args *BuyTicketArgs) init(defStart uint64) {
+
+	if args.Start == nil {
+		args.Start = new(hexutil.Uint64)
+		*(*uint64)(args.Start) = defStart
+	}
+
+	if args.End == nil {
+		args.End = new(hexutil.Uint64)
+		*(*uint64)(args.End) = uint64(*args.Start) + 30*24*3600
+	}
 }
 
 func (args *AssetValueChangeArgs) toData() ([]byte, error) {
@@ -168,15 +194,18 @@ func (args *AssetValueChangeArgs) toData() ([]byte, error) {
 	return param.ToBytes()
 }
 
-func (args *AssetValueChangeExArgs) toData() ([]byte, error) {
-	param := common.AssetValueChangeExParam{
+func (args *AssetValueChangeExArgs) toParam() *common.AssetValueChangeExParam {
+	return &common.AssetValueChangeExParam{
 		AssetID:     args.AssetID,
 		To:          args.To,
 		Value:       args.Value.ToInt(),
 		IsInc:       args.IsInc,
 		TransacData: args.TransacData,
 	}
-	return param.ToBytes()
+}
+
+func (args *AssetValueChangeExArgs) toData() ([]byte, error) {
+	return args.toParam().ToBytes()
 }
 
 func (args *MakeSwapArgs) init() {
@@ -202,8 +231,8 @@ func (args *MakeSwapArgs) init() {
 	}
 }
 
-func (args *MakeSwapArgs) toData(time *big.Int) ([]byte, error) {
-	param := common.MakeSwapParam{
+func (args *MakeSwapArgs) toParam(time *big.Int) *common.MakeSwapParam {
+	return &common.MakeSwapParam{
 		FromAssetID:   args.FromAssetID,
 		FromStartTime: uint64(*args.FromStartTime),
 		FromEndTime:   uint64(*args.FromEndTime),
@@ -217,22 +246,31 @@ func (args *MakeSwapArgs) toData(time *big.Int) ([]byte, error) {
 		Time:          time,
 		Description:   args.Description,
 	}
-	return param.ToBytes()
+}
+
+func (args *MakeSwapArgs) toData(time *big.Int) ([]byte, error) {
+	return args.toParam(time).ToBytes()
+}
+
+func (args *RecallSwapArgs) toParam() *common.RecallSwapParam {
+	return &common.RecallSwapParam{
+		SwapID: args.SwapID,
+	}
 }
 
 func (args *RecallSwapArgs) toData() ([]byte, error) {
-	param := common.RecallSwapParam{
-		SwapID: args.SwapID,
-	}
-	return param.ToBytes()
+	return args.toParam().ToBytes()
 }
 
-func (args *TakeSwapArgs) toData() ([]byte, error) {
-	param := common.TakeSwapParam{
+func (args *TakeSwapArgs) toParam() *common.TakeSwapParam {
+	return &common.TakeSwapParam{
 		SwapID: args.SwapID,
 		Size:   args.Size,
 	}
-	return param.ToBytes()
+}
+
+func (args *TakeSwapArgs) toData() ([]byte, error) {
+	return args.toParam().ToBytes()
 }
 
 func (args *TimeLockArgs) init() {
@@ -287,6 +325,9 @@ func (s *PublicFusionAPI) GetTimeLockBalance(ctx context.Context, assetID common
 		return new(common.TimeLock), err
 	}
 	b := state.GetTimeLockBalance(assetID, address)
+	if state.Error() == nil {
+		b = b.ToDisplay()
+	}
 	return b, state.Error()
 }
 
@@ -297,6 +338,11 @@ func (s *PublicFusionAPI) GetAllTimeLockBalances(ctx context.Context, address co
 		return make(map[common.Hash]*common.TimeLock), err
 	}
 	b := state.GetAllTimeLockBalances(address)
+	if state.Error() == nil {
+		for k, v := range b {
+			b[k] = v.ToDisplay()
+		}
+	}
 	return b, state.Error()
 }
 
@@ -427,16 +473,16 @@ func (s *PublicFusionAPI) AssetExistForAddress(ctx context.Context, assetName st
 
 // AllTickets wacom
 func (s *PublicFusionAPI) AllTickets(ctx context.Context, blockNr rpc.BlockNumber) (map[common.Hash]common.Ticket, error) {
-	state, _, err := s.b.StateAndHeaderByNumber(ctx, blockNr)
+	state, header, err := s.b.StateAndHeaderByNumber(ctx, blockNr)
 	if state == nil || err != nil {
 		return nil, err
 	}
-	tickets, err := state.AllTickets()
+	tickets, err := state.AllTickets(header.Number)
 	if err != nil {
 		log.Debug("AllTickets:apifsn.go unable to retrieve previous tickets")
 		return nil, err
 	}
-	return tickets, state.Error()
+	return tickets.ToMap(), state.Error()
 }
 
 // TotalNumberOfTickets wacom
@@ -452,23 +498,27 @@ func (s *PublicFusionAPI) TotalNumberOfTicketsByAddress(ctx context.Context, add
 }
 
 // TicketPrice wacom
-func (s *PublicFusionAPI) TicketPrice(ctx context.Context) (string, error) {
-	return common.TicketPrice().String(), nil
+func (s *PublicFusionAPI) TicketPrice(ctx context.Context, blockNr rpc.BlockNumber) (string, error) {
+	state, header, err := s.b.StateAndHeaderByNumber(ctx, blockNr)
+	if state == nil || err != nil {
+		return "", err
+	}
+	return common.TicketPrice(header.Number).String(), nil
 }
 
 // AllTicketsByAddress wacom
 func (s *PublicFusionAPI) AllTicketsByAddress(ctx context.Context, address common.Address, blockNr rpc.BlockNumber) (map[common.Hash]common.Ticket, error) {
-	state, _, err := s.b.StateAndHeaderByNumber(ctx, blockNr)
+	state, header, err := s.b.StateAndHeaderByNumber(ctx, blockNr)
 	var ret = make(map[common.Hash]common.Ticket)
 	if state == nil || err != nil {
 		return nil, err
 	}
-	tickets, err := state.AllTickets()
+	tickets, err := state.AllTickets(header.Number)
 	if err != nil {
 		log.Debug("AllTicketsByAddress:api_fsn.go unable to retrieve previous tickets")
 		return nil, err
 	}
-	for k, v := range tickets {
+	for k, v := range tickets.ToMap() {
 		if v.Owner == address {
 			ret[k] = v
 		}
@@ -524,12 +574,12 @@ var privateFusionAPI = &PrivateFusionAPI{}
 func AutoBuyTicket(account common.Address, passwd string) {
 	for {
 		select {
-			case <-common.AutoBuyTicketChan:
-				if privateFusionAPI.b.IsMining() {
-					fbase := FusionBaseArgs{From:account}
-					args := BuyTicketArgs{FusionBaseArgs:fbase}
-					privateFusionAPI.BuyTicket(nil, args, passwd)
-				}
+		case <-common.AutoBuyTicketChan:
+			if privateFusionAPI.b.IsMining() {
+				fbase := FusionBaseArgs{From: account}
+				args := BuyTicketArgs{FusionBaseArgs: fbase}
+				privateFusionAPI.BuyTicket(nil, args, passwd)
+			}
 		}
 	}
 }
@@ -573,32 +623,13 @@ func (s *PrivateFusionAPI) GenNotation(ctx context.Context, args FusionBaseArgs,
 
 // GenAsset ss
 func (s *PrivateFusionAPI) GenAsset(ctx context.Context, args GenAssetArgs, passwd string) (common.Hash, error) {
-	big0 := big.NewInt(0)
+	if err := args.toParam().Check(common.BigMaxUint64); err != nil {
+		return common.Hash{}, err
+	}
 
 	funcData, err := args.toData()
 	if err != nil {
 		return common.Hash{}, err
-	}
-
-	if len(args.Name) == 0 || len(args.Symbol) == 0 || args.Total == nil || args.Total.ToInt().Cmp(big0) <= 0 {
-		log.Info("BuildGenAsset name, symbol and total must be set")
-		return common.Hash{}, fmt.Errorf("GenAsset name, symbol and total must be set or greater than 0")
-	}
-
-	if args.Decimals > 18 || int(args.Decimals) < 0 {
-		return common.Hash{}, fmt.Errorf("GenAsset decimals must be between 0 and 18")
-	}
-
-	if len(args.Description) > 1024 {
-		return common.Hash{}, fmt.Errorf("GenAsset description lenght is greater than 1024 chars")
-	}
-
-	if len(args.Name) > 128 {
-		return common.Hash{}, fmt.Errorf("GenAsset description lenght is greater than 128 chars")
-	}
-
-	if len(args.Symbol) > 64 {
-		return common.Hash{}, fmt.Errorf("GenAsset description lenght is greater than 64")
 	}
 
 	var param = common.FSNCallParam{Func: common.GenAssetFunc, Data: funcData}
@@ -617,6 +648,9 @@ func (s *PrivateFusionAPI) GenAsset(ctx context.Context, args GenAssetArgs, pass
 func (s *PrivateFusionAPI) SendAsset(ctx context.Context, args SendAssetArgs, passwd string) (common.Hash, error) {
 	state, _, err := s.b.StateAndHeaderByNumber(ctx, rpc.LatestBlockNumber)
 	if state == nil || err != nil {
+		return common.Hash{}, err
+	}
+	if err := args.toParam().Check(common.BigMaxUint64); err != nil {
 		return common.Hash{}, err
 	}
 
@@ -643,12 +677,21 @@ func (s *PrivateFusionAPI) SendAsset(ctx context.Context, args SendAssetArgs, pa
 
 // AssetToTimeLock ss
 func (s *PrivateFusionAPI) AssetToTimeLock(ctx context.Context, args TimeLockArgs, passwd string) (common.Hash, error) {
-
-	args.init()
-
-	state, _, err := s.b.StateAndHeaderByNumber(ctx, rpc.LatestBlockNumber)
+	state, header, err := s.b.StateAndHeaderByNumber(ctx, rpc.LatestBlockNumber)
 	if state == nil || err != nil {
 		return common.Hash{}, err
+	}
+	args.init()
+	if err := args.toParam(common.AssetToTimeLock).Check(common.BigMaxUint64, header.Time.Uint64()); err != nil {
+		return common.Hash{}, err
+	}
+	needValue := common.NewTimeLock(&common.TimeLockItem{
+		StartTime: common.MaxUint64(uint64(*args.StartTime), header.Time.Uint64()),
+		EndTime:   uint64(*args.EndTime),
+		Value:     args.Value.ToInt(),
+	})
+	if err := needValue.IsValid(); err != nil {
+		return common.Hash{}, fmt.Errorf("AssetToTimeLock err:%v", err.Error())
 	}
 	if state.GetBalance(args.AssetID, args.From).Cmp(args.Value.ToInt()) < 0 {
 		return common.Hash{}, fmt.Errorf("not enough asset")
@@ -671,20 +714,25 @@ func (s *PrivateFusionAPI) AssetToTimeLock(ctx context.Context, args TimeLockArg
 
 // TimeLockToTimeLock ss
 func (s *PrivateFusionAPI) TimeLockToTimeLock(ctx context.Context, args TimeLockArgs, passwd string) (common.Hash, error) {
-	args.init()
-
-	state, _, err := s.b.StateAndHeaderByNumber(ctx, rpc.LatestBlockNumber)
+	state, header, err := s.b.StateAndHeaderByNumber(ctx, rpc.LatestBlockNumber)
 	if state == nil || err != nil {
 		return common.Hash{}, err
 	}
 
+	args.init()
+	if err := args.toParam(common.TimeLockToTimeLock).Check(common.BigMaxUint64, header.Time.Uint64()); err != nil {
+		return common.Hash{}, err
+	}
 	needValue := common.NewTimeLock(&common.TimeLockItem{
-		StartTime: uint64(*args.StartTime),
+		StartTime: common.MaxUint64(uint64(*args.StartTime), header.Time.Uint64()),
 		EndTime:   uint64(*args.EndTime),
 		Value:     args.Value.ToInt(),
 	})
+	if err := needValue.IsValid(); err != nil {
+		return common.Hash{}, fmt.Errorf("TimeLockToTimeLock err:%v", err.Error())
+	}
 
-	if state.GetTimeLockBalance(args.AssetID, args.From).Cmp(needValue) < 0 {
+	if state.GetTimeLockBalance(args.AssetID, args.From).Cmp(needValue, header.Number) < 0 {
 		return common.Hash{}, fmt.Errorf("not enough time lock balance")
 	}
 
@@ -706,23 +754,25 @@ func (s *PrivateFusionAPI) TimeLockToTimeLock(ctx context.Context, args TimeLock
 
 // TimeLockToAsset ss
 func (s *PrivateFusionAPI) TimeLockToAsset(ctx context.Context, args TimeLockArgs, passwd string) (common.Hash, error) {
-	state, _, err := s.b.StateAndHeaderByNumber(ctx, rpc.LatestBlockNumber)
+	state, header, err := s.b.StateAndHeaderByNumber(ctx, rpc.LatestBlockNumber)
 	if state == nil || err != nil {
 		return common.Hash{}, err
 	}
-	block, err := s.b.BlockByNumber(ctx, rpc.LatestBlockNumber)
-	if block == nil || err != nil {
+	args.init()
+	*(*uint64)(args.StartTime) = header.Time.Uint64()
+	*(*uint64)(args.EndTime) = common.TimeLockForever
+	if err := args.toParam(common.TimeLockToAsset).Check(common.BigMaxUint64, header.Time.Uint64()); err != nil {
 		return common.Hash{}, err
 	}
-	args.init()
-	*(*uint64)(args.StartTime) = block.Time().Uint64()
-	*(*uint64)(args.EndTime) = common.TimeLockForever
 	needValue := common.NewTimeLock(&common.TimeLockItem{
 		StartTime: uint64(*args.StartTime),
 		EndTime:   uint64(*args.EndTime),
 		Value:     args.Value.ToInt(),
 	})
-	if state.GetTimeLockBalance(args.AssetID, args.From).Cmp(needValue) < 0 {
+	if err := needValue.IsValid(); err != nil {
+		return common.Hash{}, fmt.Errorf("TimeLockToAsset err:%v", err.Error())
+	}
+	if state.GetTimeLockBalance(args.AssetID, args.From).Cmp(needValue, header.Number) < 0 {
 		return common.Hash{}, fmt.Errorf("not enough time lock balance")
 	}
 	funcData, err := args.toData(common.TimeLockToAsset)
@@ -755,49 +805,46 @@ func doesTicketPurchaseExistsForBlock(blockNbr int64, from common.Address) bool 
 		buyTicketOnBlockMap = make(map[common.Address]bool)
 	}
 	_, found := buyTicketOnBlockMap[from]
-	if found {
-		return true
-	}
+	return found
+}
+
+// only record on purchase ticket successfully
+func addTicketPurchaseForBlock(from common.Address) {
+	buyTicketOnBlockMapMutex.Lock()
+	defer buyTicketOnBlockMapMutex.Unlock()
 	buyTicketOnBlockMap[from] = true
-	return false
 }
 
 // BuyTicket ss
 func (s *PrivateFusionAPI) BuyTicket(ctx context.Context, args BuyTicketArgs, passwd string) (common.Hash, error) {
-	state, _, err := s.b.StateAndHeaderByNumber(ctx, rpc.LatestBlockNumber)
+	state, header, err := s.b.StateAndHeaderByNumber(ctx, rpc.LatestBlockNumber)
 	if state == nil || err != nil {
 		return common.Hash{}, err
 	}
 
-	block, err := s.b.BlockByNumber(ctx, rpc.LatestBlockNumber)
-	if block == nil || err != nil {
-		return common.Hash{}, err
-	}
-
-	if doesTicketPurchaseExistsForBlock(block.Header().Number.Int64(), args.From) {
+	if doesTicketPurchaseExistsForBlock(header.Number.Int64(), args.From) {
 		log.Info("Purchase of BuyTicket for this block already submitted")
 		return common.Hash{}, fmt.Errorf("Purchase of BuyTicket for this block already submitted")
 	}
 
-	if args.Start == nil {
-		args.Start = new(hexutil.Uint64)
-		*(*uint64)(args.Start) = block.Time().Uint64()
-	}
-
-	if args.End == nil {
-		args.End = new(hexutil.Uint64)
-		*(*uint64)(args.End) = uint64(*args.Start) + 30*24*3600
+	args.init(header.Time.Uint64())
+	now := uint64(time.Now().Unix())
+	if err := args.toParam().Check(common.BigMaxUint64, now, 600); err != nil {
+		return common.Hash{}, err
 	}
 
 	start := uint64(*args.Start)
 	end := uint64(*args.End)
-	value := common.TicketPrice()
+	value := common.TicketPrice(header.Number)
 	needValue := common.NewTimeLock(&common.TimeLockItem{
-		StartTime: start,
+		StartTime: common.MaxUint64(start, header.Time.Uint64()),
 		EndTime:   end,
 		Value:     value,
 	})
-	if state.GetTimeLockBalance(common.SystemAssetID, args.From).Cmp(needValue) < 0 {
+	if err := needValue.IsValid(); err != nil {
+		return common.Hash{}, fmt.Errorf("BuyTicket err:%v", err.Error())
+	}
+	if state.GetTimeLockBalance(common.SystemAssetID, args.From).Cmp(needValue, header.Number) < 0 {
 		if state.GetBalance(common.SystemAssetID, args.From).Cmp(value) < 0 {
 			return common.Hash{}, fmt.Errorf("not enough time lock or asset balance")
 		}
@@ -815,7 +862,12 @@ func (s *PrivateFusionAPI) BuyTicket(ctx context.Context, args BuyTicketArgs, pa
 	sendArgs := args.toSendArgs()
 	sendArgs.To = &common.FSNCallAddress
 	sendArgs.Data = &argsData
-	return s.papi.SendTransaction(ctx, sendArgs, passwd)
+	hash, err := s.papi.SendTransaction(ctx, sendArgs, passwd)
+	if err != nil {
+		return common.Hash{}, err
+	}
+	addTicketPurchaseForBlock(args.From)
+	return hash, err
 }
 
 // IncAsset ss
@@ -831,15 +883,12 @@ func (s *PrivateFusionAPI) DecAsset(ctx context.Context, args AssetValueChangeEx
 }
 
 func (s *PrivateFusionAPI) checkAssetValueChange(ctx context.Context, args AssetValueChangeExArgs, passwd string) (common.Hash, error) {
-
-	big0 := big.NewInt(0)
-
-	if args.Value.ToInt().Cmp(big0) <= 0 {
-		return common.Hash{}, fmt.Errorf("illegal operation")
-	}
-
 	state, _, err := s.b.StateAndHeaderByNumber(ctx, rpc.LatestBlockNumber)
 	if state == nil || err != nil {
+		return common.Hash{}, err
+	}
+
+	if err := args.toParam().Check(common.BigMaxUint64); err != nil {
 		return common.Hash{}, err
 	}
 
@@ -850,11 +899,6 @@ func (s *PrivateFusionAPI) checkAssetValueChange(ctx context.Context, args Asset
 	}
 
 	asset, ok := assets[args.AssetID]
-
-	if len(args.TransacData) > 256 {
-		return common.Hash{}, fmt.Errorf("transacData cannot be greater than 256")
-	}
-
 	if !ok {
 		return common.Hash{}, fmt.Errorf("asset not found")
 	}
@@ -893,47 +937,18 @@ func (s *PrivateFusionAPI) checkAssetValueChange(ctx context.Context, args Asset
 
 // MakeSwap ss
 func (s *PrivateFusionAPI) MakeSwap(ctx context.Context, args MakeSwapArgs, passwd string) (common.Hash, error) {
-
-	args.init()
-
-	big0 := big.NewInt(0)
-
-	if args.MinFromAmount == nil {
-		log.Info("MinFromAmount missing in make swap")
-		return common.Hash{}, fmt.Errorf("MinFromAmount missing in make swap")
-	}
-	if args.MinToAmount == nil {
-		log.Info("MinToAmount missing in make swap")
-		return common.Hash{}, fmt.Errorf("MinToAmount missing in make swap")
-	}
-	if args.SwapSize == nil {
-		log.Info("SwapSize missing in make swap")
-		return common.Hash{}, fmt.Errorf("SwapSize missing in make swap")
-	}
-
-	if len(args.Description) > 1024 {
-		log.Info("MakeSwap description length is greater than 1024 chars")
-		return common.Hash{}, fmt.Errorf("makeSwap description lenght is greater than 1024 chars")
-	}
-
-	if args.MinFromAmount.ToInt().Cmp(big0) <= 0 || args.MinToAmount.ToInt().Cmp(big0) <= 0 || args.SwapSize.Cmp(big0) <= 0 {
-		log.Info("MinFromAmount,MinToAmount and SwapSize must be ge 1")
-		return common.Hash{}, fmt.Errorf("MinFromAmount,MinToAmount and SwapSize must be ge 1")
-	}
-
-	if args.FromStartTime == nil || args.FromEndTime == nil ||
-		args.ToStartTime == nil || args.ToEndTime == nil {
-		log.Info("time fields must be set")
-		return common.Hash{}, fmt.Errorf("time fields must be set")
-	}
-
-	state, _, err := s.b.StateAndHeaderByNumber(ctx, rpc.LatestBlockNumber)
+	state, header, err := s.b.StateAndHeaderByNumber(ctx, rpc.LatestBlockNumber)
 	if state == nil || err != nil {
 		return common.Hash{}, err
 	}
 
-	total := new(big.Int).Mul(args.MinFromAmount.ToInt(), args.SwapSize)
+	args.init()
+	now := uint64(time.Now().Unix())
+	if err := args.toParam(header.Time).Check(common.BigMaxUint64, now); err != nil {
+		return common.Hash{}, err
+	}
 
+	total := new(big.Int).Mul(args.MinFromAmount.ToInt(), args.SwapSize)
 	start := uint64(*args.FromStartTime)
 	end := uint64(*args.FromEndTime)
 
@@ -943,23 +958,21 @@ func (s *PrivateFusionAPI) MakeSwap(ctx context.Context, args MakeSwapArgs, pass
 		}
 	} else {
 		needValue := common.NewTimeLock(&common.TimeLockItem{
-			StartTime: start,
+			StartTime: common.MaxUint64(start, header.Time.Uint64()),
 			EndTime:   end,
 			Value:     total,
 		})
-		if state.GetTimeLockBalance(args.FromAssetID, args.From).Cmp(needValue) < 0 {
+		if err := needValue.IsValid(); err != nil {
+			return common.Hash{}, fmt.Errorf("MakeSwap from err:%v", err.Error())
+		}
+		if state.GetTimeLockBalance(args.FromAssetID, args.From).Cmp(needValue, header.Number) < 0 {
 			if state.GetBalance(args.FromAssetID, args.From).Cmp(total) < 0 {
 				return common.Hash{}, fmt.Errorf("not enough time lock or asset balance")
 			}
 		}
 	}
 
-	block, err := s.b.BlockByNumber(ctx, rpc.LatestBlockNumber)
-	if block == nil || err != nil {
-		return common.Hash{}, err
-	}
-
-	funcData, err := args.toData(block.Time())
+	funcData, err := args.toData(header.Time)
 	if err != nil {
 		return common.Hash{}, err
 	}
@@ -990,6 +1003,9 @@ func (s *PrivateFusionAPI) RecallSwap(ctx context.Context, args RecallSwapArgs, 
 	if !ok {
 		return common.Hash{}, fmt.Errorf("Swap not found")
 	}
+	if err := args.toParam().Check(common.BigMaxUint64, &swap); err != nil {
+		return common.Hash{}, err
+	}
 
 	if swap.Owner != args.From {
 		return common.Hash{}, fmt.Errorf("Must be swap onwer can recall")
@@ -1013,7 +1029,7 @@ func (s *PrivateFusionAPI) RecallSwap(ctx context.Context, args RecallSwapArgs, 
 
 // TakeSwap ss
 func (s *PrivateFusionAPI) TakeSwap(ctx context.Context, args TakeSwapArgs, passwd string) (common.Hash, error) {
-	state, _, err := s.b.StateAndHeaderByNumber(ctx, rpc.LatestBlockNumber)
+	state, header, err := s.b.StateAndHeaderByNumber(ctx, rpc.LatestBlockNumber)
 	if state == nil || err != nil {
 		return common.Hash{}, err
 	}
@@ -1026,9 +1042,10 @@ func (s *PrivateFusionAPI) TakeSwap(ctx context.Context, args TakeSwapArgs, pass
 	if !ok {
 		return common.Hash{}, fmt.Errorf("Swap not found")
 	}
-	big0 := big.NewInt(0)
-	if swap.SwapSize.Cmp(args.Size) < 0 || args.Size.Cmp(big0) <= 0 {
-		return common.Hash{}, fmt.Errorf("SwapSize must le and Size must be ge 1")
+
+	now := uint64(time.Now().Unix())
+	if err := args.toParam().Check(common.BigMaxUint64, &swap, now); err != nil {
+		return common.Hash{}, err
 	}
 
 	total := new(big.Int).Mul(swap.MinToAmount, args.Size)
@@ -1046,7 +1063,10 @@ func (s *PrivateFusionAPI) TakeSwap(ctx context.Context, args TakeSwapArgs, pass
 			EndTime:   end,
 			Value:     total,
 		})
-		if state.GetTimeLockBalance(swap.ToAssetID, args.From).Cmp(needValue) < 0 {
+		if err := needValue.IsValid(); err != nil {
+			return common.Hash{}, fmt.Errorf("TakeSwap to err:%v", err.Error())
+		}
+		if state.GetTimeLockBalance(swap.ToAssetID, args.From).Cmp(needValue, header.Number) < 0 {
 			if state.GetBalance(swap.ToAssetID, args.From).Cmp(total) < 0 {
 				return common.Hash{}, fmt.Errorf("not enough time lock or asset balance")
 			}
@@ -1167,32 +1187,13 @@ func (s *FusionTransactionAPI) GenNotation(ctx context.Context, args FusionBaseA
 
 // BuildGenAssetTx ss
 func (s *FusionTransactionAPI) BuildGenAssetTx(ctx context.Context, args GenAssetArgs) (*types.Transaction, error) {
-	funcData, err := args.toData()
-	if err != nil {
+	if err := args.toParam().Check(common.BigMaxUint64); err != nil {
 		return nil, err
 	}
 
-	big0 := big.NewInt(0)
-
-	if len(args.Name) == 0 || len(args.Symbol) == 0 || args.Total == nil || args.Total.ToInt().Cmp(big0) < 0 {
-		log.Info("BuildGenAsset name, symbol and total must be set")
-		return nil, fmt.Errorf("BuildGenAsset name, symbol and total must be set or greater than = 0")
-	}
-
-	if args.Decimals > 18 || int(args.Decimals) < 0 {
-		return nil, fmt.Errorf("BuildGenAsset decimals must be between 0 and 18")
-	}
-
-	if len(args.Description) > 1024 {
-		return nil, fmt.Errorf("GenAsset description length is greater than 1024 chars")
-	}
-
-	if len(args.Name) > 128 {
-		return nil, fmt.Errorf("GenAsset description length is greater than 128 chars")
-	}
-
-	if len(args.Symbol) > 64 {
-		return nil, fmt.Errorf("GenAsset description length is greater than 64")
+	funcData, err := args.toData()
+	if err != nil {
+		return nil, err
 	}
 
 	var param = common.FSNCallParam{Func: common.GenAssetFunc, Data: funcData}
@@ -1220,6 +1221,9 @@ func (s *FusionTransactionAPI) GenAsset(ctx context.Context, args GenAssetArgs) 
 func (s *FusionTransactionAPI) BuildSendAssetTx(ctx context.Context, args SendAssetArgs) (*types.Transaction, error) {
 	state, _, err := s.b.StateAndHeaderByNumber(ctx, rpc.LatestBlockNumber)
 	if state == nil || err != nil {
+		return nil, err
+	}
+	if err := args.toParam().Check(common.BigMaxUint64); err != nil {
 		return nil, err
 	}
 
@@ -1255,24 +1259,21 @@ func (s *FusionTransactionAPI) SendAsset(ctx context.Context, args SendAssetArgs
 
 // BuildAssetToTimeLockTx ss
 func (s *FusionTransactionAPI) BuildAssetToTimeLockTx(ctx context.Context, args TimeLockArgs) (*types.Transaction, error) {
-
-	args.init()
-	if args.Value == nil {
-		log.Info("BuildAssetToTimeLockTx: Value is set improperly")
-		return nil, fmt.Errorf("Value is set improperly")
-	}
-	if args.StartTime == nil {
-		log.Info("BuildAssetToTimeLockTx: StartTime is not set")
-		return nil, fmt.Errorf("StartTime is not set")
-	}
-	if args.EndTime == nil {
-		log.Info("BuildAssetToTimeLockTx: EndTime is not set")
-		return nil, fmt.Errorf("EndTime is not set")
-	}
-
-	state, _, err := s.b.StateAndHeaderByNumber(ctx, rpc.LatestBlockNumber)
+	state, header, err := s.b.StateAndHeaderByNumber(ctx, rpc.LatestBlockNumber)
 	if state == nil || err != nil {
 		return nil, err
+	}
+	args.init()
+	if err := args.toParam(common.AssetToTimeLock).Check(common.BigMaxUint64, header.Time.Uint64()); err != nil {
+		return nil, err
+	}
+	needValue := common.NewTimeLock(&common.TimeLockItem{
+		StartTime: common.MaxUint64(uint64(*args.StartTime), header.Time.Uint64()),
+		EndTime:   uint64(*args.EndTime),
+		Value:     args.Value.ToInt(),
+	})
+	if err := needValue.IsValid(); err != nil {
+		return nil, fmt.Errorf("BuildAssetToTimeLockTx err:%v", err.Error())
 	}
 	if state.GetBalance(args.AssetID, args.From).Cmp(args.Value.ToInt()) < 0 {
 		return nil, fmt.Errorf("not enough asset")
@@ -1304,33 +1305,24 @@ func (s *FusionTransactionAPI) AssetToTimeLock(ctx context.Context, args TimeLoc
 
 // BuildTimeLockToTimeLockTx ss
 func (s *FusionTransactionAPI) BuildTimeLockToTimeLockTx(ctx context.Context, args TimeLockArgs) (*types.Transaction, error) {
-	args.init()
-
-	state, _, err := s.b.StateAndHeaderByNumber(ctx, rpc.LatestBlockNumber)
+	state, header, err := s.b.StateAndHeaderByNumber(ctx, rpc.LatestBlockNumber)
 	if state == nil || err != nil {
 		return nil, err
 	}
-
-	if args.Value == nil {
-		log.Info("BuildTimeLockToTimeLockTx: Value is set improperly")
-		return nil, fmt.Errorf("Value is set improperly")
+	args.init()
+	if err := args.toParam(common.TimeLockToTimeLock).Check(common.BigMaxUint64, header.Time.Uint64()); err != nil {
+		return nil, err
 	}
-	if args.StartTime == nil {
-		log.Info("BuildTimeLockToTimeLockTx: StartTime is not set")
-		return nil, fmt.Errorf("StartTime is not set")
-	}
-	if args.EndTime == nil {
-		log.Info("BuildAsseBuildTimeLockToTimeLockTxtToTimeLockTx: EndTime is not set")
-		return nil, fmt.Errorf("EndTime is not set")
-	}
-
 	needValue := common.NewTimeLock(&common.TimeLockItem{
-		StartTime: uint64(*args.StartTime),
+		StartTime: common.MaxUint64(uint64(*args.StartTime), header.Time.Uint64()),
 		EndTime:   uint64(*args.EndTime),
 		Value:     args.Value.ToInt(),
 	})
+	if err := needValue.IsValid(); err != nil {
+		return nil, fmt.Errorf("BuildTimeLockToTimeLockTx err:%v", err.Error())
+	}
 
-	if state.GetTimeLockBalance(args.AssetID, args.From).Cmp(needValue) < 0 {
+	if state.GetTimeLockBalance(args.AssetID, args.From).Cmp(needValue, header.Number) < 0 {
 		return nil, fmt.Errorf("not enough time lock balance")
 	}
 
@@ -1361,29 +1353,25 @@ func (s *FusionTransactionAPI) TimeLockToTimeLock(ctx context.Context, args Time
 
 // BuildTimeLockToAssetTx ss
 func (s *FusionTransactionAPI) BuildTimeLockToAssetTx(ctx context.Context, args TimeLockArgs) (*types.Transaction, error) {
-	state, _, err := s.b.StateAndHeaderByNumber(ctx, rpc.LatestBlockNumber)
+	state, header, err := s.b.StateAndHeaderByNumber(ctx, rpc.LatestBlockNumber)
 	if state == nil || err != nil {
 		return nil, err
 	}
-	block, err := s.b.BlockByNumber(ctx, rpc.LatestBlockNumber)
-	if block == nil || err != nil {
+	args.init()
+	*(*uint64)(args.StartTime) = header.Time.Uint64()
+	*(*uint64)(args.EndTime) = common.TimeLockForever
+	if err := args.toParam(common.TimeLockToAsset).Check(common.BigMaxUint64, header.Time.Uint64()); err != nil {
 		return nil, err
 	}
-	args.init()
-
-	if args.Value == nil {
-		log.Info("BuildTimeLockToAssetTx: Value is set improperly")
-		return nil, fmt.Errorf("Value is set improperly")
-	}
-
-	*(*uint64)(args.StartTime) = block.Time().Uint64()
-	*(*uint64)(args.EndTime) = common.TimeLockForever
 	needValue := common.NewTimeLock(&common.TimeLockItem{
 		StartTime: uint64(*args.StartTime),
 		EndTime:   uint64(*args.EndTime),
 		Value:     args.Value.ToInt(),
 	})
-	if state.GetTimeLockBalance(args.AssetID, args.From).Cmp(needValue) < 0 {
+	if err := needValue.IsValid(); err != nil {
+		return nil, fmt.Errorf("BuildTimeLockToAssetTx err:%v", err.Error())
+	}
+	if state.GetTimeLockBalance(args.AssetID, args.From).Cmp(needValue, header.Number) < 0 {
 		return nil, fmt.Errorf("not enough time lock balance")
 	}
 	funcData, err := args.toData(common.TimeLockToAsset)
@@ -1413,41 +1401,34 @@ func (s *FusionTransactionAPI) TimeLockToAsset(ctx context.Context, args TimeLoc
 
 // BuildBuyTicketTx ss
 func (s *FusionTransactionAPI) BuildBuyTicketTx(ctx context.Context, args BuyTicketArgs) (*types.Transaction, error) {
-	state, _, err := s.b.StateAndHeaderByNumber(ctx, rpc.LatestBlockNumber)
+	state, header, err := s.b.StateAndHeaderByNumber(ctx, rpc.LatestBlockNumber)
 	if state == nil || err != nil {
 		return nil, err
 	}
 
-	block, err := s.b.BlockByNumber(ctx, rpc.LatestBlockNumber)
-	if block == nil || err != nil {
-		return nil, err
-	}
-
-	if doesTicketPurchaseExistsForBlock(block.Header().Number.Int64(), args.From) {
+	if doesTicketPurchaseExistsForBlock(header.Number.Int64(), args.From) {
 		return nil, fmt.Errorf("Purchase of BuyTicket for this block already submitted")
 	}
 
-	if args.Start == nil {
-		args.Start = new(hexutil.Uint64)
-		*(*uint64)(args.Start) = block.Time().Uint64()
-	}
-
-	if args.End == nil {
-		args.End = new(hexutil.Uint64)
-		*(*uint64)(args.End) = uint64(*args.Start) + 30*24*3600
+	args.init(header.Time.Uint64())
+	now := uint64(time.Now().Unix())
+	if err := args.toParam().Check(common.BigMaxUint64, now, 600); err != nil {
+		return nil, err
 	}
 
 	start := uint64(*args.Start)
 	end := uint64(*args.End)
-
-	value := common.TicketPrice()
+	value := common.TicketPrice(header.Number)
 	needValue := common.NewTimeLock(&common.TimeLockItem{
-		StartTime: start,
+		StartTime: common.MaxUint64(start, header.Time.Uint64()),
 		EndTime:   end,
 		Value:     value,
 	})
+	if err := needValue.IsValid(); err != nil {
+		return nil, fmt.Errorf("BuildBuyTicketTx err:%v", err.Error())
+	}
 
-	if state.GetTimeLockBalance(common.SystemAssetID, args.From).Cmp(needValue) < 0 {
+	if state.GetTimeLockBalance(common.SystemAssetID, args.From).Cmp(needValue, header.Number) < 0 {
 		if state.GetBalance(common.SystemAssetID, args.From).Cmp(value) < 0 {
 			return nil, fmt.Errorf("not enough time lock or asset balance")
 		}
@@ -1474,19 +1455,21 @@ func (s *FusionTransactionAPI) BuyTicket(ctx context.Context, args BuyTicketArgs
 	if err != nil {
 		return common.Hash{}, err
 	}
-	return s.sendTransaction(ctx, args.From, tx)
+	hash, err := s.sendTransaction(ctx, args.From, tx)
+	if err != nil {
+		return common.Hash{}, err
+	}
+	addTicketPurchaseForBlock(args.From)
+	return hash, err
 }
 
 func (s *FusionTransactionAPI) buildAssetValueChangeTx(ctx context.Context, args AssetValueChangeExArgs) (*types.Transaction, error) {
-
-	big0 := big.NewInt(0)
-
-	if args.Value.ToInt().Cmp(big0) <= 0 {
-		return nil, fmt.Errorf("illegal operation")
-	}
-
 	state, _, err := s.b.StateAndHeaderByNumber(ctx, rpc.LatestBlockNumber)
 	if state == nil || err != nil {
+		return nil, err
+	}
+
+	if err := args.toParam().Check(common.BigMaxUint64); err != nil {
 		return nil, err
 	}
 
@@ -1497,11 +1480,6 @@ func (s *FusionTransactionAPI) buildAssetValueChangeTx(ctx context.Context, args
 	}
 
 	asset, ok := assets[args.AssetID]
-
-	if len(args.TransacData) > 256 {
-		return nil, fmt.Errorf("transacData cannot be greater than 256")
-	}
-
 	if !ok {
 		return nil, fmt.Errorf("asset not found")
 	}
@@ -1570,41 +1548,18 @@ func (s *FusionTransactionAPI) DecAsset(ctx context.Context, args AssetValueChan
 
 // BuildMakeSwapTx ss
 func (s *FusionTransactionAPI) BuildMakeSwapTx(ctx context.Context, args MakeSwapArgs) (*types.Transaction, error) {
-
-	args.init()
-
-	big0 := big.NewInt(0)
-
-	if args.MinFromAmount == nil {
-		log.Info("MinFromAmount missing in make swap")
-		return nil, fmt.Errorf("MinFromAmount missing in make swap")
-	}
-	if args.MinToAmount == nil {
-		log.Info("MinToAmount missing in make swap")
-		return nil, fmt.Errorf("MinToAmount missing in make swap")
-	}
-	if args.SwapSize == nil {
-		log.Info("SwapSize missing in make swap")
-		return nil, fmt.Errorf("SwapSize missing in make swap")
-	}
-
-	if len(args.Description) > 1024 {
-		log.Info("MakeSwap description length is greater than 1024 chars")
-		return nil, fmt.Errorf("makeSwap description lenght is greater than 1024 chars")
-	}
-
-	if args.MinFromAmount.ToInt().Cmp(big0) <= 0 || args.MinToAmount.ToInt().Cmp(big0) <= 0 || args.SwapSize.Cmp(big0) <= 0 {
-		log.Info("MinFromAmount,MinToAmount and SwapSize must be ge 1")
-		return nil, fmt.Errorf("MinFromAmount,MinToAmount and SwapSize must be ge 1")
-	}
-
-	state, _, err := s.b.StateAndHeaderByNumber(ctx, rpc.LatestBlockNumber)
+	state, header, err := s.b.StateAndHeaderByNumber(ctx, rpc.LatestBlockNumber)
 	if state == nil || err != nil {
 		return nil, err
 	}
 
-	total := new(big.Int).Mul(args.MinFromAmount.ToInt(), args.SwapSize)
+	args.init()
+	now := uint64(time.Now().Unix())
+	if err := args.toParam(header.Time).Check(common.BigMaxUint64, now); err != nil {
+		return nil, err
+	}
 
+	total := new(big.Int).Mul(args.MinFromAmount.ToInt(), args.SwapSize)
 	start := uint64(*args.FromStartTime)
 	end := uint64(*args.FromEndTime)
 
@@ -1614,23 +1569,21 @@ func (s *FusionTransactionAPI) BuildMakeSwapTx(ctx context.Context, args MakeSwa
 		}
 	} else {
 		needValue := common.NewTimeLock(&common.TimeLockItem{
-			StartTime: start,
+			StartTime: common.MaxUint64(start, header.Time.Uint64()),
 			EndTime:   end,
 			Value:     total,
 		})
-		if state.GetTimeLockBalance(args.FromAssetID, args.From).Cmp(needValue) < 0 {
+		if err := needValue.IsValid(); err != nil {
+			return nil, fmt.Errorf("BuildMakeSwapTx from err:%v", err.Error())
+		}
+		if state.GetTimeLockBalance(args.FromAssetID, args.From).Cmp(needValue, header.Number) < 0 {
 			if state.GetBalance(args.FromAssetID, args.From).Cmp(total) < 0 {
 				return nil, fmt.Errorf("not enough time lock or asset balance")
 			}
 		}
 	}
 
-	block, err := s.b.BlockByNumber(ctx, rpc.LatestBlockNumber)
-	if block == nil || err != nil {
-		return nil, err
-	}
-
-	funcData, err := args.toData(block.Time())
+	funcData, err := args.toData(header.Time)
 	if err != nil {
 		return nil, err
 	}
@@ -1670,6 +1623,9 @@ func (s *FusionTransactionAPI) BuildRecallSwapTx(ctx context.Context, args Recal
 	if !ok {
 		return nil, fmt.Errorf("Swap not found")
 	}
+	if err := args.toParam().Check(common.BigMaxUint64, &swap); err != nil {
+		return nil, err
+	}
 
 	if swap.Owner != args.From {
 		return nil, fmt.Errorf("Must be swap onwer can recall")
@@ -1702,7 +1658,7 @@ func (s *FusionTransactionAPI) RecallSwap(ctx context.Context, args RecallSwapAr
 
 // BuildTakeSwapTx ss
 func (s *FusionTransactionAPI) BuildTakeSwapTx(ctx context.Context, args TakeSwapArgs) (*types.Transaction, error) {
-	state, _, err := s.b.StateAndHeaderByNumber(ctx, rpc.LatestBlockNumber)
+	state, header, err := s.b.StateAndHeaderByNumber(ctx, rpc.LatestBlockNumber)
 	if state == nil || err != nil {
 		return nil, err
 	}
@@ -1716,18 +1672,12 @@ func (s *FusionTransactionAPI) BuildTakeSwapTx(ctx context.Context, args TakeSwa
 		return nil, fmt.Errorf("Swap not found")
 	}
 
-	if args.Size == nil {
-		log.Info("BuildTimeLockToTimeLockTx: Size is mssing")
-		return nil, fmt.Errorf("Size is missing")
-	}
-
-	big0 := big.NewInt(0)
-	if swap.SwapSize.Cmp(args.Size) < 0 || args.Size.Cmp(big0) <= 0 {
-		return nil, fmt.Errorf("SwapSize must le and Size must be ge 1")
+	now := uint64(time.Now().Unix())
+	if err := args.toParam().Check(common.BigMaxUint64, &swap, now); err != nil {
+		return nil, err
 	}
 
 	total := new(big.Int).Mul(swap.MinToAmount, args.Size)
-
 	start := swap.ToStartTime
 	end := swap.ToEndTime
 
@@ -1741,7 +1691,10 @@ func (s *FusionTransactionAPI) BuildTakeSwapTx(ctx context.Context, args TakeSwa
 			EndTime:   end,
 			Value:     total,
 		})
-		if state.GetTimeLockBalance(swap.ToAssetID, args.From).Cmp(needValue) < 0 {
+		if err := needValue.IsValid(); err != nil {
+			return nil, fmt.Errorf("BuildTakeSwapTx to err:%v", err.Error())
+		}
+		if state.GetTimeLockBalance(swap.ToAssetID, args.From).Cmp(needValue, header.Number) < 0 {
 			if state.GetBalance(swap.ToAssetID, args.From).Cmp(total) < 0 {
 				return nil, fmt.Errorf("not enough time lock or asset balance")
 			}

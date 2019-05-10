@@ -21,7 +21,6 @@ import (
 
 	"github.com/FusionFoundation/efsn/common"
 	"github.com/FusionFoundation/efsn/consensus"
-	"github.com/FusionFoundation/efsn/consensus/datong"
 	"github.com/FusionFoundation/efsn/core/state"
 	"github.com/FusionFoundation/efsn/core/types"
 	"github.com/FusionFoundation/efsn/params"
@@ -82,7 +81,7 @@ func (v *BlockValidator) ValidateBody(block *types.Block) error {
 // ValidateRawTransaction validates the given block's raw transactions before applying them
 func (v *BlockValidator) ValidateRawTransaction(block *types.Block) error {
 	blockNumber := block.Number()
-	if blockNumber.Uint64() < datong.PSN20HardFork1EnableHeight {
+	if blockNumber.Uint64() < common.GetForkEnabledHeight(1) {
 		return nil
 	}
 	header := block.Header()
@@ -108,19 +107,8 @@ func (v *BlockValidator) ValidateRawTransaction(block *types.Block) error {
 		// check buy ticket param
 		buyTicketParam := common.BuyTicketParam{}
 		rlp.DecodeBytes(param.Data, &buyTicketParam)
-		start := buyTicketParam.Start
-		end := buyTicketParam.End
-		// check future ticket
-		if start > header.Time.Uint64()+3*3600 {
-			return fmt.Errorf("wrong buy ticket param, start > header.Time + 3 hour. start: %v, end: %v, sender: %v", start, end, from.String())
-		}
-		// check lifetime too short ticket
-		if end <= start || end < start+30*24*3600 {
-			return fmt.Errorf("wrong buy ticket param, end < start + 1 month. start: %v, end: %v, sender: %v", start, end, from.String())
-		}
-		// check expired soon ticket
-		if end < header.Time.Uint64()+7*24*3600-600 {
-			return fmt.Errorf("wrong buy ticket param, end < header.Time + 1 week - 10 minute. start: %v, end: %v, sender: %v", start, end, from.String())
+		if err := buyTicketParam.Check(blockNumber, header.Time.Uint64(), -600); err != nil {
+			return nil
 		}
 	}
 	return nil

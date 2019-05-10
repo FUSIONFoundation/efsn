@@ -31,6 +31,23 @@ import (
 	"github.com/FusionFoundation/efsn/rlp"
 )
 
+var psn20HardForkEnableHeights = []uint64{
+	0,
+	90000,  // hard fork 1
+	99000,  // hard fork 2
+	130000, // hard fork 3
+	165000, // hard fork 4
+	225000, // hard fork 5
+}
+
+func GetForkEnabledHeight(forkNumber int) uint64 {
+	maxForkNumber := len(psn20HardForkEnableHeights) - 1
+	if forkNumber > maxForkNumber {
+		return psn20HardForkEnableHeights[maxForkNumber]
+	}
+	return psn20HardForkEnableHeights[forkNumber]
+}
+
 // Lengths of hashes and addresses in bytes.
 const (
 	// HashLength is the expected length of the hash
@@ -366,7 +383,7 @@ var (
 	// SwapKey wacom
 	SwapKey = []byte{0x06} // 4 was the old
 	// Auto buy tickets
-	AutoBuyTicket = false
+	AutoBuyTicket     = false
 	AutoBuyTicketChan = make(chan int, 10)
 )
 
@@ -422,8 +439,12 @@ func ParseBig256(s string) (*big.Int, bool) {
 }
 
 // TicketPrice  place holder for ticket price
-func TicketPrice() *big.Int {
-	return new(big.Int).Mul(big.NewInt(200), big.NewInt(1000000000000000000))
+func TicketPrice(blocknumber *big.Int) *big.Int {
+	oneFSN := big.NewInt(1000000000000000000)
+	if blocknumber.Cmp(new(big.Int).SetUint64(GetForkEnabledHeight(4))) < 0 {
+		return new(big.Int).Mul(big.NewInt(200), oneFSN)
+	}
+	return new(big.Int).Mul(big.NewInt(5000), oneFSN)
 }
 
 // FSNCallParam wacom
@@ -434,11 +455,11 @@ type FSNCallParam struct {
 
 // GenAssetParam wacom
 type GenAssetParam struct {
-	Name      string
-	Symbol    string
-	Decimals  uint8
-	Total     *big.Int `json:",string"`
-	CanChange bool
+	Name        string
+	Symbol      string
+	Decimals    uint8
+	Total       *big.Int `json:",string"`
+	CanChange   bool
 	Description string
 }
 
@@ -465,11 +486,11 @@ type AssetValueChangeParam struct {
 
 // AssetValueChangeExParam wacom
 type AssetValueChangeExParam struct {
-	AssetID Hash
-	To      Address
-	Value   *big.Int `json:",string"`
-	IsInc   bool
-	TransacData string 
+	AssetID     Hash
+	To          Address
+	Value       *big.Int `json:",string"`
+	IsInc       bool
+	TransacData string
 }
 
 // TimeLockParam wacom
@@ -562,70 +583,70 @@ func (p *TakeSwapParam) ToBytes() ([]byte, error) {
 // ToAsset wacom
 func (p *GenAssetParam) ToAsset() Asset {
 	return Asset{
-		Name:      p.Name,
-		Symbol:    p.Symbol,
-		Decimals:  p.Decimals,
-		Total:     p.Total,
-		CanChange: p.CanChange,
+		Name:        p.Name,
+		Symbol:      p.Symbol,
+		Decimals:    p.Decimals,
+		Total:       p.Total,
+		CanChange:   p.CanChange,
 		Description: p.Description,
 	}
 }
 
 // Asset wacom
 type Asset struct {
-	ID        Hash
-	Owner     Address
-	Name      string
-	Symbol    string
-	Decimals  uint8
-	Total     *big.Int `json:",string"`
-	CanChange bool
+	ID          Hash
+	Owner       Address
+	Name        string
+	Symbol      string
+	Decimals    uint8
+	Total       *big.Int `json:",string"`
+	CanChange   bool
 	Description string
 }
 
-func (u *Asset) DeepCopy() Asset{
+func (u *Asset) DeepCopy() Asset {
 	total := *u.Total
-		return Asset{
-			ID:        u.ID,
-			Owner:     u.Owner,
-			Name:      u.Name,
-			Symbol:    u.Symbol,
-			Decimals:  u.Decimals,
-			Total:     &total,
-			CanChange: u.CanChange,
-		}
-}
-
-func (u *Asset) MarshalJSON() ([]byte, error) {
-	return json.Marshal(&struct {
-		ID        Hash
-		Owner     Address
-		Name      string
-		Symbol    string
-		Decimals  uint8
-		Total     string
-		CanChange bool
-		Description string
-	}{
+	return Asset{
 		ID:        u.ID,
 		Owner:     u.Owner,
 		Name:      u.Name,
 		Symbol:    u.Symbol,
 		Decimals:  u.Decimals,
-		Total:     u.Total.String(),
+		Total:     &total,
 		CanChange: u.CanChange,
+	}
+}
+
+func (u *Asset) MarshalJSON() ([]byte, error) {
+	return json.Marshal(&struct {
+		ID          Hash
+		Owner       Address
+		Name        string
+		Symbol      string
+		Decimals    uint8
+		Total       string
+		CanChange   bool
+		Description string
+	}{
+		ID:          u.ID,
+		Owner:       u.Owner,
+		Name:        u.Name,
+		Symbol:      u.Symbol,
+		Decimals:    u.Decimals,
+		Total:       u.Total.String(),
+		CanChange:   u.CanChange,
 		Description: u.Description,
 	})
 }
 
 // SystemAsset wacom
 var SystemAsset = Asset{
-	Name:     "Fusion",
-	Symbol:   "FSN",
-	Decimals: 18,
-	Total:    new(big.Int).Mul(big.NewInt(81920000), big.NewInt(1000000000000000000)),
-	ID:       SystemAssetID,
-	Description : "https://fusion.org",
+	Name:        "Fusion",
+	Symbol:      "FSN",
+	Decimals:    18,
+	Total:       new(big.Int).Mul(big.NewInt(81920000), big.NewInt(1000000000000000000)),
+	ID:          SystemAssetID,
+	Description: "https://fusion.org",
 }
 
 // Ticket wacom
@@ -647,7 +668,7 @@ func (t *Ticket) DeepCopy() Ticket {
 	if w != nil {
 		wt = &(*w)
 	}
-	return Ticket {
+	return Ticket{
 		ID:         t.ID,
 		Owner:      t.Owner,
 		Height:     &height,
@@ -666,6 +687,91 @@ func (t *Ticket) SetWeight(value *big.Int) {
 // Weight wacom
 func (t *Ticket) Weight() *big.Int {
 	return t.weight
+}
+
+type TicketStruct struct {
+	Hash
+	Ticket
+}
+
+type TicketStructSlice []TicketStruct
+type TicketSlice []Ticket
+
+func (t *Ticket) toTicketStruct() TicketStruct {
+	return TicketStruct{t.ID, *t}
+}
+
+func (s TicketStructSlice) ToTicketSlice() TicketSlice {
+	r := make(TicketSlice, 0, len(s))
+	for _, t := range s {
+		r = append(r, t.Ticket)
+	}
+	return r
+}
+
+func (s TicketSlice) ToTicketStructSlice() TicketStructSlice {
+	r := make(TicketStructSlice, 0, len(s))
+	for _, t := range s {
+		r = append(r, t.toTicketStruct())
+	}
+	return r
+}
+
+func (s TicketSlice) Len() int {
+	return len(s)
+}
+
+func (s TicketSlice) Less(i, j int) bool {
+	a, _ := new(big.Int).SetString(s[i].ID.Hex(), 0)
+	b, _ := new(big.Int).SetString(s[j].ID.Hex(), 0)
+	return a.Cmp(b) < 0
+}
+
+func (s TicketSlice) Swap(i, j int) {
+	s[i], s[j] = s[j], s[i]
+}
+
+func (s TicketSlice) ToMap() map[Hash]Ticket {
+	r := make(map[Hash]Ticket, len(s))
+	for _, t := range s {
+		r[t.ID] = t
+	}
+	return r
+}
+
+func (s TicketSlice) DeepCopy() TicketSlice {
+	if s == nil || len(s) == 0 {
+		return nil
+	}
+	r := make(TicketSlice, 0, len(s))
+	for _, t := range s {
+		r = append(r, t)
+	}
+	return r
+}
+
+func (s TicketSlice) Get(tid Hash) (*Ticket, bool) {
+	for _, t := range s {
+		if t.ID == tid {
+			return &t, true
+		}
+	}
+	return nil, false
+}
+
+func (s TicketSlice) Add(ticket *Ticket) TicketSlice {
+	s = append(s, *ticket)
+	return s
+}
+
+func (s TicketSlice) Delete(tid Hash) TicketSlice {
+	for i, t := range s {
+		if t.ID == tid {
+			s = append(s[:i], s[i+1:]...)
+			break
+		}
+	}
+	return s
 }
 
 // Swap wacom
@@ -694,7 +800,7 @@ func (s *Swap) DeepCopy() Swap {
 	targets := make([]Address, len(s.Targes))
 	copy(targets, s.Targes)
 
-	 return Swap{
+	return Swap{
 		ID:            s.ID,
 		Owner:         s.Owner,
 		FromAssetID:   s.FromAssetID,
@@ -723,4 +829,192 @@ func NewKeyValue(name string, v interface{}) *KeyValue {
 
 	return &KeyValue{Key: name, Value: v}
 
+}
+
+func (p *FSNCallParam) Check(blockNumber *big.Int) error {
+	return nil
+}
+
+func (p *GenAssetParam) Check(blockNumber *big.Int) error {
+	if len(p.Name) == 0 || len(p.Symbol) == 0 || p.Total == nil || p.Total.Cmp(Big0) < 0 {
+		return fmt.Errorf("GenAssetFunc name, symbol and total must be set")
+	}
+	if p.Decimals > 18 {
+		return fmt.Errorf("GenAssetFunc decimals must be between 0 and 18")
+	}
+	if len(p.Description) > 1024 {
+		return fmt.Errorf("GenAsset description length is greater than 1024 chars")
+	}
+	if len(p.Name) > 128 {
+		if blockNumber.Uint64() >= GetForkEnabledHeight(5) {
+			return fmt.Errorf("GenAsset name length is greater than 128 chars")
+		} else {
+			return fmt.Errorf("GenAsset description length is greater than 128 chars")
+		}
+	}
+	if len(p.Symbol) > 64 {
+		if blockNumber.Uint64() >= GetForkEnabledHeight(5) {
+			return fmt.Errorf("GenAsset symbol length is greater than 64 chars")
+		} else {
+			return fmt.Errorf("GenAsset description lenght is greater than 64 chars")
+		}
+	}
+	return nil
+}
+
+func (p *SendAssetParam) Check(blockNumber *big.Int) error {
+	if blockNumber.Uint64() >= GetForkEnabledHeight(5) {
+		if p.Value == nil || p.Value.Cmp(Big0) <= 0 {
+			return fmt.Errorf("Value must be set and greater than 0")
+		}
+		if p.To == (Address{}) {
+			return fmt.Errorf("receiver address must be set and not zero address")
+		}
+	}
+	return nil
+}
+
+func (p *TimeLockParam) Check(blockNumber *big.Int, timestamp uint64) error {
+	if blockNumber.Uint64() >= GetForkEnabledHeight(5) {
+		if p.Value == nil || p.Value.Cmp(Big0) <= 0 {
+			return fmt.Errorf("Value must be set and greater than 0")
+		}
+		if p.StartTime > p.EndTime {
+			return fmt.Errorf("StartTime must be less than or equal to EndTime")
+		}
+		if p.EndTime < timestamp {
+			return fmt.Errorf("EndTime must be greater than latest block time")
+		}
+	}
+	return nil
+}
+
+func (p *BuyTicketParam) Check(blockNumber *big.Int, timestamp uint64, adjust int64) error {
+	start, end := p.Start, p.End
+	// check lifetime too short ticket
+	if end <= start || end < start+30*24*3600 {
+		return fmt.Errorf("BuyTicket end must be lower than start + 1 month")
+	}
+	if timestamp != 0 {
+		// check future ticket
+		if start > timestamp+3*3600 {
+			return fmt.Errorf("BuyTicket start must be lower than latest block time + 3 hour")
+		}
+		// check expired soon ticket
+		if end < timestamp+uint64(7*24*3600+adjust) {
+			return fmt.Errorf("BuyTicket end must be greater than latest block time + 1 week")
+		}
+	}
+	return nil
+}
+
+func (p *AssetValueChangeParam) Check(blockNumber *big.Int) error {
+	if p.Value == nil || p.Value.Cmp(Big0) <= 0 {
+		return fmt.Errorf("Value must be set and greater than 0")
+	}
+	return nil
+}
+
+func (p *AssetValueChangeExParam) Check(blockNumber *big.Int) error {
+	if p.Value == nil || p.Value.Cmp(Big0) <= 0 {
+		if blockNumber.Uint64() >= GetForkEnabledHeight(5) {
+			return fmt.Errorf("Value must be set and greater than 0")
+		} else {
+			return fmt.Errorf("illegal operation")
+		}
+	}
+	if blockNumber.Uint64() >= GetForkEnabledHeight(5) {
+		if len(p.TransacData) > 256 {
+			return fmt.Errorf("TransacData must not be greater than 256")
+		}
+	}
+	return nil
+}
+
+func (p *MakeSwapParam) Check(blockNumber *big.Int, timestamp uint64) error {
+	if p.MinFromAmount == nil || p.MinFromAmount.Cmp(Big0) <= 0 ||
+		p.MinToAmount == nil || p.MinToAmount.Cmp(Big0) <= 0 ||
+		p.SwapSize == nil || p.SwapSize.Cmp(Big0) <= 0 {
+		return fmt.Errorf("MinFromAmount,MinToAmount and SwapSize must be ge 1")
+	}
+	if len(p.Description) > 1024 {
+		return fmt.Errorf("MakeSwap description length is greater than 1024 chars")
+	}
+	total := new(big.Int).Mul(p.MinFromAmount, p.SwapSize)
+	if total.Cmp(Big0) <= 0 {
+		if blockNumber.Uint64() >= GetForkEnabledHeight(5) {
+			return fmt.Errorf("size * MinFromAmount too large")
+		} else {
+			return fmt.Errorf("size * minToAmount too large")
+		}
+	}
+	if blockNumber.Uint64() >= GetForkEnabledHeight(4) {
+		if p.FromStartTime > p.FromEndTime {
+			return fmt.Errorf("MakeSwap FromStartTime > FromEndTime")
+		}
+		if p.ToStartTime > p.ToEndTime {
+			return fmt.Errorf("MakeSwap ToStartTime > ToEndTime")
+		}
+	}
+	if blockNumber.Uint64() >= GetForkEnabledHeight(5) {
+		if p.FromEndTime <= timestamp {
+			return fmt.Errorf("MakeSwap FromEndTime <= latest blockTime")
+		}
+		if p.ToEndTime <= timestamp {
+			return fmt.Errorf("MakeSwap ToEndTime <= latest blockTime")
+		}
+
+	}
+	return nil
+}
+
+func (p *RecallSwapParam) Check(blockNumber *big.Int, swap *Swap) error {
+	if swap.MinFromAmount == nil || swap.MinFromAmount.Cmp(Big0) <= 0 {
+		return fmt.Errorf("swap illegal: MinFromAmount must be set and greater than 0")
+	}
+	if swap.SwapSize == nil || swap.SwapSize.Cmp(Big0) <= 0 {
+		return fmt.Errorf("swap illegal: SwapSize must be set and greater than 0")
+	}
+	total := new(big.Int).Mul(swap.MinFromAmount, swap.SwapSize)
+	if total.Cmp(Big0) <= 0 {
+		return fmt.Errorf("size * minFromAmount too large")
+	}
+	return nil
+}
+
+func (p *TakeSwapParam) Check(blockNumber *big.Int, swap *Swap, timestamp uint64) error {
+	if p.Size == nil || p.Size.Cmp(Big0) <= 0 ||
+		swap.SwapSize == nil || p.Size.Cmp(swap.SwapSize) > 0 {
+		if blockNumber.Uint64() >= GetForkEnabledHeight(5) {
+			return fmt.Errorf("Size must be ge 1 and le Swapsize")
+		} else {
+			return fmt.Errorf("swapsize must be le and Size must be ge 1")
+		}
+	}
+	if swap.MinFromAmount == nil || swap.MinFromAmount.Cmp(Big0) <= 0 {
+		return fmt.Errorf("MinFromAmount less than  equal to zero")
+	}
+	if swap.MinToAmount == nil || swap.MinToAmount.Cmp(Big0) <= 0 {
+		return fmt.Errorf("MinToAmount less than  equal to zero")
+	}
+
+	fromTotal := new(big.Int).Mul(swap.MinFromAmount, p.Size)
+	if fromTotal.Cmp(Big0) <= 0 {
+		return fmt.Errorf("fromTotal less than  equal to zero")
+	}
+
+	toTotal := new(big.Int).Mul(swap.MinToAmount, p.Size)
+	if toTotal.Cmp(Big0) <= 0 {
+		return fmt.Errorf("toTotal less than  equal to zero")
+	}
+	if blockNumber.Uint64() >= GetForkEnabledHeight(5) {
+		if swap.FromEndTime <= timestamp {
+			return fmt.Errorf("swap expired: FromEndTime <= latest blockTime")
+		}
+		if swap.ToEndTime <= timestamp {
+			return fmt.Errorf("swap expired: ToEndTime <= latest blockTime")
+		}
+
+	}
+	return nil
 }

@@ -30,8 +30,8 @@ type StateDB interface {
 	SubBalance(common.Address, common.Hash, *big.Int)
 	AddBalance(common.Address, common.Hash, *big.Int)
 	GetBalance(common.Hash, common.Address) *big.Int
-	SubTimeLockBalance(common.Address, common.Hash, *common.TimeLock)
-	AddTimeLockBalance(common.Address, common.Hash, *common.TimeLock)
+	SubTimeLockBalance(common.Address, common.Hash, *common.TimeLock, *big.Int, uint64)
+	AddTimeLockBalance(common.Address, common.Hash, *common.TimeLock, *big.Int, uint64)
 	GetTimeLockBalance(common.Hash, common.Address) *common.TimeLock
 	GetNonce(common.Address) uint64
 	SetNonce(common.Address, uint64)
@@ -73,7 +73,7 @@ type StateDB interface {
 	GenAsset(common.Asset) error
 	UpdateAsset(common.Asset) error
 
-	AllTickets() (map[common.Hash]common.Ticket, error)
+	AllTickets(*big.Int) (common.TicketSlice, error)
 	AddTicket(common.Ticket) error
 
 	AllAssets() (map[common.Hash]common.Asset, error)

@@ -614,7 +614,7 @@ func (pool *TxPool) validateTx(tx *types.Transaction, local bool) error {
 	}
 	// Transactor should have enough funds to cover the costs
 	// cost == V + GP * GL
-	if pool.currentState.GetBalance(common.SystemAssetID,from).Cmp(tx.Cost()) < 0 {
+	if pool.currentState.GetBalance(common.SystemAssetID, from).Cmp(tx.Cost()) < 0 {
 		return ErrInsufficientFunds
 	}
 	intrGas, err := IntrinsicGas(tx.Data(), tx.To() == nil, pool.homestead)
@@ -649,20 +649,13 @@ func (pool *TxPool) validateBuyTicketTx(tx *types.Transaction) error {
 	if buyTicketParam == nil {
 		return nil
 	}
-	start := buyTicketParam.Start
-	end := buyTicketParam.End
+
+	now := uint64(time.Now().Unix())
+	if err := buyTicketParam.Check(common.BigMaxUint64, now, 0); err != nil {
+		return nil
+	}
+
 	sender, _ := types.Sender(pool.signer, tx)
-
-	if start > uint64(time.Now().Add(3*time.Hour).Unix()) {
-		return fmt.Errorf("wrong buy ticket param, start > now + 3 hour. start: %v, end: %v, sender: %v", start, end, sender.String())
-	}
-	if end <= start || end < start+30*24*3600 {
-		return fmt.Errorf("wrong buy ticket param, end < start + 1 month. start: %v, end: %v, sender: %v", start, end, sender.String())
-	}
-	if end < uint64(time.Now().Unix()+7*24*3600) {
-		return fmt.Errorf("wrong buy ticket param, end < now + 1 week. start: %v, end: %v, sender: %v", start, end, sender.String())
-	}
-
 	found := false
 	pool.all.Range(func(hash common.Hash, tx *types.Transaction) bool {
 		if isBuyTicketTx(tx) {
@@ -1022,7 +1015,7 @@ func (pool *TxPool) promoteExecutables(accounts []common.Address) {
 			pool.priced.Removed()
 		}
 		// Drop all transactions that are too costly (low balance or out of gas)
-		drops, _ := list.Filter(pool.currentState.GetBalance(common.SystemAssetID,addr), pool.currentMaxGas)
+		drops, _ := list.Filter(pool.currentState.GetBalance(common.SystemAssetID, addr), pool.currentMaxGas)
 		for _, tx := range drops {
 			hash := tx.Hash()
 			log.Trace("Removed unpayable queued transaction", "hash", hash)
@@ -1186,7 +1179,7 @@ func (pool *TxPool) demoteUnexecutables() {
 			pool.priced.Removed()
 		}
 		// Drop all transactions that are too costly (low balance or out of gas), and queue any invalids back for later
-		drops, invalids := list.Filter(pool.currentState.GetBalance(common.SystemAssetID,addr), pool.currentMaxGas)
+		drops, invalids := list.Filter(pool.currentState.GetBalance(common.SystemAssetID, addr), pool.currentMaxGas)
 		for _, tx := range drops {
 			hash := tx.Hash()
 			log.Trace("Removed unpayable pending transaction", "hash", hash)
