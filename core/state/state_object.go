@@ -101,54 +101,54 @@ func (s *stateObject) empty() bool {
 }
 
 func (s *stateObject) deepCopyBalancesHash() []common.Hash {
-	ret := make([]common.Hash,0)
+	ret := make([]common.Hash, 0)
 	if len(s.data.BalancesHash) == 0 {
 		return ret
 	}
 
 	for _, v := range s.data.BalancesHash {
-		ret = append(ret,v)
+		ret = append(ret, v)
 	}
 
 	return ret
 }
 
 func (s *stateObject) deepCopyBalancesVal() []*big.Int {
-	ret := make([]*big.Int,0)
+	ret := make([]*big.Int, 0)
 	if len(s.data.BalancesVal) == 0 {
 		return ret
 	}
 
 	for _, v := range s.data.BalancesVal {
 		a := new(big.Int).SetBytes(v.Bytes())
-		ret = append(ret,a)
+		ret = append(ret, a)
 	}
 
 	return ret
 }
 
 func (s *stateObject) deepCopyTimeLockBalancesHash() []common.Hash {
-	ret := make([]common.Hash,0)
+	ret := make([]common.Hash, 0)
 	if len(s.data.TimeLockBalancesHash) == 0 {
 		return ret
 	}
 
 	for _, v := range s.data.TimeLockBalancesHash {
-		ret = append(ret,v)
+		ret = append(ret, v)
 	}
 
 	return ret
 }
 
 func (s *stateObject) deepCopyTimeLockBalancesVal() []*common.TimeLock {
-	ret := make([]*common.TimeLock,0)
+	ret := make([]*common.TimeLock, 0)
 	if len(s.data.TimeLockBalancesVal) == 0 {
 		return ret
 	}
 
 	for _, v := range s.data.TimeLockBalancesVal {
 		t := v.Clone()
-		ret = append(ret,t)
+		ret = append(ret, t)
 	}
 
 	return ret
@@ -417,7 +417,7 @@ func (c *stateObject) timeLockAssetIndex(assetID common.Hash) int {
 }
 
 // AddTimeLockBalance wacom
-func (s *stateObject) AddTimeLockBalance(assetID common.Hash, amount *common.TimeLock) {
+func (s *stateObject) AddTimeLockBalance(assetID common.Hash, amount *common.TimeLock, blockNumber *big.Int, timestamp uint64) {
 	if amount.IsEmpty() {
 		if s.empty() {
 			s.touch()
@@ -426,18 +426,41 @@ func (s *stateObject) AddTimeLockBalance(assetID common.Hash, amount *common.Tim
 	}
 
 	index := s.timeLockAssetIndex(assetID)
-
-	s.SetTimeLockBalance(assetID, new(common.TimeLock).Add(s.data.TimeLockBalancesVal[index], amount))
+	res := s.data.TimeLockBalancesVal[index]
+	if blockNumber.Uint64() >= common.GetForkEnabledHeight(5) {
+		if res != nil && res.IsNormalized() == false {
+			res = res.Normalize()
+		}
+		res = new(common.TimeLock).Add2(res, amount)
+		if res != nil {
+			res = res.ClearExpired(timestamp)
+		}
+	} else {
+		res = new(common.TimeLock).Add(res, amount)
+	}
+	s.SetTimeLockBalance(assetID, res)
 }
 
 // SubTimeLockBalance wacom
-func (s *stateObject) SubTimeLockBalance(assetID common.Hash, amount *common.TimeLock) {
+func (s *stateObject) SubTimeLockBalance(assetID common.Hash, amount *common.TimeLock, blockNumber *big.Int, timestamp uint64) {
 	if amount.IsEmpty() {
 		return
 	}
 
 	index := s.timeLockAssetIndex(assetID)
-	s.SetTimeLockBalance(assetID, new(common.TimeLock).Sub(s.data.TimeLockBalancesVal[index], amount))
+	res := s.data.TimeLockBalancesVal[index]
+	if blockNumber.Uint64() >= common.GetForkEnabledHeight(5) {
+		if res != nil && res.IsNormalized() == false {
+			res = res.Normalize()
+		}
+		res = new(common.TimeLock).Sub2(res, amount)
+		if res != nil {
+			res = res.ClearExpired(timestamp)
+		}
+	} else {
+		res = new(common.TimeLock).Sub(res, amount)
+	}
+	s.SetTimeLockBalance(assetID, res)
 }
 
 func (s *stateObject) SetTimeLockBalance(assetID common.Hash, amount *common.TimeLock) {

@@ -30,8 +30,8 @@ type StateDB interface {
 	SubBalance(common.Address, common.Hash, *big.Int)
 	AddBalance(common.Address, common.Hash, *big.Int)
 	GetBalance(common.Hash, common.Address) *big.Int
-	SubTimeLockBalance(common.Address, common.Hash, *common.TimeLock)
-	AddTimeLockBalance(common.Address, common.Hash, *common.TimeLock)
+	SubTimeLockBalance(common.Address, common.Hash, *common.TimeLock, *big.Int, uint64)
+	AddTimeLockBalance(common.Address, common.Hash, *common.TimeLock, *big.Int, uint64)
 	GetTimeLockBalance(common.Hash, common.Address) *common.TimeLock
 	GetNonce(common.Address) uint64
 	SetNonce(common.Address, uint64)

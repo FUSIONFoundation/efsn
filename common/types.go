@@ -37,6 +37,7 @@ var psn20HardForkEnableHeights = []uint64{
 	99000,  // hard fork 2
 	130000, // hard fork 3
 	165000, // hard fork 4
+	225000, // hard fork 5
 }
 
 func GetForkEnabledHeight(forkNumber int) uint64 {
@@ -828,4 +829,192 @@ func NewKeyValue(name string, v interface{}) *KeyValue {
 
 	return &KeyValue{Key: name, Value: v}
 
+}
+
+func (p *FSNCallParam) Check(blockNumber *big.Int) error {
+	return nil
+}
+
+func (p *GenAssetParam) Check(blockNumber *big.Int) error {
+	if len(p.Name) == 0 || len(p.Symbol) == 0 || p.Total == nil || p.Total.Cmp(Big0) < 0 {
+		return fmt.Errorf("GenAssetFunc name, symbol and total must be set")
+	}
+	if p.Decimals > 18 {
+		return fmt.Errorf("GenAssetFunc decimals must be between 0 and 18")
+	}
+	if len(p.Description) > 1024 {
+		return fmt.Errorf("GenAsset description length is greater than 1024 chars")
+	}
+	if len(p.Name) > 128 {
+		if blockNumber.Uint64() >= GetForkEnabledHeight(5) {
+			return fmt.Errorf("GenAsset name length is greater than 128 chars")
+		} else {
+			return fmt.Errorf("GenAsset description length is greater than 128 chars")
+		}
+	}
+	if len(p.Symbol) > 64 {
+		if blockNumber.Uint64() >= GetForkEnabledHeight(5) {
+			return fmt.Errorf("GenAsset symbol length is greater than 64 chars")
+		} else {
+			return fmt.Errorf("GenAsset description lenght is greater than 64 chars")
+		}
+	}
+	return nil
+}
+
+func (p *SendAssetParam) Check(blockNumber *big.Int) error {
+	if blockNumber.Uint64() >= GetForkEnabledHeight(5) {
+		if p.Value == nil || p.Value.Cmp(Big0) <= 0 {
+			return fmt.Errorf("Value must be set and greater than 0")
+		}
+		if p.To == (Address{}) {
+			return fmt.Errorf("receiver address must be set and not zero address")
+		}
+	}
+	return nil
+}
+
+func (p *TimeLockParam) Check(blockNumber *big.Int, timestamp uint64) error {
+	if blockNumber.Uint64() >= GetForkEnabledHeight(5) {
+		if p.Value == nil || p.Value.Cmp(Big0) <= 0 {
+			return fmt.Errorf("Value must be set and greater than 0")
+		}
+		if p.StartTime > p.EndTime {
+			return fmt.Errorf("StartTime must be less than or equal to EndTime")
+		}
+		if p.EndTime < timestamp {
+			return fmt.Errorf("EndTime must be greater than latest block time")
+		}
+	}
+	return nil
+}
+
+func (p *BuyTicketParam) Check(blockNumber *big.Int, timestamp uint64, adjust int64) error {
+	start, end := p.Start, p.End
+	// check lifetime too short ticket
+	if end <= start || end < start+30*24*3600 {
+		return fmt.Errorf("BuyTicket end must be lower than start + 1 month")
+	}
+	if timestamp != 0 {
+		// check future ticket
+		if start > timestamp+3*3600 {
+			return fmt.Errorf("BuyTicket start must be lower than latest block time + 3 hour")
+		}
+		// check expired soon ticket
+		if end < timestamp+uint64(7*24*3600+adjust) {
+			return fmt.Errorf("BuyTicket end must be greater than latest block time + 1 week")
+		}
+	}
+	return nil
+}
+
+func (p *AssetValueChangeParam) Check(blockNumber *big.Int) error {
+	if p.Value == nil || p.Value.Cmp(Big0) <= 0 {
+		return fmt.Errorf("Value must be set and greater than 0")
+	}
+	return nil
+}
+
+func (p *AssetValueChangeExParam) Check(blockNumber *big.Int) error {
+	if p.Value == nil || p.Value.Cmp(Big0) <= 0 {
+		if blockNumber.Uint64() >= GetForkEnabledHeight(5) {
+			return fmt.Errorf("Value must be set and greater than 0")
+		} else {
+			return fmt.Errorf("illegal operation")
+		}
+	}
+	if blockNumber.Uint64() >= GetForkEnabledHeight(5) {
+		if len(p.TransacData) > 256 {
+			return fmt.Errorf("TransacData must not be greater than 256")
+		}
+	}
+	return nil
+}
+
+func (p *MakeSwapParam) Check(blockNumber *big.Int, timestamp uint64) error {
+	if p.MinFromAmount == nil || p.MinFromAmount.Cmp(Big0) <= 0 ||
+		p.MinToAmount == nil || p.MinToAmount.Cmp(Big0) <= 0 ||
+		p.SwapSize == nil || p.SwapSize.Cmp(Big0) <= 0 {
+		return fmt.Errorf("MinFromAmount,MinToAmount and SwapSize must be ge 1")
+	}
+	if len(p.Description) > 1024 {
+		return fmt.Errorf("MakeSwap description length is greater than 1024 chars")
+	}
+	total := new(big.Int).Mul(p.MinFromAmount, p.SwapSize)
+	if total.Cmp(Big0) <= 0 {
+		if blockNumber.Uint64() >= GetForkEnabledHeight(5) {
+			return fmt.Errorf("size * MinFromAmount too large")
+		} else {
+			return fmt.Errorf("size * minToAmount too large")
+		}
+	}
+	if blockNumber.Uint64() >= GetForkEnabledHeight(4) {
+		if p.FromStartTime > p.FromEndTime {
+			return fmt.Errorf("MakeSwap FromStartTime > FromEndTime")
+		}
+		if p.ToStartTime > p.ToEndTime {
+			return fmt.Errorf("MakeSwap ToStartTime > ToEndTime")
+		}
+	}
+	if blockNumber.Uint64() >= GetForkEnabledHeight(5) {
+		if p.FromEndTime <= timestamp {
+			return fmt.Errorf("MakeSwap FromEndTime <= latest blockTime")
+		}
+		if p.ToEndTime <= timestamp {
+			return fmt.Errorf("MakeSwap ToEndTime <= latest blockTime")
+		}
+
+	}
+	return nil
+}
+
+func (p *RecallSwapParam) Check(blockNumber *big.Int, swap *Swap) error {
+	if swap.MinFromAmount == nil || swap.MinFromAmount.Cmp(Big0) <= 0 {
+		return fmt.Errorf("swap illegal: MinFromAmount must be set and greater than 0")
+	}
+	if swap.SwapSize == nil || swap.SwapSize.Cmp(Big0) <= 0 {
+		return fmt.Errorf("swap illegal: SwapSize must be set and greater than 0")
+	}
+	total := new(big.Int).Mul(swap.MinFromAmount, swap.SwapSize)
+	if total.Cmp(Big0) <= 0 {
+		return fmt.Errorf("size * minFromAmount too large")
+	}
+	return nil
+}
+
+func (p *TakeSwapParam) Check(blockNumber *big.Int, swap *Swap, timestamp uint64) error {
+	if p.Size == nil || p.Size.Cmp(Big0) <= 0 ||
+		swap.SwapSize == nil || p.Size.Cmp(swap.SwapSize) > 0 {
+		if blockNumber.Uint64() >= GetForkEnabledHeight(5) {
+			return fmt.Errorf("Size must be ge 1 and le Swapsize")
+		} else {
+			return fmt.Errorf("swapsize must be le and Size must be ge 1")
+		}
+	}
+	if swap.MinFromAmount == nil || swap.MinFromAmount.Cmp(Big0) <= 0 {
+		return fmt.Errorf("MinFromAmount less than  equal to zero")
+	}
+	if swap.MinToAmount == nil || swap.MinToAmount.Cmp(Big0) <= 0 {
+		return fmt.Errorf("MinToAmount less than  equal to zero")
+	}
+
+	fromTotal := new(big.Int).Mul(swap.MinFromAmount, p.Size)
+	if fromTotal.Cmp(Big0) <= 0 {
+		return fmt.Errorf("fromTotal less than  equal to zero")
+	}
+
+	toTotal := new(big.Int).Mul(swap.MinToAmount, p.Size)
+	if toTotal.Cmp(Big0) <= 0 {
+		return fmt.Errorf("toTotal less than  equal to zero")
+	}
+	if blockNumber.Uint64() >= GetForkEnabledHeight(5) {
+		if swap.FromEndTime <= timestamp {
+			return fmt.Errorf("swap expired: FromEndTime <= latest blockTime")
+		}
+		if swap.ToEndTime <= timestamp {
+			return fmt.Errorf("swap expired: ToEndTime <= latest blockTime")
+		}
+
+	}
+	return nil
 }

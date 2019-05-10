@@ -1259,10 +1259,10 @@ func (st *insertStats) report(chain []*types.Block, index int, cache common.Stor
 		context := []interface{}{
 			"blocks", st.processed, "txs", txs, "mgas", float64(st.usedGas) / 1000000,
 			"elapsed", common.PrettyDuration(elapsed), "mgasps", float64(st.usedGas) * 1000 / float64(elapsed),
-			"order", end.Nonce(), "number", end.Number(), "hash", end.Hash(), "cache", cache,
+			"order", end.Nonce(), "number", end.Number(), "hash", end.Hash(),
 			"difficulty", end.Difficulty(),
 			"miner", end.Coinbase(),
-			"end.root", end.Root(),
+			"root", end.Root(),
 			"parentHash", end.ParentHash(),
 			"time", end.Time(),
 		}

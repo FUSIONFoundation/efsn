@@ -362,17 +362,17 @@ func (self *StateDB) SetBalance(addr common.Address, assetID common.Hash, amount
 	}
 }
 
-func (self *StateDB) AddTimeLockBalance(addr common.Address, assetID common.Hash, amount *common.TimeLock) {
+func (self *StateDB) AddTimeLockBalance(addr common.Address, assetID common.Hash, amount *common.TimeLock, blockNumber *big.Int, timestamp uint64) {
 	stateObject := self.GetOrNewStateObject(addr)
 	if stateObject != nil {
-		stateObject.AddTimeLockBalance(assetID, amount)
+		stateObject.AddTimeLockBalance(assetID, amount, blockNumber, timestamp)
 	}
 }
 
-func (self *StateDB) SubTimeLockBalance(addr common.Address, assetID common.Hash, amount *common.TimeLock) {
+func (self *StateDB) SubTimeLockBalance(addr common.Address, assetID common.Hash, amount *common.TimeLock, blockNumber *big.Int, timestamp uint64) {
 	stateObject := self.GetOrNewStateObject(addr)
 	if stateObject != nil {
-		stateObject.SubTimeLockBalance(assetID, amount)
+		stateObject.SubTimeLockBalance(assetID, amount, blockNumber, timestamp)
 	}
 }
 
@@ -1033,7 +1033,7 @@ func (db *StateDB) AddSwap(swap common.Swap) error {
 		return err
 	}
 	if _, ok := swaps[swap.ID]; ok {
-		return fmt.Errorf("%s Ticket exists", swap.ID.String())
+		return fmt.Errorf("%s Swap exists", swap.ID.String())
 	}
 	swaps[swap.ID] = swap
 	return db.updateSwaps(swaps)
@@ -1065,6 +1065,32 @@ func (db *StateDB) RemoveSwap(id common.Hash) error {
 	}
 	delete(swaps, id)
 	return db.updateSwaps(swaps)
+}
+
+func (db *StateDB) ClearExpiredSwaps(blockNumber *big.Int, timestamp uint64) error {
+	if blockNumber.Uint64() < common.GetForkEnabledHeight(5) {
+		return nil
+	}
+	clearPeriod := uint64(5000)
+	if blockNumber.Uint64()%clearPeriod != 0 {
+		return nil
+	}
+	swaps, err := db.AllSwaps()
+	if err != nil {
+		log.Debug("ClearExpiredSwaps unable to retrieve previous swaps")
+		return err
+	}
+	changed := false
+	for id, swap := range swaps {
+		if swap.FromEndTime <= timestamp || swap.ToEndTime <= timestamp {
+			delete(swaps, id)
+			changed = true
+		}
+	}
+	if changed == true {
+		return db.updateSwaps(swaps)
+	}
+	return nil
 }
 
 func (db *StateDB) updateSwaps(swaps map[common.Hash]common.Swap) error {

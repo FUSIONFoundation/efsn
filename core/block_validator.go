@@ -107,19 +107,8 @@ func (v *BlockValidator) ValidateRawTransaction(block *types.Block) error {
 		// check buy ticket param
 		buyTicketParam := common.BuyTicketParam{}
 		rlp.DecodeBytes(param.Data, &buyTicketParam)
-		start := buyTicketParam.Start
-		end := buyTicketParam.End
-		// check future ticket
-		if start > header.Time.Uint64()+3*3600 {
-			return fmt.Errorf("wrong buy ticket param, start > header.Time + 3 hour. start: %v, end: %v, sender: %v", start, end, from.String())
-		}
-		// check lifetime too short ticket
-		if end <= start || end < start+30*24*3600 {
-			return fmt.Errorf("wrong buy ticket param, end < start + 1 month. start: %v, end: %v, sender: %v", start, end, from.String())
-		}
-		// check expired soon ticket
-		if end < header.Time.Uint64()+7*24*3600-600 {
-			return fmt.Errorf("wrong buy ticket param, end < header.Time + 1 week - 10 minute. start: %v, end: %v, sender: %v", start, end, from.String())
+		if err := buyTicketParam.Check(blockNumber, header.Time.Uint64(), -600); err != nil {
+			return nil
 		}
 	}
 	return nil

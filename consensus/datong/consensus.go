@@ -369,7 +369,7 @@ func (dt *DaTong) Finalize(chain consensus.ChainReader, header *types.Header, st
 			EndTime:   ticket.ExpireTime,
 			Value:     ticket.Value,
 		})
-		headerState.AddTimeLockBalance(ticket.Owner, common.SystemAssetID, value)
+		headerState.AddTimeLockBalance(ticket.Owner, common.SystemAssetID, value, header.Number, header.Time.Uint64())
 	}
 
 	deleteTicket := func(ticket *common.Ticket, logType ticketLogType, returnBack bool) {
@@ -412,6 +412,9 @@ func (dt *DaTong) Finalize(chain consensus.ChainReader, header *types.Header, st
 		log.Warn("Next block don't have ticket, wait buy ticket", "remainingWeight", remainingWeight)
 	}
 	if err := headerState.UpdateTickets(header.Number); err != nil {
+		return nil, err
+	}
+	if err := headerState.ClearExpiredSwaps(header.Number, parentTime); err != nil {
 		return nil, err
 	}
 
