@@ -291,37 +291,13 @@ func (st *StateTransition) handleFsnCall() error {
 		outputCommandInfo("GenAssetFunc", "from", st.msg.From())
 		genAssetParam := common.GenAssetParam{}
 		rlp.DecodeBytes(param.Data, &genAssetParam)
+		if err := genAssetParam.Check(height); err != nil {
+			st.addLog(common.GenAssetFunc, genAssetParam, common.NewKeyValue("Error", err.Error()))
+			return err
+		}
 		asset := genAssetParam.ToAsset()
 		asset.ID = st.msg.AsTransaction().Hash()
 		asset.Owner = st.msg.From()
-		big0 := big.NewInt(0)
-
-		if len(genAssetParam.Name) == 0 || len(genAssetParam.Symbol) == 0 || genAssetParam.Total == nil || genAssetParam.Total.Cmp(big0) < 0 {
-			log.Info("GenAssetFunc name, symbol and total must be set")
-			st.addLog(common.GenAssetFunc, genAssetParam, common.NewKeyValue("Error", "GenAssetFunc name, symbol and total must be set"))
-			return fmt.Errorf("BuildGenAsset name, symbol and total must be set or greater than 0")
-		}
-
-		if genAssetParam.Decimals > 18 || int(genAssetParam.Decimals) < 0 {
-			st.addLog(common.GenAssetFunc, genAssetParam, common.NewKeyValue("Error", "GenAssetFunc decimals must be between 0 and 18"))
-			return fmt.Errorf("GenAssetFunc decimals must be between 0 and 18")
-		}
-
-		if len(genAssetParam.Description) > 1024 {
-			st.addLog(common.GenAssetFunc, genAssetParam, common.NewKeyValue("Error", "GenAsset description length is greater than 1024 chars"))
-			return fmt.Errorf("GenAsset description lenght is greater than 1024 chars")
-		}
-
-		if len(genAssetParam.Name) > 128 {
-			st.addLog(common.GenAssetFunc, genAssetParam, common.NewKeyValue("Error", "GenAsset description length is greater than 128 chars"))
-			return fmt.Errorf("GenAsset description lenght is greater than 128 chars")
-		}
-
-		if len(genAssetParam.Symbol) > 64 {
-			st.addLog(common.GenAssetFunc, genAssetParam, common.NewKeyValue("Error", "GenAsset description lenght is greater than 64 chars"))
-			return fmt.Errorf("GenAsset description lenght is greater than 64")
-		}
-
 		if err := st.state.GenAsset(asset); err != nil {
 			st.addLog(common.GenAssetFunc, genAssetParam, common.NewKeyValue("Error", "unable to gen asset"))
 			return err
@@ -333,6 +309,10 @@ func (st *StateTransition) handleFsnCall() error {
 		outputCommandInfo("SendAssetFunc", "from", st.msg.From())
 		sendAssetParam := common.SendAssetParam{}
 		rlp.DecodeBytes(param.Data, &sendAssetParam)
+		if err := sendAssetParam.Check(height); err != nil {
+			st.addLog(common.SendAssetFunc, sendAssetParam, common.NewKeyValue("Error", err.Error()))
+			return err
+		}
 		if st.state.GetBalance(sendAssetParam.AssetID, st.msg.From()).Cmp(sendAssetParam.Value) < 0 {
 			st.addLog(common.SendAssetFunc, sendAssetParam, common.NewKeyValue("Error", "not enough asset"))
 			return fmt.Errorf("not enough asset")
@@ -345,15 +325,22 @@ func (st *StateTransition) handleFsnCall() error {
 		outputCommandInfo("TimeLockFunc", "from", st.msg.From())
 		timeLockParam := common.TimeLockParam{}
 		rlp.DecodeBytes(param.Data, &timeLockParam)
-		start := timeLockParam.StartTime
-		end := timeLockParam.EndTime
+
+		// adjust param
 		if timeLockParam.Type == common.TimeLockToAsset {
-			if start > uint64(time.Now().Unix()) {
+			if timeLockParam.StartTime > uint64(time.Now().Unix()) {
 				st.addLog(common.TimeLockFunc, timeLockParam, common.NewKeyValue("LockType", "TimeLockToAsset"), common.NewKeyValue("Error", "Start time must be less than now"))
 				return fmt.Errorf("Start time must be less than now")
 			}
-			end = common.TimeLockForever
+			timeLockParam.EndTime = common.TimeLockForever
 		}
+		if err := timeLockParam.Check(height, timestamp); err != nil {
+			st.addLog(common.TimeLockFunc, timeLockParam, common.NewKeyValue("Error", err.Error()))
+			return err
+		}
+
+		start := timeLockParam.StartTime
+		end := timeLockParam.EndTime
 		var needValue *common.TimeLock
 		if isAfterFork5 {
 			needValue = common.NewTimeLock(&common.TimeLockItem{
@@ -452,13 +439,13 @@ func (st *StateTransition) handleFsnCall() error {
 		buyTicketParam := common.BuyTicketParam{}
 		rlp.DecodeBytes(param.Data, &buyTicketParam)
 
-		start := buyTicketParam.Start
-		end := buyTicketParam.End
-
-		if end <= start || end < start+30*24*3600 {
-			return fmt.Errorf("wrong buy ticket param, end < start + 1 month.", "from", from, "tid", id, "blockheight", height, "start", start, "end", end)
+		if err := buyTicketParam.Check(height, 0, 0); err != nil {
+			st.addLog(common.BuyTicketFunc, param.Data, common.NewKeyValue("Error", err.Error()))
+			return err
 		}
 
+		start := buyTicketParam.Start
+		end := buyTicketParam.End
 		value := common.TicketPrice(height)
 		var needValue *common.TimeLock
 		if isAfterFork5 {
@@ -548,11 +535,12 @@ func (st *StateTransition) handleFsnCall() error {
 			assetValueChangeParamEx = common.AssetValueChangeExParam{}
 			rlp.DecodeBytes(param.Data, &assetValueChangeParamEx)
 		}
-		big0 := big.NewInt(0)
-		if assetValueChangeParamEx.Value.Cmp(big0) <= 0 {
-			st.addLog(common.AssetValueChangeFunc, assetValueChangeParamEx, common.NewKeyValue("Error", "illegal operation"))
-			return fmt.Errorf("illegal operation")
+
+		if err := assetValueChangeParamEx.Check(height); err != nil {
+			st.addLog(common.AssetValueChangeFunc, assetValueChangeParamEx, common.NewKeyValue("Error", err.Error()))
+			return err
 		}
+
 		assets, err := st.state.AllAssets()
 		if err != nil {
 			log.Debug("AssetValueChange unable to retrieve previous assets")
@@ -624,33 +612,12 @@ func (st *StateTransition) handleFsnCall() error {
 			}
 		}
 
-		big0 := big.NewInt(0)
-		if makeSwapParam.MinFromAmount.Cmp(big0) <= 0 || makeSwapParam.MinToAmount.Cmp(big0) <= 0 || makeSwapParam.SwapSize.Cmp(big0) <= 0 {
-			st.addLog(common.MakeSwapFunc, makeSwapParam, common.NewKeyValue("Error", "MinFromAmount,MinToAmount and SwapSize must be ge 1"))
-			return fmt.Errorf("MinFromAmount,MinToAmount and SwapSize must be ge 1")
-		}
-
-		if len(makeSwapParam.Description) > 1024 {
-			st.addLog(common.MakeSwapFunc, makeSwapParam, common.NewKeyValue("Error", "MakeSwap description length is greater than 1024 chars"))
-			return fmt.Errorf("makeSwap description lenght is greater than 1024 chars")
+		if err := makeSwapParam.Check(height, timestamp); err != nil {
+			st.addLog(common.MakeSwapFunc, makeSwapParam, common.NewKeyValue("Error", err.Error()))
+			return err
 		}
 
 		total := new(big.Int).Mul(makeSwapParam.MinFromAmount, makeSwapParam.SwapSize)
-		if total.Cmp(big0) <= 0 {
-			log.Info("make swap overflow 1", "MinFromAmount", makeSwapParam.MinFromAmount, "Swap", makeSwapParam.SwapSize)
-			st.addLog(common.MakeSwapFunc, makeSwapParam, common.NewKeyValue("Error", "size * minToAmount too large"))
-			return fmt.Errorf("Error", "size * minToAmount too large")
-		}
-		if isAfterFork4 {
-			if makeSwapParam.FromStartTime > makeSwapParam.FromEndTime {
-				st.addLog(common.MakeSwapFunc, makeSwapParam, common.NewKeyValue("Error", "MakeSwap FromStartTime > FromEndTime"))
-				return fmt.Errorf("MakeSwap FromStartTime > FromEndTime")
-			}
-			if makeSwapParam.ToStartTime > makeSwapParam.ToEndTime {
-				st.addLog(common.MakeSwapFunc, makeSwapParam, common.NewKeyValue("Error", "MakeSwap ToStartTime > ToEndTime"))
-				return fmt.Errorf("MakeSwap ToStartTime > ToEndTime")
-			}
-		}
 		start := makeSwapParam.FromStartTime
 		end := makeSwapParam.FromEndTime
 		useAsset := start == common.TimeLockNow && end == common.TimeLockForever
@@ -760,7 +727,6 @@ func (st *StateTransition) handleFsnCall() error {
 	case common.RecallSwapFunc:
 		outputCommandInfo("RecallSwapFunc", "from", st.msg.From())
 		recallSwapParam := common.RecallSwapParam{}
-		big0 := big.NewInt(0)
 		rlp.DecodeBytes(param.Data, &recallSwapParam)
 		swaps, err := st.state.AllSwaps()
 		if err != nil {
@@ -779,12 +745,12 @@ func (st *StateTransition) handleFsnCall() error {
 			return fmt.Errorf("Must be swap onwer can recall")
 		}
 
-		total := new(big.Int).Mul(swap.MinFromAmount, swap.SwapSize)
-		if total.Cmp(big0) <= 0 {
-			st.addLog(common.RecallSwapFunc, recallSwapParam, common.NewKeyValue("Error", "size * minFromAmount too large"))
-			return fmt.Errorf("Error", "size * minToAmount too large")
+		if err := recallSwapParam.Check(height, &swap); err != nil {
+			st.addLog(common.RecallSwapFunc, recallSwapParam, common.NewKeyValue("Error", err.Error()))
+			return err
 		}
 
+		total := new(big.Int).Mul(swap.MinFromAmount, swap.SwapSize)
 		start := swap.FromStartTime
 		end := swap.FromEndTime
 		useAsset := start == common.TimeLockNow && end == common.TimeLockForever
@@ -836,39 +802,17 @@ func (st *StateTransition) handleFsnCall() error {
 			return fmt.Errorf("Swap not found")
 		}
 
-		big0 := big.NewInt(0)
-		if swap.SwapSize.Cmp(takeSwapParam.Size) < 0 || takeSwapParam.Size.Cmp(big0) <= 0 {
-			st.addLog(common.TakeSwapFunc, takeSwapParam, common.NewKeyValue("Error", "swapsize must be le and Size must be ge 1"))
-			return fmt.Errorf("SwapSize must le and Size must be ge 1")
-		}
-
-		if swap.MinFromAmount.Cmp(big0) <= 0 {
-			st.addLog(common.TakeSwapFunc, takeSwapParam, common.NewKeyValue("Error", "MinFromAmount less than  equal to zero"))
-			return fmt.Errorf("MinFromAmount less than  equal to zero")
-		}
-
-		if swap.MinToAmount.Cmp(big0) <= 0 {
-			st.addLog(common.TakeSwapFunc, takeSwapParam, common.NewKeyValue("Error", "MinToAmount less than  equal to zero"))
-			return fmt.Errorf("MinToAmount less than  equal to zero")
+		if err := takeSwapParam.Check(height, &swap, timestamp); err != nil {
+			st.addLog(common.TakeSwapFunc, takeSwapParam, common.NewKeyValue("Error", err.Error()))
+			return err
 		}
 
 		fromTotal := new(big.Int).Mul(swap.MinFromAmount, takeSwapParam.Size)
-		if fromTotal.Cmp(big0) <= 0 {
-			st.addLog(common.TakeSwapFunc, takeSwapParam, common.NewKeyValue("Error", "fromTotal less than  equal to zero"))
-			return fmt.Errorf("fromTotal less than  equal to zero")
-		}
-
-		toTotal := new(big.Int).Mul(swap.MinToAmount, takeSwapParam.Size)
-		if toTotal.Cmp(big0) <= 0 {
-			log.Info("total too big")
-			st.addLog(common.TakeSwapFunc, takeSwapParam, common.NewKeyValue("Error", "toTotal less than  equal to zero"))
-			return fmt.Errorf("toTotal less than  equal to zero")
-		}
-
 		fromStart := swap.FromStartTime
 		fromEnd := swap.FromEndTime
 		fromUseAsset := fromStart == common.TimeLockNow && fromEnd == common.TimeLockForever
 
+		toTotal := new(big.Int).Mul(swap.MinToAmount, takeSwapParam.Size)
 		toStart := swap.ToStartTime
 		toEnd := swap.ToEndTime
 		toUseAsset := toStart == common.TimeLockNow && toEnd == common.TimeLockForever
