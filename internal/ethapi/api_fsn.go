@@ -655,13 +655,13 @@ func (s *PrivateFusionAPI) SendAsset(ctx context.Context, args SendAssetArgs, pa
 
 // AssetToTimeLock ss
 func (s *PrivateFusionAPI) AssetToTimeLock(ctx context.Context, args TimeLockArgs, passwd string) (common.Hash, error) {
-	state, _, err := s.b.StateAndHeaderByNumber(ctx, rpc.LatestBlockNumber)
+	state, header, err := s.b.StateAndHeaderByNumber(ctx, rpc.LatestBlockNumber)
 	if state == nil || err != nil {
 		return common.Hash{}, err
 	}
 	args.init()
 	needValue := common.NewTimeLock(&common.TimeLockItem{
-		StartTime: uint64(*args.StartTime),
+		StartTime: common.MaxUint64(uint64(*args.StartTime), header.Time.Uint64()),
 		EndTime:   uint64(*args.EndTime),
 		Value:     args.Value.ToInt(),
 	})
@@ -689,14 +689,14 @@ func (s *PrivateFusionAPI) AssetToTimeLock(ctx context.Context, args TimeLockArg
 
 // TimeLockToTimeLock ss
 func (s *PrivateFusionAPI) TimeLockToTimeLock(ctx context.Context, args TimeLockArgs, passwd string) (common.Hash, error) {
-	state, _, err := s.b.StateAndHeaderByNumber(ctx, rpc.LatestBlockNumber)
+	state, header, err := s.b.StateAndHeaderByNumber(ctx, rpc.LatestBlockNumber)
 	if state == nil || err != nil {
 		return common.Hash{}, err
 	}
 
 	args.init()
 	needValue := common.NewTimeLock(&common.TimeLockItem{
-		StartTime: uint64(*args.StartTime),
+		StartTime: common.MaxUint64(uint64(*args.StartTime), header.Time.Uint64()),
 		EndTime:   uint64(*args.EndTime),
 		Value:     args.Value.ToInt(),
 	})
@@ -810,7 +810,7 @@ func (s *PrivateFusionAPI) BuyTicket(ctx context.Context, args BuyTicketArgs, pa
 	end := uint64(*args.End)
 	value := common.TicketPrice(header.Number)
 	needValue := common.NewTimeLock(&common.TimeLockItem{
-		StartTime: start,
+		StartTime: common.MaxUint64(start, header.Time.Uint64()),
 		EndTime:   end,
 		Value:     value,
 	})
@@ -971,7 +971,7 @@ func (s *PrivateFusionAPI) MakeSwap(ctx context.Context, args MakeSwapArgs, pass
 		}
 	} else {
 		needValue := common.NewTimeLock(&common.TimeLockItem{
-			StartTime: start,
+			StartTime: common.MaxUint64(start, header.Time.Uint64()),
 			EndTime:   end,
 			Value:     total,
 		})
@@ -1288,13 +1288,13 @@ func (s *FusionTransactionAPI) BuildAssetToTimeLockTx(ctx context.Context, args 
 		log.Info("BuildAssetToTimeLockTx: Value is set improperly")
 		return nil, fmt.Errorf("Value is set improperly")
 	}
-	state, _, err := s.b.StateAndHeaderByNumber(ctx, rpc.LatestBlockNumber)
+	state, header, err := s.b.StateAndHeaderByNumber(ctx, rpc.LatestBlockNumber)
 	if state == nil || err != nil {
 		return nil, err
 	}
 	args.init()
 	needValue := common.NewTimeLock(&common.TimeLockItem{
-		StartTime: uint64(*args.StartTime),
+		StartTime: common.MaxUint64(uint64(*args.StartTime), header.Time.Uint64()),
 		EndTime:   uint64(*args.EndTime),
 		Value:     args.Value.ToInt(),
 	})
@@ -1331,7 +1331,7 @@ func (s *FusionTransactionAPI) AssetToTimeLock(ctx context.Context, args TimeLoc
 
 // BuildTimeLockToTimeLockTx ss
 func (s *FusionTransactionAPI) BuildTimeLockToTimeLockTx(ctx context.Context, args TimeLockArgs) (*types.Transaction, error) {
-	state, _, err := s.b.StateAndHeaderByNumber(ctx, rpc.LatestBlockNumber)
+	state, header, err := s.b.StateAndHeaderByNumber(ctx, rpc.LatestBlockNumber)
 	if state == nil || err != nil {
 		return nil, err
 	}
@@ -1343,7 +1343,7 @@ func (s *FusionTransactionAPI) BuildTimeLockToTimeLockTx(ctx context.Context, ar
 	}
 
 	needValue := common.NewTimeLock(&common.TimeLockItem{
-		StartTime: uint64(*args.StartTime),
+		StartTime: common.MaxUint64(uint64(*args.StartTime), header.Time.Uint64()),
 		EndTime:   uint64(*args.EndTime),
 		Value:     args.Value.ToInt(),
 	})
@@ -1456,7 +1456,7 @@ func (s *FusionTransactionAPI) BuildBuyTicketTx(ctx context.Context, args BuyTic
 
 	value := common.TicketPrice(header.Number)
 	needValue := common.NewTimeLock(&common.TimeLockItem{
-		StartTime: start,
+		StartTime: common.MaxUint64(start, header.Time.Uint64()),
 		EndTime:   end,
 		Value:     value,
 	})
@@ -1645,7 +1645,7 @@ func (s *FusionTransactionAPI) BuildMakeSwapTx(ctx context.Context, args MakeSwa
 		}
 	} else {
 		needValue := common.NewTimeLock(&common.TimeLockItem{
-			StartTime: start,
+			StartTime: common.MaxUint64(start, header.Time.Uint64()),
 			EndTime:   end,
 			Value:     total,
 		})
