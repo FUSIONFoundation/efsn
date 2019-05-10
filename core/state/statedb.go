@@ -362,17 +362,17 @@ func (self *StateDB) SetBalance(addr common.Address, assetID common.Hash, amount
 	}
 }
 
-func (self *StateDB) AddTimeLockBalance(addr common.Address, assetID common.Hash, amount *common.TimeLock) {
+func (self *StateDB) AddTimeLockBalance(addr common.Address, assetID common.Hash, amount *common.TimeLock, blockNumber *big.Int, timestamp uint64) {
 	stateObject := self.GetOrNewStateObject(addr)
 	if stateObject != nil {
-		stateObject.AddTimeLockBalance(assetID, amount)
+		stateObject.AddTimeLockBalance(assetID, amount, blockNumber, timestamp)
 	}
 }
 
-func (self *StateDB) SubTimeLockBalance(addr common.Address, assetID common.Hash, amount *common.TimeLock) {
+func (self *StateDB) SubTimeLockBalance(addr common.Address, assetID common.Hash, amount *common.TimeLock, blockNumber *big.Int, timestamp uint64) {
 	stateObject := self.GetOrNewStateObject(addr)
 	if stateObject != nil {
-		stateObject.SubTimeLockBalance(assetID, amount)
+		stateObject.SubTimeLockBalance(assetID, amount, blockNumber, timestamp)
 	}
 }
 

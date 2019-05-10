@@ -369,7 +369,7 @@ func (dt *DaTong) Finalize(chain consensus.ChainReader, header *types.Header, st
 			EndTime:   ticket.ExpireTime,
 			Value:     ticket.Value,
 		})
-		headerState.AddTimeLockBalance(ticket.Owner, common.SystemAssetID, value)
+		headerState.AddTimeLockBalance(ticket.Owner, common.SystemAssetID, value, header.Number, header.Time.Uint64())
 	}
 
 	deleteTicket := func(ticket *common.Ticket, logType ticketLogType, returnBack bool) {
