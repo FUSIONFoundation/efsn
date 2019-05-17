@@ -667,17 +667,69 @@ func (u *TimeLockItem) MarshalJSON() ([]byte, error) {
 }
 
 func (z *TimeLock) ToDisplay() *TimeLock {
-	if z.IsNormalized() == true {
-		t := &TimeLock{}
-		t.Items = z.Items[1:]
-		return t
+	if z.IsNormalized() == false {
+		return z
 	}
-	return z
+	t := &TimeLock{}
+	t.SetItems(z.Items[1:])
+	items := t.Items
+	res := make([]*TimeLockItem, 0)
+	for {
+		if len(items) == 0 {
+			break
+		}
+		start := items[0].StartTime
+		end := items[0].EndTime
+		value := items[0].Value
+		i := 1
+		for ; i < len(items); i++ {
+			item := items[i]
+			if !(end < item.StartTime && end+1 == item.StartTime) {
+				break
+			}
+			end = item.EndTime
+			if item.Value.Cmp(value) < 0 {
+				value = item.Value
+			}
+		}
+		if i == 1 {
+			res = append(res, items[0])
+			items = items[1:]
+			continue
+		}
+		res = append(res, &TimeLockItem{
+			StartTime: start,
+			EndTime:   end,
+			Value:     value,
+		})
+		for j := 0; j < i; {
+			item := items[j]
+			if item.Value.Cmp(value) == 0 {
+				items = append(items[:j], items[j+1:]...)
+				i--
+			} else {
+				item.Value.Sub(item.Value, value)
+				j++
+			}
+		}
+	}
+	t.Items = res
+	sort.Sort(t)
+	return t
 }
 
 // String wacom
 func (z *TimeLock) String() string {
 	b, _ := json.Marshal(z.ToDisplay().Items)
+	return string(b)
+}
+
+func (z *TimeLock) RawString() string {
+	items := z.Items
+	if z.IsNormalized() == true {
+		items = z.Items[1:]
+	}
+	b, _ := json.Marshal(items)
 	return string(b)
 }
 
