@@ -619,11 +619,6 @@ func (self *StateDB) Copy() *StateDB {
 		state.preimages[hash] = preimage
 	}
 
-	if self.notations != nil {
-		state.notations = make([]common.Address, len(self.notations))
-		copy(state.notations, self.notations)
-	}
-
 	if self.assets != nil {
 		state.assets = make(map[common.Hash]common.Asset, len(self.assets))
 		for hash, asset := range self.assets {
@@ -778,21 +773,7 @@ func (db *StateDB) GetNotation(addr common.Address) uint64 {
 
 // AllNotation wacom
 func (db *StateDB) AllNotation() ([]common.Address, error) {
-	if db.notations != nil {
-		return db.notations, nil
-	}
-	data := db.GetData(common.NotationKeyAddress)
-	var notations []common.Address
-	if len(data) == 0 || data == nil {
-		notations = make([]common.Address, 0)
-	} else {
-		if err := rlp.DecodeBytes(data, &notations); err != nil {
-			log.Error("Unable to decode bytes in AllNotations")
-			return nil, err
-		}
-	}
-	db.notations = notations
-	return notations, nil
+	return nil, fmt.Errorf("AllNotations has been depreciated please use api.fusionnetwork.io")
 }
 
 // GenNotation wacom
@@ -802,26 +783,7 @@ func (db *StateDB) GenNotation(addr common.Address) error {
 		if n := db.GetNotation(addr); n != 0 {
 			return fmt.Errorf("Account %s has a notation:%d", addr.String(), n)
 		}
-		notations, err := db.AllNotation()
-		if err != nil {
-			log.Error("GenNotation: Unable to decode bytes in AllNotation")
-			return err
-		}
-		notations = append(notations, addr)
-		stateObject.SetNotation(uint64(len(notations)))
-		db.notations = notations
-		return db.updateNotations()
 	}
-	return nil
-}
-
-func (db *StateDB) updateNotations() error {
-	//log.Info("COMMIT: saving notations")
-	data, err := rlp.EncodeToBytes(&db.notations)
-	if err != nil {
-		return err
-	}
-	db.SetData(common.NotationKeyAddress, data)
 	return nil
 }
 
