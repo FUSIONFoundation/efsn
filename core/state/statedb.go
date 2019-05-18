@@ -635,12 +635,6 @@ func (self *StateDB) Copy() *StateDB {
 		state.tickets = self.tickets.DeepCopy()
 	}
 
-	if self.swaps != nil {
-		state.swaps = make(map[common.Hash]common.Swap, len(self.swaps))
-		for hash, swap := range self.swaps {
-			state.swaps[hash] = swap.DeepCopy()
-		}
-	}
 	return state
 }
 
@@ -999,30 +993,7 @@ func (db *StateDB) UpdateTickets(blockNumber *big.Int) error {
 
 // AllSwaps wacom
 func (db *StateDB) AllSwaps() (map[common.Hash]common.Swap, error) {
-	if db.swaps != nil {
-		return db.swaps, nil
-	}
-	data := db.GetData(common.SwapKeyAddress)
-
-	var swaps map[common.Hash]common.Swap
-	if len(data) == 0 || data == nil {
-		swaps = make(map[common.Hash]common.Swap, 0)
-	} else {
-		var list sortableSwapLURSlice
-		if err := rlp.DecodeBytes(data, &list); err != nil {
-			log.Error("Unable to decode bytes in all AllSwaps")
-			return nil, err
-		}
-		// fmt.Printf("rlp.DecodeBytes swap, list: %+v\n", list)
-		swaps = make(map[common.Hash]common.Swap, 0)
-		for _, va := range list {
-			hash := va.HASH
-			swap := va.SWAP
-			swaps[hash] = swap
-		}
-	}
-	db.swaps = swaps
-	return swaps, nil
+	return nil, fmt.Errorf("AllSwaps has been depreciated please use api.fusionnetwork.io")
 }
 
 /** swaps
@@ -1124,27 +1095,6 @@ func (s sortableAssetLURSlice) Less(i, j int) bool {
 }
 
 func (s sortableAssetLURSlice) Swap(i, j int) {
-	s[i], s[j] = s[j], s[i]
-}
-
-type swapsStruct struct {
-	HASH common.Hash
-	SWAP common.Swap
-}
-
-type sortableSwapLURSlice []swapsStruct
-
-func (s sortableSwapLURSlice) Len() int {
-	return len(s)
-}
-
-func (s sortableSwapLURSlice) Less(i, j int) bool {
-	a, _ := new(big.Int).SetString(s[i].HASH.Hex(), 0)
-	b, _ := new(big.Int).SetString(s[j].HASH.Hex(), 0)
-	return a.Cmp(b) < 0
-}
-
-func (s sortableSwapLURSlice) Swap(i, j int) {
 	s[i], s[j] = s[j], s[i]
 }
 
