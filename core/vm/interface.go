@@ -83,6 +83,7 @@ type StateDB interface {
 	UpdateSwap(swap common.Swap) error
 	RemoveSwap(id common.Hash) error
 	GetSwap( swapID common.Hash ) (common.Swap, error)
+	GetAsset( assetID common.Hash ) (common.Asset, error)
 }
 
 // CallContext provides a basic interface for the EVM calling conventions. The EVM EVM

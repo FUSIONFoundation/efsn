@@ -401,15 +401,9 @@ func (s *PublicFusionAPI) GetAsset(ctx context.Context, assetID common.Hash, blo
 	if state == nil || err != nil {
 		return nil, err
 	}
-	assets, err := state.AllAssets()
-	if err != nil {
-		log.Debug("GetAsset:api_fsn.go unable to retrieve previous assets")
-		return nil, err
-	}
+	asset, assetErr := state.GetAsset( assetID )
 
-	asset, ok := assets[assetID]
-
-	if !ok {
+	if assetErr != nil {
 		return nil, fmt.Errorf("Asset not found")
 	}
 	return &asset, nil
@@ -417,58 +411,17 @@ func (s *PublicFusionAPI) GetAsset(ctx context.Context, assetID common.Hash, blo
 
 // AllAssets wacom
 func (s *PublicFusionAPI) AllAssets(ctx context.Context, blockNr rpc.BlockNumber) (map[common.Hash]common.Asset, error) {
-	state, _, err := s.b.StateAndHeaderByNumber(ctx, blockNr)
-	if state == nil || err != nil {
-		return nil, err
-	}
-	assets, err := state.AllAssets()
-	if err != nil {
-		log.Debug("AllAssets:api_fsn.go unable to retrieve previous assets")
-		return nil, err
-	}
-	return assets, state.Error()
+	return nil, fmt.Errorf("AllAssets has been depreciated, use api.fusionnetwork.io")
 }
 
 // AllAssetsByAddress wacom
 func (s *PublicFusionAPI) AllAssetsByAddress(ctx context.Context, address common.Address, blockNr rpc.BlockNumber) (map[common.Hash]common.Asset, error) {
-	state, _, err := s.b.StateAndHeaderByNumber(ctx, blockNr)
-	if state == nil || err != nil {
-		return nil, err
-	}
-	var ret = make(map[common.Hash]common.Asset)
-	assets, err := state.AllAssets()
-	if err != nil {
-		log.Debug("AllAssetsByAddress:api_fsn.go unable to retrieve previous assets")
-		return nil, err
-	}
-	for k, v := range assets {
-		if v.Owner == address {
-			ret[k] = v
-		}
-	}
-	return ret, state.Error()
+	return nil, fmt.Errorf("AllAssetsByAddress has been depreciated, use api.fusionnetwork.io")
 }
 
 // AssetExistForAddress wacom
 func (s *PublicFusionAPI) AssetExistForAddress(ctx context.Context, assetName string, address common.Address, blockNr rpc.BlockNumber) (common.Hash, error) {
-	state, _, err := s.b.StateAndHeaderByNumber(ctx, blockNr)
-	if state == nil || err != nil {
-		return common.Hash{}, err
-	}
-
-	assets, err := state.AllAssets()
-	if err != nil {
-		log.Debug("AssetExistForAddress:api_fsn.go unable to retrieve previous assets")
-		return common.Hash{}, err
-	}
-	for _, v := range assets {
-		if v.Owner == address {
-			if v.Symbol == assetName {
-				return v.ID, state.Error()
-			}
-		}
-	}
-	return common.Hash{}, state.Error()
+	return common.Hash{}, fmt.Errorf("AllAssetsByAddress has been depreciated, use api.fusionnetwork.io")
 }
 
 // AllTickets wacom
@@ -868,14 +821,9 @@ func (s *PrivateFusionAPI) checkAssetValueChange(ctx context.Context, args Asset
 		return common.Hash{}, err
 	}
 
-	assets, err := state.AllAssets()
-	if err != nil {
-		log.Debug("CheckAssetValueChange:api_fsn.go unable to retrieve previous assets")
-		return common.Hash{}, err
-	}
 
-	asset, ok := assets[args.AssetID]
-	if !ok {
+	asset, assetError := state.GetAsset( args.AssetID )
+	if assetError != nil  {
 		return common.Hash{}, fmt.Errorf("asset not found")
 	}
 
@@ -1441,14 +1389,8 @@ func (s *FusionTransactionAPI) buildAssetValueChangeTx(ctx context.Context, args
 		return nil, err
 	}
 
-	assets, err := state.AllAssets()
-	if err != nil {
-		log.Debug("buildAssetValueChangeTx:api_fsn.go unable to retrieve previous assets")
-		return nil, err
-	}
-
-	asset, ok := assets[args.AssetID]
-	if !ok {
+	asset, assetError := state.GetAsset( args.AssetID )
+	if assetError != nil  {
 		return nil, fmt.Errorf("asset not found")
 	}
 

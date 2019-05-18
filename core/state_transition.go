@@ -542,15 +542,8 @@ func (st *StateTransition) handleFsnCall() error {
 			return err
 		}
 
-		assets, err := st.state.AllAssets()
+		asset, err := st.state.GetAsset( assetValueChangeParamEx.AssetID )
 		if err != nil {
-			log.Debug("AssetValueChange unable to retrieve previous assets")
-			st.addLog(common.AssetValueChangeFunc, assetValueChangeParamEx, common.NewKeyValue("Error", "unable to retrieve previous assets"))
-			return err
-		}
-
-		asset, ok := assets[assetValueChangeParamEx.AssetID]
-		if !ok {
 			st.addLog(common.AssetValueChangeFunc, assetValueChangeParamEx, common.NewKeyValue("Error", "asset not found"))
 			return fmt.Errorf("asset not found")
 		}

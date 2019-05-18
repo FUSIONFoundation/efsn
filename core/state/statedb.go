@@ -619,13 +619,6 @@ func (self *StateDB) Copy() *StateDB {
 		state.preimages[hash] = preimage
 	}
 
-	if self.assets != nil {
-		state.assets = make(map[common.Hash]common.Asset, len(self.assets))
-		for hash, asset := range self.assets {
-			state.assets[hash] = asset.DeepCopy()
-		}
-	}
-
 	if self.tickets != nil {
 		state.tickets = self.tickets.DeepCopy()
 	}
@@ -787,83 +780,62 @@ func (db *StateDB) GenNotation(addr common.Address) error {
 	return nil
 }
 
-func (db *StateDB) updateAssets(assets map[common.Hash]common.Asset) error {
-	db.assets = assets
-	//log.Info("COMMIT: saving assets")
-
-	var list sortableAssetLURSlice
-	for k, v := range assets {
-		res := assetsStruct{
-			HASH:  k,
-			ASSET: v,
-		}
-		list = append(list, res)
-	}
-
-	sort.Sort(list)
-	data, err := rlp.EncodeToBytes(&list)
-
-	if err != nil {
-		return err
-	}
-	db.SetData(common.AssetKeyAddress, data)
-	return nil
-}
-
 // AllAssets wacom
 func (db *StateDB) AllAssets() (map[common.Hash]common.Asset, error) {
-	if db.assets != nil {
-		return db.assets, nil
-	}
-	data := db.GetData(common.AssetKeyAddress)
-	var assets map[common.Hash]common.Asset
+	return nil, fmt.Errorf("All assets has been depreciated, use api.fusionnetwork.io")
+}
+
+type assetPersist struct {
+	deleted bool  // if true swap was recalled and should not be returned
+	asset common.Asset
+}
+
+// GetAsset wacom
+func (db *StateDB) GetAsset( assetID common.Hash ) (common.Asset, error) {
+	data := db.GetStructData( common.AssetKeyAddress, assetID.Bytes())
+	var asset assetPersist
 	if len(data) == 0 || data == nil {
-		assets = make(map[common.Hash]common.Asset, 0)
-	} else {
-		var list sortableAssetLURSlice
-		if err := rlp.DecodeBytes(data, &list); err != nil {
-			log.Error("Unable to decode bytes in all AllAssets")
-			return nil, err
-		}
-		//fmt.Printf("rlp.DecodeBytes assets, list: %+v\n", list)
-		assets = make(map[common.Hash]common.Asset, 0)
-		for _, va := range list {
-			hash := va.HASH
-			asset := va.ASSET
-			assets[hash] = asset
-		}
+		return common.Asset{}, fmt.Errorf("asset not found")
 	}
-	db.assets = assets
-	return assets, nil
+	rlp.DecodeBytes(data, &asset)
+	if asset.deleted {
+		return common.Asset{}, fmt.Errorf("asset deleted")
+	}
+	return asset.asset, nil
 }
 
 // GenAsset wacom
 func (db *StateDB) GenAsset(asset common.Asset) error {
-	assets, err := db.AllAssets()
+	_, err := db.GetAsset( asset.ID )
+	if err == nil {
+		return fmt.Errorf("%s asset exists", asset.ID.String())
+	}
+	assetToSave := assetPersist{
+		deleted : false,
+		asset : asset ,
+	}
+	data, err := rlp.EncodeToBytes(&assetToSave)
 	if err != nil {
-		log.Debug("GenAsset unable to retrieve previous assets")
-		return err
+		return  err
 	}
-	if _, ok := assets[asset.ID]; ok {
-		return fmt.Errorf("%s Asset exists", asset.ID.String())
-	}
-	assets[asset.ID] = asset
-	return db.updateAssets(assets)
+	db.SetStructData(common.AssetKeyAddress, asset.ID.Bytes(), data)
+	return nil
 }
 
 // UpdateAsset wacom
 func (db *StateDB) UpdateAsset(asset common.Asset) error {
-	assets, err := db.AllAssets()
+	/** to update a asset we just overwrite it
+	*/
+	assetToSave := assetPersist{
+		deleted : false,
+		asset : asset ,
+	}
+	data, err := rlp.EncodeToBytes(&assetToSave)
 	if err != nil {
-		log.Debug("UpdateAsset unable to retrieve previous assets")
-		return err
+		return  err
 	}
-
-	if _, ok := assets[asset.ID]; !ok {
-		return fmt.Errorf("%s Asset not found", asset.ID.String())
-	}
-	assets[asset.ID] = asset
-	return db.updateAssets(assets)
+	db.SetStructData(common.AssetKeyAddress, asset.ID.Bytes(), data)
+	return nil
 }
 
 // AllTickets wacom
