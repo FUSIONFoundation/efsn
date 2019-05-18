@@ -283,9 +283,10 @@ func (st *StateTransition) handleFsnCall() error {
 	case common.GenNotationFunc:
 		outputCommandInfo("GenNotationFunc", "from", st.msg.From())
 		if err := st.state.GenNotation(st.msg.From()); err != nil {
+			st.addLog(common.GenNotationFunc, param, common.NewKeyValue("Error", err.Error()))
 			return err
 		}
-		st.addLog(common.GenNotationFunc, []byte{})
+		st.addLog(common.GenNotationFunc, param, common.NewKeyValue("notation",  st.state.GetNotation(st.msg.From())))
 		return nil
 	case common.GenAssetFunc:
 		outputCommandInfo("GenAssetFunc", "from", st.msg.From())
