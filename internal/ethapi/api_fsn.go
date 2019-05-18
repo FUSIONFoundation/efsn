@@ -528,36 +528,12 @@ func (s *PublicFusionAPI) AllTicketsByAddress(ctx context.Context, address commo
 
 // AllSwaps wacom
 func (s *PublicFusionAPI) AllSwaps(ctx context.Context, blockNr rpc.BlockNumber) (map[common.Hash]common.Swap, error) {
-	state, _, err := s.b.StateAndHeaderByNumber(ctx, blockNr)
-	if state == nil || err != nil {
-		return nil, err
-	}
-	swaps, err := state.AllSwaps()
-	if err != nil {
-		log.Debug("AllSwaps unable to retrieve previous swaps")
-		return nil, err
-	}
-	return swaps, state.Error()
+	return nil, fmt.Errorf("AllSwaps has been depreciated please use api.fusionnetwork.io")
 }
 
 // AllSwapsByAddress wacom
 func (s *PublicFusionAPI) AllSwapsByAddress(ctx context.Context, address common.Address, blockNr rpc.BlockNumber) (map[common.Hash]common.Swap, error) {
-	state, _, err := s.b.StateAndHeaderByNumber(ctx, blockNr)
-	if state == nil || err != nil {
-		return nil, err
-	}
-	swaps, err := state.AllSwaps()
-	if err != nil {
-		log.Debug("AllSwaps:api_fsn.go unable to retrieve previous swaps")
-		return nil, err
-	}
-	var ret = make(map[common.Hash]common.Swap)
-	for k, v := range swaps {
-		if v.Owner == address {
-			ret[k] = v
-		}
-	}
-	return ret, state.Error()
+	return nil, fmt.Errorf("AllSwapsByAddress has been depreciated please use api.fusionnetwork.io")
 }
 
 // PrivateFusionAPI ss
@@ -994,21 +970,17 @@ func (s *PrivateFusionAPI) RecallSwap(ctx context.Context, args RecallSwapArgs, 
 	if state == nil || err != nil {
 		return common.Hash{}, err
 	}
-	swaps, err := state.AllSwaps()
-	if err != nil {
-		log.Debug("RecallSwap:api_fsn.go unable to retrieve previous swaps")
-		return common.Hash{}, err
-	}
-	swap, ok := swaps[args.SwapID]
-	if !ok {
-		return common.Hash{}, fmt.Errorf("Swap not found")
+	var swap common.Swap
+	swap, err  = state.GetSwap(args.SwapID)
+	if err != nil{
+		return common.Hash{},  err
 	}
 	if err := args.toParam().Check(common.BigMaxUint64, &swap); err != nil {
 		return common.Hash{}, err
 	}
 
 	if swap.Owner != args.From {
-		return common.Hash{}, fmt.Errorf("Must be swap onwer can recall")
+		return common.Hash{}, fmt.Errorf("Must be swap owner can recall")
 	}
 
 	funcData, err := args.toData()
@@ -1033,14 +1005,10 @@ func (s *PrivateFusionAPI) TakeSwap(ctx context.Context, args TakeSwapArgs, pass
 	if state == nil || err != nil {
 		return common.Hash{}, err
 	}
-	swaps, err := state.AllSwaps()
+
+	swap,err := state.GetSwap(args.SwapID)
 	if err != nil {
-		log.Debug("TakeSwap:api_fsn.go unable to retrieve previous swaps")
 		return common.Hash{}, err
-	}
-	swap, ok := swaps[args.SwapID]
-	if !ok {
-		return common.Hash{}, fmt.Errorf("Swap not found")
 	}
 
 	now := uint64(time.Now().Unix())
@@ -1614,15 +1582,13 @@ func (s *FusionTransactionAPI) BuildRecallSwapTx(ctx context.Context, args Recal
 	if state == nil || err != nil {
 		return nil, err
 	}
-	swaps, err := state.AllSwaps()
+
+	var swap common.Swap
+	swap,err = state.GetSwap(args.SwapID)
 	if err != nil {
-		log.Debug("BuildRecallSwap unable to retrieve previous swaps")
 		return nil, err
 	}
-	swap, ok := swaps[args.SwapID]
-	if !ok {
-		return nil, fmt.Errorf("Swap not found")
-	}
+
 	if err := args.toParam().Check(common.BigMaxUint64, &swap); err != nil {
 		return nil, err
 	}
@@ -1662,14 +1628,10 @@ func (s *FusionTransactionAPI) BuildTakeSwapTx(ctx context.Context, args TakeSwa
 	if state == nil || err != nil {
 		return nil, err
 	}
-	swaps, err := state.AllSwaps()
+	var swap common.Swap
+	swap, err = state.GetSwap(args.SwapID)
 	if err != nil {
-		log.Debug("BuildTakeSwapTx unable to retrieve previous swaps")
 		return nil, err
-	}
-	swap, ok := swaps[args.SwapID]
-	if !ok {
-		return nil, fmt.Errorf("Swap not found")
 	}
 
 	now := uint64(time.Now().Unix())

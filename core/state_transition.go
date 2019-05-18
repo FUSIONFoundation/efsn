@@ -599,14 +599,8 @@ func (st *StateTransition) handleFsnCall() error {
 		swapId := st.msg.AsTransaction().Hash()
 
 		if isAfterFork5 {
-			swaps, err := st.state.AllSwaps()
-			if err != nil {
-				log.Info("MakeSwap unable to retrieve previous swaps")
-				st.addLog(common.MakeSwapFunc, makeSwapParam, common.NewKeyValue("Error", err.Error()))
-				return err
-			}
-
-			if _, ok := swaps[swapId]; ok {
+			_, err := st.state.GetSwap( swapId )
+			if err == nil {
 				st.addLog(common.MakeSwapFunc, makeSwapParam, common.NewKeyValue("Error", "Swap already exist"))
 				return fmt.Errorf("Swap already exist")
 			}
@@ -728,14 +722,9 @@ func (st *StateTransition) handleFsnCall() error {
 		outputCommandInfo("RecallSwapFunc", "from", st.msg.From())
 		recallSwapParam := common.RecallSwapParam{}
 		rlp.DecodeBytes(param.Data, &recallSwapParam)
-		swaps, err := st.state.AllSwaps()
-		if err != nil {
-			log.Debug("RecallSwapFunc unable to retrieve previous swaps")
-			st.addLog(common.RecallSwapFunc, recallSwapParam, common.NewKeyValue("Error", "unable to retrieve previous swaps"))
-			return err
-		}
-		swap, ok := swaps[recallSwapParam.SwapID]
-		if !ok {
+
+		swap, err := st.state.GetSwap( recallSwapParam.SwapID )
+		if  err != nil {
 			st.addLog(common.RecallSwapFunc, recallSwapParam, common.NewKeyValue("Error", "Swap not found"))
 			return fmt.Errorf("Swap not found")
 		}
@@ -789,15 +778,8 @@ func (st *StateTransition) handleFsnCall() error {
 		takeSwapParam := common.TakeSwapParam{}
 		rlp.DecodeBytes(param.Data, &takeSwapParam)
 
-		swaps, err := st.state.AllSwaps()
+		swap, err := st.state.GetSwap( takeSwapParam.SwapID )
 		if err != nil {
-			log.Info("TakeSwapFunc unable to retrieve previous swaps")
-			st.addLog(common.TakeSwapFunc, takeSwapParam, common.NewKeyValue("Error", "Swap not found"))
-			return err
-		}
-
-		swap, ok := swaps[takeSwapParam.SwapID]
-		if !ok {
 			st.addLog(common.TakeSwapFunc, takeSwapParam, common.NewKeyValue("Error", "swap not found"))
 			return fmt.Errorf("Swap not found")
 		}

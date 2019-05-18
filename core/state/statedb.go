@@ -1025,94 +1025,84 @@ func (db *StateDB) AllSwaps() (map[common.Hash]common.Swap, error) {
 	return swaps, nil
 }
 
+/** swaps
+*  
+*/
+type swapPersist struct {
+	deleted bool  // if true swap was recalled and should not be returned
+	swap common.Swap
+}
+
+// GetSwap wacom
+func (db *StateDB) GetSwap( swapID common.Hash ) (common.Swap, error) {
+	data := db.GetStructData( common.SwapKeyAddress, swapID.Bytes())
+	var swap swapPersist
+	if len(data) == 0 || data == nil {
+		return common.Swap{}, fmt.Errorf("swap not found")
+	}
+	rlp.DecodeBytes(data, &swap)
+	if swap.deleted {
+		return common.Swap{}, fmt.Errorf("swap deleted")
+	}
+	return swap.swap, nil
+}
+
 // AddSwap wacom
 func (db *StateDB) AddSwap(swap common.Swap) error {
-	swaps, err := db.AllSwaps()
-	if err != nil {
-		log.Debug("AddSwap unable to retrieve previous swaps")
-		return err
-	}
-	if _, ok := swaps[swap.ID]; ok {
+	_, err := db.GetSwap( swap.ID)
+	if err == nil {
 		return fmt.Errorf("%s Swap exists", swap.ID.String())
 	}
-	swaps[swap.ID] = swap
-	return db.updateSwaps(swaps)
+	swapToSave := swapPersist{
+		deleted : false,
+		swap : swap ,
+	}
+	data, err := rlp.EncodeToBytes(&swapToSave)
+	if err != nil {
+		return  err
+	}
+	db.SetStructData(common.SwapKeyAddress, swap.ID.Bytes(), data)
+	return nil
 }
 
 // UpdateSwap wacom
 func (db *StateDB) UpdateSwap(swap common.Swap) error {
-	swaps, err := db.AllSwaps()
+	/** to update a swap we just overwrite it
+	*/
+	swapToSave := swapPersist{
+		deleted : false,
+		swap : swap ,
+	}
+	data, err := rlp.EncodeToBytes(&swapToSave)
 	if err != nil {
-		log.Debug("UpdateSwap unable to retrieve previous swaps")
-		return err
+		return  err
 	}
-	if _, ok := swaps[swap.ID]; !ok {
-		return fmt.Errorf("%s Swap not found", swap.ID.String())
-	}
-	swaps[swap.ID] = swap
-	return db.updateSwaps(swaps)
+	db.SetStructData(common.SwapKeyAddress, swap.ID.Bytes(), data)
+	return nil
 }
 
 // RemoveSwap wacom
 func (db *StateDB) RemoveSwap(id common.Hash) error {
-	swaps, err := db.AllSwaps()
+	swapFound, err  := db.GetSwap( id )
 	if err != nil {
-		log.Debug("RemoveSwap unable to retrieve previous swaps")
-		return err
+		return fmt.Errorf("%s Swap not found ", id.String())
 	}
-	if _, ok := swaps[id]; !ok {
-		return fmt.Errorf("%s Swap not found", id.String())
-	}
-	delete(swaps, id)
-	return db.updateSwaps(swaps)
-}
 
-func (db *StateDB) ClearExpiredSwaps(blockNumber *big.Int, timestamp uint64) error {
-	if blockNumber.Uint64() < common.GetForkEnabledHeight(5) {
-		return nil
+	swapToSave := swapPersist{
+		deleted : true,
+		swap : swapFound,
 	}
-	clearPeriod := uint64(5000)
-	if blockNumber.Uint64()%clearPeriod != 0 {
-		return nil
-	}
-	swaps, err := db.AllSwaps()
+	data, err := rlp.EncodeToBytes(&swapToSave)
 	if err != nil {
-		log.Debug("ClearExpiredSwaps unable to retrieve previous swaps")
-		return err
+		return  err
 	}
-	changed := false
-	for id, swap := range swaps {
-		if swap.FromEndTime <= timestamp || swap.ToEndTime <= timestamp {
-			delete(swaps, id)
-			changed = true
-		}
-	}
-	if changed == true {
-		return db.updateSwaps(swaps)
-	}
+	db.SetStructData(common.SwapKeyAddress, id.Bytes(), data)
 	return nil
 }
 
-func (db *StateDB) updateSwaps(swaps map[common.Hash]common.Swap) error {
-	db.swaps = swaps
-	//log.Info("COMMIT: saving swaps")
-
-	var list sortableSwapLURSlice
-	for k, v := range swaps {
-		res := swapsStruct{
-			HASH: k,
-			SWAP: v,
-		}
-		list = append(list, res)
-	}
-
-	sort.Sort(list)
-	data, err := rlp.EncodeToBytes(&list)
-
-	if err != nil {
-		return err
-	}
-	db.SetData(common.SwapKeyAddress, data)
+func (db *StateDB) ClearExpiredSwaps(blockNumber *big.Int, timestamp uint64) error {
+	// swaps are no longer held in global memory
+	// so no need to clear
 	return nil
 }
 
@@ -1158,24 +1148,24 @@ func (s sortableSwapLURSlice) Swap(i, j int) {
 	s[i], s[j] = s[j], s[i]
 }
 
-
-func (self *StateDB) GetStructData(addr common.Address, key []byte) []byte {
+// GetStructData wacom
+func (db *StateDB) GetStructData(addr common.Address, key []byte) []byte {
 	if key == nil {
 		return nil
 	}
-	stateObject := self.GetOrNewStateObject(addr)
+	stateObject := db.GetOrNewStateObject(addr)
 	if stateObject != nil {
 		keyHash := crypto.Keccak256Hash(key)
 		keyIndex := new(big.Int)
 		keyIndex.SetBytes(keyHash[:])
-		info := stateObject.GetState(self.db, keyHash)
+		info := stateObject.GetState(db.db, keyHash)
 		size := common.BytesToInt(info[0:4])
 		length := common.BytesToInt(info[common.HashLength/2 : common.HashLength/2+4])
 		data := make([]byte, size)
 		for i := 0; i < length; i++ {
 			tempIndex := big.NewInt(int64(i))
 			tempKey := crypto.Keccak256Hash(tempIndex.Add(tempIndex, keyIndex).Bytes()[:])
-			tempData := stateObject.GetState(self.db, tempKey)
+			tempData := stateObject.GetState(db.db, tempKey)
 			start := i * common.HashLength
 			end := start + common.HashLength
 			if end > size {
@@ -1189,12 +1179,12 @@ func (self *StateDB) GetStructData(addr common.Address, key []byte) []byte {
 	return nil
 }
 
-
-func (self *StateDB) SetStructData(addr common.Address, key, value []byte) {
+// SetStructData wacom
+func (db *StateDB) SetStructData(addr common.Address, key, value []byte) {
 	if key == nil || value == nil {
 		return
 	}
-	stateObject := self.GetOrNewStateObject(addr)
+	stateObject := db.GetOrNewStateObject(addr)
 	if stateObject != nil {
 		size := len(value)
 		length := size / common.HashLength
@@ -1207,7 +1197,7 @@ func (self *StateDB) SetStructData(addr common.Address, key, value []byte) {
 		keyHash := crypto.Keccak256Hash(key)
 		keyIndex := new(big.Int)
 		keyIndex.SetBytes(keyHash[:])
-		stateObject.SetState(self.db, keyHash, info)
+		stateObject.SetState(db.db, keyHash, info)
 		for i := 0; i < length; i++ {
 			tempIndex := big.NewInt(int64(i))
 			tempKey := crypto.Keccak256Hash(tempIndex.Add(tempIndex, keyIndex).Bytes()[:])
@@ -1218,7 +1208,7 @@ func (self *StateDB) SetStructData(addr common.Address, key, value []byte) {
 				end = size
 			}
 			tempData.SetBytes(value[start:end])
-			stateObject.SetState(self.db, tempKey, tempData)
+			stateObject.SetState(db.db, tempKey, tempData)
 		}
 		stateObject.SetNonce(stateObject.Nonce() + 1)
 	}
