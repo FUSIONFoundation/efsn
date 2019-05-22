@@ -76,14 +76,11 @@ type StateDB interface {
 	AllTickets(*big.Int) (common.TicketSlice, error)
 	AddTicket(common.Ticket) error
 
-	AllAssets() (map[common.Hash]common.Asset, error)
-
-	AllSwaps() (map[common.Hash]common.Swap, error)
 	AddSwap(swap common.Swap) error
 	UpdateSwap(swap common.Swap) error
 	RemoveSwap(id common.Hash) error
-	GetSwap( swapID common.Hash ) (common.Swap, error)
-	GetAsset( assetID common.Hash ) (common.Asset, error)
+	GetSwap(swapID common.Hash) (common.Swap, error)
+	GetAsset(assetID common.Hash) (common.Asset, error)
 }
 
 // CallContext provides a basic interface for the EVM calling conventions. The EVM EVM
