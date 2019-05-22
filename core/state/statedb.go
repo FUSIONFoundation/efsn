@@ -1048,7 +1048,7 @@ func (db *StateDB) GetStructData(addr common.Address, key []byte) []byte {
 		data := make([]byte, size)
 		for i := 0; i < length; i++ {
 			tempIndex := big.NewInt(int64(i))
-			tempKey := crypto.Keccak256Hash(tempIndex.Add(tempIndex, keyIndex).Bytes()[:])
+			tempKey := crypto.Keccak256Hash(tempIndex.Bytes(), keyIndex.Bytes())
 			tempData := stateObject.GetState(db.db, tempKey)
 			start := i * common.HashLength
 			end := start + common.HashLength
@@ -1084,7 +1084,7 @@ func (db *StateDB) SetStructData(addr common.Address, key, value []byte) {
 		stateObject.SetState(db.db, keyHash, info)
 		for i := 0; i < length; i++ {
 			tempIndex := big.NewInt(int64(i))
-			tempKey := crypto.Keccak256Hash(tempIndex.Add(tempIndex, keyIndex).Bytes()[:])
+			tempKey := crypto.Keccak256Hash(tempIndex.Bytes(), keyIndex.Bytes())
 			tempData := common.Hash{}
 			start := i * common.HashLength
 			end := start + common.HashLength
