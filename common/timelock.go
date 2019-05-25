@@ -615,21 +615,7 @@ func (z *TimeLock) SetItems(items []*TimeLockItem) {
 
 // Cmp wacom
 func (z *TimeLock) Cmp(x *TimeLock, blockNumber *big.Int) int {
-	if blockNumber.Uint64() >= GetForkEnabledHeight(5) {
-		return z.Cmp2(x)
-	}
-	if len(x.Items) != 1 {
-		panic("Just Support One TimeLockItem")
-	}
-	item := x.Items[0]
-	enough, remaining := z.findNeed(item)
-	if !enough {
-		return -1
-	}
-	if len(remaining) > 0 {
-		return 1
-	}
-	return 0
+	return z.Cmp2(x)
 }
 
 // Clone wacom

@@ -847,7 +847,7 @@ func (db *StateDB) AllTickets(blockNumber *big.Int) (common.TicketSlice, error) 
 	if data == nil || len(data) == 0 {
 		return nil, nil
 	}
-	if blockNumber == nil || blockNumber.Cmp(new(big.Int).SetUint64(common.GetForkEnabledHeight(3))) < 0 {
+	if blockNumber == nil {
 		var tickets common.TicketStructSlice
 		if err := rlp.DecodeBytes(data, &tickets); err != nil {
 			log.Error("AllTickets: Unable to decode bytes in all tickets")
@@ -910,7 +910,7 @@ func (db *StateDB) UpdateTickets(blockNumber *big.Int) error {
 	var data []byte
 	var err error
 
-	if blockNumber == nil || blockNumber.Cmp(new(big.Int).SetUint64(common.GetForkEnabledHeight(3))) < 0 {
+	if blockNumber == nil  {
 		sort.Sort(db.tickets)
 		ts := db.tickets.ToTicketStructSlice()
 		data, err = rlp.EncodeToBytes(&ts)

@@ -274,8 +274,6 @@ func outputCommandInfo(param1 string, param2 string, param3 interface{}) {
 func (st *StateTransition) handleFsnCall() error {
 	height := st.evm.Context.BlockNumber
 	timestamp := st.evm.Context.ParentTime.Uint64()
-	isAfterFork4 := height.Uint64() >= common.GetForkEnabledHeight(4)
-	isAfterFork5 := height.Uint64() >= common.GetForkEnabledHeight(5)
 
 	param := common.FSNCallParam{}
 	rlp.DecodeBytes(st.msg.Data(), &param)
@@ -343,25 +341,19 @@ func (st *StateTransition) handleFsnCall() error {
 		start := timeLockParam.StartTime
 		end := timeLockParam.EndTime
 		var needValue *common.TimeLock
-		if isAfterFork5 {
-			needValue = common.NewTimeLock(&common.TimeLockItem{
-				StartTime: common.MaxUint64(start, timestamp),
-				EndTime:   end,
-				Value:     new(big.Int).SetBytes(timeLockParam.Value.Bytes()),
-			})
-		} else {
-			needValue = common.NewTimeLock(&common.TimeLockItem{
-				StartTime: start,
-				EndTime:   end,
-				Value:     new(big.Int).SetBytes(timeLockParam.Value.Bytes()),
-			})
+	
+		needValue = common.NewTimeLock(&common.TimeLockItem{
+			StartTime: common.MaxUint64(start, timestamp),
+			EndTime:   end,
+			Value:     new(big.Int).SetBytes(timeLockParam.Value.Bytes()),
+		})
+
+
+		if err := needValue.IsValid(); err != nil {
+			st.addLog(common.TimeLockFunc, timeLockParam, common.NewKeyValue("Error", err.Error()))
+			return fmt.Errorf(err.Error())
 		}
-		if isAfterFork4 {
-			if err := needValue.IsValid(); err != nil {
-				st.addLog(common.TimeLockFunc, timeLockParam, common.NewKeyValue("Error", err.Error()))
-				return fmt.Errorf(err.Error())
-			}
-		}
+		
 		switch timeLockParam.Type {
 		case common.AssetToTimeLock:
 			if st.state.GetBalance(timeLockParam.AssetID, st.msg.From()).Cmp(timeLockParam.Value) < 0 {
@@ -369,33 +361,22 @@ func (st *StateTransition) handleFsnCall() error {
 				return fmt.Errorf("not enough asset")
 			}
 			st.state.SubBalance(st.msg.From(), timeLockParam.AssetID, timeLockParam.Value)
-			if isAfterFork5 {
-				totalValue := common.NewTimeLock(&common.TimeLockItem{
-					StartTime: timestamp,
-					EndTime:   common.TimeLockForever,
-					Value:     new(big.Int).SetBytes(timeLockParam.Value.Bytes()),
-				})
-				if st.msg.From() == timeLockParam.To {
-					st.state.AddTimeLockBalance(timeLockParam.To, timeLockParam.AssetID, totalValue, height, timestamp)
-				} else {
-					surplusValue := new(common.TimeLock).Sub2(totalValue, needValue)
-					if !surplusValue.IsEmpty() {
-						st.state.AddTimeLockBalance(st.msg.From(), timeLockParam.AssetID, surplusValue, height, timestamp)
-					}
-					st.state.AddTimeLockBalance(timeLockParam.To, timeLockParam.AssetID, needValue, height, timestamp)
-				}
+			
+			totalValue := common.NewTimeLock(&common.TimeLockItem{
+				StartTime: timestamp,
+				EndTime:   common.TimeLockForever,
+				Value:     new(big.Int).SetBytes(timeLockParam.Value.Bytes()),
+			})
+			if st.msg.From() == timeLockParam.To {
+				st.state.AddTimeLockBalance(timeLockParam.To, timeLockParam.AssetID, totalValue, height, timestamp)
 			} else {
-				totalValue := common.NewTimeLock(&common.TimeLockItem{
-					StartTime: common.TimeLockNow,
-					EndTime:   common.TimeLockForever,
-					Value:     new(big.Int).SetBytes(timeLockParam.Value.Bytes()),
-				})
-				surplusValue := new(common.TimeLock).Sub(totalValue, needValue)
+				surplusValue := new(common.TimeLock).Sub2(totalValue, needValue)
 				if !surplusValue.IsEmpty() {
 					st.state.AddTimeLockBalance(st.msg.From(), timeLockParam.AssetID, surplusValue, height, timestamp)
 				}
 				st.state.AddTimeLockBalance(timeLockParam.To, timeLockParam.AssetID, needValue, height, timestamp)
 			}
+		
 			st.addLog(common.TimeLockFunc, timeLockParam, common.NewKeyValue("LockType", "AssetToTimeLock"), common.NewKeyValue("AssetID", timeLockParam.AssetID))
 			return nil
 		case common.TimeLockToTimeLock:
@@ -449,22 +430,15 @@ func (st *StateTransition) handleFsnCall() error {
 		end := buyTicketParam.End
 		value := common.TicketPrice(height)
 		var needValue *common.TimeLock
-		if isAfterFork5 {
-			needValue = common.NewTimeLock(&common.TimeLockItem{
-				StartTime: common.MaxUint64(start, timestamp),
-				EndTime:   end,
-				Value:     value,
-			})
-			if err := needValue.IsValid(); err != nil {
-				st.addLog(common.BuyTicketFunc, param.Data, common.NewKeyValue("Error", err.Error()))
-				return fmt.Errorf(err.Error())
-			}
-		} else {
-			needValue = common.NewTimeLock(&common.TimeLockItem{
-				StartTime: start,
-				EndTime:   end,
-				Value:     value,
-			})
+		
+		needValue = common.NewTimeLock(&common.TimeLockItem{
+			StartTime: common.MaxUint64(start, timestamp),
+			EndTime:   end,
+			Value:     value,
+		})
+		if err := needValue.IsValid(); err != nil {
+			st.addLog(common.BuyTicketFunc, param.Data, common.NewKeyValue("Error", err.Error()))
+			return fmt.Errorf(err.Error())
 		}
 
 		ticket := common.Ticket{
@@ -487,27 +461,17 @@ func (st *StateTransition) handleFsnCall() error {
 
 		if useAsset {
 			st.state.SubBalance(from, common.SystemAssetID, value)
-			if isAfterFork5 {
-				totalValue := common.NewTimeLock(&common.TimeLockItem{
-					StartTime: timestamp,
-					EndTime:   common.TimeLockForever,
-					Value:     value,
-				})
-				surplusValue := new(common.TimeLock).Sub2(totalValue, needValue)
-				if !surplusValue.IsEmpty() {
-					st.state.AddTimeLockBalance(from, common.SystemAssetID, surplusValue, height, timestamp)
-				}
-			} else {
-				totalValue := common.NewTimeLock(&common.TimeLockItem{
-					StartTime: common.TimeLockNow,
-					EndTime:   common.TimeLockForever,
-					Value:     value,
-				})
-				surplusValue := new(common.TimeLock).Sub(totalValue, needValue)
-				if !surplusValue.IsEmpty() {
-					st.state.AddTimeLockBalance(from, common.SystemAssetID, surplusValue, height, timestamp)
-				}
+			
+			totalValue := common.NewTimeLock(&common.TimeLockItem{
+				StartTime: timestamp,
+				EndTime:   common.TimeLockForever,
+				Value:     value,
+			})
+			surplusValue := new(common.TimeLock).Sub2(totalValue, needValue)
+			if !surplusValue.IsEmpty() {
+				st.state.AddTimeLockBalance(from, common.SystemAssetID, surplusValue, height, timestamp)
 			}
+
 		} else {
 			st.state.SubTimeLockBalance(from, common.SystemAssetID, needValue, height, timestamp)
 		}
@@ -592,14 +556,12 @@ func (st *StateTransition) handleFsnCall() error {
 		rlp.DecodeBytes(param.Data, &makeSwapParam)
 		swapId := st.msg.AsTransaction().Hash()
 
-		if isAfterFork5 {
-			_, err := st.state.GetSwap( swapId )
-			if err == nil {
-				st.addLog(common.MakeSwapFunc, makeSwapParam, common.NewKeyValue("Error", "Swap already exist"))
-				return fmt.Errorf("Swap already exist")
-			}
+		_, err := st.state.GetSwap( swapId )
+		if err == nil {
+			st.addLog(common.MakeSwapFunc, makeSwapParam, common.NewKeyValue("Error", "Swap already exist"))
+			return fmt.Errorf("Swap already exist")
 		}
-
+		
 		if err := makeSwapParam.Check(height, timestamp); err != nil {
 			st.addLog(common.MakeSwapFunc, makeSwapParam, common.NewKeyValue("Error", err.Error()))
 			return err
@@ -610,24 +572,17 @@ func (st *StateTransition) handleFsnCall() error {
 		end := makeSwapParam.FromEndTime
 		useAsset := start == common.TimeLockNow && end == common.TimeLockForever
 		var needValue *common.TimeLock
-		if isAfterFork5 {
-			needValue = common.NewTimeLock(&common.TimeLockItem{
-				StartTime: common.MaxUint64(start, timestamp),
-				EndTime:   end,
-				Value:     total,
-			})
-			if err := needValue.IsValid(); err != nil {
-				st.addLog(common.MakeSwapFunc, makeSwapParam, common.NewKeyValue("Error", err.Error()))
-				return fmt.Errorf(err.Error())
-			}
-		} else {
-			needValue = common.NewTimeLock(&common.TimeLockItem{
-				StartTime: start,
-				EndTime:   end,
-				Value:     total,
-			})
+		
+		needValue = common.NewTimeLock(&common.TimeLockItem{
+			StartTime: common.MaxUint64(start, timestamp),
+			EndTime:   end,
+			Value:     total,
+		})
+		if err := needValue.IsValid(); err != nil {
+			st.addLog(common.MakeSwapFunc, makeSwapParam, common.NewKeyValue("Error", err.Error()))
+			return fmt.Errorf(err.Error())
 		}
-
+	
 		swap := common.Swap{
 			ID:            swapId,
 			Owner:         st.msg.From(),
@@ -667,35 +622,14 @@ func (st *StateTransition) handleFsnCall() error {
 
 				// subtract the asset from the balance
 				st.state.SubBalance(st.msg.From(), makeSwapParam.FromAssetID, total)
-				if isAfterFork5 {
-					totalValue := common.NewTimeLock(&common.TimeLockItem{
-						StartTime: timestamp,
-						EndTime:   common.TimeLockForever,
-						Value:     total,
-					})
-					st.state.AddTimeLockBalance(st.msg.From(), makeSwapParam.FromAssetID, totalValue, height, timestamp)
-				} else {
-					// see if we need timelock from to start
-					if start != common.TimeLockNow {
-						todayValue := common.NewTimeLock(&common.TimeLockItem{
-							StartTime: common.TimeLockNow,
-							EndTime:   start - 1,
-							Value:     total,
-						})
-						st.state.AddTimeLockBalance(st.msg.From(), makeSwapParam.FromAssetID, todayValue, height, timestamp)
-					}
-					//lock needed portion
-					st.state.AddTimeLockBalance(st.msg.From(), makeSwapParam.FromAssetID, needValue, height, timestamp)
-					// then make sure from end to forever is set
-					if end != common.TimeLockForever {
-						totalValue := common.NewTimeLock(&common.TimeLockItem{
-							StartTime: end + 1,
-							EndTime:   common.TimeLockForever,
-							Value:     total,
-						})
-						st.state.AddTimeLockBalance(st.msg.From(), makeSwapParam.FromAssetID, totalValue, height, timestamp)
-					}
-				}
+			
+				totalValue := common.NewTimeLock(&common.TimeLockItem{
+					StartTime: timestamp,
+					EndTime:   common.TimeLockForever,
+					Value:     total,
+				})
+				st.state.AddTimeLockBalance(st.msg.From(), makeSwapParam.FromAssetID, totalValue, height, timestamp)
+
 			}
 		}
 
@@ -738,19 +672,12 @@ func (st *StateTransition) handleFsnCall() error {
 		end := swap.FromEndTime
 		useAsset := start == common.TimeLockNow && end == common.TimeLockForever
 		var needValue *common.TimeLock
-		if isAfterFork5 {
-			needValue = common.NewTimeLock(&common.TimeLockItem{
-				StartTime: common.MaxUint64(start, timestamp),
-				EndTime:   end,
-				Value:     total,
-			})
-		} else {
-			needValue = common.NewTimeLock(&common.TimeLockItem{
-				StartTime: start,
-				EndTime:   end,
-				Value:     total,
-			})
-		}
+		
+		needValue = common.NewTimeLock(&common.TimeLockItem{
+			StartTime: common.MaxUint64(start, timestamp),
+			EndTime:   end,
+			Value:     total,
+		})
 
 		if err := st.state.RemoveSwap(swap.ID); err != nil {
 			st.addLog(common.RecallSwapFunc, recallSwapParam, common.NewKeyValue("Error", "Unable to remove swap"))
@@ -795,29 +722,17 @@ func (st *StateTransition) handleFsnCall() error {
 
 		var fromNeedValue *common.TimeLock
 		var toNeedValue *common.TimeLock
-		if isAfterFork5 {
-			fromNeedValue = common.NewTimeLock(&common.TimeLockItem{
-				StartTime: common.MaxUint64(fromStart, timestamp),
-				EndTime:   fromEnd,
-				Value:     fromTotal,
-			})
-			toNeedValue = common.NewTimeLock(&common.TimeLockItem{
-				StartTime: common.MaxUint64(toStart, timestamp),
-				EndTime:   toEnd,
-				Value:     toTotal,
-			})
-		} else {
-			fromNeedValue = common.NewTimeLock(&common.TimeLockItem{
-				StartTime: fromStart,
-				EndTime:   fromEnd,
-				Value:     fromTotal,
-			})
-			toNeedValue = common.NewTimeLock(&common.TimeLockItem{
-				StartTime: toStart,
-				EndTime:   toEnd,
-				Value:     toTotal,
-			})
-		}
+		
+		fromNeedValue = common.NewTimeLock(&common.TimeLockItem{
+			StartTime: common.MaxUint64(fromStart, timestamp),
+			EndTime:   fromEnd,
+			Value:     fromTotal,
+		})
+		toNeedValue = common.NewTimeLock(&common.TimeLockItem{
+			StartTime: common.MaxUint64(toStart, timestamp),
+			EndTime:   toEnd,
+			Value:     toTotal,
+		})
 
 		//log.Info("Swap", "fromTotal", fromTotal, " toTotal", toTotal, "takeSwapParam", takeSwapParam, "swap", swap)
 
@@ -843,35 +758,14 @@ func (st *StateTransition) handleFsnCall() error {
 
 				// subtract the asset from the balance
 				st.state.SubBalance(st.msg.From(), swap.ToAssetID, toTotal)
-				if isAfterFork5 {
-					totalValue := common.NewTimeLock(&common.TimeLockItem{
-						StartTime: timestamp,
-						EndTime:   common.TimeLockForever,
-						Value:     toTotal,
-					})
-					st.state.AddTimeLockBalance(st.msg.From(), swap.ToAssetID, totalValue, height, timestamp)
-				} else {
-					// see if we need timelock from to start
-					if toStart != common.TimeLockNow {
-						todayValue := common.NewTimeLock(&common.TimeLockItem{
-							StartTime: common.TimeLockNow,
-							EndTime:   toStart - 1,
-							Value:     toTotal,
-						})
-						st.state.AddTimeLockBalance(st.msg.From(), swap.ToAssetID, todayValue, height, timestamp)
-					}
-					//lock needed portion
-					st.state.AddTimeLockBalance(st.msg.From(), swap.ToAssetID, toNeedValue, height, timestamp)
-					// then make sure from end to forever is set
-					if toEnd != common.TimeLockForever {
-						totalValue := common.NewTimeLock(&common.TimeLockItem{
-							StartTime: toEnd + 1,
-							EndTime:   common.TimeLockForever,
-							Value:     toTotal,
-						})
-						st.state.AddTimeLockBalance(st.msg.From(), swap.ToAssetID, totalValue, height, timestamp)
-					}
-				}
+			
+				totalValue := common.NewTimeLock(&common.TimeLockItem{
+					StartTime: timestamp,
+					EndTime:   common.TimeLockForever,
+					Value:     toTotal,
+				})
+				st.state.AddTimeLockBalance(st.msg.From(), swap.ToAssetID, totalValue, height, timestamp)
+		
 			}
 		}
 

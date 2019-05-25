@@ -216,7 +216,7 @@ func (dt *DaTong) verifySeal(chain consensus.ChainReader, header *types.Header, 
 		return err
 	}
 	// verify header time
-	if header.Time.Int64()-parent.Time.Int64() < MinBlockTime && number >= common.GetForkEnabledHeight(1) {
+	if header.Time.Int64()-parent.Time.Int64() < MinBlockTime  {
 		return fmt.Errorf("block %v header.Time:%v < parent.Time:%v + %v Second",
 			number, header.Time.Int64(), parent.Time.Int64(), MinBlockTime)
 
@@ -276,11 +276,10 @@ func (dt *DaTong) verifySeal(chain consensus.ChainReader, header *types.Header, 
 		return errt
 	}
 	// check ticket order
-	if number >= common.GetForkEnabledHeight(2) {
-		if header.Nonce != types.EncodeNonce(listSq) {
-			return fmt.Errorf("verifySeal ticket order mismatch, have %v, want %v", header.Nonce.Uint64(), listSq)
-		}
+	if header.Nonce != types.EncodeNonce(listSq) {
+		return fmt.Errorf("verifySeal ticket order mismatch, have %v, want %v", header.Nonce.Uint64(), listSq)
 	}
+	
 	// check difficulty
 	if diff.Cmp(header.Difficulty) != 0 {
 		return errors.New("verifySeal difficulty mismatch")
@@ -344,11 +343,8 @@ func (dt *DaTong) Finalize(chain consensus.ChainReader, header *types.Header, st
 	if errv != nil {
 		return nil, errv
 	}
-	if header.Number.Uint64() >= common.GetForkEnabledHeight(2) {
-		header.Nonce = types.EncodeNonce(selectedTime)
-	} else {
-		updateSelectedTicketTime(header, selected.ID, 0, selectedTime)
-	}
+	
+	header.Nonce = types.EncodeNonce(selectedTime)
 
 	snap := newSnapshot()
 
@@ -388,10 +384,10 @@ func (dt *DaTong) Finalize(chain consensus.ChainReader, header *types.Header, st
 
 	//delete tickets before coinbase if selected miner did not Seal
 	for i, t := range retreat {
-		if i >= maxNumberOfDeletedTickets && header.Number.Uint64() >= common.GetForkEnabledHeight(1) {
+		if i >= maxNumberOfDeletedTickets {
 			break
 		}
-		deleteTicket(t, ticketRetreat, t.Height.Cmp(common.Big0) > 0 && header.Number.Uint64() >= common.GetForkEnabledHeight(1))
+		deleteTicket(t, ticketRetreat, t.Height.Cmp(common.Big0) > 0 )
 	}
 
 	remainingWeight := new(big.Int)
@@ -779,27 +775,26 @@ func (dt *DaTong) calcBlockDifficulty(chain consensus.ChainReader, header *types
 
 	// cacl difficulty
 	difficulty := new(big.Int).SetUint64(ticketsTotalAmount - selectedTime)
-	if header.Number.Uint64() >= common.GetForkEnabledHeight(1) {
-		// base10 = base * 10 (base > 1)
-		base10 := int64(16)
-		// exponent = max(selectedTime, 50)
-		exponent := int64(selectedTime)
-		if exponent > 50 {
-			exponent = 50
-		}
-		// difficulty = ticketsTotal * pow(10, exponent) / pow(base10, exponent)
-		difficulty = new(big.Int).Div(
-			new(big.Int).Mul(difficulty, cmath.BigPow(10, exponent)),
-			cmath.BigPow(base10, exponent))
-		if difficulty.Cmp(common.Big1) < 0 {
-			difficulty = common.Big1
-		}
+
+	// base10 = base * 10 (base > 1)
+	base10 := int64(16)
+	// exponent = max(selectedTime, 50)
+	exponent := int64(selectedTime)
+	if exponent > 50 {
+		exponent = 50
 	}
-	if header.Number.Uint64() >= common.GetForkEnabledHeight(2) {
-		numberOfticketOwners := uint64(len(ticketOwners))
-		adjust := new(big.Int).SetUint64(numberOfticketOwners - selectedTime)
-		difficulty = new(big.Int).Add(difficulty, adjust)
+	// difficulty = ticketsTotal * pow(10, exponent) / pow(base10, exponent)
+	difficulty = new(big.Int).Div(
+		new(big.Int).Mul(difficulty, cmath.BigPow(10, exponent)),
+		cmath.BigPow(base10, exponent))
+	if difficulty.Cmp(common.Big1) < 0 {
+		difficulty = common.Big1
 	}
+	
+
+	numberOfticketOwners := uint64(len(ticketOwners))
+	adjust := new(big.Int).SetUint64(numberOfticketOwners - selectedTime)
+	difficulty = new(big.Int).Add(difficulty, adjust)
 
 	return difficulty, selected, selectedTime, retreat, nil
 }
@@ -812,15 +807,8 @@ func (c *DaTong) PreProcess(chain consensus.ChainReader, header *types.Header, s
 
 func (dt *DaTong) calcDelayTime(chain consensus.ChainReader, header *types.Header) (time.Duration, error) {
 	var list uint64
-	if header.Number.Uint64() >= common.GetForkEnabledHeight(2) {
-		list = header.Nonce.Uint64()
-	} else {
-		err := errors.New("")
-		_, list, err = haveSelectedTicketTime(header)
-		if err != nil {
-			return time.Duration(int64(0)) * time.Millisecond, err
-		}
-	}
+	
+	list = header.Nonce.Uint64()
 
 	// delayTime = ParentTime + (15 - 2) - time.Now
 	parent := chain.GetHeaderByNumber(header.Number.Uint64() - 1)
@@ -828,10 +816,9 @@ func (dt *DaTong) calcDelayTime(chain consensus.ChainReader, header *types.Heade
 	delayTime := time.Unix(endTime.Int64(), 0).Sub(time.Now())
 
 	// delay maximum
-	maxDelay := maxBlockTime
-	if header.Number.Uint64() >= common.GetForkEnabledHeight(2) {
-		maxDelay = maxBlockTimeAfterFork2
-	}
+	// maxDelay := maxBlockTime
+	maxDelay := maxBlockTimeAfterFork2
+
 	if (new(big.Int).Sub(endTime, header.Time)).Uint64() > maxDelay {
 		endTime = new(big.Int).Add(header.Time, new(big.Int).SetUint64(maxDelay+dt.config.Period-2+list))
 		delayTime = time.Unix(endTime.Int64(), 0).Sub(time.Now())
@@ -852,7 +839,7 @@ func (dt *DaTong) calcDelayTime(chain consensus.ChainReader, header *types.Heade
 		delayTime -= adjust
 	}
 	// adjust block time if illegal
-	if list > 0 && header.Number.Uint64() >= common.GetForkEnabledHeight(2) {
+	if list > 0 {
 		recvTime := header.Time.Int64() - parent.Time.Int64()
 		maxDelaySeconds := int64(maxDelay + dt.config.Period)
 		if recvTime < maxDelaySeconds {
@@ -898,13 +885,10 @@ func (dt *DaTong) checkBlockTime(chain consensus.ChainReader, header *types.Head
 	}
 	var recvTime time.Duration
 	needCheck := false
-	if header.Number.Uint64() >= common.GetForkEnabledHeight(2) {
-		recvTime = time.Duration(header.Time.Int64()-parent.Time.Int64()) * time.Second
-		needCheck = recvTime < (time.Duration(int64(maxBlockTimeAfterFork2+dt.config.Period)) * time.Second) //10 min
-	} else {
-		recvTime = time.Now().Sub(time.Unix(parent.Time.Int64(), 0))
-		needCheck = recvTime < (time.Duration(int64(maxBlockTime+dt.config.Period)) * time.Second) // 2 min
-	}
+	
+	recvTime = time.Duration(header.Time.Int64()-parent.Time.Int64()) * time.Second
+	needCheck = recvTime < (time.Duration(int64(maxBlockTimeAfterFork2+dt.config.Period)) * time.Second) //10 min
+
 	if needCheck {
 		expectTime := time.Duration(dt.config.Period)*time.Second + time.Duration(list*uint64(delayTimeModifier))*time.Second
 		if recvTime < expectTime {

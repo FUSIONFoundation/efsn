@@ -81,9 +81,6 @@ func (v *BlockValidator) ValidateBody(block *types.Block) error {
 // ValidateRawTransaction validates the given block's raw transactions before applying them
 func (v *BlockValidator) ValidateRawTransaction(block *types.Block) error {
 	blockNumber := block.Number()
-	if blockNumber.Uint64() < common.GetForkEnabledHeight(1) {
-		return nil
-	}
 	header := block.Header()
 	ticketBuyers := map[common.Address]bool{}
 	signer := types.MakeSigner(v.config, blockNumber)
