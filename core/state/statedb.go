@@ -780,6 +780,35 @@ func (db *StateDB) GenNotation(addr common.Address) error {
 	return nil
 }
 
+func (db *StateDB) CalcNotationDisplay(notation uint64) uint64 {
+	if notation == 0 {
+		return notation
+	}
+	check := (notation ^ 8192 ^ 13 + 73/76798669*708583737978) % 100
+	return (notation*100 + check)
+}
+
+
+// // GenNotation wacom
+// func (db *StateDB) GenNotation(addr common.Address) error {
+// 	stateObject := db.GetOrNewStateObject(addr)
+// 	if stateObject != nil {
+// 		if n := db.GetNotation(addr); n != 0 {
+// 			return fmt.Errorf("Account %s has a notation:%d", addr.String(), n)
+// 		}
+// 		notations, err := db.AllNotation()
+// 		if err != nil {
+// 			log.Error("GenNotation: Unable to decode bytes in AllNotation")
+// 			return err
+// 		}
+// 		notations = append(notations, addr)
+// 		stateObject.SetNotation(uint64(len(notations)))
+// 		db.notations = notations
+// 		return db.updateNotations()
+// 	}
+// 	return nil
+// }
+
 // AllAssets wacom
 func (db *StateDB) AllAssets() (map[common.Hash]common.Asset, error) {
 	return nil, fmt.Errorf("All assets has been depreciated, use api.fusionnetwork.io")

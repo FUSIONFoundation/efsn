@@ -352,7 +352,7 @@ func (s *PublicFusionAPI) GetNotation(ctx context.Context, address common.Addres
 	if state == nil || err != nil {
 		return 0, err
 	}
-	b := calcNotationDisplay(state.GetNotation(address))
+	b := state.CalcNotationDisplay(state.GetNotation(address))
 	return b, state.Error()
 }
 
@@ -371,7 +371,7 @@ func (s *PublicFusionAPI) GetAddressByNotation(ctx context.Context, notation uin
 	if temp <= 0 || temp > uint64(len(notations)) {
 		return common.Address{}, fmt.Errorf("Notation Not Found")
 	}
-	if calcNotationDisplay(temp) != notation {
+	if state.CalcNotationDisplay(temp) != notation {
 		return common.Address{}, fmt.Errorf("Notation Check Error")
 	}
 	return notations[int(temp-1)], state.Error()
@@ -379,20 +379,7 @@ func (s *PublicFusionAPI) GetAddressByNotation(ctx context.Context, notation uin
 
 // AllNotation wacom
 func (s *PublicFusionAPI) AllNotation(ctx context.Context, blockNr rpc.BlockNumber) (map[common.Address]uint64, error) {
-	state, _, err := s.b.StateAndHeaderByNumber(ctx, blockNr)
-	if state == nil || err != nil {
-		return nil, err
-	}
-	notations, err := state.AllNotation()
-	if err != nil {
-		log.Error("AllNotations: Unable to decode bytes in AllNotation")
-		return nil, err
-	}
-	b := make(map[common.Address]uint64, len(notations))
-	for i := 0; i < len(notations); i++ {
-		b[notations[i]] = calcNotationDisplay(uint64(i + 1))
-	}
-	return b, state.Error()
+	return nil, fmt.Errorf("AllNotations has been depreciated please use api.fusionnetwork.io")
 }
 
 // GetAsset wacom
@@ -535,7 +522,7 @@ func (s *PrivateFusionAPI) GenNotation(ctx context.Context, args FusionBaseArgs,
 	notation := state.GetNotation(args.From)
 
 	if notation != 0 {
-		return common.Hash{}, fmt.Errorf("An address can have only one notation, you already have a mapped notation:%d", calcNotationDisplay(notation))
+		return common.Hash{}, fmt.Errorf("An address can have only one notation, you already have a mapped notation:%d", state.CalcNotationDisplay(notation))
 	}
 
 	var param = common.FSNCallParam{Func: common.GenNotationFunc}
@@ -1005,13 +992,6 @@ func (s *PrivateFusionAPI) TakeSwap(ctx context.Context, args TakeSwapArgs, pass
 	return s.papi.SendTransaction(ctx, sendArgs, passwd)
 }
 
-func calcNotationDisplay(notation uint64) uint64 {
-	if notation == 0 {
-		return notation
-	}
-	check := (notation ^ 8192 ^ 13 + 73/76798669*708583737978) % 100
-	return (notation*100 + check)
-}
 
 // FusionTransactionAPI ss
 type FusionTransactionAPI struct {
@@ -1077,7 +1057,7 @@ func (s *FusionTransactionAPI) BuildGenNotationTx(ctx context.Context, args Fusi
 	}
 	notation := state.GetNotation(args.From)
 	if notation != 0 {
-		return nil, fmt.Errorf("An address can have only one notation, you already have a mapped notation:%d", calcNotationDisplay(notation))
+		return nil, fmt.Errorf("An address can have only one notation, you already have a mapped notation:%d", state.CalcNotationDisplay(notation))
 	}
 	var param = common.FSNCallParam{Func: common.GenNotationFunc}
 	data, err := param.ToBytes()
