@@ -33,6 +33,8 @@ type StateDB interface {
 	SubTimeLockBalance(common.Address, common.Hash, *common.TimeLock, *big.Int, uint64)
 	AddTimeLockBalance(common.Address, common.Hash, *common.TimeLock, *big.Int, uint64)
 	GetTimeLockBalance(common.Hash, common.Address) *common.TimeLock
+	TransferNotation(notation uint64, from common.Address, to common.Address) error
+
 	GetNonce(common.Address) uint64
 	SetNonce(common.Address, uint64)
 
@@ -81,7 +83,6 @@ type StateDB interface {
 	RemoveSwap(id common.Hash) error
 	GetSwap(swapID common.Hash) (common.Swap, error)
 	GetAsset(assetID common.Hash) (common.Asset, error)
-	TransferNotation(notation uint64, from common.Address, to common.Address) error
 }
 
 // CallContext provides a basic interface for the EVM calling conventions. The EVM EVM

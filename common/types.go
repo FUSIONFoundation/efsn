@@ -351,6 +351,9 @@ var TicketLogAddress = HexToAddress("0xfffffffffffffffffffffffffffffffffffffffe"
 // SystemAssetID wacom
 var SystemAssetID = HexToHash("0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff")
 
+// OwnerUSANAssetID wacom
+var OwnerUSANAssetID = HexToHash("0xfffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffe")
+
 var NotationKeyAddress = HexToAddress("0xfffffffffffffffffffffffffffffffffffffffd")
 var AssetKeyAddress = HexToAddress("0xfffffffffffffffffffffffffffffffffffffffc")
 var TicketKeyAddress = HexToAddress("0xfffffffffffffffffffffffffffffffffffffffb")
@@ -783,6 +786,7 @@ type Swap struct {
 	Targes        []Address
 	Time          *big.Int // Provides information for TIME
 	Description   string
+	Notation	  uint64
 }
 
 func (s *Swap) DeepCopy() Swap {
