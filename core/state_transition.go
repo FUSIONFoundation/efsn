@@ -571,6 +571,12 @@ func (st *StateTransition) handleFsnCall() error {
 		var total *big.Int
 		var needValue *common.TimeLock
 
+		if makeSwapParam.ToAssetID == common.OwnerUSANAssetID {
+			err := fmt.Errorf("USAN's cannot be swapped")
+			st.addLog(common.TransferNotationFunc, makeSwapParam, common.NewKeyValue("Error", err.Error()))
+			return err
+		}
+
 		if makeSwapParam.FromAssetID == common.OwnerUSANAssetID {
 			if notation == 0 {
 				err := fmt.Errorf("the from address does not have a notation")
