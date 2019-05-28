@@ -39,6 +39,13 @@ type GenAssetArgs struct {
 	Description string       `json:"description"`
 }
 
+// TransferNotationArgs wacom
+type TransferNotationArgs struct {
+	FusionBaseArgs
+	Notation    uint64      `json:"notation"`
+	ToAddress   common.Address `json:"toAddress"`
+}
+
 // SendAssetArgs wacom
 type SendAssetArgs struct {
 	FusionBaseArgs
@@ -157,6 +164,17 @@ func (args *GenAssetArgs) toParam() *common.GenAssetParam {
 }
 
 func (args *GenAssetArgs) toData() ([]byte, error) {
+	return args.toParam().ToBytes()
+}
+
+func (args *TransferNotationArgs) toParam() *common.TransferNotationParam {
+	return &common.TransferNotationParam{
+		Notation:        args.Notation,
+		ToAddress:   args.ToAddress,
+	}
+}
+
+func (args *TransferNotationArgs) toData() ([]byte, error) {
 	return args.toParam().ToBytes()
 }
 
@@ -362,19 +380,12 @@ func (s *PublicFusionAPI) GetAddressByNotation(ctx context.Context, notation uin
 	if state == nil || err != nil {
 		return common.Address{}, err
 	}
-	temp := notation / 100
-	notations, err := state.AllNotation()
+	address, err := state.GetAddressByNotation(notation)
 	if err != nil {
-		log.Error("GetAddressByNotation: Unable to decode bytes in AllNotation")
+		log.Error("GetAddressByNotation: error ", "err", err)
 		return common.Address{}, err
 	}
-	if temp <= 0 || temp > uint64(len(notations)) {
-		return common.Address{}, fmt.Errorf("Notation Not Found")
-	}
-	if state.CalcNotationDisplay(temp) != notation {
-		return common.Address{}, fmt.Errorf("Notation Check Error")
-	}
-	return notations[int(temp-1)], state.Error()
+	return address, nil
 }
 
 // AllNotation wacom
@@ -536,6 +547,36 @@ func (s *PrivateFusionAPI) GenNotation(ctx context.Context, args FusionBaseArgs,
 	sendArgs.Data = &argsData
 	return s.papi.SendTransaction(ctx, sendArgs, passwd)
 }
+
+// TransferNotation ss
+func (s *PrivateFusionAPI) TransferNotation(ctx context.Context, args TransferNotationArgs, passwd string) (common.Hash, error) {
+	state, _, err := s.b.StateAndHeaderByNumber(ctx, rpc.LatestBlockNumber)
+	if state == nil || err != nil {
+		return common.Hash{}, err
+	}
+
+	notation := state.GetNotation(args.From)
+
+	if notation == 0 {
+		return common.Hash{}, fmt.Errorf("from address does not have a notation")
+	}
+
+	if notation != args.Notation {
+		return common.Hash{}, fmt.Errorf("from address does not have this notation")
+	}
+
+	var param = common.FSNCallParam{Func: common.TransferNotationFunc}
+	data, err := param.ToBytes()
+	if err != nil {
+		return common.Hash{}, err
+	}
+	var argsData = hexutil.Bytes(data)
+	sendArgs := args.toSendArgs()
+	sendArgs.To = &common.FSNCallAddress
+	sendArgs.Data = &argsData
+	return s.papi.SendTransaction(ctx, sendArgs, passwd)
+}
+
 
 // GenAsset ss
 func (s *PrivateFusionAPI) GenAsset(ctx context.Context, args GenAssetArgs, passwd string) (common.Hash, error) {
@@ -1060,6 +1101,35 @@ func (s *FusionTransactionAPI) BuildGenNotationTx(ctx context.Context, args Fusi
 		return nil, fmt.Errorf("An address can have only one notation, you already have a mapped notation:%d", state.CalcNotationDisplay(notation))
 	}
 	var param = common.FSNCallParam{Func: common.GenNotationFunc}
+	data, err := param.ToBytes()
+	if err != nil {
+		return nil, err
+	}
+	var argsData = hexutil.Bytes(data)
+	sendArgs := args.toSendArgs()
+	sendArgs.To = &common.FSNCallAddress
+	sendArgs.Data = &argsData
+	return s.buildTransaction(ctx, sendArgs)
+}
+
+// BuildTransferNotationTx ss
+func (s *FusionTransactionAPI) BuildTransferNotationTx(ctx context.Context, args TransferNotationArgs) (*types.Transaction, error) {
+	state, _, err := s.b.StateAndHeaderByNumber(ctx, rpc.LatestBlockNumber)
+	if state == nil || err != nil {
+		return nil, err
+	}
+
+	notation := state.GetNotation(args.From)
+
+	if notation == 0 {
+		return nil, fmt.Errorf("from address does not have a notation")
+	}
+
+	if notation != args.Notation {
+		return nil, fmt.Errorf("from address does not have this notation")
+	}
+
+	var param = common.FSNCallParam{Func: common.TransferNotationFunc}
 	data, err := param.ToBytes()
 	if err != nil {
 		return nil, err

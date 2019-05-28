@@ -286,6 +286,27 @@ func (st *StateTransition) handleFsnCall() error {
 		}
 		st.addLog(common.GenNotationFunc, param, common.NewKeyValue("notation",  st.state.GetNotation(st.msg.From())))
 		return nil
+	case common.TransferNotationFunc:
+		outputCommandInfo("TransferNotationFunc", "from", st.msg.From())
+		transferNotationParam := common.TransferNotationParam{}
+		rlp.DecodeBytes(param.Data, &transferNotationParam)
+		notation := st.state.GetNotation(st.msg.From())
+		if notation == 0 {
+			err := fmt.Errorf("the from address does not have a notation")
+			st.addLog(common.TransferNotationFunc, transferNotationParam, common.NewKeyValue("Error", err.Error()))
+			return err
+		}
+		if notation != transferNotationParam.Notation {
+			err := fmt.Errorf("the from address does not own the notation")
+			st.addLog(common.TransferNotationFunc, transferNotationParam, common.NewKeyValue("Error", err.Error()))
+			return err
+		}
+		err := st.state.TransferNotation( transferNotationParam.Notation, st.msg.From(), transferNotationParam.ToAddress )
+		if err != nil {
+			st.addLog(common.TransferNotationFunc, transferNotationParam, common.NewKeyValue("Error", err.Error()))
+			return err
+		}
+		return nil
 	case common.GenAssetFunc:
 		outputCommandInfo("GenAssetFunc", "from", st.msg.From())
 		genAssetParam := common.GenAssetParam{}

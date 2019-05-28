@@ -18,6 +18,7 @@
 package state
 
 import (
+	"encoding/binary"
 	"fmt"
 	"math/big"
 	"sort"
@@ -82,10 +83,7 @@ type StateDB struct {
 
 	lock sync.Mutex
 
-	notations []common.Address
-	assets    map[common.Hash]common.Asset
-	tickets   common.TicketSlice
-	swaps     map[common.Hash]common.Swap
+	tickets common.TicketSlice
 }
 
 // Create a new state from a given trie.
@@ -102,11 +100,7 @@ func New(root common.Hash, db Database) (*StateDB, error) {
 		logs:              make(map[common.Hash][]*types.Log),
 		preimages:         make(map[common.Hash][]byte),
 		journal:           newJournal(),
-
-		notations: nil,
-		assets:    nil,
-		tickets:   nil,
-		swaps:     nil,
+		tickets:           nil,
 	}, nil
 }
 
@@ -137,10 +131,7 @@ func (self *StateDB) Reset(root common.Hash) error {
 	self.logs = make(map[common.Hash][]*types.Log)
 	self.logSize = 0
 	self.preimages = make(map[common.Hash][]byte)
-	self.notations = nil
-	self.assets = nil
 	self.tickets = nil
-	self.swaps = nil
 	self.clearJournalAndRefund()
 	return nil
 }
@@ -582,10 +573,7 @@ func (self *StateDB) Copy() *StateDB {
 		logSize:           self.logSize,
 		preimages:         make(map[common.Hash][]byte),
 		journal:           newJournal(),
-		notations:         nil,
-		assets:            nil,
 		tickets:           nil,
-		swaps:             nil,
 	}
 	// Copy the dirty states, logs, and preimages
 	for addr := range self.journal.dirties {
@@ -774,12 +762,116 @@ func (db *StateDB) GenNotation(addr common.Address) error {
 	stateObject := db.GetOrNewStateObject(addr)
 	if stateObject != nil {
 		if n := db.GetNotation(addr); n != 0 {
-			return fmt.Errorf("Account %s has a notation:%d", addr.String(), n)
+			return fmt.Errorf("Account %s has a notation:%d", addr.String(), db.CalcNotationDisplay(n))
 		}
+		// get last notation value
+		nextNotation, err := db.getNotationCount()
+		nextNotation += 1
+		if err != nil {
+			log.Error("GenNotation: Unable to get next notation value")
+			return err
+		}
+		db.setNotationCount(nextNotation)
+		db.setNotationToAddressLookup(db.CalcNotationDisplay(nextNotation), addr)
+		stateObject.SetNotation(nextNotation)
+		return nil
 	}
 	return nil
 }
 
+type notationPersist struct {
+	deleted bool
+	count   uint64
+	address common.Address
+}
+
+func (db *StateDB) getNotationCount() (uint64, error) {
+	data := db.GetStructData(common.NotationKeyAddress, common.NotationKeyAddress.Bytes())
+	if len(data) == 0 || data == nil {
+		return 0, nil // not created yet
+	}
+	var np notationPersist
+	rlp.DecodeBytes(data, &np)
+	return np.count, nil
+}
+
+func (db *StateDB) setNotationCount(newCount uint64) error {
+	np := notationPersist{
+		count: newCount,
+	}
+	data, err := rlp.EncodeToBytes(&np)
+	if err != nil {
+		return err
+	}
+	db.SetStructData(common.NotationKeyAddress, common.NotationKeyAddress.Bytes(), data)
+	return nil
+}
+
+func (db *StateDB) setNotationToAddressLookup(notation uint64, address common.Address) error {
+	np := notationPersist{
+		count:   notation,
+		address: address,
+	}
+	data, err := rlp.EncodeToBytes(&np)
+	if err != nil {
+		return err
+	}
+	buf := make([]byte, binary.MaxVarintLen64)
+	binary.PutUvarint(buf, notation)
+	db.SetStructData(common.NotationKeyAddress, buf, data)
+	return nil
+}
+
+// GetAddressByNotation wacom
+func (db *StateDB) GetAddressByNotation(notation uint64) (common.Address, error) {
+	buf := make([]byte, binary.MaxVarintLen64)
+	binary.PutUvarint(buf, notation)
+	data := db.GetStructData(common.NotationKeyAddress, buf)
+	if len(data) == 0 || data == nil {
+		return common.Address{}, fmt.Errorf("does not exist")
+	}
+	var np notationPersist
+	err := rlp.DecodeBytes(data, &np)
+	if err != nil {
+		return common.Address{}, err
+	}
+	if np.deleted {
+		return common.Address{}, fmt.Errorf("notation was deleted")
+	}
+	return np.address, nil
+}
+
+// TransferNotation wacom
+func (db *StateDB) TransferNotation(notation uint64, from common.Address, to common.Address) error {
+	stateObjectFrom := db.GetOrNewStateObject(from)
+	if stateObjectFrom == nil {
+		return fmt.Errorf("Unable to get from address")
+	}
+	stateObjectTo := db.GetOrNewStateObject(to)
+	if stateObjectTo == nil {
+		return fmt.Errorf("Unable to get to address")
+	}
+	address, err := db.GetAddressByNotation(notation)
+	if err != nil {
+		return err
+	}
+	if address != from {
+		return fmt.Errorf("This notation is not the from address")
+	}
+	// reset the notation
+	oldNotationTo := stateObjectTo.Notation()
+	if oldNotationTo != 0 {
+		// need to clear notation to address
+		// user should transfer an old notation or can burn it like this
+		db.setNotationToAddressLookup(oldNotationTo, common.Address{})
+	}
+	db.setNotationToAddressLookup(notation, to)
+	stateObjectTo.SetNotation(notation / 100)
+	stateObjectFrom.SetNotation(0)
+	return nil
+}
+
+// CalcNotationDisplay wacom
 func (db *StateDB) CalcNotationDisplay(notation uint64) uint64 {
 	if notation == 0 {
 		return notation
@@ -787,7 +879,6 @@ func (db *StateDB) CalcNotationDisplay(notation uint64) uint64 {
 	check := (notation ^ 8192 ^ 13 + 73/76798669*708583737978) % 100
 	return (notation*100 + check)
 }
-
 
 // // GenNotation wacom
 // func (db *StateDB) GenNotation(addr common.Address) error {
@@ -815,13 +906,13 @@ func (db *StateDB) AllAssets() (map[common.Hash]common.Asset, error) {
 }
 
 type assetPersist struct {
-	deleted bool  // if true swap was recalled and should not be returned
-	asset common.Asset
+	deleted bool // if true swap was recalled and should not be returned
+	asset   common.Asset
 }
 
 // GetAsset wacom
-func (db *StateDB) GetAsset( assetID common.Hash ) (common.Asset, error) {
-	data := db.GetStructData( common.AssetKeyAddress, assetID.Bytes())
+func (db *StateDB) GetAsset(assetID common.Hash) (common.Asset, error) {
+	data := db.GetStructData(common.AssetKeyAddress, assetID.Bytes())
 	var asset assetPersist
 	if len(data) == 0 || data == nil {
 		return common.Asset{}, fmt.Errorf("asset not found")
@@ -835,17 +926,17 @@ func (db *StateDB) GetAsset( assetID common.Hash ) (common.Asset, error) {
 
 // GenAsset wacom
 func (db *StateDB) GenAsset(asset common.Asset) error {
-	_, err := db.GetAsset( asset.ID )
+	_, err := db.GetAsset(asset.ID)
 	if err == nil {
 		return fmt.Errorf("%s asset exists", asset.ID.String())
 	}
 	assetToSave := assetPersist{
-		deleted : false,
-		asset : asset ,
+		deleted: false,
+		asset:   asset,
 	}
 	data, err := rlp.EncodeToBytes(&assetToSave)
 	if err != nil {
-		return  err
+		return err
 	}
 	db.SetStructData(common.AssetKeyAddress, asset.ID.Bytes(), data)
 	return nil
@@ -854,14 +945,14 @@ func (db *StateDB) GenAsset(asset common.Asset) error {
 // UpdateAsset wacom
 func (db *StateDB) UpdateAsset(asset common.Asset) error {
 	/** to update a asset we just overwrite it
-	*/
+	 */
 	assetToSave := assetPersist{
-		deleted : false,
-		asset : asset ,
+		deleted: false,
+		asset:   asset,
 	}
 	data, err := rlp.EncodeToBytes(&assetToSave)
 	if err != nil {
-		return  err
+		return err
 	}
 	db.SetStructData(common.AssetKeyAddress, asset.ID.Bytes(), data)
 	return nil
@@ -939,7 +1030,7 @@ func (db *StateDB) UpdateTickets(blockNumber *big.Int) error {
 	var data []byte
 	var err error
 
-	if blockNumber == nil  {
+	if blockNumber == nil {
 		sort.Sort(db.tickets)
 		ts := db.tickets.ToTicketStructSlice()
 		data, err = rlp.EncodeToBytes(&ts)
@@ -960,16 +1051,16 @@ func (db *StateDB) AllSwaps() (map[common.Hash]common.Swap, error) {
 }
 
 /** swaps
-*  
-*/
+*
+ */
 type swapPersist struct {
-	deleted bool  // if true swap was recalled and should not be returned
-	swap common.Swap
+	deleted bool // if true swap was recalled and should not be returned
+	swap    common.Swap
 }
 
 // GetSwap wacom
-func (db *StateDB) GetSwap( swapID common.Hash ) (common.Swap, error) {
-	data := db.GetStructData( common.SwapKeyAddress, swapID.Bytes())
+func (db *StateDB) GetSwap(swapID common.Hash) (common.Swap, error) {
+	data := db.GetStructData(common.SwapKeyAddress, swapID.Bytes())
 	var swap swapPersist
 	if len(data) == 0 || data == nil {
 		return common.Swap{}, fmt.Errorf("swap not found")
@@ -983,17 +1074,17 @@ func (db *StateDB) GetSwap( swapID common.Hash ) (common.Swap, error) {
 
 // AddSwap wacom
 func (db *StateDB) AddSwap(swap common.Swap) error {
-	_, err := db.GetSwap( swap.ID)
+	_, err := db.GetSwap(swap.ID)
 	if err == nil {
 		return fmt.Errorf("%s Swap exists", swap.ID.String())
 	}
 	swapToSave := swapPersist{
-		deleted : false,
-		swap : swap ,
+		deleted: false,
+		swap:    swap,
 	}
 	data, err := rlp.EncodeToBytes(&swapToSave)
 	if err != nil {
-		return  err
+		return err
 	}
 	db.SetStructData(common.SwapKeyAddress, swap.ID.Bytes(), data)
 	return nil
@@ -1002,14 +1093,14 @@ func (db *StateDB) AddSwap(swap common.Swap) error {
 // UpdateSwap wacom
 func (db *StateDB) UpdateSwap(swap common.Swap) error {
 	/** to update a swap we just overwrite it
-	*/
+	 */
 	swapToSave := swapPersist{
-		deleted : false,
-		swap : swap ,
+		deleted: false,
+		swap:    swap,
 	}
 	data, err := rlp.EncodeToBytes(&swapToSave)
 	if err != nil {
-		return  err
+		return err
 	}
 	db.SetStructData(common.SwapKeyAddress, swap.ID.Bytes(), data)
 	return nil
@@ -1017,18 +1108,18 @@ func (db *StateDB) UpdateSwap(swap common.Swap) error {
 
 // RemoveSwap wacom
 func (db *StateDB) RemoveSwap(id common.Hash) error {
-	swapFound, err  := db.GetSwap( id )
+	swapFound, err := db.GetSwap(id)
 	if err != nil {
 		return fmt.Errorf("%s Swap not found ", id.String())
 	}
 
 	swapToSave := swapPersist{
-		deleted : true,
-		swap : swapFound,
+		deleted: true,
+		swap:    swapFound,
 	}
 	data, err := rlp.EncodeToBytes(&swapToSave)
 	if err != nil {
-		return  err
+		return err
 	}
 	db.SetStructData(common.SwapKeyAddress, id.Bytes(), data)
 	return nil
@@ -1126,5 +1217,3 @@ func (db *StateDB) SetStructData(addr common.Address, key, value []byte) {
 		stateObject.SetNonce(stateObject.Nonce() + 1)
 	}
 }
-
-

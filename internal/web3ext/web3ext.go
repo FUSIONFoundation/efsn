@@ -752,6 +752,23 @@ web3._extend({
 			]
 		}),
 		new web3._extend.Method({
+			name: 'transferNotation',
+			call: 'fsn_transferNotation',
+			params: 2,
+			inputFormatter: [
+				function(options){					
+					if(options.notation === undefined || !options.notation){
+						throw new Error('invalid notation');
+					}
+					if(options.toAddress === undefined || !options.toAddress){
+						throw new Error('invalid toAddress');
+					}
+					return web3._extend.formatters.inputTransactionFormatter(options)
+				},
+				null
+			]
+		}),
+		new web3._extend.Method({
 			name: 'allNotation',
 			call: 'fsn_allNotation',
 			params: 1,
@@ -1127,12 +1144,20 @@ web3._extend({
 			]
 		}),
 		new web3._extend.Method({
-		name: 'genNotation',
-		call: 'fsntx_genNotation',
-		params: 1,
-		inputFormatter: [
-			web3._extend.formatters.inputTransactionFormatter			
-		]
+			name: 'buildTransferNotationTx',
+			call: 'fsntx_buildTransferNotationTx',
+			params: 1,
+			inputFormatter: [
+				function(options){					
+					if(options.notation === undefined || !options.notation){
+						throw new Error('invalid notation');
+					}
+					if(options.toAddress === undefined || !options.toAddress){
+						throw new Error('invalid toAddress');
+					}
+					return web3._extend.formatters.inputTransactionFormatter(options)
+				}
+			]
 		}),
 		new web3._extend.Method({
 			name: 'buildGenAssetTx',

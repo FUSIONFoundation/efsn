@@ -400,6 +400,8 @@ const (
 	TakeSwapFuncExt
 	// AssetValueChangeFunc wacom
 	AssetValueChangeFunc
+	// TransferNotationFunc wacom
+	TransferNotationFunc
 )
 
 // ParseBig256 parses s as a 256 bit integer in decimal or hexadecimal syntax.
@@ -441,6 +443,12 @@ type GenAssetParam struct {
 	Total       *big.Int `json:",string"`
 	CanChange   bool
 	Description string
+}
+
+// TransferNotationParam wacom
+type TransferNotationParam struct {
+	Notation        uint64
+	ToAddress      Address
 }
 
 // BuyTicketParam wacom
@@ -517,6 +525,11 @@ func (p *FSNCallParam) ToBytes() ([]byte, error) {
 
 // ToBytes wacom
 func (p *GenAssetParam) ToBytes() ([]byte, error) {
+	return rlp.EncodeToBytes(p)
+}
+
+// ToBytes wacom
+func (p *TransferNotationParam) ToBytes() ([]byte, error) {
 	return rlp.EncodeToBytes(p)
 }
 
