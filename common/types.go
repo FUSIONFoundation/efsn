@@ -354,10 +354,20 @@ var SystemAssetID = HexToHash("0xfffffffffffffffffffffffffffffffffffffffffffffff
 // OwnerUSANAssetID wacom
 var OwnerUSANAssetID = HexToHash("0xfffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffe")
 
+// NotationKeyAddress wacom
 var NotationKeyAddress = HexToAddress("0xfffffffffffffffffffffffffffffffffffffffd")
+
+// AssetKeyAddress wacom
 var AssetKeyAddress = HexToAddress("0xfffffffffffffffffffffffffffffffffffffffc")
+
+// TicketKeyAddress wacom
 var TicketKeyAddress = HexToAddress("0xfffffffffffffffffffffffffffffffffffffffb")
+
+// SwapKeyAddress wacom
 var SwapKeyAddress = HexToAddress("0xfffffffffffffffffffffffffffffffffffffffa")
+
+// MultiSwapKeyAddress wacom
+var MultiSwapKeyAddress = HexToAddress("0xfffffffffffffffffffffffffffffffffffffff9")
 
 var (
 	// NotationKey wacom
@@ -368,9 +378,12 @@ var (
 	TicketKey = []byte{0x03}
 	// SwapKey wacom
 	SwapKey = []byte{0x06} // 4 was the old
-	// Auto buy tickets
-	AutoBuyTicket     = false
+	// AutoBuyTicket wacom
+	AutoBuyTicket = false
+	// AutoBuyTicketChan wacom
 	AutoBuyTicketChan = make(chan int, 10)
+	// MultiSwapKey wacom
+	MultiSwapKey = []byte{0x07}
 )
 
 // FSNCallFunc wacom
@@ -405,6 +418,12 @@ const (
 	AssetValueChangeFunc
 	// TransferNotationFunc wacom
 	TransferNotationFunc
+	// MakeMultiSwapFunc wacom
+	MakeMultiSwapFunc
+	// RecallMultiSwapFunc wacom
+	RecallMultiSwapFunc
+	// TakeMultiSwapFunc wacom
+	TakeMultiSwapFunc
 )
 
 // ParseBig256 parses s as a 256 bit integer in decimal or hexadecimal syntax.
@@ -450,8 +469,8 @@ type GenAssetParam struct {
 
 // TransferNotationParam wacom
 type TransferNotationParam struct {
-	Notation        uint64
-	ToAddress      Address
+	Notation  uint64
+	ToAddress Address
 }
 
 // BuyTicketParam wacom
@@ -510,13 +529,40 @@ type MakeSwapParam struct {
 	Description   string
 }
 
+// MakeMultiSwapParam wacom
+type MakeMultiSwapParam struct {
+	FromAssetID   []Hash
+	FromStartTime []uint64
+	FromEndTime   []uint64
+	MinFromAmount []*big.Int `json:",string"`
+	ToAssetID     []Hash
+	ToStartTime   []uint64
+	ToEndTime     []uint64
+	MinToAmount   []*big.Int `json:",string"`
+	SwapSize      *big.Int   `json:",string"`
+	Targes        []Address
+	Time          *big.Int
+	Description   string
+}
+
 // RecallSwapParam wacom
 type RecallSwapParam struct {
 	SwapID Hash
 }
 
+// RecallMultiSwapParam wacom
+type RecallMultiSwapParam struct {
+	SwapID Hash
+}
+
 // TakeSwapParam wacom
 type TakeSwapParam struct {
+	SwapID Hash
+	Size   *big.Int `json:",string"`
+}
+
+// TakeMultiSwapParam wacom
+type TakeMultiSwapParam struct {
 	SwapID Hash
 	Size   *big.Int `json:",string"`
 }
@@ -573,6 +619,21 @@ func (p *RecallSwapParam) ToBytes() ([]byte, error) {
 
 // ToBytes wacom
 func (p *TakeSwapParam) ToBytes() ([]byte, error) {
+	return rlp.EncodeToBytes(p)
+}
+
+// ToBytes wacom
+func (p *MakeMultiSwapParam) ToBytes() ([]byte, error) {
+	return rlp.EncodeToBytes(p)
+}
+
+// ToBytes wacom
+func (p *RecallMultiSwapParam) ToBytes() ([]byte, error) {
+	return rlp.EncodeToBytes(p)
+}
+
+// ToBytes wacom
+func (p *TakeMultiSwapParam) ToBytes() ([]byte, error) {
 	return rlp.EncodeToBytes(p)
 }
 
@@ -786,9 +847,10 @@ type Swap struct {
 	Targes        []Address
 	Time          *big.Int // Provides information for TIME
 	Description   string
-	Notation	  uint64
+	Notation      uint64
 }
 
+// DeepCopy wacom
 func (s *Swap) DeepCopy() Swap {
 	minFromAmount := *s.MinFromAmount
 	minToAmount := *s.MinToAmount
@@ -815,6 +877,54 @@ func (s *Swap) DeepCopy() Swap {
 	}
 }
 
+// MultiSwap wacom
+type MultiSwap struct {
+	ID            Hash
+	Owner         Address
+	FromAssetID   []Hash
+	FromStartTime []uint64
+	FromEndTime   []uint64
+	MinFromAmount []*big.Int `json:",string"`
+	ToAssetID     []Hash
+	ToStartTime   []uint64
+	ToEndTime     []uint64
+	MinToAmount   []*big.Int `json:",string"`
+	SwapSize      *big.Int   `json:",string"`
+	Targes        []Address
+	Time          *big.Int // Provides information for TIME
+	Description   string
+	Notation      uint64
+}
+
+// DeepCopy wacom
+func (s *MultiSwap) DeepCopy() MultiSwap {
+	minFromAmount := make([]*big.Int, len(s.MinFromAmount))
+	copy(minFromAmount, s.MinFromAmount)
+	minToAmount := make([]*big.Int, len(s.MinToAmount))
+	copy(minToAmount, s.MinToAmount)
+	swapSize := *s.SwapSize
+	swapTime := *s.Time
+	targets := make([]Address, len(s.Targes))
+	copy(targets, s.Targes)
+
+	return MultiSwap{
+		ID:            s.ID,
+		Owner:         s.Owner,
+		FromAssetID:   s.FromAssetID,
+		FromStartTime: s.FromStartTime,
+		FromEndTime:   s.FromEndTime,
+		MinFromAmount: minFromAmount,
+		ToAssetID:     s.ToAssetID,
+		ToStartTime:   s.ToStartTime,
+		ToEndTime:     s.ToEndTime,
+		MinToAmount:   minToAmount,
+		SwapSize:      &swapSize,
+		Targes:        targets,
+		Time:          &swapTime,
+		Description:   s.Description,
+	}
+}
+
 // KeyValue wacom
 type KeyValue struct {
 	Key   string
@@ -828,10 +938,12 @@ func NewKeyValue(name string, v interface{}) *KeyValue {
 
 }
 
+// Check wacom
 func (p *FSNCallParam) Check(blockNumber *big.Int) error {
 	return nil
 }
 
+// Check wacom
 func (p *GenAssetParam) Check(blockNumber *big.Int) error {
 	if len(p.Name) == 0 || len(p.Symbol) == 0 || p.Total == nil || p.Total.Cmp(Big0) < 0 {
 		return fmt.Errorf("GenAssetFunc name, symbol and total must be set")
@@ -852,6 +964,7 @@ func (p *GenAssetParam) Check(blockNumber *big.Int) error {
 	return nil
 }
 
+// Check wacom
 func (p *SendAssetParam) Check(blockNumber *big.Int) error {
 	if p.Value == nil || p.Value.Cmp(Big0) <= 0 {
 		return fmt.Errorf("Value must be set and greater than 0")
@@ -862,6 +975,7 @@ func (p *SendAssetParam) Check(blockNumber *big.Int) error {
 	return nil
 }
 
+// Check wacom
 func (p *TimeLockParam) Check(blockNumber *big.Int, timestamp uint64) error {
 
 	if p.Value == nil || p.Value.Cmp(Big0) <= 0 {
@@ -877,6 +991,7 @@ func (p *TimeLockParam) Check(blockNumber *big.Int, timestamp uint64) error {
 	return nil
 }
 
+// Check wacom
 func (p *BuyTicketParam) Check(blockNumber *big.Int, timestamp uint64, adjust int64) error {
 	start, end := p.Start, p.End
 	// check lifetime too short ticket
@@ -896,6 +1011,7 @@ func (p *BuyTicketParam) Check(blockNumber *big.Int, timestamp uint64, adjust in
 	return nil
 }
 
+// Check wacom
 func (p *AssetValueChangeParam) Check(blockNumber *big.Int) error {
 	if p.Value == nil || p.Value.Cmp(Big0) <= 0 {
 		return fmt.Errorf("Value must be set and greater than 0")
@@ -903,6 +1019,7 @@ func (p *AssetValueChangeParam) Check(blockNumber *big.Int) error {
 	return nil
 }
 
+// Check wacom
 func (p *AssetValueChangeExParam) Check(blockNumber *big.Int) error {
 	if p.Value == nil || p.Value.Cmp(Big0) <= 0 {
 		return fmt.Errorf("Value must be set and greater than 0")
@@ -913,6 +1030,7 @@ func (p *AssetValueChangeExParam) Check(blockNumber *big.Int) error {
 	return nil
 }
 
+// Check wacom
 func (p *MakeSwapParam) Check(blockNumber *big.Int, timestamp uint64) error {
 	if p.MinFromAmount == nil || p.MinFromAmount.Cmp(Big0) <= 0 ||
 		p.MinToAmount == nil || p.MinToAmount.Cmp(Big0) <= 0 ||
@@ -926,14 +1044,13 @@ func (p *MakeSwapParam) Check(blockNumber *big.Int, timestamp uint64) error {
 	if total.Cmp(Big0) <= 0 {
 		return fmt.Errorf("size * MinFromAmount too large")
 	}
-	
+
 	if p.FromStartTime > p.FromEndTime {
 		return fmt.Errorf("MakeSwap FromStartTime > FromEndTime")
 	}
 	if p.ToStartTime > p.ToEndTime {
 		return fmt.Errorf("MakeSwap ToStartTime > ToEndTime")
 	}
-
 
 	if p.FromEndTime <= timestamp {
 		return fmt.Errorf("MakeSwap FromEndTime <= latest blockTime")
@@ -945,6 +1062,7 @@ func (p *MakeSwapParam) Check(blockNumber *big.Int, timestamp uint64) error {
 	return nil
 }
 
+// Check wacom
 func (p *RecallSwapParam) Check(blockNumber *big.Int, swap *Swap) error {
 	if swap.MinFromAmount == nil || swap.MinFromAmount.Cmp(Big0) <= 0 {
 		return fmt.Errorf("swap illegal: MinFromAmount must be set and greater than 0")
@@ -959,10 +1077,11 @@ func (p *RecallSwapParam) Check(blockNumber *big.Int, swap *Swap) error {
 	return nil
 }
 
+// Check wacom
 func (p *TakeSwapParam) Check(blockNumber *big.Int, swap *Swap, timestamp uint64) error {
 	if p.Size == nil || p.Size.Cmp(Big0) <= 0 ||
 		swap.SwapSize == nil || p.Size.Cmp(swap.SwapSize) > 0 {
-		
+
 		return fmt.Errorf("Size must be ge 1 and le Swapsize")
 	}
 	if swap.MinFromAmount == nil || swap.MinFromAmount.Cmp(Big0) <= 0 {
@@ -981,7 +1100,7 @@ func (p *TakeSwapParam) Check(blockNumber *big.Int, swap *Swap, timestamp uint64
 	if toTotal.Cmp(Big0) <= 0 {
 		return fmt.Errorf("toTotal less than  equal to zero")
 	}
-	
+
 	if swap.FromEndTime <= timestamp {
 		return fmt.Errorf("swap expired: FromEndTime <= latest blockTime")
 	}
@@ -989,5 +1108,155 @@ func (p *TakeSwapParam) Check(blockNumber *big.Int, swap *Swap, timestamp uint64
 		return fmt.Errorf("swap expired: ToEndTime <= latest blockTime")
 	}
 
+	return nil
+}
+
+// Check wacom
+func (p *MakeMultiSwapParam) Check(blockNumber *big.Int, timestamp uint64) error {
+	if p.MinFromAmount == nil {
+		return fmt.Errorf("MinFromAmount must be specifed")
+	}
+	if p.MinToAmount == nil {
+		return fmt.Errorf("MinToAmount must be specifed")
+	}
+	ln := len(p.MinFromAmount)
+	if ln == 0 {
+		return fmt.Errorf("MinFromAmount must be specified")
+	}
+	if p.SwapSize == nil || p.SwapSize.Cmp(Big0) <= 0 {
+		return fmt.Errorf("SwapSize must be ge 1")
+	}
+
+	for i := 0; i < ln; i++ {
+		if p.MinFromAmount[i] == nil || p.MinFromAmount[i].Cmp(Big0) <= 0 {
+			return fmt.Errorf("MinFromAmounts must be ge 1")
+		}
+		total := new(big.Int).Mul(p.MinFromAmount[i], p.SwapSize)
+		if total.Cmp(Big0) <= 0 {
+			return fmt.Errorf("size * MinFromAmount too large")
+		}
+	}
+
+	ln = len(p.MinToAmount)
+	for i := 0; i < ln; i++ {
+		if p.MinToAmount[i] == nil || p.MinToAmount[i].Cmp(Big0) <= 0 {
+			return fmt.Errorf("MinToAmounts must be ge 1")
+		}
+	}
+
+	if len(p.Description) > 1024 {
+		return fmt.Errorf("MakeSwap description length is greater than 1024 chars")
+	}
+
+	if p.FromStartTime == nil || p.FromEndTime == nil ||
+		len(p.FromStartTime) != len(p.FromEndTime) {
+		return fmt.Errorf("start and end time must be specified and must be same length")
+	}
+
+	ln = len(p.FromStartTime)
+	for i := 0; i < ln; i++ {
+		if p.FromStartTime[i] > p.FromEndTime[i] {
+			return fmt.Errorf("MakeMultiSwap FromStartTime > FromEndTime")
+		}
+		if p.ToStartTime[i] > p.ToEndTime[i] {
+			return fmt.Errorf("MakeMultiSwap ToStartTime > ToEndTime")
+		}
+		if p.FromEndTime[i] <= timestamp {
+			return fmt.Errorf("MakeMultiSwap FromEndTime <= latest blockTime")
+		}
+		if p.ToEndTime[i] <= timestamp {
+			return fmt.Errorf("MakeMultiSwap ToEndTime <= latest blockTime")
+		}
+	}
+	return nil
+}
+
+// Check wacom
+func (p *RecallMultiSwapParam) Check(blockNumber *big.Int, swap *MultiSwap) error {
+	if swap.MinFromAmount == nil {
+		return fmt.Errorf("MinFromAmount must be specifed")
+	}
+	if swap.MinToAmount == nil {
+		return fmt.Errorf("MinToAmount must be specifed")
+	}
+	ln := len(swap.MinFromAmount)
+	if ln == 0 {
+		return fmt.Errorf("MinFromAmount must be specified")
+	}
+	if swap.SwapSize == nil || swap.SwapSize.Cmp(Big0) <= 0 {
+		return fmt.Errorf("SwapSize must be ge 1")
+	}
+
+	for i := 0; i < ln; i++ {
+		if swap.MinFromAmount[i] == nil || swap.MinFromAmount[i].Cmp(Big0) <= 0 {
+			return fmt.Errorf("MinFromAmounts must be ge 1")
+		}
+		total := new(big.Int).Mul(swap.MinFromAmount[i], swap.SwapSize)
+		if total.Cmp(Big0) <= 0 {
+			return fmt.Errorf("size * MinFromAmount too large")
+		}
+	}
+
+	return nil
+}
+
+// Check wacom
+func (p *TakeMultiSwapParam) Check(blockNumber *big.Int, swap *MultiSwap, timestamp uint64) error {
+	if p.Size == nil || p.Size.Cmp(Big0) <= 0 ||
+		swap.SwapSize == nil || p.Size.Cmp(swap.SwapSize) > 0 {
+
+		return fmt.Errorf("Size must be ge 1 and le Swapsize")
+	}
+	if swap.MinFromAmount == nil {
+		return fmt.Errorf("MinFromAmount must be specifed")
+	}
+	if swap.MinToAmount == nil {
+		return fmt.Errorf("MinToAmount must be specifed")
+	}
+
+	ln := len(swap.MinFromAmount)
+	if ln == 0 {
+		return fmt.Errorf("MinFromAmount must be specified")
+	}
+
+	for i := 0; i < ln; i++ {
+		if swap.MinFromAmount == nil || swap.MinFromAmount[i].Cmp(Big0) <= 0 {
+			return fmt.Errorf("MinFromAmount less than  equal to zero")
+		}
+
+		fromTotal := new(big.Int).Mul(swap.MinFromAmount[i], p.Size)
+		if fromTotal.Cmp(Big0) <= 0 {
+			return fmt.Errorf("fromTotal less than  equal to zero")
+		}
+	}
+
+	ln = len(swap.MinToAmount)
+	if ln == 0 {
+		return fmt.Errorf("MinToAmount must be specified")
+	}
+
+	for i := 0; i < ln; i++ {
+		if swap.MinToAmount[i] == nil || swap.MinToAmount[i].Cmp(Big0) <= 0 {
+			return fmt.Errorf("MinToAmount less than  equal to zero")
+		}
+		toTotal := new(big.Int).Mul(swap.MinToAmount[i], p.Size)
+		if toTotal.Cmp(Big0) <= 0 {
+			return fmt.Errorf("toTotal less than  equal to zero")
+		}
+	}
+
+	ln = len(swap.FromEndTime)
+	for i := 0; i < ln; i++ {
+		if swap.FromEndTime[i] <= timestamp {
+			return fmt.Errorf("swap expired: FromEndTime <= latest blockTime")
+		}
+	}
+
+	ln = len(swap.ToEndTime)
+	for i := 0; i < ln; i++ {
+		if swap.ToEndTime[i] <= timestamp {
+			return fmt.Errorf("swap expired: ToEndTime <= latest blockTime")
+		}
+	}
 	return nil
 }
