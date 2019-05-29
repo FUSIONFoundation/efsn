@@ -1131,6 +1131,81 @@ func (db *StateDB) ClearExpiredSwaps(blockNumber *big.Int, timestamp uint64) err
 	return nil
 }
 
+/** swaps
+*
+ */
+ type multiSwapPersist struct {
+	deleted bool // if true swap was recalled and should not be returned
+	swap    common.MultiSwap
+}
+
+// GetMultiSwap wacom
+func (db *StateDB) GetMultiSwap(swapID common.Hash) (common.MultiSwap, error) {
+	data := db.GetStructData(common.MultiSwapKeyAddress, swapID.Bytes())
+	var swap multiSwapPersist
+	if len(data) == 0 || data == nil {
+		return common.MultiSwap{}, fmt.Errorf("multi swap not found")
+	}
+	rlp.DecodeBytes(data, &swap)
+	if swap.deleted {
+		return common.MultiSwap{}, fmt.Errorf("multi swap deleted")
+	}
+	return swap.swap, nil
+}
+
+// AddMultiSwap wacom
+func (db *StateDB) AddMultiSwap(swap common.MultiSwap) error {
+	_, err := db.GetMultiSwap(swap.ID)
+	if err == nil {
+		return fmt.Errorf("%s Multi Swap exists", swap.ID.String())
+	}
+	swapToSave := multiSwapPersist{
+		deleted: false,
+		swap:    swap,
+	}
+	data, err := rlp.EncodeToBytes(&swapToSave)
+	if err != nil {
+		return err
+	}
+	db.SetStructData(common.MultiSwapKeyAddress, swap.ID.Bytes(), data)
+	return nil
+}
+
+// UpdateMultiSwap wacom
+func (db *StateDB) UpdateMultiSwap(swap common.MultiSwap) error {
+	/** to update a swap we just overwrite it
+	 */
+	swapToSave := multiSwapPersist{
+		deleted: false,
+		swap:    swap,
+	}
+	data, err := rlp.EncodeToBytes(&swapToSave)
+	if err != nil {
+		return err
+	}
+	db.SetStructData(common.MultiSwapKeyAddress, swap.ID.Bytes(), data)
+	return nil
+}
+
+// RemoveSwap wacom
+func (db *StateDB) RemoveMultiSwap(id common.Hash) error {
+	swapFound, err := db.GetMultiSwap(id)
+	if err != nil {
+		return fmt.Errorf("%s Multi Swap not found ", id.String())
+	}
+
+	swapToSave := multiSwapPersist{
+		deleted: true,
+		swap:    swapFound,
+	}
+	data, err := rlp.EncodeToBytes(&swapToSave)
+	if err != nil {
+		return err
+	}
+	db.SetStructData(common.MultiSwapKeyAddress, id.Bytes(), data)
+	return nil
+}
+
 type assetsStruct struct {
 	HASH  common.Hash
 	ASSET common.Asset
