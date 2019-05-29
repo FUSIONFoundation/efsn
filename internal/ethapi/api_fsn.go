@@ -1729,3 +1729,157 @@ func (s *FusionTransactionAPI) TakeSwap(ctx context.Context, args TakeSwapArgs) 
 	}
 	return s.sendTransaction(ctx, args.From, tx)
 }
+
+// BuildMakeMultiSwapTx ss
+func (s *FusionTransactionAPI) BuildMakeMultiSwapTx(ctx context.Context, args MakeMultiSwapArgs) (*types.Transaction, error) {
+	state, header, err := s.b.StateAndHeaderByNumber(ctx, rpc.LatestBlockNumber)
+	if state == nil || err != nil {
+		return nil, err
+	}
+
+	args.init()
+	now := uint64(time.Now().Unix())
+	if err := args.toParam(header.Time).Check(common.BigMaxUint64, now); err != nil {
+		return nil, err
+	}
+
+	ln := len(args.MinFromAmount)
+	for i := 0 ; i < ln ; i++ {
+		total := new(big.Int).Mul(args.MinFromAmount[i].ToInt(), args.SwapSize)
+		start := uint64(*args.FromStartTime[i])
+		end := uint64(*args.FromEndTime[i])
+
+		if args.FromAssetID[i] == common.OwnerUSANAssetID {
+			return nil, fmt.Errorf("USANs cannot be multi-swapped")
+		} else if start == common.TimeLockNow && end == common.TimeLockForever {
+			if state.GetBalance(args.FromAssetID[i], args.From).Cmp(total) < 0 {
+				return nil, fmt.Errorf("not enough from asset")
+			}
+		} else {
+			needValue := common.NewTimeLock(&common.TimeLockItem{
+				StartTime: common.MaxUint64(start, header.Time.Uint64()),
+				EndTime:   end,
+				Value:     total,
+			})
+			if err := needValue.IsValid(); err != nil {
+				return nil, fmt.Errorf("BuildMakeSwapTx from err:%v", err.Error())
+			}
+			if state.GetTimeLockBalance(args.FromAssetID[i], args.From).Cmp(needValue, header.Number) < 0 {
+				if state.GetBalance(args.FromAssetID[i], args.From).Cmp(total) < 0 {
+					return nil, fmt.Errorf("not enough time lock or asset balance")
+				}
+			}
+		}
+	}
+
+	funcData, err := args.toData(header.Time)
+	if err != nil {
+		return nil, err
+	}
+	var param = common.FSNCallParam{Func: common.MakeMultiSwapFunc, Data: funcData}
+	data, err := param.ToBytes()
+	if err != nil {
+		return nil, err
+	}
+	var argsData = hexutil.Bytes(data)
+	sendArgs := args.toSendArgs()
+	sendArgs.To = &common.FSNCallAddress
+	sendArgs.Data = &argsData
+	return s.buildTransaction(ctx, sendArgs)
+}
+
+// BuildRecallMultiSwapTx ss
+func (s *FusionTransactionAPI) BuildMultiRecallSwapTx(ctx context.Context, args RecallMultiSwapArgs) (*types.Transaction, error) {
+	state, _, err := s.b.StateAndHeaderByNumber(ctx, rpc.LatestBlockNumber)
+	if state == nil || err != nil {
+		return nil, err
+	}
+
+	var swap common.MultiSwap
+	swap, err = state.GetMultiSwap(args.SwapID)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := args.toParam().Check(common.BigMaxUint64, &swap); err != nil {
+		return nil, err
+	}
+
+	if swap.Owner != args.From {
+		return nil, fmt.Errorf("Must be swap onwer can recall")
+	}
+
+	funcData, err := args.toData()
+	if err != nil {
+		return nil, err
+	}
+	var param = common.FSNCallParam{Func: common.RecallMultiSwapFunc, Data: funcData}
+	data, err := param.ToBytes()
+	if err != nil {
+		return nil, err
+	}
+	var argsData = hexutil.Bytes(data)
+	sendArgs := args.toSendArgs()
+	sendArgs.To = &common.FSNCallAddress
+	sendArgs.Data = &argsData
+	return s.buildTransaction(ctx, sendArgs)
+}
+
+// BuildTakeSwapTx ss
+func (s *FusionTransactionAPI) BuildTakeMultiSwapTx(ctx context.Context, args TakeMultiSwapArgs) (*types.Transaction, error) {
+	state, header, err := s.b.StateAndHeaderByNumber(ctx, rpc.LatestBlockNumber)
+	if state == nil || err != nil {
+		return nil, err
+	}
+	var swap common.MultiSwap
+	swap, err = state.GetMultiSwap(args.SwapID)
+	if err != nil {
+		return nil, err
+	}
+
+	now := uint64(time.Now().Unix())
+	if err := args.toParam().Check(common.BigMaxUint64, &swap, now); err != nil {
+		return nil, err
+	}
+
+	ln := len( swap.MinToAmount)
+	for i := 0 ; i < ln ; i++ {
+		total := new(big.Int).Mul(swap.MinToAmount[i], args.Size)
+		start := swap.ToStartTime[i]
+		end := swap.ToEndTime[i]
+
+		if start == common.TimeLockNow && end == common.TimeLockForever {
+			if state.GetBalance(swap.ToAssetID[i], args.From).Cmp(total) < 0 {
+				return nil, fmt.Errorf("not enough from asset")
+			}
+		} else {
+			needValue := common.NewTimeLock(&common.TimeLockItem{
+				StartTime: start,
+				EndTime:   end,
+				Value:     total,
+			})
+			if err := needValue.IsValid(); err != nil {
+				return nil, fmt.Errorf("BuildTakeSwapTx to err:%v", err.Error())
+			}
+			if state.GetTimeLockBalance(swap.ToAssetID[i], args.From).Cmp(needValue, header.Number) < 0 {
+				if state.GetBalance(swap.ToAssetID[i], args.From).Cmp(total) < 0 {
+					return nil, fmt.Errorf("not enough time lock or asset balance")
+				}
+			}
+		}
+	}
+	funcData, err := args.toData()
+	if err != nil {
+		return nil, err
+	}
+	var param = common.FSNCallParam{Func: common.TakeMultiSwapFunc, Data: funcData}
+	data, err := param.ToBytes()
+	if err != nil {
+		return nil, err
+	}
+	var argsData = hexutil.Bytes(data)
+	sendArgs := args.toSendArgs()
+	sendArgs.To = &common.FSNCallAddress
+	sendArgs.Data = &argsData
+	return s.buildTransaction(ctx, sendArgs)
+}

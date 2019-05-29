@@ -416,8 +416,6 @@ const (
 	TakeSwapFuncExt
 	// AssetValueChangeFunc wacom
 	AssetValueChangeFunc
-	// TransferNotationFunc wacom
-	TransferNotationFunc
 	// MakeMultiSwapFunc wacom
 	MakeMultiSwapFunc
 	// RecallMultiSwapFunc wacom
@@ -1127,6 +1125,18 @@ func (p *MakeMultiSwapParam) Check(blockNumber *big.Int, timestamp uint64) error
 		return fmt.Errorf("SwapSize must be ge 1")
 	}
 
+
+	if len(p.MinFromAmount) != len(p.FromEndTime) ||
+		len(p.MinFromAmount) != len(p.FromAssetID) ||
+		len(p.MinFromAmount) != len(p.FromStartTime) {
+			return fmt.Errorf("MinFromAmount FromEndTime and FromStartTime array length must be same size")
+	}
+	if len(p.MinToAmount) != len(p.ToEndTime) ||
+		len(p.MinToAmount) != len(p.ToAssetID) ||
+		len(p.MinToAmount) != len(p.ToStartTime) {
+			return fmt.Errorf("MinToAmount ToEndTime and ToStartTime array length must be same size")
+	}
+
 	for i := 0; i < ln; i++ {
 		if p.MinFromAmount[i] == nil || p.MinFromAmount[i].Cmp(Big0) <= 0 {
 			return fmt.Errorf("MinFromAmounts must be ge 1")
@@ -1218,6 +1228,18 @@ func (p *TakeMultiSwapParam) Check(blockNumber *big.Int, swap *MultiSwap, timest
 	if ln == 0 {
 		return fmt.Errorf("MinFromAmount must be specified")
 	}
+
+	if len(swap.MinFromAmount) != len(swap.FromEndTime) ||
+		len(swap.MinFromAmount) != len(swap.FromAssetID) ||
+		len(swap.MinFromAmount) != len(swap.FromStartTime) {
+			return fmt.Errorf("MinFromAmount FromEndTime and FromStartTime array length must be same size")
+	}
+	if len(swap.MinToAmount) != len(swap.ToEndTime) ||
+		len(swap.MinToAmount) != len(swap.ToAssetID) ||
+		len(swap.MinToAmount) != len(swap.ToStartTime) {
+			return fmt.Errorf("MinToAmount ToEndTime and ToStartTime array length must be same size")
+	}
+
 
 	for i := 0; i < ln; i++ {
 		if swap.MinFromAmount == nil || swap.MinFromAmount[i].Cmp(Big0) <= 0 {

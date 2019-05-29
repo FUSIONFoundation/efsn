@@ -573,14 +573,14 @@ func (st *StateTransition) handleFsnCall() error {
 
 		if makeSwapParam.ToAssetID == common.OwnerUSANAssetID {
 			err := fmt.Errorf("USAN's cannot be swapped")
-			st.addLog(common.TransferNotationFunc, makeSwapParam, common.NewKeyValue("Error", err.Error()))
+			st.addLog(common.MakeSwapFunc, makeSwapParam, common.NewKeyValue("Error", err.Error()))
 			return err
 		}
 
 		if makeSwapParam.FromAssetID == common.OwnerUSANAssetID {
 			if notation == 0 {
 				err := fmt.Errorf("the from address does not have a notation")
-				st.addLog(common.TransferNotationFunc, makeSwapParam, common.NewKeyValue("Error", err.Error()))
+				st.addLog(common.MakeSwapFunc, makeSwapParam, common.NewKeyValue("Error", err.Error()))
 				return err
 			}
 			makeSwapParam.MinFromAmount = big.NewInt(1)
@@ -731,26 +731,6 @@ func (st *StateTransition) handleFsnCall() error {
 		st.addLog(common.RecallSwapFunc, recallSwapParam, common.NewKeyValue("SwapID", swap.ID))
 		return nil
 	case common.TakeSwapFunc, common.TakeSwapFuncExt:
-		outputCommandInfo("TransferNotationFunc", "from", st.msg.From())
-		transferNotationParam := common.TransferNotationParam{}
-		rlp.DecodeBytes(param.Data, &transferNotationParam)
-		// notation := st.state.GetNotation(st.msg.From())
-		// if notation == 0 {
-		// 	err := fmt.Errorf("the from address does not have a notation")
-		// 	st.addLog(common.TransferNotationFunc, transferNotationParam, common.NewKeyValue("Error", err.Error()))
-		// 	return err
-		// }
-		// if notation != transferNotationParam.Notation {
-		// 	err := fmt.Errorf("the from address does not own the notation")
-		// 	st.addLog(common.TransferNotationFunc, transferNotationParam, common.NewKeyValue("Error", err.Error()))
-		// 	return err
-		// }
-		// err := st.state.TransferNotation( transferNotationParam.Notation, st.msg.From(), transferNotationParam.ToAddress )
-		// if err != nil {
-		// 	st.addLog(common.TransferNotationFunc, transferNotationParam, common.NewKeyValue("Error", err.Error()))
-		// 	return err
-		// }
-		// return nil
 		outputCommandInfo("TakeSwapFunc", "from", st.msg.From())
 		takeSwapParam := common.TakeSwapParam{}
 		rlp.DecodeBytes(param.Data, &takeSwapParam)
