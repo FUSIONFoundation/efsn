@@ -109,6 +109,36 @@ type TakeSwapArgs struct {
 	Size   *big.Int
 }
 
+// MakeMultiSwapArgs wacom
+type MakeMultiSwapArgs struct {
+	FusionBaseArgs
+	FromAssetID   []common.Hash
+	FromStartTime []*hexutil.Uint64
+	FromEndTime   []*hexutil.Uint64
+	MinFromAmount []*hexutil.Big
+	ToAssetID     []common.Hash
+	ToStartTime   []*hexutil.Uint64
+	ToEndTime     []*hexutil.Uint64
+	MinToAmount   []*hexutil.Big
+	SwapSize      *big.Int
+	Targes        []common.Address
+	Time          *big.Int
+	Description   string
+}
+
+// RecallMultiSwapArgs wacom
+type RecallMultiSwapArgs struct {
+	FusionBaseArgs
+	SwapID common.Hash
+}
+
+// TakeSwapArgs wacom
+type TakeMultiSwapArgs struct {
+	FusionBaseArgs
+	SwapID common.Hash
+	Size   *big.Int
+}
+
 func (args *FusionBaseArgs) toSendArgs() SendTxArgs {
 	return SendTxArgs{
 		From:     args.From,
@@ -273,6 +303,96 @@ func (args *TakeSwapArgs) toData() ([]byte, error) {
 	return args.toParam().ToBytes()
 }
 
+func (args *MakeMultiSwapArgs) init() {
+
+	if args.FromStartTime == nil || len(args.FromStartTime) == 0 {
+		args.FromStartTime =  make([]*hexutil.Uint64, 1)
+		*(*uint64)(args.FromStartTime[0]) = common.TimeLockNow
+	}
+
+	if args.FromEndTime == nil || len(args.FromEndTime) == 0  {
+		args.FromEndTime =  make([]*hexutil.Uint64, 1)
+		*(*uint64)(args.FromEndTime[0]) = common.TimeLockForever
+	}
+
+	if args.ToStartTime == nil  || len(args.ToStartTime) == 0  {
+		args.ToStartTime =  make([]*hexutil.Uint64, 1)
+		*(*uint64)(args.ToStartTime[0]) = common.TimeLockNow
+	}
+
+	if args.ToEndTime == nil  || len(args.ToEndTime) == 0 {
+		args.ToEndTime =  make([]*hexutil.Uint64, 1)
+		*(*uint64)(args.ToEndTime[0]) = common.TimeLockForever
+	}
+}
+
+func (args *MakeMultiSwapArgs) toParam(time *big.Int) *common.MakeMultiSwapParam {
+
+	fromStartTime := make([]uint64, len(args.FromStartTime))
+	for i := 0; i < len(args.FromStartTime); i++ {
+		fromStartTime[i] = uint64(*args.FromStartTime[i])
+	}
+	fromEndTime := make([]uint64, len(args.FromEndTime))
+	for i := 0; i < len(args.FromEndTime); i++ {
+		fromEndTime[i] = uint64(*args.FromEndTime[i])
+	}
+	minFromAmount := make([]*big.Int, len(args.MinFromAmount))
+	for i := 0; i < len(args.MinFromAmount); i++ {
+		minFromAmount[i] = args.MinFromAmount[i].ToInt()
+	}
+	toStartTime := make([]uint64, len(args.ToStartTime))
+	for i := 0; i < len(args.ToStartTime); i++ {
+		toStartTime[i] = uint64(*args.ToStartTime[i])
+	}
+	toEndTime := make([]uint64, len(args.ToEndTime))
+	for i := 0; i < len(args.ToEndTime); i++ {
+		toEndTime[i] = uint64(*args.ToEndTime[i])
+	}
+	minToAmount := make([]*big.Int, len(args.MinToAmount))
+	for i := 0; i < len(args.MinToAmount); i++ {
+		minToAmount[i] = args.MinToAmount[i].ToInt()
+	}
+	return &common.MakeMultiSwapParam{
+		FromAssetID:   args.FromAssetID,
+		FromStartTime: fromStartTime,
+		FromEndTime:   fromEndTime,
+		MinFromAmount: minFromAmount,
+		ToAssetID:     args.ToAssetID,
+		ToStartTime:   toStartTime,
+		ToEndTime:     toEndTime,
+		MinToAmount:   minToAmount,
+		SwapSize:      args.SwapSize,
+		Targes:        args.Targes,
+		Time:          time,
+		Description:   args.Description,
+	}
+}
+
+func (args *MakeMultiSwapArgs) toData(time *big.Int) ([]byte, error) {
+	return args.toParam(time).ToBytes()
+}
+
+func (args *RecallMultiSwapArgs) toParam() *common.RecallMultiSwapParam {
+	return &common.RecallMultiSwapParam{
+		SwapID: args.SwapID,
+	}
+}
+
+func (args *RecallMultiSwapArgs) toData() ([]byte, error) {
+	return args.toParam().ToBytes()
+}
+
+func (args *TakeMultiSwapArgs) toParam() *common.TakeMultiSwapParam {
+	return &common.TakeMultiSwapParam{
+		SwapID: args.SwapID,
+		Size:   args.Size,
+	}
+}
+
+func (args *TakeMultiSwapArgs) toData() ([]byte, error) {
+	return args.toParam().ToBytes()
+}
+
 func (args *TimeLockArgs) init() {
 
 	if args.StartTime == nil {
@@ -381,7 +501,7 @@ func (s *PublicFusionAPI) GetAsset(ctx context.Context, assetID common.Hash, blo
 	if state == nil || err != nil {
 		return nil, err
 	}
-	asset, assetErr := state.GetAsset( assetID )
+	asset, assetErr := state.GetAsset(assetID)
 
 	if assetErr != nil {
 		return nil, fmt.Errorf("Asset not found")
@@ -801,9 +921,8 @@ func (s *PrivateFusionAPI) checkAssetValueChange(ctx context.Context, args Asset
 		return common.Hash{}, err
 	}
 
-
-	asset, assetError := state.GetAsset( args.AssetID )
-	if assetError != nil  {
+	asset, assetError := state.GetAsset(args.AssetID)
+	if assetError != nil {
 		return common.Hash{}, fmt.Errorf("asset not found")
 	}
 
@@ -904,9 +1023,9 @@ func (s *PrivateFusionAPI) RecallSwap(ctx context.Context, args RecallSwapArgs, 
 		return common.Hash{}, err
 	}
 	var swap common.Swap
-	swap, err  = state.GetSwap(args.SwapID)
-	if err != nil{
-		return common.Hash{},  err
+	swap, err = state.GetSwap(args.SwapID)
+	if err != nil {
+		return common.Hash{}, err
 	}
 	if err := args.toParam().Check(common.BigMaxUint64, &swap); err != nil {
 		return common.Hash{}, err
@@ -939,7 +1058,7 @@ func (s *PrivateFusionAPI) TakeSwap(ctx context.Context, args TakeSwapArgs, pass
 		return common.Hash{}, err
 	}
 
-	swap,err := state.GetSwap(args.SwapID)
+	swap, err := state.GetSwap(args.SwapID)
 	if err != nil {
 		return common.Hash{}, err
 	}
@@ -989,7 +1108,6 @@ func (s *PrivateFusionAPI) TakeSwap(ctx context.Context, args TakeSwapArgs, pass
 	sendArgs.Data = &argsData
 	return s.papi.SendTransaction(ctx, sendArgs, passwd)
 }
-
 
 // FusionTransactionAPI ss
 type FusionTransactionAPI struct {
@@ -1367,8 +1485,8 @@ func (s *FusionTransactionAPI) buildAssetValueChangeTx(ctx context.Context, args
 		return nil, err
 	}
 
-	asset, assetError := state.GetAsset( args.AssetID )
-	if assetError != nil  {
+	asset, assetError := state.GetAsset(args.AssetID)
+	if assetError != nil {
 		return nil, fmt.Errorf("asset not found")
 	}
 
@@ -1509,7 +1627,7 @@ func (s *FusionTransactionAPI) BuildRecallSwapTx(ctx context.Context, args Recal
 	}
 
 	var swap common.Swap
-	swap,err = state.GetSwap(args.SwapID)
+	swap, err = state.GetSwap(args.SwapID)
 	if err != nil {
 		return nil, err
 	}
