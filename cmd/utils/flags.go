@@ -1138,6 +1138,10 @@ func SetEthConfig(ctx *cli.Context, stack *node.Node, cfg *eth.Config) {
 
 	if ctx.GlobalIsSet(SyncModeFlag.Name) {
 		cfg.SyncMode = *GlobalTextMarshaler(ctx, SyncModeFlag.Name).(*downloader.SyncMode)
+		if cfg.SyncMode == downloader.FastSync && downloader.FastSyncSupported() == false {
+			log.Warn("SetEthConfig: 'fast' sync mode is not supported, change to 'full' sync mode.")
+			cfg.SyncMode = downloader.FullSync
+		}
 	}
 	if ctx.GlobalIsSet(LightServFlag.Name) {
 		cfg.LightServ = ctx.GlobalInt(LightServFlag.Name)
@@ -1251,6 +1255,7 @@ func SetEthConfig(ctx *cli.Context, stack *node.Node, cfg *eth.Config) {
 	if gen := ctx.GlobalInt(TrieCacheGenFlag.Name); gen > 0 {
 		state.MaxTrieCacheGen = uint16(gen)
 	}
+	log.Info("SetEthConfig finished", "NetworkId", cfg.NetworkId, "SyncMode", cfg.SyncMode, "NoPruning", cfg.NoPruning)
 }
 
 // SetDashboardConfig applies dashboard related command line flags to the config.

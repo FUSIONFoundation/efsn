@@ -30,7 +30,6 @@ import (
 	"github.com/FusionFoundation/efsn/cmd/utils"
 	"github.com/FusionFoundation/efsn/dashboard"
 	"github.com/FusionFoundation/efsn/eth"
-	"github.com/FusionFoundation/efsn/eth/downloader"
 	"github.com/FusionFoundation/efsn/node"
 	"github.com/FusionFoundation/efsn/params"
 	whisper "github.com/FusionFoundation/efsn/whisper/whisperv6"
@@ -137,11 +136,6 @@ func makeConfigNode(ctx *cli.Context) (*node.Node, gethConfig) {
 
 	utils.SetShhConfig(ctx, stack, &cfg.Shh)
 	utils.SetDashboardConfig(ctx, &cfg.Dashboard)
-
-	// Disable fast sync mode
-	if cfg.Eth.SyncMode == downloader.FastSync {
-		cfg.Eth.SyncMode = downloader.FullSync
-	}
 
 	// set to archival mode by default
 	// necessary to get ticket state back

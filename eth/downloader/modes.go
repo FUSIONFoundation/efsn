@@ -27,6 +27,17 @@ const (
 	LightSync                 // Download only the headers and terminate afterwards
 )
 
+func FastSyncSupported() bool {
+	return false
+}
+
+func DefaultSyncMode() SyncMode {
+	if FastSyncSupported() {
+		return FastSync
+	}
+	return FullSync
+}
+
 func (mode SyncMode) IsValid() bool {
 	return mode >= FullSync && mode <= LightSync
 }
