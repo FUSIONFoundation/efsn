@@ -427,11 +427,7 @@ func (s *stateObject) AddTimeLockBalance(assetID common.Hash, amount *common.Tim
 
 	index := s.timeLockAssetIndex(assetID)
 	res := s.data.TimeLockBalancesVal[index]
-	
-	if res != nil && res.IsNormalized() == false {
-		res = res.Normalize()
-	}
-	res = new(common.TimeLock).Add2(res, amount)
+	res = new(common.TimeLock).Add(res, amount)
 	if res != nil {
 		res = res.ClearExpired(timestamp)
 	}
@@ -447,15 +443,11 @@ func (s *stateObject) SubTimeLockBalance(assetID common.Hash, amount *common.Tim
 
 	index := s.timeLockAssetIndex(assetID)
 	res := s.data.TimeLockBalancesVal[index]
-	
-	if res != nil && res.IsNormalized() == false {
-		res = res.Normalize()
-	}
-	res = new(common.TimeLock).Sub2(res, amount)
+	res = new(common.TimeLock).Sub(res, amount)
 	if res != nil {
 		res = res.ClearExpired(timestamp)
 	}
-	
+
 	s.SetTimeLockBalance(assetID, res)
 }
 

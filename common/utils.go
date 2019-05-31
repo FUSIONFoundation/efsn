@@ -1,7 +1,7 @@
 package common
 
 const (
-	DebugMode = true
+	DebugMode = false
 )
 
 func MinUint64(x, y uint64) uint64 {

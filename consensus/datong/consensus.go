@@ -620,44 +620,6 @@ func calcHeaderHash(header *types.Header) []byte {
 	return crypto.Keccak256([]byte(sum))
 }
 
-func updateSelectedTicketTime(header *types.Header, ticketID common.Hash, round uint64, list uint64) {
-	if (header == nil || ticketID == common.Hash{}) {
-		log.Warn("updateSelectedTicketTime", "input error", "")
-		return
-	}
-	SelectedTicketTime.Lock()
-	defer SelectedTicketTime.Unlock()
-
-	// hash (header.Number + ticketID + header.Coinbase)
-	sum := header.Number.String() + ticketID.String() + header.Coinbase.String()
-	hash := crypto.Keccak256([]byte(sum))
-	ticketInfo := SelectedTicketTime.info[common.BytesToHash(hash)]
-	if ticketInfo == nil {
-		sl := &selectedInfo{round: round, list: list, broad: false}
-		SelectedTicketTime.info[common.BytesToHash(hash)] = sl
-		ticketInfo = SelectedTicketTime.info[common.BytesToHash(hash)]
-	} else {
-		ticketInfo.round = round
-		ticketInfo.list = list
-	}
-}
-
-func haveSelectedTicketTime(header *types.Header) (uint64, uint64, error) {
-	SelectedTicketTime.Lock()
-	defer SelectedTicketTime.Unlock()
-
-	hash := calcHeaderHash(header)
-	if hash == nil {
-		return uint64(0), uint64(0), errors.New("Hash return nil")
-	}
-	ticketInfo := SelectedTicketTime.info[common.BytesToHash(hash)]
-	if ticketInfo == nil {
-		log.Warn("Error: not found ticketInfo. SelectedTicketTime", "header.Number", header.Number)
-		return uint64(0), uint64(0), errors.New("not found ticketInfo")
-	}
-	return ticketInfo.round, ticketInfo.list, nil
-}
-
 func (dt *DaTong) UpdateBlockBroadcast(header *types.Header) {
 	SelectedTicketTime.Lock()
 	defer SelectedTicketTime.Unlock()
