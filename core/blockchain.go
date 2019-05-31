@@ -943,6 +943,7 @@ func (bc *BlockChain) WriteBlockWithState(block *types.Block, receipts []*types.
 				if chosen < lastWrite+triesInMemory && bc.gcproc >= 2*bc.cacheConfig.TrieTimeLimit {
 					log.Info("State in memory for too long, committing", "time", bc.gcproc, "allowance", bc.cacheConfig.TrieTimeLimit, "optimum", float64(chosen-lastWrite)/triesInMemory)
 				}
+				log.Info("Commit cached state", "current", current, "chosen", chosen)
 				// Flush an entire trie and restart the counters
 				triedb.Commit(header.Root, true)
 				lastWrite = chosen
@@ -1366,6 +1367,8 @@ func (bc *BlockChain) reorg(oldBlock, newBlock *types.Block) error {
 		logFn := log.Debug
 		if len(oldChain) > 63 {
 			logFn = log.Warn
+		} else if common.DebugMode {
+			logFn = log.Info
 		}
 		logFn("Chain split detected", "number", commonBlock.Number(), "hash", commonBlock.Hash(),
 			"drop", len(oldChain), "dropfrom", oldChain[0].Hash(), "add", len(newChain), "addfrom", newChain[0].Hash())
