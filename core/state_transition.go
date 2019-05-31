@@ -521,15 +521,6 @@ func (st *StateTransition) handleFsnCall() error {
 			return fmt.Errorf("must be change by owner")
 		}
 
-		currentBalance := st.state.GetBalance(assetValueChangeParamEx.AssetID, assetValueChangeParamEx.To)
-		val := assetValueChangeParamEx.Value
-		if !assetValueChangeParamEx.IsInc {
-			if currentBalance.Cmp(val) < 0 {
-				st.addLog(common.AssetValueChangeFunc, assetValueChangeParamEx, common.NewKeyValue("Error", "not enough asset"))
-				return fmt.Errorf("not enough asset")
-			}
-		}
-
 		if assetValueChangeParamEx.IsInc {
 			st.state.AddBalance(assetValueChangeParamEx.To, assetValueChangeParamEx.AssetID, assetValueChangeParamEx.Value)
 			asset.Total = asset.Total.Add(asset.Total, assetValueChangeParamEx.Value)
