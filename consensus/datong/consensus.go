@@ -112,34 +112,52 @@ func (dt *DaTong) Author(header *types.Header) (common.Address, error) {
 // VerifyHeader checks whether a header conforms to the consensus rules of the
 // stock Ethereum ethash engine.
 func (dt *DaTong) verifyHeader(chain consensus.ChainReader, header *types.Header, seal bool, parents []*types.Header) error {
-	if header.Number == nil {
+	if header.Number == nil || header.Number.Sign() == 0 {
 		return errUnknownBlock
 	}
 	// Checkpoint blocks need to enforce zero beneficiary
 	if header.Coinbase == (common.Address{}) {
 		return errCoinbase
 	}
-
 	if len(header.Extra) < extraVanity {
 		return errMissingVanity
 	}
 	if len(header.Extra) < extraVanity+extraSeal {
 		return errMissingSignature
 	}
-
-	if _, err := newSnapshotWithData(getSnapDataByHeader(header)); err != nil {
-		return err
-	}
-
 	if header.UncleHash != emptyUncleHash {
 		return errInvalidUncleHash
 	}
-
 	if header.Time.Cmp(big.NewInt(time.Now().Unix())) > 0 {
 		return consensus.ErrFutureBlock
 	}
+	// verify Ancestor
+	parent, err := getParent(chain, header, parents)
+	if err != nil {
+		return err
+	}
+	// verify header time
+	if header.Time.Int64()-parent.Time.Int64() < MinBlockTime {
+		return fmt.Errorf("block %v header.Time:%v < parent.Time:%v + %v Second",
+			header.Number, header.Time.Int64(), parent.Time.Int64(), MinBlockTime)
 
-	return dt.verifySeal(chain, header, parents)
+	}
+	// verify signature
+	signature := header.Extra[len(header.Extra)-extraSeal:]
+	pubkey, err := crypto.Ecrecover(sigHash(header).Bytes(), signature)
+	if err != nil {
+		return err
+	}
+	var signer common.Address
+	copy(signer[:], crypto.Keccak256(pubkey[1:])[12:])
+	if header.Coinbase != signer {
+		return errors.New("Coinbase is not the signer")
+	}
+	// check block time
+	if err = dt.checkBlockTime(chain, header, parent); err != nil {
+		return err
+	}
+	return dt.verifySeal(chain, header, parent)
 }
 
 // VerifyHeader checks whether a header conforms to the consensus rules of the
@@ -202,33 +220,7 @@ func getParent(chain consensus.ChainReader, header *types.Header, parents []*typ
 
 // VerifySeal checks whether the crypto seal on a header is valid according to
 // the consensus rules of the given engine.
-func (dt *DaTong) verifySeal(chain consensus.ChainReader, header *types.Header, parents []*types.Header) error {
-	number := header.Number.Uint64()
-	if number == 0 {
-		return errUnknownBlock
-	}
-	// verify Ancestor
-	parent, err := getParent(chain, header, parents)
-	if err != nil {
-		return err
-	}
-	// verify header time
-	if header.Time.Int64()-parent.Time.Int64() < MinBlockTime {
-		return fmt.Errorf("block %v header.Time:%v < parent.Time:%v + %v Second",
-			number, header.Time.Int64(), parent.Time.Int64(), MinBlockTime)
-
-	}
-	// verify signature
-	signature := header.Extra[len(header.Extra)-extraSeal:]
-	pubkey, err := crypto.Ecrecover(sigHash(header).Bytes(), signature)
-	if err != nil {
-		return err
-	}
-	var signer common.Address
-	copy(signer[:], crypto.Keccak256(pubkey[1:])[12:])
-	if header.Coinbase != signer {
-		return errors.New("Ticket owner not be the signer")
-	}
+func (dt *DaTong) verifySeal(chain consensus.ChainReader, header *types.Header, parent *types.Header) error {
 	// verify ticket
 	snap, err := newSnapshotWithData(getSnapDataByHeader(header))
 	if err != nil {
@@ -244,8 +236,8 @@ func (dt *DaTong) verifySeal(chain consensus.ChainReader, header *types.Header, 
 		return errors.New("Ticket not found")
 	}
 	// verify ticket with signer
-	if ticket.Owner != signer {
-		return errors.New("Ticket owner not be the signer")
+	if header.Coinbase != ticket.Owner {
+		return errors.New("Coinbase is not the voted ticket owner")
 	}
 	// verify tickets pool
 	i := 0
@@ -280,11 +272,6 @@ func (dt *DaTong) verifySeal(chain consensus.ChainReader, header *types.Header, 
 	// check difficulty
 	if diff.Cmp(header.Difficulty) != 0 {
 		return errors.New("verifySeal difficulty mismatch")
-	}
-	// check block time
-	errc := dt.checkBlockTime(chain, header, parent, listSq)
-	if errc != nil {
-		return errc
 	}
 
 	return nil
@@ -549,7 +536,7 @@ func (dt *DaTong) Close() error {
 func (dt *DaTong) getAllTickets(header *types.Header) (common.TicketSlice, error) {
 	statedb, err := state.New(header.Root, dt.stateCache)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("getAllTickets error:%v", err)
 	}
 	return statedb.AllTickets(header.Number)
 }
@@ -874,7 +861,8 @@ func (dt *DaTong) checkTicketInfo(header *types.Header, ticket *common.Ticket) e
 }
 
 // check block time
-func (dt *DaTong) checkBlockTime(chain consensus.ChainReader, header *types.Header, parent *types.Header, list uint64) error {
+func (dt *DaTong) checkBlockTime(chain consensus.ChainReader, header *types.Header, parent *types.Header) error {
+	list := header.Nonce.Uint64()
 	if list <= 0 { // No.1 pass, check others
 		return nil
 	}
