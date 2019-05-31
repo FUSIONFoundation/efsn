@@ -751,6 +751,7 @@ type TicketStruct struct {
 
 type TicketStructSlice []TicketStruct
 type TicketSlice []Ticket
+type TicketPtrSlice []*Ticket
 
 func (t *Ticket) toTicketStruct() TicketStruct {
 	return TicketStruct{t.ID, *t}

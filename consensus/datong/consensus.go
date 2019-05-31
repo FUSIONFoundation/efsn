@@ -306,7 +306,12 @@ func (dt *DaTong) Prepare(chain consensus.ChainReader, header *types.Header) err
 	}
 	header.Extra = header.Extra[:extraVanity]
 	header.Extra = append(header.Extra, make([]byte, extraSeal)...)
-	header.Difficulty = common.Big0
+	difficulty, _, order, _, err := dt.calcBlockDifficulty(chain, header, parent)
+	if err != nil {
+		return err
+	}
+	header.Nonce = types.EncodeNonce(order)
+	header.Difficulty = difficulty
 	return nil
 }
 
@@ -339,12 +344,14 @@ func (dt *DaTong) Finalize(chain consensus.ChainReader, header *types.Header, st
 		return nil, err
 	}
 	parentTime := parent.Time.Uint64()
-	difficulty, selected, selectedTime, retreat, errv := dt.calcBlockDifficulty(chain, header, parent)
-	if errv != nil {
-		return nil, errv
+	selected := header.GetSelectedTicket()
+	retreat := header.GetRetreatTickets()
+	if selected == nil {
+		_, selected, _, retreat, err = dt.calcBlockDifficulty(chain, header, parent)
+		if err != nil {
+			return nil, err
+		}
 	}
-
-	header.Nonce = types.EncodeNonce(selectedTime)
 
 	snap := newSnapshot()
 
@@ -419,7 +426,6 @@ func (dt *DaTong) Finalize(chain consensus.ChainReader, header *types.Header, st
 	snap.SetWeight(remainingWeight)
 	snap.SetTicketWeight(remainingWeight)
 	snap.SetTicketNumber(ticketNumber)
-	header.Difficulty = difficulty
 	snapBytes := snap.Bytes()
 	header.Extra = header.Extra[:extraVanity]
 	header.Extra = append(header.Extra, snapBytes...)
@@ -687,7 +693,10 @@ func (dt *DaTong) HaveBlockBroaded(header *types.Header) bool {
 	return ticketInfo.broad
 }
 
-func (dt *DaTong) calcBlockDifficulty(chain consensus.ChainReader, header *types.Header, parent *types.Header) (*big.Int, *common.Ticket, uint64, []*common.Ticket, error) {
+func (dt *DaTong) calcBlockDifficulty(chain consensus.ChainReader, header *types.Header, parent *types.Header) (*big.Int, *common.Ticket, uint64, common.TicketPtrSlice, error) {
+	if header.GetSelectedTicket() != nil {
+		return header.Difficulty, header.GetSelectedTicket(), header.Nonce.Uint64(), header.GetRetreatTickets(), nil
+	}
 	parentTicketMap, err := dt.getAllTickets(parent)
 	if err != nil {
 		return nil, nil, 0, nil, err
@@ -787,6 +796,9 @@ func (dt *DaTong) calcBlockDifficulty(chain consensus.ChainReader, header *types
 	numberOfticketOwners := uint64(len(ticketOwners))
 	adjust := new(big.Int).SetUint64(numberOfticketOwners - selectedTime)
 	difficulty = new(big.Int).Add(difficulty, adjust)
+
+	header.SetSelectedTicket(selected)
+	header.SetRetreatTickets(retreat)
 
 	return difficulty, selected, selectedTime, retreat, nil
 }
