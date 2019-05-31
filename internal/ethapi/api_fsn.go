@@ -306,22 +306,22 @@ func (args *TakeSwapArgs) toData() ([]byte, error) {
 func (args *MakeMultiSwapArgs) init() {
 
 	if args.FromStartTime == nil || len(args.FromStartTime) == 0 {
-		args.FromStartTime =  make([]*hexutil.Uint64, 1)
+		args.FromStartTime = make([]*hexutil.Uint64, 1)
 		*(*uint64)(args.FromStartTime[0]) = common.TimeLockNow
 	}
 
-	if args.FromEndTime == nil || len(args.FromEndTime) == 0  {
-		args.FromEndTime =  make([]*hexutil.Uint64, 1)
+	if args.FromEndTime == nil || len(args.FromEndTime) == 0 {
+		args.FromEndTime = make([]*hexutil.Uint64, 1)
 		*(*uint64)(args.FromEndTime[0]) = common.TimeLockForever
 	}
 
-	if args.ToStartTime == nil  || len(args.ToStartTime) == 0  {
-		args.ToStartTime =  make([]*hexutil.Uint64, 1)
+	if args.ToStartTime == nil || len(args.ToStartTime) == 0 {
+		args.ToStartTime = make([]*hexutil.Uint64, 1)
 		*(*uint64)(args.ToStartTime[0]) = common.TimeLockNow
 	}
 
-	if args.ToEndTime == nil  || len(args.ToEndTime) == 0 {
-		args.ToEndTime =  make([]*hexutil.Uint64, 1)
+	if args.ToEndTime == nil || len(args.ToEndTime) == 0 {
+		args.ToEndTime = make([]*hexutil.Uint64, 1)
 		*(*uint64)(args.ToEndTime[0]) = common.TimeLockForever
 	}
 }
@@ -526,11 +526,11 @@ func (s *PublicFusionAPI) AssetExistForAddress(ctx context.Context, assetName st
 
 // AllTickets wacom
 func (s *PublicFusionAPI) AllTickets(ctx context.Context, blockNr rpc.BlockNumber) (map[common.Hash]common.Ticket, error) {
-	state, header, err := s.b.StateAndHeaderByNumber(ctx, blockNr)
+	state, _, err := s.b.StateAndHeaderByNumber(ctx, blockNr)
 	if state == nil || err != nil {
 		return nil, err
 	}
-	tickets, err := state.AllTickets(header.Number)
+	tickets, err := state.AllTickets()
 	if err != nil {
 		log.Debug("AllTickets:apifsn.go unable to retrieve previous tickets")
 		return nil, err
@@ -561,12 +561,12 @@ func (s *PublicFusionAPI) TicketPrice(ctx context.Context, blockNr rpc.BlockNumb
 
 // AllTicketsByAddress wacom
 func (s *PublicFusionAPI) AllTicketsByAddress(ctx context.Context, address common.Address, blockNr rpc.BlockNumber) (map[common.Hash]common.Ticket, error) {
-	state, header, err := s.b.StateAndHeaderByNumber(ctx, blockNr)
+	state, _, err := s.b.StateAndHeaderByNumber(ctx, blockNr)
 	var ret = make(map[common.Hash]common.Ticket)
 	if state == nil || err != nil {
 		return nil, err
 	}
-	tickets, err := state.AllTickets(header.Number)
+	tickets, err := state.AllTickets()
 	if err != nil {
 		log.Debug("AllTicketsByAddress:api_fsn.go unable to retrieve previous tickets")
 		return nil, err
@@ -761,7 +761,7 @@ func (s *PrivateFusionAPI) TimeLockToTimeLock(ctx context.Context, args TimeLock
 		return common.Hash{}, fmt.Errorf("TimeLockToTimeLock err:%v", err.Error())
 	}
 
-	if state.GetTimeLockBalance(args.AssetID, args.From).Cmp(needValue, header.Number) < 0 {
+	if state.GetTimeLockBalance(args.AssetID, args.From).Cmp(needValue) < 0 {
 		return common.Hash{}, fmt.Errorf("not enough time lock balance")
 	}
 
@@ -801,7 +801,7 @@ func (s *PrivateFusionAPI) TimeLockToAsset(ctx context.Context, args TimeLockArg
 	if err := needValue.IsValid(); err != nil {
 		return common.Hash{}, fmt.Errorf("TimeLockToAsset err:%v", err.Error())
 	}
-	if state.GetTimeLockBalance(args.AssetID, args.From).Cmp(needValue, header.Number) < 0 {
+	if state.GetTimeLockBalance(args.AssetID, args.From).Cmp(needValue) < 0 {
 		return common.Hash{}, fmt.Errorf("not enough time lock balance")
 	}
 	funcData, err := args.toData(common.TimeLockToAsset)
@@ -873,7 +873,7 @@ func (s *PrivateFusionAPI) BuyTicket(ctx context.Context, args BuyTicketArgs, pa
 	if err := needValue.IsValid(); err != nil {
 		return common.Hash{}, fmt.Errorf("BuyTicket err:%v", err.Error())
 	}
-	if state.GetTimeLockBalance(common.SystemAssetID, args.From).Cmp(needValue, header.Number) < 0 {
+	if state.GetTimeLockBalance(common.SystemAssetID, args.From).Cmp(needValue) < 0 {
 		if state.GetBalance(common.SystemAssetID, args.From).Cmp(value) < 0 {
 			return common.Hash{}, fmt.Errorf("not enough time lock or asset balance")
 		}
@@ -993,7 +993,7 @@ func (s *PrivateFusionAPI) MakeSwap(ctx context.Context, args MakeSwapArgs, pass
 		if err := needValue.IsValid(); err != nil {
 			return common.Hash{}, fmt.Errorf("MakeSwap from err:%v", err.Error())
 		}
-		if state.GetTimeLockBalance(args.FromAssetID, args.From).Cmp(needValue, header.Number) < 0 {
+		if state.GetTimeLockBalance(args.FromAssetID, args.From).Cmp(needValue) < 0 {
 			if state.GetBalance(args.FromAssetID, args.From).Cmp(total) < 0 {
 				return common.Hash{}, fmt.Errorf("not enough time lock or asset balance")
 			}
@@ -1053,7 +1053,7 @@ func (s *PrivateFusionAPI) RecallSwap(ctx context.Context, args RecallSwapArgs, 
 
 // TakeSwap ss
 func (s *PrivateFusionAPI) TakeSwap(ctx context.Context, args TakeSwapArgs, passwd string) (common.Hash, error) {
-	state, header, err := s.b.StateAndHeaderByNumber(ctx, rpc.LatestBlockNumber)
+	state, _, err := s.b.StateAndHeaderByNumber(ctx, rpc.LatestBlockNumber)
 	if state == nil || err != nil {
 		return common.Hash{}, err
 	}
@@ -1086,7 +1086,7 @@ func (s *PrivateFusionAPI) TakeSwap(ctx context.Context, args TakeSwapArgs, pass
 		if err := needValue.IsValid(); err != nil {
 			return common.Hash{}, fmt.Errorf("TakeSwap to err:%v", err.Error())
 		}
-		if state.GetTimeLockBalance(swap.ToAssetID, args.From).Cmp(needValue, header.Number) < 0 {
+		if state.GetTimeLockBalance(swap.ToAssetID, args.From).Cmp(needValue) < 0 {
 			if state.GetBalance(swap.ToAssetID, args.From).Cmp(total) < 0 {
 				return common.Hash{}, fmt.Errorf("not enough time lock or asset balance")
 			}
@@ -1334,7 +1334,7 @@ func (s *FusionTransactionAPI) BuildTimeLockToTimeLockTx(ctx context.Context, ar
 		return nil, fmt.Errorf("BuildTimeLockToTimeLockTx err:%v", err.Error())
 	}
 
-	if state.GetTimeLockBalance(args.AssetID, args.From).Cmp(needValue, header.Number) < 0 {
+	if state.GetTimeLockBalance(args.AssetID, args.From).Cmp(needValue) < 0 {
 		return nil, fmt.Errorf("not enough time lock balance")
 	}
 
@@ -1383,7 +1383,7 @@ func (s *FusionTransactionAPI) BuildTimeLockToAssetTx(ctx context.Context, args 
 	if err := needValue.IsValid(); err != nil {
 		return nil, fmt.Errorf("BuildTimeLockToAssetTx err:%v", err.Error())
 	}
-	if state.GetTimeLockBalance(args.AssetID, args.From).Cmp(needValue, header.Number) < 0 {
+	if state.GetTimeLockBalance(args.AssetID, args.From).Cmp(needValue) < 0 {
 		return nil, fmt.Errorf("not enough time lock balance")
 	}
 	funcData, err := args.toData(common.TimeLockToAsset)
@@ -1440,7 +1440,7 @@ func (s *FusionTransactionAPI) BuildBuyTicketTx(ctx context.Context, args BuyTic
 		return nil, fmt.Errorf("BuildBuyTicketTx err:%v", err.Error())
 	}
 
-	if state.GetTimeLockBalance(common.SystemAssetID, args.From).Cmp(needValue, header.Number) < 0 {
+	if state.GetTimeLockBalance(common.SystemAssetID, args.From).Cmp(needValue) < 0 {
 		if state.GetBalance(common.SystemAssetID, args.From).Cmp(value) < 0 {
 			return nil, fmt.Errorf("not enough time lock or asset balance")
 		}
@@ -1587,7 +1587,7 @@ func (s *FusionTransactionAPI) BuildMakeSwapTx(ctx context.Context, args MakeSwa
 		if err := needValue.IsValid(); err != nil {
 			return nil, fmt.Errorf("BuildMakeSwapTx from err:%v", err.Error())
 		}
-		if state.GetTimeLockBalance(args.FromAssetID, args.From).Cmp(needValue, header.Number) < 0 {
+		if state.GetTimeLockBalance(args.FromAssetID, args.From).Cmp(needValue) < 0 {
 			if state.GetBalance(args.FromAssetID, args.From).Cmp(total) < 0 {
 				return nil, fmt.Errorf("not enough time lock or asset balance")
 			}
@@ -1667,7 +1667,7 @@ func (s *FusionTransactionAPI) RecallSwap(ctx context.Context, args RecallSwapAr
 
 // BuildTakeSwapTx ss
 func (s *FusionTransactionAPI) BuildTakeSwapTx(ctx context.Context, args TakeSwapArgs) (*types.Transaction, error) {
-	state, header, err := s.b.StateAndHeaderByNumber(ctx, rpc.LatestBlockNumber)
+	state, _, err := s.b.StateAndHeaderByNumber(ctx, rpc.LatestBlockNumber)
 	if state == nil || err != nil {
 		return nil, err
 	}
@@ -1699,7 +1699,7 @@ func (s *FusionTransactionAPI) BuildTakeSwapTx(ctx context.Context, args TakeSwa
 		if err := needValue.IsValid(); err != nil {
 			return nil, fmt.Errorf("BuildTakeSwapTx to err:%v", err.Error())
 		}
-		if state.GetTimeLockBalance(swap.ToAssetID, args.From).Cmp(needValue, header.Number) < 0 {
+		if state.GetTimeLockBalance(swap.ToAssetID, args.From).Cmp(needValue) < 0 {
 			if state.GetBalance(swap.ToAssetID, args.From).Cmp(total) < 0 {
 				return nil, fmt.Errorf("not enough time lock or asset balance")
 			}
@@ -1744,7 +1744,7 @@ func (s *FusionTransactionAPI) BuildMakeMultiSwapTx(ctx context.Context, args Ma
 	}
 
 	ln := len(args.MinFromAmount)
-	for i := 0 ; i < ln ; i++ {
+	for i := 0; i < ln; i++ {
 		total := new(big.Int).Mul(args.MinFromAmount[i].ToInt(), args.SwapSize)
 		start := uint64(*args.FromStartTime[i])
 		end := uint64(*args.FromEndTime[i])
@@ -1764,7 +1764,7 @@ func (s *FusionTransactionAPI) BuildMakeMultiSwapTx(ctx context.Context, args Ma
 			if err := needValue.IsValid(); err != nil {
 				return nil, fmt.Errorf("BuildMakeSwapTx from err:%v", err.Error())
 			}
-			if state.GetTimeLockBalance(args.FromAssetID[i], args.From).Cmp(needValue, header.Number) < 0 {
+			if state.GetTimeLockBalance(args.FromAssetID[i], args.From).Cmp(needValue) < 0 {
 				if state.GetBalance(args.FromAssetID[i], args.From).Cmp(total) < 0 {
 					return nil, fmt.Errorf("not enough time lock or asset balance")
 				}
@@ -1827,7 +1827,7 @@ func (s *FusionTransactionAPI) BuildMultiRecallSwapTx(ctx context.Context, args 
 
 // BuildTakeSwapTx ss
 func (s *FusionTransactionAPI) BuildTakeMultiSwapTx(ctx context.Context, args TakeMultiSwapArgs) (*types.Transaction, error) {
-	state, header, err := s.b.StateAndHeaderByNumber(ctx, rpc.LatestBlockNumber)
+	state, _, err := s.b.StateAndHeaderByNumber(ctx, rpc.LatestBlockNumber)
 	if state == nil || err != nil {
 		return nil, err
 	}
@@ -1842,8 +1842,8 @@ func (s *FusionTransactionAPI) BuildTakeMultiSwapTx(ctx context.Context, args Ta
 		return nil, err
 	}
 
-	ln := len( swap.MinToAmount)
-	for i := 0 ; i < ln ; i++ {
+	ln := len(swap.MinToAmount)
+	for i := 0; i < ln; i++ {
 		total := new(big.Int).Mul(swap.MinToAmount[i], args.Size)
 		start := swap.ToStartTime[i]
 		end := swap.ToEndTime[i]
@@ -1861,7 +1861,7 @@ func (s *FusionTransactionAPI) BuildTakeMultiSwapTx(ctx context.Context, args Ta
 			if err := needValue.IsValid(); err != nil {
 				return nil, fmt.Errorf("BuildTakeSwapTx to err:%v", err.Error())
 			}
-			if state.GetTimeLockBalance(swap.ToAssetID[i], args.From).Cmp(needValue, header.Number) < 0 {
+			if state.GetTimeLockBalance(swap.ToAssetID[i], args.From).Cmp(needValue) < 0 {
 				if state.GetBalance(swap.ToAssetID[i], args.From).Cmp(total) < 0 {
 					return nil, fmt.Errorf("not enough time lock or asset balance")
 				}

@@ -28,7 +28,6 @@ import (
 	"github.com/FusionFoundation/efsn/common"
 	"github.com/FusionFoundation/efsn/core/types"
 	"github.com/FusionFoundation/efsn/core/vm"
-	"github.com/FusionFoundation/efsn/crypto"
 	"github.com/FusionFoundation/efsn/log"
 	"github.com/FusionFoundation/efsn/params"
 	"github.com/FusionFoundation/efsn/rlp"
@@ -61,6 +60,7 @@ type StateTransition struct {
 	gas        uint64
 	gasPrice   *big.Int
 	initialGas uint64
+	fee        *big.Int
 	value      *big.Int
 	data       []byte
 	state      vm.StateDB
@@ -160,6 +160,7 @@ func (st *StateTransition) useGas(amount uint64) error {
 
 func (st *StateTransition) buyGas() error {
 	mgval := new(big.Int).Mul(new(big.Int).SetUint64(st.msg.Gas()), st.gasPrice)
+	mgval.Add(mgval, st.fee)
 	if st.state.GetBalance(common.SystemAssetID, st.msg.From()).Cmp(mgval) < 0 {
 		return errInsufficientBalanceForGas
 	}
@@ -190,6 +191,7 @@ func (st *StateTransition) preCheck() error {
 // returning the result including the used gas. It returns an error if failed.
 // An error indicates a consensus issue.
 func (st *StateTransition) TransitionDb() (ret []byte, usedGas uint64, failed bool, err error) {
+	st.fee = st.FsnCallFee()
 	if err = st.preCheck(); err != nil {
 		return
 	}
@@ -220,7 +222,7 @@ func (st *StateTransition) TransitionDb() (ret []byte, usedGas uint64, failed bo
 		// Increment the nonce for the next transaction
 		st.state.SetNonce(msg.From(), st.state.GetNonce(sender.Address())+1)
 
-		if st.msg.To() != nil && *st.msg.To() == common.FSNCallAddress {
+		if st.to() == common.FSNCallAddress {
 			st.handleFsnCall()
 		}
 
@@ -236,7 +238,11 @@ func (st *StateTransition) TransitionDb() (ret []byte, usedGas uint64, failed bo
 		}
 	}
 	st.refundGas()
-	st.state.AddBalance(st.evm.Coinbase, common.SystemAssetID, new(big.Int).Mul(new(big.Int).SetUint64(st.gasUsed()), st.gasPrice))
+	minerFees := new(big.Int).Mul(new(big.Int).SetUint64(st.gasUsed()), st.gasPrice)
+	if st.fee.Sign() > 0 {
+		minerFees.Add(minerFees, st.fee)
+	}
+	st.state.AddBalance(st.evm.Coinbase, common.SystemAssetID, minerFees)
 
 	return ret, st.gasUsed(), vmerr != nil, err
 }
@@ -369,7 +375,7 @@ func (st *StateTransition) handleFsnCall() error {
 			if st.msg.From() == timeLockParam.To {
 				st.state.AddTimeLockBalance(timeLockParam.To, timeLockParam.AssetID, totalValue, height, timestamp)
 			} else {
-				surplusValue := new(common.TimeLock).Sub2(totalValue, needValue)
+				surplusValue := new(common.TimeLock).Sub(totalValue, needValue)
 				if !surplusValue.IsEmpty() {
 					st.state.AddTimeLockBalance(st.msg.From(), timeLockParam.AssetID, surplusValue, height, timestamp)
 				}
@@ -379,7 +385,7 @@ func (st *StateTransition) handleFsnCall() error {
 			st.addLog(common.TimeLockFunc, timeLockParam, common.NewKeyValue("LockType", "AssetToTimeLock"), common.NewKeyValue("AssetID", timeLockParam.AssetID))
 			return nil
 		case common.TimeLockToTimeLock:
-			if st.state.GetTimeLockBalance(timeLockParam.AssetID, st.msg.From()).Cmp(needValue, height) < 0 {
+			if st.state.GetTimeLockBalance(timeLockParam.AssetID, st.msg.From()).Cmp(needValue) < 0 {
 				st.addLog(common.TimeLockFunc, timeLockParam, common.NewKeyValue("LockType", "TimeLockToTimeLock"), common.NewKeyValue("Error", "not enough time lock balance"))
 				return fmt.Errorf("not enough time lock balance")
 			}
@@ -388,7 +394,7 @@ func (st *StateTransition) handleFsnCall() error {
 			st.addLog(common.TimeLockFunc, timeLockParam, common.NewKeyValue("LockType", "TimeLockToTimeLock"), common.NewKeyValue("AssetID", timeLockParam.AssetID))
 			return nil
 		case common.TimeLockToAsset:
-			if st.state.GetTimeLockBalance(timeLockParam.AssetID, st.msg.From()).Cmp(needValue, height) < 0 {
+			if st.state.GetTimeLockBalance(timeLockParam.AssetID, st.msg.From()).Cmp(needValue) < 0 {
 				st.addLog(common.TimeLockFunc, timeLockParam, common.NewKeyValue("LockType", "TimeLockToAsset"), common.NewKeyValue("Error", "not enough time lock balance"))
 				return fmt.Errorf("not enough time lock balance")
 			}
@@ -399,22 +405,12 @@ func (st *StateTransition) handleFsnCall() error {
 		}
 	case common.BuyTicketFunc:
 		outputCommandInfo("BuyTicketFunc", "from", st.msg.From())
-		// log.Info( "Buy a ticket func called")
 		from := st.msg.From()
-		hash := st.evm.GetHash(height.Uint64() - 1)
-		id := crypto.Keccak256Hash(from[:], hash[:])
+		id := common.TicketID(from, height)
 
-		tickets, err := st.state.AllTickets(new(big.Int).Sub(height, common.Big1))
-
-		if err != nil {
-			st.addLog(common.BuyTicketFunc, param.Data, common.NewKeyValue("Error", "unable to retrieve previous tickets"))
-			log.Debug("BuyTicketFunc unable to retrieve previous tickets")
-			return err
-		}
-
-		if _, ok := tickets.Get(id); ok {
-			st.addLog(common.BuyTicketFunc, param.Data, common.NewKeyValue("Error", "one block just can buy one ticket"))
-			return fmt.Errorf("one block just can buy one ticket")
+		if st.state.IsTicketExist(id) {
+			st.addLog(common.BuyTicketFunc, param.Data, common.NewKeyValue("Error", "Ticket already exist"))
+			return fmt.Errorf("Ticket already exist")
 		}
 
 		buyTicketParam := common.BuyTicketParam{}
@@ -441,7 +437,6 @@ func (st *StateTransition) handleFsnCall() error {
 		}
 
 		ticket := common.Ticket{
-			ID:         id,
 			Owner:      from,
 			Height:     height,
 			StartTime:  buyTicketParam.Start,
@@ -450,7 +445,7 @@ func (st *StateTransition) handleFsnCall() error {
 		}
 
 		useAsset := false
-		if st.state.GetTimeLockBalance(common.SystemAssetID, from).Cmp(needValue, height) < 0 {
+		if st.state.GetTimeLockBalance(common.SystemAssetID, from).Cmp(needValue) < 0 {
 			if st.state.GetBalance(common.SystemAssetID, from).Cmp(value) < 0 {
 				st.addLog(common.BuyTicketFunc, param.Data, common.NewKeyValue("Error", "not enough time lock or asset balance"))
 				return fmt.Errorf("not enough time lock or asset balance")
@@ -466,7 +461,7 @@ func (st *StateTransition) handleFsnCall() error {
 				EndTime:   common.TimeLockForever,
 				Value:     value,
 			})
-			surplusValue := new(common.TimeLock).Sub2(totalValue, needValue)
+			surplusValue := new(common.TimeLock).Sub(totalValue, needValue)
 			if !surplusValue.IsEmpty() {
 				st.state.AddTimeLockBalance(from, common.SystemAssetID, surplusValue, height, timestamp)
 			}
@@ -519,15 +514,6 @@ func (st *StateTransition) handleFsnCall() error {
 		if asset.Owner != st.msg.From() {
 			st.addLog(common.AssetValueChangeFunc, assetValueChangeParamEx, common.NewKeyValue("Error", "must be change by owner"))
 			return fmt.Errorf("must be change by owner")
-		}
-
-		currentBalance := st.state.GetBalance(assetValueChangeParamEx.AssetID, assetValueChangeParamEx.To)
-		val := assetValueChangeParamEx.Value
-		if !assetValueChangeParamEx.IsInc {
-			if currentBalance.Cmp(val) < 0 {
-				st.addLog(common.AssetValueChangeFunc, assetValueChangeParamEx, common.NewKeyValue("Error", "not enough asset"))
-				return fmt.Errorf("not enough asset")
-			}
 		}
 
 		if assetValueChangeParamEx.IsInc {
@@ -635,7 +621,7 @@ func (st *StateTransition) handleFsnCall() error {
 				}
 			} else {
 				available := st.state.GetTimeLockBalance(makeSwapParam.FromAssetID, st.msg.From())
-				if available.Cmp(needValue, height) < 0 {
+				if available.Cmp(needValue) < 0 {
 					if param.Func == common.MakeSwapFunc {
 						// this was the legacy swap do not do
 						// time lock and just return an error
@@ -792,7 +778,7 @@ func (st *StateTransition) handleFsnCall() error {
 			}
 		} else {
 			available := st.state.GetTimeLockBalance(swap.ToAssetID, st.msg.From())
-			if available.Cmp(toNeedValue, height) < 0 {
+			if available.Cmp(toNeedValue) < 0 {
 				if param.Func == common.TakeSwapFunc {
 					// this was the legacy swap do not do
 					// time lock and just return an error
@@ -998,7 +984,7 @@ func (st *StateTransition) handleFsnCall() error {
 				}
 			} else {
 				available := st.state.GetTimeLockBalance(makeSwapParam.FromAssetID[i], st.msg.From())
-				if available.Cmp(needValue[i], height) < 0 {
+				if available.Cmp(needValue[i]) < 0 {
 					if st.state.GetBalance(makeSwapParam.FromAssetID[i], st.msg.From()).Cmp(total[i]) < 0 {
 						st.addLog(common.MakeMultiSwapFunc, makeSwapParam, common.NewKeyValue("Error", "not enough time lock or asset balance"))
 						return fmt.Errorf("not enough time lock or asset balance")
@@ -1015,7 +1001,7 @@ func (st *StateTransition) handleFsnCall() error {
 				}
 			} else {
 				available := st.state.GetTimeLockBalance(makeSwapParam.FromAssetID[i], st.msg.From())
-				if available.Cmp(needValue[i], height) < 0 {
+				if available.Cmp(needValue[i]) < 0 {
 
 					if st.state.GetBalance(makeSwapParam.FromAssetID[i], st.msg.From()).Cmp(total[i]) < 0 {
 						st.addLog(common.MakeMultiSwapFunc, makeSwapParam, common.NewKeyValue("Error", "not enough time lock or asset balance"))
@@ -1111,7 +1097,7 @@ func (st *StateTransition) handleFsnCall() error {
 				}
 			} else {
 				available := st.state.GetTimeLockBalance(swap.ToAssetID[i], st.msg.From())
-				if available.Cmp(toNeedValue[i], height) < 0 {
+				if available.Cmp(toNeedValue[i]) < 0 {
 
 					if st.state.GetBalance(swap.ToAssetID[i], st.msg.From()).Cmp(toTotal[i]) < 0 {
 						st.addLog(common.TakeMultiSwapFunc, takeSwapParam, common.NewKeyValue("Error", "not enough time lock balance"))
@@ -1213,4 +1199,24 @@ func (st *StateTransition) addLog(typ common.FSNCallFunc, value interface{}, key
 		Data:        data,
 		BlockNumber: st.evm.BlockNumber.Uint64(),
 	})
+}
+
+func (st *StateTransition) FsnCallFee() *big.Int {
+	fee := common.Big0
+	if st.to() != common.FSNCallAddress {
+		return fee
+	}
+	param := common.FSNCallParam{}
+	rlp.DecodeBytes(st.msg.Data(), &param)
+	switch param.Func {
+	case common.GenNotationFunc:
+		fee = big.NewInt(1000000000000000000) // 1 FSN
+	case common.GenAssetFunc:
+		fee = big.NewInt(1000000000000000000) // 1 FSN
+	case common.MakeSwapFunc, common.MakeSwapFuncExt:
+		fee = big.NewInt(100000000000000000) // 0.1 FSN
+	case common.TimeLockFunc:
+		fee = big.NewInt(1000000000000000) // 0.001 FSN
+	}
+	return fee
 }

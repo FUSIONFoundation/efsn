@@ -90,14 +90,22 @@ type stateObject struct {
 
 // empty returns whether the account is considered empty.
 func (s *stateObject) empty() bool {
-	var balanceEmpty = true
+	if s.data.Nonce != 0 {
+		return false
+	}
 	if len(s.data.BalancesVal) > 0 {
-		balanceEmpty = false
+		return false
 	}
 	if len(s.data.TimeLockBalancesVal) > 0 {
-		balanceEmpty = false
+		return false
 	}
-	return s.data.Nonce == 0 && balanceEmpty && bytes.Equal(s.data.CodeHash, emptyCodeHash)
+	if bytes.Equal(s.data.CodeHash, emptyCodeHash) == false {
+		return false
+	}
+	if s.address.IsSpecialKeyAddress() == true {
+		return false
+	}
+	return true
 }
 
 func (s *stateObject) deepCopyBalancesHash() []common.Hash {
@@ -427,11 +435,7 @@ func (s *stateObject) AddTimeLockBalance(assetID common.Hash, amount *common.Tim
 
 	index := s.timeLockAssetIndex(assetID)
 	res := s.data.TimeLockBalancesVal[index]
-	
-	if res != nil && res.IsNormalized() == false {
-		res = res.Normalize()
-	}
-	res = new(common.TimeLock).Add2(res, amount)
+	res = new(common.TimeLock).Add(res, amount)
 	if res != nil {
 		res = res.ClearExpired(timestamp)
 	}
@@ -447,15 +451,11 @@ func (s *stateObject) SubTimeLockBalance(assetID common.Hash, amount *common.Tim
 
 	index := s.timeLockAssetIndex(assetID)
 	res := s.data.TimeLockBalancesVal[index]
-	
-	if res != nil && res.IsNormalized() == false {
-		res = res.Normalize()
-	}
-	res = new(common.TimeLock).Sub2(res, amount)
+	res = new(common.TimeLock).Sub(res, amount)
 	if res != nil {
 		res = res.ClearExpired(timestamp)
 	}
-	
+
 	s.SetTimeLockBalance(assetID, res)
 }
 

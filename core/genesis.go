@@ -31,7 +31,6 @@ import (
 	"github.com/FusionFoundation/efsn/core/rawdb"
 	"github.com/FusionFoundation/efsn/core/state"
 	"github.com/FusionFoundation/efsn/core/types"
-	"github.com/FusionFoundation/efsn/crypto"
 	"github.com/FusionFoundation/efsn/ethdb"
 	"github.com/FusionFoundation/efsn/log"
 	"github.com/FusionFoundation/efsn/params"
@@ -249,20 +248,15 @@ func (g *Genesis) ToBlock(db ethdb.Database) *types.Block {
 	if g.TicketCreateInfo != nil {
 		var x uint64
 		for x = 0; x < g.TicketCreateInfo.Count; x++ {
-			from := g.TicketCreateInfo.Owner
-			hash := crypto.Keccak256Hash(new(big.Int).SetUint64(x).Bytes())
-			id := crypto.Keccak256Hash(from[:], hash[:])
 			ticket := common.Ticket{
-				ID:         id,
 				Owner:      g.TicketCreateInfo.Owner,
-				Height:     big.NewInt(0),
+				Height:     new(big.Int).SetInt64(-int64(x)),
 				StartTime:  g.TicketCreateInfo.Time,
 				ExpireTime: g.TicketCreateInfo.Time + 30*24*3600,
 				Value:      common.TicketPrice(blockNumber),
 			}
 			statedb.AddTicket(ticket)
 		}
-		statedb.UpdateTickets(blockNumber)
 	}
 
 	statedb.GenAsset(common.SystemAsset)

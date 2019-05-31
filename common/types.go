@@ -369,6 +369,14 @@ var SwapKeyAddress = HexToAddress("0xfffffffffffffffffffffffffffffffffffffffa")
 // MultiSwapKeyAddress wacom
 var MultiSwapKeyAddress = HexToAddress("0xfffffffffffffffffffffffffffffffffffffff9")
 
+func (addr Address) IsSpecialKeyAddress() bool {
+	return addr == TicketKeyAddress ||
+		addr == NotationKeyAddress ||
+		addr == AssetKeyAddress ||
+		addr == SwapKeyAddress ||
+		addr == MultiSwapKeyAddress
+}
+
 var (
 	// NotationKey wacom
 	NotationKey = []byte{0x01}
@@ -706,127 +714,122 @@ var SystemAsset = Asset{
 
 // Ticket wacom
 type Ticket struct {
-	ID         Hash
 	Owner      Address
 	Height     *big.Int `json:",string"`
 	StartTime  uint64
 	ExpireTime uint64
 	Value      *big.Int `json:",string"`
-	weight     *big.Int `json:",string"`
 }
 
-func (t *Ticket) DeepCopy() Ticket {
-	height := *t.Height
-	value := *t.Value
-	w := t.Weight()
-	wt := new(big.Int)
-	if w != nil {
-		wt = &(*w)
+func (t *Ticket) IsInGenesis() bool {
+	return t.Height.Sign() <= 0
+}
+
+func (t *Ticket) ID() Hash {
+	return TicketID(t.Owner, t.Height)
+}
+
+func (t *Ticket) ToValHash() Hash {
+	h := Hash{}
+	copy(h[:8], Uint64ToBytes(t.StartTime))
+	copy(h[8:16], Uint64ToBytes(t.ExpireTime))
+	copy(h[HashLength-len(t.Value.Bytes()):], t.Value.Bytes())
+	return h
+}
+
+func TicketID(owner Address, height *big.Int) Hash {
+	h := Hash{}
+	copy(h[:AddressLength], owner[:])
+	if height.Sign() < 0 {
+		h[AddressLength] = 0xff
 	}
-	return Ticket{
-		ID:         t.ID,
+	copy(h[HashLength-len(height.Bytes()):], height.Bytes())
+	return h
+}
+
+func (t *Ticket) MarshalJSON() ([]byte, error) {
+	height := t.Height
+	if t.IsInGenesis() {
+		height = Big0
+	}
+	return json.Marshal(&struct {
+		ID         Hash
+		Owner      Address
+		Height     string
+		StartTime  uint64
+		ExpireTime uint64
+		Value      string
+	}{
+		ID:         t.ID(),
 		Owner:      t.Owner,
-		Height:     &height,
+		Height:     height.String(),
 		StartTime:  t.StartTime,
 		ExpireTime: t.ExpireTime,
-		Value:      &value,
-		weight:     wt,
+		Value:      t.Value.String(),
+	})
+}
+
+func (t *Ticket) String() string {
+	b, _ := json.Marshal(t)
+	return string(b)
+}
+
+func ParseTicket(key, value Hash) (*Ticket, error) {
+	if key == (Hash{}) {
+		return nil, fmt.Errorf("ParseTicket: empty key")
 	}
+	if value == (Hash{}) {
+		return nil, fmt.Errorf("ParseTicket: empty value")
+	}
+	owner := BytesToAddress(key[:AddressLength])
+	sign := key[AddressLength]
+	height := new(big.Int).SetBytes(key[AddressLength+1:])
+	if sign == 0xff {
+		height = new(big.Int).Sub(Big0, height)
+	}
+	start := BytesToUint64(value[:8])
+	end := BytesToUint64(value[8:16])
+	val := new(big.Int).SetBytes(value[16:])
+	return &Ticket{
+		Owner:      owner,
+		Height:     height,
+		StartTime:  start,
+		ExpireTime: end,
+		Value:      val,
+	}, nil
 }
 
-// SetWeight wacom
-func (t *Ticket) SetWeight(value *big.Int) {
-	t.weight = value
-}
-
-// Weight wacom
-func (t *Ticket) Weight() *big.Int {
-	return t.weight
-}
-
-type TicketStruct struct {
-	Hash
-	Ticket
-}
-
-type TicketStructSlice []TicketStruct
 type TicketSlice []Ticket
+type TicketPtrSlice []*Ticket
 
-func (t *Ticket) toTicketStruct() TicketStruct {
-	return TicketStruct{t.ID, *t}
+func (s TicketSlice) String() string {
+	b, _ := json.Marshal(s)
+	return string(b)
 }
 
-func (s TicketStructSlice) ToTicketSlice() TicketSlice {
-	r := make(TicketSlice, 0, len(s))
-	for _, t := range s {
-		r = append(r, t.Ticket)
-	}
-	return r
-}
-
-func (s TicketSlice) ToTicketStructSlice() TicketStructSlice {
-	r := make(TicketStructSlice, 0, len(s))
-	for _, t := range s {
-		r = append(r, t.toTicketStruct())
-	}
-	return r
-}
-
-func (s TicketSlice) Len() int {
-	return len(s)
-}
-
-func (s TicketSlice) Less(i, j int) bool {
-	a, _ := new(big.Int).SetString(s[i].ID.Hex(), 0)
-	b, _ := new(big.Int).SetString(s[j].ID.Hex(), 0)
-	return a.Cmp(b) < 0
-}
-
-func (s TicketSlice) Swap(i, j int) {
-	s[i], s[j] = s[j], s[i]
+func (s TicketPtrSlice) String() string {
+	b, _ := json.Marshal(s)
+	return string(b)
 }
 
 func (s TicketSlice) ToMap() map[Hash]Ticket {
 	r := make(map[Hash]Ticket, len(s))
 	for _, t := range s {
-		r[t.ID] = t
+		id := t.ID()
+		if t.IsInGenesis() {
+			t.Height = Big0
+		}
+		r[id] = t
 	}
 	return r
 }
 
 func (s TicketSlice) DeepCopy() TicketSlice {
-	if s == nil || len(s) == 0 {
-		return nil
-	}
 	r := make(TicketSlice, 0, len(s))
 	for _, t := range s {
 		r = append(r, t)
 	}
 	return r
-}
-
-func (s TicketSlice) Get(tid Hash) (*Ticket, bool) {
-	for _, t := range s {
-		if t.ID == tid {
-			return &t, true
-		}
-	}
-	return nil, false
-}
-
-func (s TicketSlice) Add(ticket *Ticket) TicketSlice {
-	s = append(s, *ticket)
-	return s
-}
-
-func (s TicketSlice) Delete(tid Hash) TicketSlice {
-	for i, t := range s {
-		if t.ID == tid {
-			s = append(s[:i], s[i+1:]...)
-			break
-		}
-	}
-	return s
 }
 
 // Swap wacom
@@ -1125,16 +1128,15 @@ func (p *MakeMultiSwapParam) Check(blockNumber *big.Int, timestamp uint64) error
 		return fmt.Errorf("SwapSize must be ge 1")
 	}
 
-
 	if len(p.MinFromAmount) != len(p.FromEndTime) ||
 		len(p.MinFromAmount) != len(p.FromAssetID) ||
 		len(p.MinFromAmount) != len(p.FromStartTime) {
-			return fmt.Errorf("MinFromAmount FromEndTime and FromStartTime array length must be same size")
+		return fmt.Errorf("MinFromAmount FromEndTime and FromStartTime array length must be same size")
 	}
 	if len(p.MinToAmount) != len(p.ToEndTime) ||
 		len(p.MinToAmount) != len(p.ToAssetID) ||
 		len(p.MinToAmount) != len(p.ToStartTime) {
-			return fmt.Errorf("MinToAmount ToEndTime and ToStartTime array length must be same size")
+		return fmt.Errorf("MinToAmount ToEndTime and ToStartTime array length must be same size")
 	}
 
 	for i := 0; i < ln; i++ {
@@ -1232,14 +1234,13 @@ func (p *TakeMultiSwapParam) Check(blockNumber *big.Int, swap *MultiSwap, timest
 	if len(swap.MinFromAmount) != len(swap.FromEndTime) ||
 		len(swap.MinFromAmount) != len(swap.FromAssetID) ||
 		len(swap.MinFromAmount) != len(swap.FromStartTime) {
-			return fmt.Errorf("MinFromAmount FromEndTime and FromStartTime array length must be same size")
+		return fmt.Errorf("MinFromAmount FromEndTime and FromStartTime array length must be same size")
 	}
 	if len(swap.MinToAmount) != len(swap.ToEndTime) ||
 		len(swap.MinToAmount) != len(swap.ToAssetID) ||
 		len(swap.MinToAmount) != len(swap.ToStartTime) {
-			return fmt.Errorf("MinToAmount ToEndTime and ToStartTime array length must be same size")
+		return fmt.Errorf("MinToAmount ToEndTime and ToStartTime array length must be same size")
 	}
-
 
 	for i := 0; i < ln; i++ {
 		if swap.MinFromAmount == nil || swap.MinFromAmount[i].Cmp(Big0) <= 0 {

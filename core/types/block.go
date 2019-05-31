@@ -83,6 +83,25 @@ type Header struct {
 	Extra       []byte         `json:"extraData"        gencodec:"required"`
 	MixDigest   common.Hash    `json:"mixHash"          gencodec:"required"`
 	Nonce       BlockNonce     `json:"nonce"            gencodec:"required"`
+
+	selectedTicket *common.Ticket
+	retreatTickets common.TicketPtrSlice
+}
+
+func (h *Header) GetSelectedTicket() *common.Ticket {
+	return h.selectedTicket
+}
+
+func (h *Header) SetSelectedTicket(t *common.Ticket) {
+	h.selectedTicket = t
+}
+
+func (h *Header) GetRetreatTickets() common.TicketPtrSlice {
+	return h.retreatTickets
+}
+
+func (h *Header) SetRetreatTickets(s common.TicketPtrSlice) {
+	h.retreatTickets = s
 }
 
 // field type overrides for gencodec
