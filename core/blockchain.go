@@ -220,12 +220,9 @@ func (bc *BlockChain) loadLastState() error {
 		return bc.Reset()
 	}
 	// Make sure the state associated with the block is available
-	if _, err := state.New(currentBlock.Root(), bc.stateCache); err != nil {
-		// Dangling block without a state associated, init from scratch
-		log.Warn("Head state missing, repairing chain", "number", currentBlock.Number(), "hash", currentBlock.Hash())
-		if err := bc.repair(&currentBlock); err != nil {
-			return err
-		}
+	if err := bc.repair(&currentBlock); err != nil {
+		log.Warn("repairing chain failed", "err", err)
+		return err
 	}
 	// Everything seems to be fine, set as the head block
 	bc.currentBlock.Store(currentBlock)
@@ -427,14 +424,33 @@ func (bc *BlockChain) ResetWithGenesisBlock(genesis *types.Block) error {
 // This method only rolls back the current block. The current header and current
 // fast block are left intact.
 func (bc *BlockChain) repair(head **types.Block) error {
+	rewound := false
 	for {
+		blockNumber := (*head).Number()
 		// Abort if we've rewound to a head block that does have associated state
-		if _, err := state.New((*head).Root(), bc.stateCache); err == nil {
-			log.Info("Rewound blockchain to past state", "number", (*head).Number(), "hash", (*head).Hash())
-			return nil
+		if statedb, err := state.New((*head).Root(), bc.stateCache); err == nil {
+			if tickets, err := statedb.AllTickets(blockNumber); err == nil {
+				ok := true
+				for _, t := range tickets {
+					if t.Height.Cmp(blockNumber) > 0 {
+						log.Info("Wrong ticket state", "id", t.ID.String(), "block height", blockNumber, "ticket height", t.Height)
+						ok = false
+						break
+					}
+				}
+				if ok {
+					if rewound {
+						log.Info("Rewound blockchain to past state", "number", blockNumber, "hash", (*head).Hash())
+					}
+					return nil
+				}
+			}
+		} else if !rewound {
+			log.Warn("Head state missing, repairing chain", "number", blockNumber, "hash", (*head).Hash())
 		}
 		// Otherwise rewind one block and recheck state availability there
-		(*head) = bc.GetBlock((*head).ParentHash(), (*head).NumberU64()-1)
+		(*head) = bc.GetBlock((*head).ParentHash(), blockNumber.Uint64()-1)
+		rewound = true
 	}
 }
 
@@ -1473,6 +1489,7 @@ func (bc *BlockChain) reportBlock(block *types.Block, receipts types.Receipts, e
 Chain config: %v
 
 Number: %v
+Order: %v
 Hash: 0x%x
 Miner: 0x%x
 Difficulty: %v
@@ -1480,7 +1497,7 @@ Difficulty: %v
 
 Error: %v
 ##############################
-`, bc.chainConfig, block.Number(), block.Hash(), block.Header().Coinbase, block.Difficulty(), receiptString, err))
+`, bc.chainConfig, block.Number(), block.Nonce(), block.Hash(), block.Header().Coinbase, block.Difficulty(), receiptString, err))
 }
 
 // InsertHeaderChain attempts to insert the given header chain in to the local

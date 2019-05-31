@@ -716,6 +716,8 @@ func (dt *DaTong) calcBlockDifficulty(chain consensus.ChainReader, header *types
 			if exist == false {
 				ticketOwners[temp.Owner] = struct{}{}
 			}
+		} else {
+			return nil, nil, 0, nil, fmt.Errorf("Ticket (%v) has height (%v) greater than block height (%v)", v.ID.String(), v.Height.Uint64(), parent.Number.Uint64())
 		}
 	}
 	dt.weight.SetUint64(weight)
