@@ -1325,6 +1325,7 @@ func (pool *TxPool) validateFsnCallTx(tx *types.Transaction) error {
 		if n := state.GetNotation(from); n != 0 {
 			return fmt.Errorf("Account %s has a notation:%d", from.String(), n)
 		}
+		fee = big.NewInt(1000000000000000000) // 1 FSN
 
 	case common.GenAssetFunc:
 		genAssetParam := common.GenAssetParam{}
@@ -1336,6 +1337,7 @@ func (pool *TxPool) validateFsnCallTx(tx *types.Transaction) error {
 		if _, err := state.GetAsset(assetID); err == nil {
 			return fmt.Errorf("%s asset exists", assetID.String())
 		}
+		fee = big.NewInt(1000000000000000000) // 1 FSN
 
 	case common.SendAssetFunc:
 		sendAssetParam := common.SendAssetParam{}
@@ -1388,6 +1390,7 @@ func (pool *TxPool) validateFsnCallTx(tx *types.Transaction) error {
 				return fmt.Errorf("TimeLockToAsset: not enough time lock balance")
 			}
 		}
+		fee = big.NewInt(1000000000000000) // 0.001 FSN
 
 	case common.BuyTicketFunc:
 		buyTicketParam := common.BuyTicketParam{}
@@ -1528,6 +1531,7 @@ func (pool *TxPool) validateFsnCallTx(tx *types.Transaction) error {
 				}
 			}
 		}
+		fee = big.NewInt(100000000000000000) // 0.1 FSN
 
 	case common.RecallSwapFunc:
 		recallSwapParam := common.RecallSwapParam{}
@@ -1699,6 +1703,7 @@ func (pool *TxPool) validateFsnCallTx(tx *types.Transaction) error {
 				}
 			}
 		}
+		fee = big.NewInt(100000000000000000) // 0.1 FSN
 
 	case common.TakeMultiSwapFunc:
 		takeSwapParam := common.TakeMultiSwapParam{}
@@ -1754,6 +1759,7 @@ func (pool *TxPool) validateFsnCallTx(tx *types.Transaction) error {
 	}
 	// check gas, fee and value
 	mgval := new(big.Int).Mul(new(big.Int).SetUint64(tx.Gas()), tx.GasPrice())
+	mgval.Add(mgval, fee)
 	mgval.Add(mgval, fsnValue)
 	if balance := state.GetBalance(common.SystemAssetID, from); balance.Cmp(mgval) < 0 {
 		return fmt.Errorf("insufficient balance(%v), need %v = (gas:%v * price:%v + value:%v + fee:%v)", balance, mgval, tx.Gas(), tx.GasPrice(), fsnValue, fee)

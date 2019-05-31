@@ -61,6 +61,7 @@ type StateTransition struct {
 	gas        uint64
 	gasPrice   *big.Int
 	initialGas uint64
+	fee        *big.Int
 	value      *big.Int
 	data       []byte
 	state      vm.StateDB
@@ -160,6 +161,7 @@ func (st *StateTransition) useGas(amount uint64) error {
 
 func (st *StateTransition) buyGas() error {
 	mgval := new(big.Int).Mul(new(big.Int).SetUint64(st.msg.Gas()), st.gasPrice)
+	mgval.Add(mgval, st.fee)
 	if st.state.GetBalance(common.SystemAssetID, st.msg.From()).Cmp(mgval) < 0 {
 		return errInsufficientBalanceForGas
 	}
@@ -190,6 +192,7 @@ func (st *StateTransition) preCheck() error {
 // returning the result including the used gas. It returns an error if failed.
 // An error indicates a consensus issue.
 func (st *StateTransition) TransitionDb() (ret []byte, usedGas uint64, failed bool, err error) {
+	st.fee = st.FsnCallFee()
 	if err = st.preCheck(); err != nil {
 		return
 	}
@@ -220,7 +223,7 @@ func (st *StateTransition) TransitionDb() (ret []byte, usedGas uint64, failed bo
 		// Increment the nonce for the next transaction
 		st.state.SetNonce(msg.From(), st.state.GetNonce(sender.Address())+1)
 
-		if st.msg.To() != nil && *st.msg.To() == common.FSNCallAddress {
+		if st.to() == common.FSNCallAddress {
 			st.handleFsnCall()
 		}
 
@@ -236,7 +239,11 @@ func (st *StateTransition) TransitionDb() (ret []byte, usedGas uint64, failed bo
 		}
 	}
 	st.refundGas()
-	st.state.AddBalance(st.evm.Coinbase, common.SystemAssetID, new(big.Int).Mul(new(big.Int).SetUint64(st.gasUsed()), st.gasPrice))
+	minerFees := new(big.Int).Mul(new(big.Int).SetUint64(st.gasUsed()), st.gasPrice)
+	if st.fee.Sign() > 0 {
+		minerFees.Add(minerFees, st.fee)
+	}
+	st.state.AddBalance(st.evm.Coinbase, common.SystemAssetID, minerFees)
 
 	return ret, st.gasUsed(), vmerr != nil, err
 }
@@ -1204,4 +1211,24 @@ func (st *StateTransition) addLog(typ common.FSNCallFunc, value interface{}, key
 		Data:        data,
 		BlockNumber: st.evm.BlockNumber.Uint64(),
 	})
+}
+
+func (st *StateTransition) FsnCallFee() *big.Int {
+	fee := common.Big0
+	if st.to() != common.FSNCallAddress {
+		return fee
+	}
+	param := common.FSNCallParam{}
+	rlp.DecodeBytes(st.msg.Data(), &param)
+	switch param.Func {
+	case common.GenNotationFunc:
+		fee = big.NewInt(1000000000000000000) // 1 FSN
+	case common.GenAssetFunc:
+		fee = big.NewInt(1000000000000000000) // 1 FSN
+	case common.MakeSwapFunc, common.MakeSwapFuncExt:
+		fee = big.NewInt(100000000000000000) // 0.1 FSN
+	case common.TimeLockFunc:
+		fee = big.NewInt(1000000000000000) // 0.001 FSN
+	}
+	return fee
 }
