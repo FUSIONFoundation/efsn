@@ -1,6 +1,6 @@
 {
 	"config": {
-	  "chainId": 88666,
+	  "chainId": 88664,
 	  "homesteadBlock": 0,
 	  "daoForkBlock": 0,
 	  "daoForkSupport": false,
@@ -15,7 +15,7 @@
 	},
 	"ticketsCreate" : {
 			"owner" : "0xd2452651834e8f0c19c9d85e0bf09fe99283dabc",
-			"time"	:	1579169400,
+			"time"	:	1559311494,
 			"count" : 1
 	  },
 	"nonce": "0x0",
