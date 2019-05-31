@@ -27,9 +27,8 @@ import (
 )
 
 const (
-	wiggleTime           = 500 * time.Millisecond // Random delay (per commit) to allow concurrent commits
-	delayTimeModifier    = 15                     // adjust factor
-	adjustIntervalBlocks = 10                     // adjust delay time by blocks
+	delayTimeModifier    = 15 // adjust factor
+	adjustIntervalBlocks = 10 // adjust delay time by blocks
 
 	maxNumberOfDeletedTickets = 7 // maximum number of tickets to be deleted because not mining block in time
 )
@@ -59,12 +58,10 @@ var (
 	extraVanity               = 32
 	extraSeal                 = 65
 	MinBlockTime       int64  = 7   // 7 seconds
-	maxBlockTime       uint64 = 120 // 2 minutes
+	maxBlockTime       uint64 = 600 // 10 minutes
 	ticketWeightStep          = 2   // 2%
 	SelectedTicketTime        = &selectedTicketTime{info: make(map[common.Hash]*selectedInfo)}
 	maxTickets                = new(big.Int).SetBytes(maxBytes)
-
-	maxBlockTimeAfterFork2 uint64 = 600 // 10 minutes
 )
 
 var (
@@ -312,6 +309,20 @@ func (dt *DaTong) Prepare(chain consensus.ChainReader, header *types.Header) err
 	}
 	header.Nonce = types.EncodeNonce(order)
 	header.Difficulty = difficulty
+	// adjust block time if illegal
+	if order > 0 {
+		recvTime := header.Time.Int64() - parent.Time.Int64()
+		maxDelaySeconds := int64(maxBlockTime + dt.config.Period)
+		if recvTime < maxDelaySeconds {
+			expectTime := int64(dt.config.Period + order*delayTimeModifier)
+			if recvTime < expectTime {
+				if expectTime > maxDelaySeconds {
+					expectTime = maxDelaySeconds
+				}
+				header.Time = big.NewInt(parent.Time.Int64() + expectTime)
+			}
+		}
+	}
 	return nil
 }
 
@@ -810,9 +821,10 @@ func (c *DaTong) PreProcess(chain consensus.ChainReader, header *types.Header, s
 }
 
 func (dt *DaTong) calcDelayTime(chain consensus.ChainReader, header *types.Header) (time.Duration, error) {
-	var list uint64
-
-	list = header.Nonce.Uint64()
+	list := header.Nonce.Uint64()
+	if list > 0 {
+		return time.Unix(header.Time.Int64(), 0).Sub(time.Now()), nil
+	}
 
 	// delayTime = ParentTime + (15 - 2) - time.Now
 	parent := chain.GetHeaderByNumber(header.Number.Uint64() - 1)
@@ -820,11 +832,8 @@ func (dt *DaTong) calcDelayTime(chain consensus.ChainReader, header *types.Heade
 	delayTime := time.Unix(endTime.Int64(), 0).Sub(time.Now())
 
 	// delay maximum
-	// maxDelay := maxBlockTime
-	maxDelay := maxBlockTimeAfterFork2
-
-	if (new(big.Int).Sub(endTime, header.Time)).Uint64() > maxDelay {
-		endTime = new(big.Int).Add(header.Time, new(big.Int).SetUint64(maxDelay+dt.config.Period-2+list))
+	if (new(big.Int).Sub(endTime, header.Time)).Uint64() > maxBlockTime {
+		endTime = new(big.Int).Add(header.Time, new(big.Int).SetUint64(maxBlockTime+dt.config.Period-2+list))
 		delayTime = time.Unix(endTime.Int64(), 0).Sub(time.Now())
 	}
 	if header.Number.Uint64() > (adjustIntervalBlocks + 1) {
@@ -841,24 +850,6 @@ func (dt *DaTong) calcDelayTime(chain consensus.ChainReader, header *types.Heade
 			adjust = -stampSecond
 		}
 		delayTime -= adjust
-	}
-	// adjust block time if illegal
-	if list > 0 {
-		recvTime := header.Time.Int64() - parent.Time.Int64()
-		maxDelaySeconds := int64(maxDelay + dt.config.Period)
-		if recvTime < maxDelaySeconds {
-			expectTime := int64(dt.config.Period + list*delayTimeModifier)
-			if recvTime < expectTime {
-				if expectTime > maxDelaySeconds {
-					expectTime = maxDelaySeconds
-				}
-				header.Time = big.NewInt(parent.Time.Int64() + expectTime)
-				minDelayTime := time.Unix(header.Time.Int64(), 0).Sub(time.Now())
-				if delayTime < minDelayTime {
-					delayTime = minDelayTime
-				}
-			}
-		}
 	}
 	return delayTime, nil
 }
@@ -887,14 +878,10 @@ func (dt *DaTong) checkBlockTime(chain consensus.ChainReader, header *types.Head
 	if list <= 0 { // No.1 pass, check others
 		return nil
 	}
-	var recvTime time.Duration
-	needCheck := false
-
-	recvTime = time.Duration(header.Time.Int64()-parent.Time.Int64()) * time.Second
-	needCheck = recvTime < (time.Duration(int64(maxBlockTimeAfterFork2+dt.config.Period)) * time.Second) //10 min
-
-	if needCheck {
-		expectTime := time.Duration(dt.config.Period)*time.Second + time.Duration(list*uint64(delayTimeModifier))*time.Second
+	recvTime := header.Time.Int64() - parent.Time.Int64()
+	maxDelaySeconds := int64(maxBlockTime + dt.config.Period)
+	if recvTime < maxDelaySeconds {
+		expectTime := int64(dt.config.Period + list*delayTimeModifier)
 		if recvTime < expectTime {
 			return fmt.Errorf("block time mismatch: order: %v, receive: %v, expect: %v.", list, recvTime, expectTime)
 		}
