@@ -90,14 +90,22 @@ type stateObject struct {
 
 // empty returns whether the account is considered empty.
 func (s *stateObject) empty() bool {
-	var balanceEmpty = true
+	if s.data.Nonce != 0 {
+		return false
+	}
 	if len(s.data.BalancesVal) > 0 {
-		balanceEmpty = false
+		return false
 	}
 	if len(s.data.TimeLockBalancesVal) > 0 {
-		balanceEmpty = false
+		return false
 	}
-	return s.data.Nonce == 0 && balanceEmpty && bytes.Equal(s.data.CodeHash, emptyCodeHash)
+	if bytes.Equal(s.data.CodeHash, emptyCodeHash) == false {
+		return false
+	}
+	if s.address.IsSpecialKeyAddress() == true {
+		return false
+	}
+	return true
 }
 
 func (s *stateObject) deepCopyBalancesHash() []common.Hash {

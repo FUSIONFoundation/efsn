@@ -82,8 +82,6 @@ type StateDB struct {
 	nextRevisionId int
 
 	lock sync.Mutex
-
-	tickets common.TicketSlice
 }
 
 // Create a new state from a given trie.
@@ -100,7 +98,6 @@ func New(root common.Hash, db Database) (*StateDB, error) {
 		logs:              make(map[common.Hash][]*types.Log),
 		preimages:         make(map[common.Hash][]byte),
 		journal:           newJournal(),
-		tickets:           nil,
 	}, nil
 }
 
@@ -131,7 +128,6 @@ func (self *StateDB) Reset(root common.Hash) error {
 	self.logs = make(map[common.Hash][]*types.Log)
 	self.logSize = 0
 	self.preimages = make(map[common.Hash][]byte)
-	self.tickets = nil
 	self.clearJournalAndRefund()
 	return nil
 }
@@ -562,6 +558,8 @@ func (self *StateDB) Copy() *StateDB {
 	self.lock.Lock()
 	defer self.lock.Unlock()
 
+	self.UpdateTickets()
+
 	// Copy all the basic fields, initialize the memory ones
 	state := &StateDB{
 		db:                self.db,
@@ -573,7 +571,6 @@ func (self *StateDB) Copy() *StateDB {
 		logSize:           self.logSize,
 		preimages:         make(map[common.Hash][]byte),
 		journal:           newJournal(),
-		tickets:           nil,
 	}
 	// Copy the dirty states, logs, and preimages
 	for addr := range self.journal.dirties {
@@ -606,11 +603,6 @@ func (self *StateDB) Copy() *StateDB {
 	for hash, preimage := range self.preimages {
 		state.preimages[hash] = preimage
 	}
-
-	if self.tickets != nil {
-		state.tickets = self.tickets.DeepCopy()
-	}
-
 	return state
 }
 
@@ -958,90 +950,85 @@ func (db *StateDB) UpdateAsset(asset common.Asset) error {
 	return nil
 }
 
-// AllTickets wacom
-func (db *StateDB) AllTickets(blockNumber *big.Int) (common.TicketSlice, error) {
-	if db.tickets != nil {
-		return db.tickets, nil
+func (db *StateDB) setTicketState(key, value common.Hash) {
+	stateObject := db.GetOrNewStateObject(common.TicketKeyAddress)
+	if stateObject != nil {
+		stateObject.SetState(db.db, key, value)
 	}
-	data := db.GetData(common.TicketKeyAddress)
-	if data == nil || len(data) == 0 {
+}
+
+func (db *StateDB) UpdateTickets() error {
+	stateObject := db.getStateObject(common.TicketKeyAddress)
+	if stateObject != nil {
+		return stateObject.CommitTrie(db.db)
+	}
+	return nil
+}
+
+// IsTicketExist wacom
+func (db *StateDB) IsTicketExist(id common.Hash) bool {
+	_, err := db.GetTicket(id)
+	return err == nil
+}
+
+// GetTicket wacom
+func (db *StateDB) GetTicket(id common.Hash) (*common.Ticket, error) {
+	stateObject := db.getStateObject(common.TicketKeyAddress)
+	if stateObject != nil {
+		value := stateObject.GetState(db.db, id)
+		ticket, err := common.ParseTicket(id, value)
+		if err == nil {
+			return ticket, err
+		}
+	}
+	return nil, fmt.Errorf("GetTicket: %s Ticket not found", id.String())
+}
+
+// AllTickets wacom
+func (db *StateDB) AllTickets() (common.TicketSlice, error) {
+	stateObject := db.getStateObject(common.TicketKeyAddress)
+	if stateObject == nil {
 		return nil, nil
 	}
-	if blockNumber == nil {
-		var tickets common.TicketStructSlice
-		if err := rlp.DecodeBytes(data, &tickets); err != nil {
-			log.Error("AllTickets: Unable to decode bytes in all tickets")
-			return nil, err
+	tickets := make(common.TicketSlice, 0, 1000)
+	tr := stateObject.getTrie(db.db)
+	it := trie.NewIterator(tr.NodeIterator(nil))
+	emptyKey := common.Hash{}
+	for it.Next() {
+		key := common.BytesToHash(tr.GetKey(it.Key))
+		if key == emptyKey {
+			continue
 		}
-		db.tickets = tickets.ToTicketSlice()
-	} else {
-		var tickets common.TicketSlice
-		if err := rlp.DecodeBytes(data, &tickets); err != nil {
-			log.Error("AllTickets: Unable to decode bytes in all tickets")
-			return nil, err
+		value, dirty := stateObject.dirtyStorage[key]
+		if !dirty {
+			if _, content, _, err := rlp.Split(it.Value); err == nil {
+				value = common.BytesToHash(content)
+			}
 		}
-		db.tickets = tickets
+		if ticket, err := common.ParseTicket(key, value); err == nil {
+			tickets = append(tickets, *ticket)
+		}
 	}
-	return db.tickets, nil
+	return tickets, nil
 }
 
 // AddTicket wacom
 func (db *StateDB) AddTicket(ticket common.Ticket) error {
-	parentHeight := new(big.Int).Sub(ticket.Height, common.Big1)
-	if parentHeight.Cmp(common.Big0) < 0 {
-		parentHeight = common.Big0
+	id := ticket.ID()
+	if db.IsTicketExist(id) == true {
+		return fmt.Errorf("AddTicket: %s Ticket exists", id.String())
 	}
-	tickets, err := db.AllTickets(parentHeight)
-	if err != nil {
-		log.Debug("AddTicket: unable to retrieve previous tickets")
-		return fmt.Errorf("AddTicket: unable to retrieve previous tickets. err: %v", err)
-	}
-	if _, ok := tickets.Get(ticket.ID); ok {
-		return fmt.Errorf("AddTicket: %s Ticket exists", ticket.ID.String())
-	}
-	tickets = tickets.Add(&ticket)
-	return db.updateTickets(tickets, ticket.Height)
-}
-
-// RemoveTicket wacom
-func (db *StateDB) RemoveTicket(id common.Hash, blockNumber *big.Int) error {
-	parentHeight := new(big.Int).Sub(blockNumber, common.Big1)
-	if parentHeight.Cmp(common.Big0) < 0 {
-		parentHeight = common.Big0
-	}
-	tickets, err := db.AllTickets(parentHeight)
-	if err != nil {
-		log.Debug("RemoveTicket: unable to retrieve previous tickets")
-		return fmt.Errorf("RemoveTicket: unable to retrieve previous tickets. err: %v", err)
-	}
-	if _, ok := tickets.Get(id); !ok {
-		return fmt.Errorf("RemoveTicket: %s Ticket not found", id.String())
-	}
-	tickets = tickets.Delete(id)
-	return db.updateTickets(tickets, blockNumber)
-}
-
-func (db *StateDB) updateTickets(tickets common.TicketSlice, blockNumber *big.Int) error {
-	db.tickets = tickets
+	value := ticket.ToValHash()
+	db.setTicketState(id, value)
 	return nil
 }
 
-func (db *StateDB) UpdateTickets(blockNumber *big.Int) error {
-	var data []byte
-	var err error
-
-	if blockNumber == nil {
-		sort.Sort(db.tickets)
-		ts := db.tickets.ToTicketStructSlice()
-		data, err = rlp.EncodeToBytes(&ts)
-	} else {
-		data, err = rlp.EncodeToBytes(&db.tickets)
+// RemoveTicket wacom
+func (db *StateDB) RemoveTicket(id common.Hash) error {
+	if db.IsTicketExist(id) == false {
+		return fmt.Errorf("RemoveTicket: %s Ticket not found", id.String())
 	}
-	if err != nil {
-		log.Error("updateTickets: Unable to encode tickets to bytes")
-		return fmt.Errorf("updateTickets: Unable to encode tickets to bytes. err: %v", err)
-	}
-	db.SetData(common.TicketKeyAddress, data)
+	db.setTicketState(id, common.Hash{})
 	return nil
 }
 
@@ -1125,16 +1112,10 @@ func (db *StateDB) RemoveSwap(id common.Hash) error {
 	return nil
 }
 
-func (db *StateDB) ClearExpiredSwaps(blockNumber *big.Int, timestamp uint64) error {
-	// swaps are no longer held in global memory
-	// so no need to clear
-	return nil
-}
-
 /** swaps
 *
  */
- type multiSwapPersist struct {
+type multiSwapPersist struct {
 	deleted bool // if true swap was recalled and should not be returned
 	swap    common.MultiSwap
 }

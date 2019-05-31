@@ -429,11 +429,11 @@ func (bc *BlockChain) repair(head **types.Block) error {
 		blockNumber := (*head).Number()
 		// Abort if we've rewound to a head block that does have associated state
 		if statedb, err := state.New((*head).Root(), bc.stateCache); err == nil {
-			if tickets, err := statedb.AllTickets(blockNumber); err == nil {
+			if tickets, err := statedb.AllTickets(); err == nil {
 				ok := true
 				for _, t := range tickets {
 					if t.Height.Cmp(blockNumber) > 0 {
-						log.Info("Wrong ticket state", "id", t.ID.String(), "block height", blockNumber, "ticket height", t.Height)
+						log.Info("Wrong ticket state", "id", t.ID().String(), "block height", blockNumber, "ticket height", t.Height)
 						ok = false
 						break
 					}

@@ -28,7 +28,6 @@ import (
 	"github.com/FusionFoundation/efsn/common"
 	"github.com/FusionFoundation/efsn/core/types"
 	"github.com/FusionFoundation/efsn/core/vm"
-	"github.com/FusionFoundation/efsn/crypto"
 	"github.com/FusionFoundation/efsn/log"
 	"github.com/FusionFoundation/efsn/params"
 	"github.com/FusionFoundation/efsn/rlp"
@@ -406,22 +405,12 @@ func (st *StateTransition) handleFsnCall() error {
 		}
 	case common.BuyTicketFunc:
 		outputCommandInfo("BuyTicketFunc", "from", st.msg.From())
-		// log.Info( "Buy a ticket func called")
 		from := st.msg.From()
-		hash := st.evm.GetHash(height.Uint64() - 1)
-		id := crypto.Keccak256Hash(from[:], hash[:])
+		id := common.TicketID(from, height)
 
-		tickets, err := st.state.AllTickets(new(big.Int).Sub(height, common.Big1))
-
-		if err != nil {
-			st.addLog(common.BuyTicketFunc, param.Data, common.NewKeyValue("Error", "unable to retrieve previous tickets"))
-			log.Debug("BuyTicketFunc unable to retrieve previous tickets")
-			return err
-		}
-
-		if _, ok := tickets.Get(id); ok {
-			st.addLog(common.BuyTicketFunc, param.Data, common.NewKeyValue("Error", "one block just can buy one ticket"))
-			return fmt.Errorf("one block just can buy one ticket")
+		if st.state.IsTicketExist(id) {
+			st.addLog(common.BuyTicketFunc, param.Data, common.NewKeyValue("Error", "Ticket already exist"))
+			return fmt.Errorf("Ticket already exist")
 		}
 
 		buyTicketParam := common.BuyTicketParam{}
@@ -448,7 +437,6 @@ func (st *StateTransition) handleFsnCall() error {
 		}
 
 		ticket := common.Ticket{
-			ID:         id,
 			Owner:      from,
 			Height:     height,
 			StartTime:  buyTicketParam.Start,
