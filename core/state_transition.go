@@ -1213,8 +1213,8 @@ func (st *StateTransition) FsnCallFee() *big.Int {
 		fee = big.NewInt(1000000000000000000) // 1 FSN
 	case common.GenAssetFunc:
 		fee = big.NewInt(1000000000000000000) // 1 FSN
-	case common.MakeSwapFunc, common.MakeSwapFuncExt:
-		fee = big.NewInt(100000000000000000) // 0.1 FSN
+	case common.MakeSwapFunc, common.MakeSwapFuncExt, common.MakeMultiSwapFunc:
+		fee = big.NewInt(10000000000000000) // 0.01 FSN
 	case common.TimeLockFunc:
 		fee = big.NewInt(1000000000000000) // 0.001 FSN
 	}

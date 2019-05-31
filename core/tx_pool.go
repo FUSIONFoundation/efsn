@@ -1531,7 +1531,7 @@ func (pool *TxPool) validateFsnCallTx(tx *types.Transaction) error {
 				}
 			}
 		}
-		fee = big.NewInt(100000000000000000) // 0.1 FSN
+		fee = big.NewInt(10000000000000000) // 0.01 FSN
 
 	case common.RecallSwapFunc:
 		recallSwapParam := common.RecallSwapParam{}
@@ -1703,7 +1703,7 @@ func (pool *TxPool) validateFsnCallTx(tx *types.Transaction) error {
 				}
 			}
 		}
-		fee = big.NewInt(100000000000000000) // 0.1 FSN
+		fee = big.NewInt(10000000000000000) // 0.01 FSN
 
 	case common.TakeMultiSwapFunc:
 		takeSwapParam := common.TakeMultiSwapParam{}
