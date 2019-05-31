@@ -163,10 +163,12 @@ var (
 		Usage: `Blockchain sync mode ("fast", "full", or "light")`,
 		Value: &defaultSyncMode,
 	}
+	// set to archive mode by default
+	// necessary to get ticket state back
 	GCModeFlag = cli.StringFlag{
 		Name:  "gcmode",
 		Usage: `Blockchain garbage collection mode ("full", "archive")`,
-		Value: "full",
+		Value: downloader.DefaultGcMode(),
 	}
 	LightServFlag = cli.IntFlag{
 		Name:  "lightserv",
@@ -1158,10 +1160,15 @@ func SetEthConfig(ctx *cli.Context, stack *node.Node, cfg *eth.Config) {
 	}
 	cfg.DatabaseHandles = makeDatabaseHandles()
 
-	if gcmode := ctx.GlobalString(GCModeFlag.Name); gcmode != "full" && gcmode != "archive" {
+	gcmode := ctx.GlobalString(GCModeFlag.Name)
+	if gcmode != "full" && gcmode != "archive" {
 		Fatalf("--%s must be either 'full' or 'archive'", GCModeFlag.Name)
 	}
-	cfg.NoPruning = ctx.GlobalString(GCModeFlag.Name) == "archive"
+	if gcmode == "full" && downloader.FullGcModeSupported() == false {
+		log.Warn("SetEthConfig: 'full' gcmode is not supported, change to 'archive' gcmode.")
+		gcmode = "archive"
+	}
+	cfg.NoPruning = gcmode == "archive"
 
 	if ctx.GlobalIsSet(CacheFlag.Name) || ctx.GlobalIsSet(CacheGCFlag.Name) {
 		cfg.TrieCache = ctx.GlobalInt(CacheFlag.Name) * ctx.GlobalInt(CacheGCFlag.Name) / 100
@@ -1396,11 +1403,16 @@ func MakeChain(ctx *cli.Context, stack *node.Node) (chain *core.BlockChain, chai
 			}, nil, false)
 		}
 	}
-	if gcmode := ctx.GlobalString(GCModeFlag.Name); gcmode != "full" && gcmode != "archive" {
+	gcmode := ctx.GlobalString(GCModeFlag.Name)
+	if gcmode != "full" && gcmode != "archive" {
 		Fatalf("--%s must be either 'full' or 'archive'", GCModeFlag.Name)
 	}
+	if gcmode == "full" && downloader.FullGcModeSupported() == false {
+		log.Warn("MakeChain: 'full' gcmode is not supported, change to 'archive' gcmode.")
+		gcmode = "full"
+	}
 	cache := &core.CacheConfig{
-		Disabled:      ctx.GlobalString(GCModeFlag.Name) == "archive",
+		Disabled:      gcmode == "archive",
 		TrieNodeLimit: eth.DefaultConfig.TrieCache,
 		TrieTimeLimit: eth.DefaultConfig.TrieTimeout,
 	}

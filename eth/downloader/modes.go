@@ -38,6 +38,17 @@ func DefaultSyncMode() SyncMode {
 	return FullSync
 }
 
+func FullGcModeSupported() bool {
+	return false
+}
+
+func DefaultGcMode() string {
+	if FullGcModeSupported() {
+		return "full"
+	}
+	return "archive"
+}
+
 func (mode SyncMode) IsValid() bool {
 	return mode >= FullSync && mode <= LightSync
 }
