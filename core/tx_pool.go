@@ -1678,23 +1678,6 @@ func (pool *TxPool) validateFsnCallTx(tx *types.Transaction) error {
 			} else {
 				available := state.GetTimeLockBalance(makeSwapParam.FromAssetID[i], from)
 				if available.Cmp(needValue[i]) < 0 {
-					if state.GetBalance(makeSwapParam.FromAssetID[i], from).Cmp(total[i]) < 0 {
-						return fmt.Errorf("not enough time lock or asset balance")
-					}
-				}
-			}
-		}
-		// then deduct
-		for i := 0; i < ln; i++ {
-			if useAsset[i] == true {
-				if makeSwapParam.FromAssetID[i] == common.SystemAssetID {
-					fsnValue.Add(fsnValue, total[i])
-				} else if state.GetBalance(makeSwapParam.FromAssetID[i], from).Cmp(total[i]) < 0 {
-					return fmt.Errorf("not enough from asset")
-				}
-			} else {
-				available := state.GetTimeLockBalance(makeSwapParam.FromAssetID[i], from)
-				if available.Cmp(needValue[i]) < 0 {
 					if makeSwapParam.FromAssetID[i] == common.SystemAssetID {
 						fsnValue.Add(fsnValue, total[i])
 					} else if state.GetBalance(makeSwapParam.FromAssetID[i], from).Cmp(total[i]) < 0 {
