@@ -254,7 +254,9 @@ func (d *Downloader) Progress() ethereum.SyncProgress {
 	case LightSync:
 		current = d.lightchain.CurrentHeader().Number.Uint64()
 	}
-	log.Info("Downloader Sync Progress", "mode", d.mode, "current", current)
+	if common.DebugMode {
+		log.Info("Downloader Sync Progress", "mode", d.mode, "current", current)
+	}
 	return ethereum.SyncProgress{
 		StartingBlock: d.syncStatsChainOrigin,
 		CurrentBlock:  current,

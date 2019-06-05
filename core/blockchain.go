@@ -428,23 +428,11 @@ func (bc *BlockChain) repair(head **types.Block) error {
 	for {
 		blockNumber := (*head).Number()
 		// Abort if we've rewound to a head block that does have associated state
-		if statedb, err := state.New((*head).Root(), bc.stateCache); err == nil {
-			if tickets, err := statedb.AllTickets(); err == nil {
-				ok := true
-				for _, t := range tickets {
-					if t.Height.Cmp(blockNumber) > 0 {
-						log.Info("Wrong ticket state", "id", t.ID().String(), "block height", blockNumber, "ticket height", t.Height)
-						ok = false
-						break
-					}
-				}
-				if ok {
-					if rewound {
-						log.Info("Rewound blockchain to past state", "number", blockNumber, "hash", (*head).Hash())
-					}
-					return nil
-				}
+		if _, err := state.New((*head).Root(), bc.stateCache); err == nil {
+			if rewound {
+				log.Info("Rewound blockchain to past state", "number", blockNumber, "hash", (*head).Hash())
 			}
+			return nil
 		} else if !rewound {
 			log.Warn("Head state missing, repairing chain", "number", blockNumber, "hash", (*head).Hash())
 		}
@@ -1111,7 +1099,7 @@ func (bc *BlockChain) insertChain(chain types.Blocks) (int, []interface{}, []*ty
 
 		//err := <-results
 		datong.SetHeaders(headers[:i])
-		err := bc.engine.VerifyHeader(bc, headers[i], seals[i])
+		err := bc.engine.VerifyHeader(bc, block.RawHeader(), seals[i])
 		if err == nil {
 			err = bc.Validator().ValidateBody(block)
 		}

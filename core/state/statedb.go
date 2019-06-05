@@ -558,8 +558,6 @@ func (self *StateDB) Copy() *StateDB {
 	self.lock.Lock()
 	defer self.lock.Unlock()
 
-	self.UpdateTickets()
-
 	// Copy all the basic fields, initialize the memory ones
 	state := &StateDB{
 		db:                self.db,
@@ -957,14 +955,6 @@ func (db *StateDB) setTicketState(key, value common.Hash) {
 	}
 }
 
-func (db *StateDB) UpdateTickets() error {
-	stateObject := db.getStateObject(common.TicketKeyAddress)
-	if stateObject != nil {
-		return stateObject.CommitTrie(db.db)
-	}
-	return nil
-}
-
 // IsTicketExist wacom
 func (db *StateDB) IsTicketExist(id common.Hash) bool {
 	_, err := db.GetTicket(id)
@@ -974,7 +964,7 @@ func (db *StateDB) IsTicketExist(id common.Hash) bool {
 // GetTicket wacom
 func (db *StateDB) GetTicket(id common.Hash) (*common.Ticket, error) {
 	stateObject := db.getStateObject(common.TicketKeyAddress)
-	if stateObject != nil {
+	if stateObject != nil && id != (common.Hash{}) {
 		value := stateObject.GetState(db.db, id)
 		ticket, err := common.ParseTicket(id, value)
 		if err == nil {
@@ -1015,6 +1005,9 @@ func (db *StateDB) AllTickets() (common.TicketSlice, error) {
 // AddTicket wacom
 func (db *StateDB) AddTicket(ticket common.Ticket) error {
 	id := ticket.ID()
+	if id == (common.Hash{}) {
+		return fmt.Errorf("AddTicket: empty ticket ID")
+	}
 	if db.IsTicketExist(id) == true {
 		return fmt.Errorf("AddTicket: %s Ticket exists", id.String())
 	}

@@ -330,6 +330,10 @@ func (dt *DaTong) Finalize(chain consensus.ChainReader, header *types.Header, st
 	selected := header.GetSelectedTicket()
 	retreat := header.GetRetreatTickets()
 	if selected == nil {
+		log.Warn("Finalize shouldn't calc difficulty, as it's done in VerifyHeader or Prepare")
+		if common.DebugMode {
+			panic("Finalize shouldn't calc difficulty, as it's done in VerifyHeader or Prepare")
+		}
 		_, selected, _, retreat, err = dt.calcBlockDifficulty(chain, header, parent)
 		if err != nil {
 			return nil, err

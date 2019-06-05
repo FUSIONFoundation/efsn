@@ -223,7 +223,10 @@ func (st *StateTransition) TransitionDb() (ret []byte, usedGas uint64, failed bo
 		st.state.SetNonce(msg.From(), st.state.GetNonce(sender.Address())+1)
 
 		if st.to() == common.FSNCallAddress {
-			st.handleFsnCall()
+			errc := st.handleFsnCall()
+			if errc != nil && common.DebugMode {
+				log.Info("handleFsnCall error", "err", errc)
+			}
 		}
 
 		ret, st.gas, vmerr = evm.Call(sender, st.to(), st.data, st.gas, st.value)
