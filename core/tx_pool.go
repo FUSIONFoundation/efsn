@@ -1281,7 +1281,7 @@ func (t *txLookup) Add(tx *types.Transaction) {
 	defer t.lock.Unlock()
 
 	t.all[tx.Hash()] = tx
-	if isBuyTicketTx(tx) {
+	if tx.IsBuyTicketTx() {
 		t.ticketTxBeats[tx.Hash()] = time.Now()
 	}
 }
@@ -1292,12 +1292,6 @@ func (t *txLookup) Remove(hash common.Hash) {
 	defer t.lock.Unlock()
 
 	delete(t.all, hash)
-}
-
-func isBuyTicketTx(tx *types.Transaction) bool {
-	param := common.FSNCallParam{}
-	rlp.DecodeBytes(tx.Data(), &param)
-	return param.Func == common.BuyTicketFunc
 }
 
 func (pool *TxPool) validateFsnCallTx(tx *types.Transaction) error {
@@ -1400,7 +1394,7 @@ func (pool *TxPool) validateFsnCallTx(tx *types.Transaction) error {
 		}
 		found := false
 		pool.all.Range(func(hash common.Hash, tx *types.Transaction) bool {
-			if isBuyTicketTx(tx) {
+			if tx.IsBuyTicketTx() {
 				sender, _ := types.Sender(pool.signer, tx)
 				if from == sender {
 					found = true
