@@ -21,6 +21,21 @@ func BytesToInt(b []byte) int {
 	return int(tmp)
 }
 
+// Uint32ToBytes wacom
+func Uint32ToBytes(n uint32) []byte {
+	bytesBuffer := bytes.NewBuffer([]byte{})
+	binary.Write(bytesBuffer, binary.BigEndian, n)
+	return bytesBuffer.Bytes()
+}
+
+// BytesToUint32 wacom
+func BytesToUint32(b []byte) uint32 {
+	bytesBuffer := bytes.NewBuffer(b)
+	var n uint32
+	binary.Read(bytesBuffer, binary.BigEndian, &n)
+	return n
+}
+
 // Uint64ToBytes wacom
 func Uint64ToBytes(n uint64) []byte {
 	bytesBuffer := bytes.NewBuffer([]byte{})

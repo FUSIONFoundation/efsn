@@ -1004,7 +1004,7 @@ func (db *StateDB) AllTickets() (common.TicketSlice, error) {
 
 // AddTicket wacom
 func (db *StateDB) AddTicket(ticket common.Ticket) error {
-	id := ticket.ID()
+	id := ticket.ID
 	if id == (common.Hash{}) {
 		return fmt.Errorf("AddTicket: empty ticket ID")
 	}

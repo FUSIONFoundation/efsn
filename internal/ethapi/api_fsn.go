@@ -525,7 +525,7 @@ func (s *PublicFusionAPI) AssetExistForAddress(ctx context.Context, assetName st
 }
 
 // AllTickets wacom
-func (s *PublicFusionAPI) AllTickets(ctx context.Context, blockNr rpc.BlockNumber) (map[common.Hash]common.Ticket, error) {
+func (s *PublicFusionAPI) AllTickets(ctx context.Context, blockNr rpc.BlockNumber) (map[common.Hash]common.TicketDisplay, error) {
 	state, _, err := s.b.StateAndHeaderByNumber(ctx, blockNr)
 	if state == nil || err != nil {
 		return nil, err
@@ -560,9 +560,8 @@ func (s *PublicFusionAPI) TicketPrice(ctx context.Context, blockNr rpc.BlockNumb
 }
 
 // AllTicketsByAddress wacom
-func (s *PublicFusionAPI) AllTicketsByAddress(ctx context.Context, address common.Address, blockNr rpc.BlockNumber) (map[common.Hash]common.Ticket, error) {
+func (s *PublicFusionAPI) AllTicketsByAddress(ctx context.Context, address common.Address, blockNr rpc.BlockNumber) (map[common.Hash]common.TicketDisplay, error) {
 	state, _, err := s.b.StateAndHeaderByNumber(ctx, blockNr)
-	var ret = make(map[common.Hash]common.Ticket)
 	if state == nil || err != nil {
 		return nil, err
 	}
@@ -571,6 +570,7 @@ func (s *PublicFusionAPI) AllTicketsByAddress(ctx context.Context, address commo
 		log.Debug("AllTicketsByAddress:api_fsn.go unable to retrieve previous tickets")
 		return nil, err
 	}
+	var ret = make(map[common.Hash]common.TicketDisplay)
 	for k, v := range tickets.ToMap() {
 		if v.Owner == address {
 			ret[k] = v
