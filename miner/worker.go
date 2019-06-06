@@ -575,6 +575,7 @@ func (w *worker) makeCurrent(parent *types.Block, header *types.Header) error {
 	if err != nil {
 		return err
 	}
+	state = state.Copy() // start current job on a copied parent state
 	env := &environment{
 		signer: types.NewEIP155Signer(w.config.ChainID),
 		state:  state,
@@ -848,7 +849,7 @@ func (w *worker) commit(uncles []*types.Header, interval func(), update bool, st
 		receipts[i] = new(types.Receipt)
 		*receipts[i] = *l
 	}
-	s := w.current.state.Copy()
+	s := w.current.state //.Copy() // no need to copy as we're working on a copied state (ref. makeCurrent())
 	block, err := w.engine.Finalize(w.chain, w.current.header, s, w.current.txs, uncles, w.current.receipts)
 	if err != nil {
 		log.Info("commit work in Finalize", "err", err)
