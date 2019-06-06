@@ -81,7 +81,8 @@ type StateDB struct {
 	validRevisions []revision
 	nextRevisionId int
 
-	lock sync.Mutex
+	lock   sync.Mutex
+	rwlock sync.RWMutex
 }
 
 // Create a new state from a given trie.
@@ -951,6 +952,9 @@ func (db *StateDB) UpdateAsset(asset common.Asset) error {
 func (db *StateDB) setTicketState(key, value common.Hash) {
 	stateObject := db.GetOrNewStateObject(common.TicketKeyAddress)
 	if stateObject != nil {
+		db.rwlock.Lock()
+		defer db.rwlock.Unlock()
+
 		stateObject.SetState(db.db, key, value)
 	}
 }
@@ -965,6 +969,9 @@ func (db *StateDB) IsTicketExist(id common.Hash) bool {
 func (db *StateDB) GetTicket(id common.Hash) (*common.Ticket, error) {
 	stateObject := db.getStateObject(common.TicketKeyAddress)
 	if stateObject != nil && id != (common.Hash{}) {
+		db.rwlock.RLock()
+		defer db.rwlock.RUnlock()
+
 		value := stateObject.GetState(db.db, id)
 		ticket, err := common.ParseTicket(id, value)
 		if err == nil {
@@ -976,6 +983,9 @@ func (db *StateDB) GetTicket(id common.Hash) (*common.Ticket, error) {
 
 // AllTickets wacom
 func (db *StateDB) AllTickets() (common.TicketSlice, error) {
+	db.rwlock.RLock()
+	defer db.rwlock.RUnlock()
+
 	stateObject := db.getStateObject(common.TicketKeyAddress)
 	if stateObject == nil {
 		return nil, nil
