@@ -409,11 +409,11 @@ func (st *StateTransition) handleFsnCall() error {
 	case common.BuyTicketFunc:
 		outputCommandInfo("BuyTicketFunc", "from", st.msg.From())
 		from := st.msg.From()
-		id := common.TicketID(from, height)
+		id := common.TicketID(from, height, st.evm.Context.Time, st.evm.Context.Difficulty)
 
 		if st.state.IsTicketExist(id) {
 			st.addLog(common.BuyTicketFunc, param.Data, common.NewKeyValue("Error", "Ticket already exist"))
-			return fmt.Errorf("Ticket already exist")
+			return fmt.Errorf(id.String() + " Ticket already exist")
 		}
 
 		buyTicketParam := common.BuyTicketParam{}
@@ -440,11 +440,10 @@ func (st *StateTransition) handleFsnCall() error {
 		}
 
 		ticket := common.Ticket{
-			Owner:      from,
-			Height:     height,
-			StartTime:  buyTicketParam.Start,
+			ID:         id,
+			Height:     height.Uint64(),
+			StartTime:  start,
 			ExpireTime: end,
-			Value:      value,
 		}
 
 		useAsset := false

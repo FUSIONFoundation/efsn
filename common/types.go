@@ -714,58 +714,60 @@ var SystemAsset = Asset{
 
 // Ticket wacom
 type Ticket struct {
-	Owner      Address
-	Height     *big.Int `json:",string"`
+	ID         Hash
+	Height     uint64
 	StartTime  uint64
 	ExpireTime uint64
-	Value      *big.Int `json:",string"`
 }
 
 func (t *Ticket) IsInGenesis() bool {
-	return t.Height.Sign() <= 0
+	return t.Height == 0
 }
 
-func (t *Ticket) ID() Hash {
-	return TicketID(t.Owner, t.Height)
+func (t *Ticket) Owner() Address {
+	return BytesToAddress(t.ID[:AddressLength])
+}
+
+func (t *Ticket) BlockHeight() *big.Int {
+	return new(big.Int).SetUint64(t.Height)
+}
+
+func (t *Ticket) Value() *big.Int {
+	return TicketPrice(new(big.Int).SetUint64(t.Height))
 }
 
 func (t *Ticket) ToValHash() Hash {
 	h := Hash{}
-	copy(h[:8], Uint64ToBytes(t.StartTime))
-	copy(h[8:16], Uint64ToBytes(t.ExpireTime))
-	copy(h[HashLength-len(t.Value.Bytes()):], t.Value.Bytes())
+	copy(h[:8], Uint64ToBytes(t.Height))
+	copy(h[8:16], Uint64ToBytes(t.StartTime))
+	copy(h[16:24], Uint64ToBytes(t.ExpireTime))
 	return h
 }
 
-func TicketID(owner Address, height *big.Int) Hash {
+func TicketID(owner Address, height *big.Int, timestamp *big.Int, difficulty *big.Int) Hash {
 	h := Hash{}
-	copy(h[:AddressLength], owner[:])
-	if height.Sign() < 0 {
-		h[AddressLength] = 0xff
-	}
-	copy(h[HashLength-len(height.Bytes()):], height.Bytes())
+	copy(h[:20], owner[:])
+	copy(h[20:24], Uint32ToBytes(uint32(height.Uint64())))
+	copy(h[24:28], Uint32ToBytes(uint32(timestamp.Uint64())))
+	copy(h[28:32], Uint32ToBytes(uint32(difficulty.Uint64())))
 	return h
 }
 
 func (t *Ticket) MarshalJSON() ([]byte, error) {
-	height := t.Height
-	if t.IsInGenesis() {
-		height = Big0
-	}
 	return json.Marshal(&struct {
 		ID         Hash
 		Owner      Address
-		Height     string
+		Height     uint64
 		StartTime  uint64
 		ExpireTime uint64
 		Value      string
 	}{
-		ID:         t.ID(),
-		Owner:      t.Owner,
-		Height:     height.String(),
+		ID:         t.ID,
+		Owner:      t.Owner(),
+		Height:     t.Height,
 		StartTime:  t.StartTime,
 		ExpireTime: t.ExpireTime,
-		Value:      t.Value.String(),
+		Value:      t.Value().String(),
 	})
 }
 
@@ -781,21 +783,14 @@ func ParseTicket(key, value Hash) (*Ticket, error) {
 	if value == (Hash{}) {
 		return nil, fmt.Errorf("ParseTicket: empty value")
 	}
-	owner := BytesToAddress(key[:AddressLength])
-	sign := key[AddressLength]
-	height := new(big.Int).SetBytes(key[AddressLength+1:])
-	if sign == 0xff {
-		height = new(big.Int).Sub(Big0, height)
-	}
-	start := BytesToUint64(value[:8])
-	end := BytesToUint64(value[8:16])
-	val := new(big.Int).SetBytes(value[16:])
+	height := BytesToUint64(value[:8])
+	start := BytesToUint64(value[8:16])
+	end := BytesToUint64(value[16:24])
 	return &Ticket{
-		Owner:      owner,
+		ID:         key,
 		Height:     height,
 		StartTime:  start,
 		ExpireTime: end,
-		Value:      val,
 	}, nil
 }
 
@@ -812,14 +807,28 @@ func (s TicketPtrSlice) String() string {
 	return string(b)
 }
 
-func (s TicketSlice) ToMap() map[Hash]Ticket {
-	r := make(map[Hash]Ticket, len(s))
+type TicketDisplay struct {
+	Owner      Address
+	Height     uint64
+	StartTime  uint64
+	ExpireTime uint64
+	Value      *big.Int
+}
+
+func (t *Ticket) ToDisplay() TicketDisplay {
+	return TicketDisplay{
+		Owner:      t.Owner(),
+		Height:     t.Height,
+		StartTime:  t.StartTime,
+		ExpireTime: t.ExpireTime,
+		Value:      t.Value(),
+	}
+}
+
+func (s TicketSlice) ToMap() map[Hash]TicketDisplay {
+	r := make(map[Hash]TicketDisplay, len(s))
 	for _, t := range s {
-		id := t.ID()
-		if t.IsInGenesis() {
-			t.Height = Big0
-		}
-		r[id] = t
+		r[t.ID] = t.ToDisplay()
 	}
 	return r
 }

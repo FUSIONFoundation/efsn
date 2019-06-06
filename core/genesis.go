@@ -244,16 +244,16 @@ func (g *Genesis) ToBlock(db ethdb.Database) *types.Block {
 	}
 
 	blockNumber := new(big.Int).SetUint64(g.Number)
+	timestamp := new(big.Int).SetUint64(g.Timestamp)
 
 	if g.TicketCreateInfo != nil {
 		var x uint64
 		for x = 0; x < g.TicketCreateInfo.Count; x++ {
 			ticket := common.Ticket{
-				Owner:      g.TicketCreateInfo.Owner,
-				Height:     new(big.Int).SetInt64(-int64(x)),
+				ID:         common.TicketID(g.TicketCreateInfo.Owner, common.Big0, timestamp, new(big.Int).SetUint64(x)),
+				Height:     0,
 				StartTime:  g.TicketCreateInfo.Time,
 				ExpireTime: g.TicketCreateInfo.Time + 30*24*3600,
-				Value:      common.TicketPrice(blockNumber),
 			}
 			statedb.AddTicket(ticket)
 		}
@@ -265,7 +265,7 @@ func (g *Genesis) ToBlock(db ethdb.Database) *types.Block {
 	head := &types.Header{
 		Number:     blockNumber,
 		Nonce:      types.EncodeNonce(g.Nonce),
-		Time:       new(big.Int).SetUint64(g.Timestamp),
+		Time:       timestamp,
 		ParentHash: g.ParentHash,
 		Extra:      g.ExtraData,
 		GasLimit:   g.GasLimit,
