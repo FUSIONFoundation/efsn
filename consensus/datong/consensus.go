@@ -227,18 +227,14 @@ func (dt *DaTong) verifySeal(chain consensus.ChainReader, header *types.Header, 
 		return err
 	}
 	ticketID := snap.GetVoteTicket()
-	ticket, err := dt.getTicket(parent, ticketID)
-	if err != nil {
-		return err
-	}
-	// verify ticket with signer
-	if header.Coinbase != ticket.Owner() {
-		return errors.New("Coinbase is not the voted ticket owner")
-	}
 	// verify ticket: list squence, ID , ticket Info, difficulty
 	diff, tk, listSq, _, errv := dt.calcBlockDifficulty(chain, header, parent)
 	if errv != nil {
 		return errv
+	}
+	// verify ticket with signer
+	if tk.Owner() != header.Coinbase {
+		return errors.New("Coinbase is not the voted ticket owner")
 	}
 	// check ticket ID
 	if tk.ID != ticketID {
@@ -404,6 +400,15 @@ func (dt *DaTong) Finalize(chain consensus.ChainReader, header *types.Header, st
 		log.Warn("Next block have no ticket, wait buy ticket.")
 		return nil, errors.New("Next block have no ticket, wait buy ticket.")
 	}
+	ticketsIDHash, err := headerState.UpdateTickets()
+	if err != nil {
+		return nil, errors.New("UpdateTickets failed")
+	}
+	if header.MixDigest == (common.Hash{}) {
+		header.MixDigest = ticketsIDHash
+	} else if header.MixDigest != ticketsIDHash {
+		return nil, fmt.Errorf("verify MixDigest failed, have %v, want %v", header.MixDigest, ticketsIDHash)
+	}
 
 	snap.SetWeight(remainingWeight)
 	snap.SetTicketWeight(remainingWeight)
@@ -517,16 +522,8 @@ func (dt *DaTong) Close() error {
 	return nil
 }
 
-func (dt *DaTong) getTicket(header *types.Header, id common.Hash) (*common.Ticket, error) {
-	statedb, err := state.New(header.Root, dt.stateCache)
-	if err != nil {
-		return nil, fmt.Errorf("getTicket error:%v", err)
-	}
-	return statedb.GetTicket(id)
-}
-
 func (dt *DaTong) getAllTickets(header *types.Header) (common.TicketSlice, error) {
-	statedb, err := state.New(header.Root, dt.stateCache)
+	statedb, err := state.New(header.Root, header.MixDigest, dt.stateCache)
 	if err != nil {
 		return nil, fmt.Errorf("getAllTickets error:%v", err)
 	}

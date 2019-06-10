@@ -233,7 +233,7 @@ func (g *Genesis) ToBlock(db ethdb.Database) *types.Block {
 	if db == nil {
 		db = ethdb.NewMemDatabase()
 	}
-	statedb, _ := state.New(common.Hash{}, state.NewDatabase(db))
+	statedb, _ := state.New(common.Hash{}, common.Hash{}, state.NewDatabase(db))
 	for addr, account := range g.Alloc {
 		statedb.AddBalance(addr, common.SystemAssetID, account.Balance)
 		statedb.SetCode(addr, account.Code)
@@ -246,6 +246,7 @@ func (g *Genesis) ToBlock(db ethdb.Database) *types.Block {
 	blockNumber := new(big.Int).SetUint64(g.Number)
 	timestamp := new(big.Int).SetUint64(g.Timestamp)
 
+	var ticketsIDHash common.Hash
 	if g.TicketCreateInfo != nil {
 		var x uint64
 		for x = 0; x < g.TicketCreateInfo.Count; x++ {
@@ -257,6 +258,7 @@ func (g *Genesis) ToBlock(db ethdb.Database) *types.Block {
 			}
 			statedb.AddTicket(ticket)
 		}
+		ticketsIDHash, _ = statedb.UpdateTickets()
 	}
 
 	statedb.GenAsset(common.SystemAsset)
@@ -271,7 +273,7 @@ func (g *Genesis) ToBlock(db ethdb.Database) *types.Block {
 		GasLimit:   g.GasLimit,
 		GasUsed:    g.GasUsed,
 		Difficulty: g.Difficulty,
-		MixDigest:  g.Mixhash,
+		MixDigest:  ticketsIDHash,
 		Coinbase:   g.Coinbase,
 		Root:       root,
 	}

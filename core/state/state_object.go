@@ -479,9 +479,6 @@ func (s *stateObject) setTimeLockBalance(assetID common.Hash, amount *common.Tim
 func (c *stateObject) ReturnGas(gas *big.Int) {}
 
 func (self *stateObject) deepCopy(db *StateDB) *stateObject {
-	if self.address == common.TicketKeyAddress {
-		self.CommitTrie(db.db)
-	}
 	stateObject := newObject(db, self.address, self.data)
 	if self.trie != nil {
 		stateObject.trie = db.db.CopyTrie(self.trie)

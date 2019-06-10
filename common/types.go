@@ -834,11 +834,48 @@ func (s TicketSlice) ToMap() map[Hash]TicketDisplay {
 }
 
 func (s TicketSlice) DeepCopy() TicketSlice {
-	r := make(TicketSlice, 0, len(s))
-	for _, t := range s {
-		r = append(r, t)
+	r := make(TicketSlice, len(s))
+	for i, t := range s {
+		r[i] = t
 	}
 	return r
+}
+
+func (s TicketSlice) AllIds() []Hash {
+	ids := make([]Hash, len(s))
+	for i, t := range s {
+		ids[i] = t.ID
+	}
+	return ids
+}
+
+func (s TicketSlice) Get(id Hash) (*Ticket, error) {
+	for _, t := range s {
+		if t.ID == id {
+			return &t, nil
+		}
+	}
+	return nil, fmt.Errorf("%v ticket not fount", id.String())
+}
+
+func (s TicketSlice) AddTicket(ticket *Ticket) (TicketSlice, error) {
+	for _, t := range s {
+		if t.ID == ticket.ID {
+			return s, fmt.Errorf("AddTicket: %v ticket exist", t.ID.String())
+		}
+	}
+	s = append(s, *ticket)
+	return s, nil
+}
+
+func (s TicketSlice) RemoveTicket(id Hash) (TicketSlice, error) {
+	for i, t := range s {
+		if t.ID == id {
+			s = append(s[:i], s[i+1:]...)
+			return s, nil
+		}
+	}
+	return nil, fmt.Errorf("RemoveTicket: %v ticket not fount", id.String())
 }
 
 // Swap wacom
