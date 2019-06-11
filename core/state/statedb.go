@@ -961,9 +961,6 @@ func (db *StateDB) UpdateAsset(asset common.Asset) error {
 func (db *StateDB) setTicketState(key, value common.Hash) {
 	stateObject := db.GetOrNewStateObject(common.TicketKeyAddress)
 	if stateObject != nil {
-		db.rwlock.Lock()
-		defer db.rwlock.Unlock()
-
 		stateObject.SetState(db.db, key, value)
 	}
 }
@@ -984,9 +981,6 @@ func (db *StateDB) IsTicketExist(id common.Hash) bool {
 func (db *StateDB) GetTicket(id common.Hash) (*common.Ticket, error) {
 	stateObject := db.getStateObject(common.TicketKeyAddress)
 	if stateObject != nil && id != (common.Hash{}) {
-		db.rwlock.RLock()
-		defer db.rwlock.RUnlock()
-
 		value := stateObject.GetState(db.db, id)
 		ticket, err := common.ParseTicket(id, value)
 		if err == nil {
@@ -1039,8 +1033,6 @@ func (db *StateDB) AddTicket(ticket common.Ticket) error {
 		return fmt.Errorf("AddTicket error: %v", err)
 	}
 	db.tickets = tickets
-	value := ticket.ToValHash()
-	db.setTicketState(ticket.ID, value)
 	return nil
 }
 
@@ -1058,7 +1050,19 @@ func (db *StateDB) RemoveTicket(id common.Hash) error {
 	return nil
 }
 
-func (db *StateDB) UpdateTickets() (common.Hash, error) {
+func (db *StateDB) UpdateTickets(blockNumber *big.Int) (common.Hash, error) {
+	db.rwlock.Lock()
+	defer db.rwlock.Unlock()
+
+	for i := len(db.tickets) - 1; i >= 0; i-- {
+		ticket := db.tickets[i]
+		if ticket.BlockHeight().Cmp(blockNumber) != 0 {
+			break
+		}
+		value := ticket.ToValHash()
+		db.setTicketState(ticket.ID, value)
+	}
+
 	ids := db.tickets.AllIds()
 	blob, err := rlp.EncodeToBytes(&ids)
 	if err != nil {
@@ -1066,10 +1070,6 @@ func (db *StateDB) UpdateTickets() (common.Hash, error) {
 		return common.Hash{}, fmt.Errorf("Unable to encode tickets, err: %v", err)
 	}
 	hash := crypto.Keccak256Hash(blob)
-
-	db.rwlock.Lock()
-	defer db.rwlock.Unlock()
-
 	db.SetStructData(common.TicketKeyAddress, hash.Bytes(), blob)
 	return hash, nil
 }

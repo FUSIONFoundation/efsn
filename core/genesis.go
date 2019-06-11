@@ -258,7 +258,7 @@ func (g *Genesis) ToBlock(db ethdb.Database) *types.Block {
 			}
 			statedb.AddTicket(ticket)
 		}
-		ticketsIDHash, _ = statedb.UpdateTickets()
+		ticketsIDHash, _ = statedb.UpdateTickets(common.Big0)
 	}
 
 	statedb.GenAsset(common.SystemAsset)

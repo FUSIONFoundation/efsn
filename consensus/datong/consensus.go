@@ -400,7 +400,7 @@ func (dt *DaTong) Finalize(chain consensus.ChainReader, header *types.Header, st
 		log.Warn("Next block have no ticket, wait buy ticket.")
 		return nil, errors.New("Next block have no ticket, wait buy ticket.")
 	}
-	ticketsIDHash, err := headerState.UpdateTickets()
+	ticketsIDHash, err := headerState.UpdateTickets(header.Number)
 	if err != nil {
 		return nil, errors.New("UpdateTickets failed")
 	}
