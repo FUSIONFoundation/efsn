@@ -18,8 +18,11 @@
 package state
 
 import (
+	"bytes"
+	"compress/gzip"
 	"encoding/binary"
 	"fmt"
+	"io"
 	"math/big"
 	"sort"
 	"sync"
@@ -1004,8 +1007,22 @@ func (db *StateDB) AllTickets() (common.TicketSlice, error) {
 	if len(blob) == 0 {
 		return common.TicketSlice{}, nil
 	}
+
+	gz, err := gzip.NewReader(bytes.NewBuffer(blob))
+	if err != nil {
+		return nil, fmt.Errorf("Read tickets zip data: %v", err)
+	}
+	var buf bytes.Buffer
+	if _, err = io.Copy(&buf, gz); err != nil {
+		return nil, fmt.Errorf("Copy tickets zip data: %v", err)
+	}
+	if err := gz.Close(); err != nil {
+		return nil, fmt.Errorf("Close read zip tickets: %v", err)
+	}
+
+	data := buf.Bytes()
 	var ids []common.Hash
-	if err := rlp.DecodeBytes(blob, &ids); err != nil {
+	if err := rlp.DecodeBytes(data, &ids); err != nil {
 		log.Error("AllTickets: Unable to decode tickets " + key.String())
 		return nil, fmt.Errorf("Unable to decode tickets, err: %v", err)
 	}
@@ -1070,7 +1087,18 @@ func (db *StateDB) UpdateTickets(blockNumber *big.Int) (common.Hash, error) {
 		return common.Hash{}, fmt.Errorf("Unable to encode tickets, err: %v", err)
 	}
 	hash := crypto.Keccak256Hash(blob)
-	db.SetStructData(common.TicketKeyAddress, hash.Bytes(), blob)
+
+	var buf bytes.Buffer
+	zw := gzip.NewWriter(&buf)
+	if _, err := zw.Write(blob); err != nil {
+		return common.Hash{}, fmt.Errorf("Unable to zip tickets data")
+	}
+	if err := zw.Close(); err != nil {
+		return common.Hash{}, fmt.Errorf("Unable to zip tickets")
+	}
+
+	data := buf.Bytes()
+	db.SetStructData(common.TicketKeyAddress, hash.Bytes(), data)
 	return hash, nil
 }
 
