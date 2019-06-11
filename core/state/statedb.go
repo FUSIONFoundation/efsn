@@ -91,6 +91,57 @@ type StateDB struct {
 	rwlock sync.RWMutex
 }
 
+type CachedTickets struct {
+	hash    common.Hash
+	tickets common.TicketSlice
+}
+
+const maxCachedTicketsCount = 101
+
+type CachedTicketSlice struct {
+	tickets [maxCachedTicketsCount]CachedTickets
+	start   int64
+	end     int64
+	rwlock  sync.RWMutex
+}
+
+var cachedTicketSlice = CachedTicketSlice{
+	tickets: [maxCachedTicketsCount]CachedTickets{},
+	start:   0,
+	end:     0,
+}
+
+func (cts *CachedTicketSlice) Add(hash common.Hash, tickets common.TicketSlice) {
+	if cts.Get(hash) != nil {
+		return
+	}
+	cts.rwlock.Lock()
+	defer cts.rwlock.Unlock()
+
+	elem := CachedTickets{
+		hash:    hash,
+		tickets: tickets.DeepCopy(),
+	}
+	cts.tickets[cts.end] = elem
+	cts.end = (cts.end + 1) % maxCachedTicketsCount
+	if cts.end == cts.start {
+		cts.start = (cts.start + 1) % maxCachedTicketsCount
+	}
+}
+
+func (cts CachedTicketSlice) Get(hash common.Hash) common.TicketSlice {
+	cts.rwlock.RLock()
+	defer cts.rwlock.RUnlock()
+
+	for i := cts.start; i != cts.end; i = (i + 1) % maxCachedTicketsCount {
+		v := cts.tickets[i]
+		if v.hash == hash {
+			return v.tickets
+		}
+	}
+	return nil
+}
+
 // Create a new state from a given trie.
 func New(root common.Hash, mixDigest common.Hash, db Database) (*StateDB, error) {
 	tr, err := db.OpenTrie(root)
@@ -999,10 +1050,16 @@ func (db *StateDB) AllTickets() (common.TicketSlice, error) {
 		return db.tickets, nil
 	}
 
+	key := db.ticketsHash
+	ts := cachedTicketSlice.Get(key)
+	if ts != nil {
+		db.tickets = ts.DeepCopy()
+		return db.tickets, nil
+	}
+
 	db.rwlock.RLock()
 	defer db.rwlock.RUnlock()
 
-	key := db.ticketsHash
 	blob := db.GetStructData(common.TicketKeyAddress, key.Bytes())
 	if len(blob) == 0 {
 		return common.TicketSlice{}, nil
@@ -1036,6 +1093,7 @@ func (db *StateDB) AllTickets() (common.TicketSlice, error) {
 		tickets[i] = *ticket
 	}
 	db.tickets = tickets
+	cachedTicketSlice.Add(key, db.tickets)
 	return db.tickets, nil
 }
 
@@ -1087,6 +1145,13 @@ func (db *StateDB) UpdateTickets(blockNumber *big.Int) (common.Hash, error) {
 		return common.Hash{}, fmt.Errorf("Unable to encode tickets, err: %v", err)
 	}
 	hash := crypto.Keccak256Hash(blob)
+	ts := cachedTicketSlice.Get(hash)
+	if ts != nil {
+		if common.DebugMode {
+			log.Info("UpdateTickets: ignore as already stored", "hash", hash.String())
+		}
+		return hash, nil
+	}
 
 	var buf bytes.Buffer
 	zw := gzip.NewWriter(&buf)
@@ -1099,6 +1164,7 @@ func (db *StateDB) UpdateTickets(blockNumber *big.Int) (common.Hash, error) {
 
 	data := buf.Bytes()
 	db.SetStructData(common.TicketKeyAddress, hash.Bytes(), data)
+	cachedTicketSlice.Add(hash, db.tickets)
 	return hash, nil
 }
 
