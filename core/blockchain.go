@@ -167,6 +167,9 @@ func NewBlockChain(db ethdb.Database, cacheConfig *CacheConfig, chainConfig *par
 	}
 	bc.SetValidator(NewBlockValidator(chainConfig, bc, engine))
 	bc.SetProcessor(NewStateProcessor(chainConfig, bc, engine))
+	if datong, ok := engine.(*datong.DaTong); ok {
+		datong.SetStateCache(bc.stateCache)
+	}
 
 	var err error
 	bc.hc, err = NewHeaderChain(db, chainConfig, engine, bc.getProcInterrupt)

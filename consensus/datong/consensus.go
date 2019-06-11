@@ -87,7 +87,7 @@ func New(config *params.DaTongConfig, db ethdb.Database) *DaTong {
 	return &DaTong{
 		config:     config,
 		db:         db,
-		stateCache: state.NewDatabase(db),
+		stateCache: nil,
 
 		weight:            new(big.Int),
 		validTicketNumber: new(big.Int),
@@ -824,4 +824,8 @@ func (dt *DaTong) checkBlockTime(chain consensus.ChainReader, header *types.Head
 		}
 	}
 	return nil
+}
+
+func (dt *DaTong) SetStateCache(stateCache state.Database) {
+	dt.stateCache = stateCache
 }
