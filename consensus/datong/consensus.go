@@ -379,7 +379,7 @@ func (dt *DaTong) Finalize(chain consensus.ChainReader, header *types.Header, st
 		if i >= maxNumberOfDeletedTickets {
 			break
 		}
-		deleteTicket(t, ticketRetreat, !t.IsInGenesis())
+		deleteTicket(t, ticketRetreat, !(t.IsInGenesis() || i == 0))
 	}
 
 	remainingWeight := new(big.Int)
