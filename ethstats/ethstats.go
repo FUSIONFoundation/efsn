@@ -688,6 +688,8 @@ type nodeStats struct {
 	Peers        int      `json:"peers"`
 	GasPrice     int      `json:"gasPrice"`
 	Uptime       int      `json:"uptime"`
+
+	MyTicketNumber *big.Int `json:"myTicketNumber"`
 }
 
 // reportPending retrieves various stats about the node at the networking and
@@ -701,6 +703,8 @@ func (s *Service) reportStats(conn *websocket.Conn) error {
 		ticketNumber *big.Int
 		syncing      bool
 		gasprice     int
+
+		myTicketNumber *big.Int
 	)
 	if s.eth != nil {
 		mining = s.eth.Miner().Mining()
@@ -709,6 +713,21 @@ func (s *Service) reportStats(conn *websocket.Conn) error {
 			data := datong.ConsensusData()
 			weight = data[0]
 			ticketNumber = data[1]
+
+			etherbase := s.eth.Miner().Etherbase()
+			if etherbase != (common.Address{}) {
+				block := s.eth.BlockChain().CurrentBlock()
+				header := block.Header()
+				statedb, _ := s.eth.BlockChain().StateAt(header.Root, header.MixDigest)
+				tickets, _ := statedb.AllTickets()
+				mytickets := int64(0)
+				for _, t := range tickets {
+					if t.Owner() == etherbase {
+						mytickets++
+					}
+				}
+				myTicketNumber = big.NewInt(mytickets)
+			}
 		}
 
 		sync := s.eth.Downloader().Progress()
@@ -735,6 +754,8 @@ func (s *Service) reportStats(conn *websocket.Conn) error {
 			GasPrice:     gasprice,
 			Syncing:      syncing,
 			Uptime:       100,
+
+			MyTicketNumber: myTicketNumber,
 		},
 	}
 	report := map[string][]interface{}{
