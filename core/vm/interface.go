@@ -75,7 +75,7 @@ type StateDB interface {
 	GenAsset(common.Asset) error
 	UpdateAsset(common.Asset) error
 
-	AllTickets() (common.TicketSlice, error)
+	AllTickets() (common.TicketsDataSlice, error)
 	AddTicket(common.Ticket) error
 	RemoveTicket(id common.Hash) error
 	GetTicket(id common.Hash) (*common.Ticket, error)

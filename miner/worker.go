@@ -571,7 +571,7 @@ func (w *worker) resultLoop() {
 
 // makeCurrent creates a new environment for the current cycle.
 func (w *worker) makeCurrent(parent *types.Block, header *types.Header) error {
-	state, err := w.chain.StateAt(parent.Root())
+	state, err := w.chain.StateAt(parent.Root(), parent.MixDigest())
 	if err != nil {
 		return err
 	}
@@ -761,6 +761,7 @@ func (w *worker) commitNewWork(interrupt *int32, noempty bool, timestamp int64) 
 		GasLimit:   core.CalcGasLimit(parent, w.gasFloor, w.gasCeil),
 		Extra:      w.extra,
 		Time:       big.NewInt(timestamp),
+		Difficulty: common.Big0,
 	}
 	// Only set the coinbase if our consensus engine is running (avoid spurious block rewards)
 	if w.isRunning() {

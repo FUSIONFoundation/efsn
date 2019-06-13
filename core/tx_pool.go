@@ -117,7 +117,7 @@ const (
 type blockChain interface {
 	CurrentBlock() *types.Block
 	GetBlock(hash common.Hash, number uint64) *types.Block
-	StateAt(root common.Hash) (*state.StateDB, error)
+	StateAt(root common.Hash, mixDigest common.Hash) (*state.StateDB, error)
 
 	SubscribeChainHeadEvent(ch chan<- ChainHeadEvent) event.Subscription
 }
@@ -424,7 +424,7 @@ func (pool *TxPool) reset(oldHead, newHead *types.Header) {
 	if newHead == nil {
 		newHead = pool.chain.CurrentBlock().Header() // Special case during testing
 	}
-	statedb, err := pool.chain.StateAt(newHead.Root)
+	statedb, err := pool.chain.StateAt(newHead.Root, newHead.MixDigest)
 	if err != nil {
 		log.Error("Failed to reset txpool state", "err", err)
 		return
@@ -1281,7 +1281,7 @@ func (t *txLookup) Add(tx *types.Transaction) {
 	defer t.lock.Unlock()
 
 	t.all[tx.Hash()] = tx
-	if isBuyTicketTx(tx) {
+	if tx.IsBuyTicketTx() {
 		t.ticketTxBeats[tx.Hash()] = time.Now()
 	}
 }
@@ -1292,12 +1292,6 @@ func (t *txLookup) Remove(hash common.Hash) {
 	defer t.lock.Unlock()
 
 	delete(t.all, hash)
-}
-
-func isBuyTicketTx(tx *types.Transaction) bool {
-	param := common.FSNCallParam{}
-	rlp.DecodeBytes(tx.Data(), &param)
-	return param.Func == common.BuyTicketFunc
 }
 
 func (pool *TxPool) validateFsnCallTx(tx *types.Transaction) error {
@@ -1400,7 +1394,7 @@ func (pool *TxPool) validateFsnCallTx(tx *types.Transaction) error {
 		}
 		found := false
 		pool.all.Range(func(hash common.Hash, tx *types.Transaction) bool {
-			if isBuyTicketTx(tx) {
+			if tx.IsBuyTicketTx() {
 				sender, _ := types.Sender(pool.signer, tx)
 				if from == sender {
 					found = true
@@ -1668,23 +1662,6 @@ func (pool *TxPool) validateFsnCallTx(tx *types.Transaction) error {
 
 		ln = len(makeSwapParam.FromAssetID)
 		// check balances first
-		for i := 0; i < ln; i++ {
-			if useAsset[i] == true {
-				if makeSwapParam.FromAssetID[i] == common.SystemAssetID {
-					fsnValue.Add(fsnValue, total[i])
-				} else if state.GetBalance(makeSwapParam.FromAssetID[i], from).Cmp(total[i]) < 0 {
-					return fmt.Errorf("not enough from asset")
-				}
-			} else {
-				available := state.GetTimeLockBalance(makeSwapParam.FromAssetID[i], from)
-				if available.Cmp(needValue[i]) < 0 {
-					if state.GetBalance(makeSwapParam.FromAssetID[i], from).Cmp(total[i]) < 0 {
-						return fmt.Errorf("not enough time lock or asset balance")
-					}
-				}
-			}
-		}
-		// then deduct
 		for i := 0; i < ln; i++ {
 			if useAsset[i] == true {
 				if makeSwapParam.FromAssetID[i] == common.SystemAssetID {

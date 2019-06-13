@@ -233,7 +233,7 @@ func (g *Genesis) ToBlock(db ethdb.Database) *types.Block {
 	if db == nil {
 		db = ethdb.NewMemDatabase()
 	}
-	statedb, _ := state.New(common.Hash{}, state.NewDatabase(db))
+	statedb, _ := state.New(common.Hash{}, common.Hash{}, state.NewDatabase(db))
 	for addr, account := range g.Alloc {
 		statedb.AddBalance(addr, common.SystemAssetID, account.Balance)
 		statedb.SetCode(addr, account.Code)
@@ -244,19 +244,21 @@ func (g *Genesis) ToBlock(db ethdb.Database) *types.Block {
 	}
 
 	blockNumber := new(big.Int).SetUint64(g.Number)
+	timestamp := new(big.Int).SetUint64(g.Timestamp)
 
 	if g.TicketCreateInfo != nil {
-		var x uint64
-		for x = 0; x < g.TicketCreateInfo.Count; x++ {
+		for x := uint64(0); x < g.TicketCreateInfo.Count; x++ {
 			ticket := common.Ticket{
-				Owner:      g.TicketCreateInfo.Owner,
-				Height:     new(big.Int).SetInt64(-int64(x)),
-				StartTime:  g.TicketCreateInfo.Time,
-				ExpireTime: g.TicketCreateInfo.Time + 30*24*3600,
-				Value:      common.TicketPrice(blockNumber),
+				ID: common.TicketID(g.TicketCreateInfo.Owner, 0, x),
+				TicketBody: common.TicketBody{
+					Height:     0,
+					StartTime:  x,
+					ExpireTime: g.TicketCreateInfo.Time + 30*24*3600,
+				},
 			}
 			statedb.AddTicket(ticket)
 		}
+		statedb.UpdateTickets(common.Big0)
 	}
 
 	statedb.GenAsset(common.SystemAsset)
@@ -265,7 +267,7 @@ func (g *Genesis) ToBlock(db ethdb.Database) *types.Block {
 	head := &types.Header{
 		Number:     blockNumber,
 		Nonce:      types.EncodeNonce(g.Nonce),
-		Time:       new(big.Int).SetUint64(g.Timestamp),
+		Time:       timestamp,
 		ParentHash: g.ParentHash,
 		Extra:      g.ExtraData,
 		GasLimit:   g.GasLimit,

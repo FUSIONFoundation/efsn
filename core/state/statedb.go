@@ -18,8 +18,11 @@
 package state
 
 import (
+	"bytes"
+	"compress/gzip"
 	"encoding/binary"
 	"fmt"
+	"io"
 	"math/big"
 	"sort"
 	"sync"
@@ -81,16 +84,76 @@ type StateDB struct {
 	validRevisions []revision
 	nextRevisionId int
 
-	lock sync.Mutex
+	tickets common.TicketsDataSlice
+
+	lock   sync.Mutex
+	rwlock sync.RWMutex
+}
+
+type CachedTickets struct {
+	hash    common.Hash
+	tickets common.TicketsDataSlice
+}
+
+const maxCachedTicketsCount = 101
+
+type CachedTicketSlice struct {
+	tickets [maxCachedTicketsCount]CachedTickets
+	start   int64
+	end     int64
+	rwlock  sync.RWMutex
+}
+
+var cachedTicketSlice = CachedTicketSlice{
+	tickets: [maxCachedTicketsCount]CachedTickets{},
+	start:   0,
+	end:     0,
+}
+
+func (cts *CachedTicketSlice) Add(hash common.Hash, tickets common.TicketsDataSlice) {
+	if cts.Get(hash) != nil {
+		return
+	}
+
+	elem := CachedTickets{
+		hash:    hash,
+		tickets: tickets.DeepCopy(),
+	}
+
+	cts.rwlock.Lock()
+	defer cts.rwlock.Unlock()
+
+	cts.tickets[cts.end] = elem
+	cts.end = (cts.end + 1) % maxCachedTicketsCount
+	if cts.end == cts.start {
+		cts.start = (cts.start + 1) % maxCachedTicketsCount
+	}
+}
+
+func (cts CachedTicketSlice) Get(hash common.Hash) common.TicketsDataSlice {
+	if hash == (common.Hash{}) {
+		return common.TicketsDataSlice{}
+	}
+
+	cts.rwlock.RLock()
+	defer cts.rwlock.RUnlock()
+
+	for i := cts.start; i != cts.end; i = (i + 1) % maxCachedTicketsCount {
+		v := cts.tickets[i]
+		if v.hash == hash {
+			return v.tickets
+		}
+	}
+	return nil
 }
 
 // Create a new state from a given trie.
-func New(root common.Hash, db Database) (*StateDB, error) {
+func New(root common.Hash, mixDigest common.Hash, db Database) (*StateDB, error) {
 	tr, err := db.OpenTrie(root)
 	if err != nil {
 		return nil, err
 	}
-	return &StateDB{
+	statedb := &StateDB{
 		db:                db,
 		trie:              tr,
 		stateObjects:      make(map[common.Address]*stateObject),
@@ -98,7 +161,9 @@ func New(root common.Hash, db Database) (*StateDB, error) {
 		logs:              make(map[common.Hash][]*types.Log),
 		preimages:         make(map[common.Hash][]byte),
 		journal:           newJournal(),
-	}, nil
+		tickets:           nil,
+	}
+	return statedb, nil
 }
 
 // setError remembers the first non-nil error it is called with.
@@ -129,6 +194,7 @@ func (self *StateDB) Reset(root common.Hash) error {
 	self.logSize = 0
 	self.preimages = make(map[common.Hash][]byte)
 	self.clearJournalAndRefund()
+	self.tickets = nil
 	return nil
 }
 
@@ -290,12 +356,19 @@ func (self *StateDB) GetCommittedState(addr common.Address, hash common.Hash) co
 }
 
 func (self *StateDB) GetData(addr common.Address) []byte {
-
-	stateObject := self.GetOrNewStateObject(addr)
+	stateObject := self.getStateObject(addr)
 	if stateObject != nil {
 		return stateObject.Code(self.db)
 	}
 	return nil
+}
+
+func (self *StateDB) GetDataHash(addr common.Address) common.Hash {
+	stateObject := self.getStateObject(addr)
+	if stateObject != nil {
+		return common.BytesToHash(stateObject.CodeHash())
+	}
+	return common.Hash{}
 }
 
 // Database retrieves the low level database supporting the lower level trie ops.
@@ -391,12 +464,14 @@ func (self *StateDB) SetState(addr common.Address, key, value common.Hash) {
 	}
 }
 
-func (self *StateDB) SetData(addr common.Address, value []byte) {
-
+func (self *StateDB) SetData(addr common.Address, value []byte) common.Hash {
 	stateObject := self.GetOrNewStateObject(addr)
 	if stateObject != nil {
-		stateObject.SetCode(crypto.Keccak256Hash(value), value)
+		hash := crypto.Keccak256Hash(value)
+		stateObject.SetCode(hash, value)
+		return hash
 	}
+	return common.Hash{}
 }
 
 // Suicide marks the given account as suicided.
@@ -558,8 +633,6 @@ func (self *StateDB) Copy() *StateDB {
 	self.lock.Lock()
 	defer self.lock.Unlock()
 
-	self.UpdateTickets()
-
 	// Copy all the basic fields, initialize the memory ones
 	state := &StateDB{
 		db:                self.db,
@@ -571,6 +644,7 @@ func (self *StateDB) Copy() *StateDB {
 		logSize:           self.logSize,
 		preimages:         make(map[common.Hash][]byte),
 		journal:           newJournal(),
+		tickets:           self.tickets.DeepCopy(),
 	}
 	// Copy the dirty states, logs, and preimages
 	for addr := range self.journal.dirties {
@@ -950,86 +1024,123 @@ func (db *StateDB) UpdateAsset(asset common.Asset) error {
 	return nil
 }
 
-func (db *StateDB) setTicketState(key, value common.Hash) {
-	stateObject := db.GetOrNewStateObject(common.TicketKeyAddress)
-	if stateObject != nil {
-		stateObject.SetState(db.db, key, value)
-	}
-}
-
-func (db *StateDB) UpdateTickets() error {
-	stateObject := db.getStateObject(common.TicketKeyAddress)
-	if stateObject != nil {
-		return stateObject.CommitTrie(db.db)
-	}
-	return nil
-}
-
 // IsTicketExist wacom
 func (db *StateDB) IsTicketExist(id common.Hash) bool {
-	_, err := db.GetTicket(id)
+	tickets, err := db.AllTickets()
+	if err != nil {
+		log.Error("IsTicketExist unable to retrieve all tickets")
+		return false
+	}
+
+	_, err = tickets.Get(id)
 	return err == nil
 }
 
 // GetTicket wacom
 func (db *StateDB) GetTicket(id common.Hash) (*common.Ticket, error) {
-	stateObject := db.getStateObject(common.TicketKeyAddress)
-	if stateObject != nil {
-		value := stateObject.GetState(db.db, id)
-		ticket, err := common.ParseTicket(id, value)
-		if err == nil {
-			return ticket, err
-		}
+	tickets, err := db.AllTickets()
+	if err != nil {
+		log.Error("GetTicket unable to retrieve all tickets")
+		return nil, fmt.Errorf("GetTicket error: %v", err)
 	}
-	return nil, fmt.Errorf("GetTicket: %s Ticket not found", id.String())
+	return tickets.Get(id)
 }
 
 // AllTickets wacom
-func (db *StateDB) AllTickets() (common.TicketSlice, error) {
-	stateObject := db.getStateObject(common.TicketKeyAddress)
-	if stateObject == nil {
-		return nil, nil
+func (db *StateDB) AllTickets() (common.TicketsDataSlice, error) {
+	if len(db.tickets) != 0 {
+		return db.tickets, nil
 	}
-	tickets := make(common.TicketSlice, 0, 1000)
-	tr := stateObject.getTrie(db.db)
-	it := trie.NewIterator(tr.NodeIterator(nil))
-	emptyKey := common.Hash{}
-	for it.Next() {
-		key := common.BytesToHash(tr.GetKey(it.Key))
-		if key == emptyKey {
-			continue
-		}
-		value, dirty := stateObject.dirtyStorage[key]
-		if !dirty {
-			if _, content, _, err := rlp.Split(it.Value); err == nil {
-				value = common.BytesToHash(content)
-			}
-		}
-		if ticket, err := common.ParseTicket(key, value); err == nil {
-			tickets = append(tickets, *ticket)
-		}
+
+	key := db.GetDataHash(common.TicketKeyAddress)
+	ts := cachedTicketSlice.Get(key)
+	if ts != nil {
+		db.tickets = ts.DeepCopy()
+		return db.tickets, nil
 	}
-	return tickets, nil
+
+	db.rwlock.RLock()
+	defer db.rwlock.RUnlock()
+
+	blob := db.GetData(common.TicketKeyAddress)
+	if len(blob) == 0 {
+		return common.TicketsDataSlice{}, nil
+	}
+
+	gz, err := gzip.NewReader(bytes.NewBuffer(blob))
+	if err != nil {
+		return nil, fmt.Errorf("Read tickets zip data: %v", err)
+	}
+	var buf bytes.Buffer
+	if _, err = io.Copy(&buf, gz); err != nil {
+		return nil, fmt.Errorf("Copy tickets zip data: %v", err)
+	}
+	if err := gz.Close(); err != nil {
+		return nil, fmt.Errorf("Close read zip tickets: %v", err)
+	}
+	data := buf.Bytes()
+
+	var tickets common.TicketsDataSlice
+	if err := rlp.DecodeBytes(data, &tickets); err != nil {
+		log.Error("Unable to decode tickets")
+		return nil, fmt.Errorf("Unable to decode tickets, err: %v", err)
+	}
+	db.tickets = tickets
+	cachedTicketSlice.Add(key, db.tickets)
+	return db.tickets, nil
 }
 
 // AddTicket wacom
 func (db *StateDB) AddTicket(ticket common.Ticket) error {
-	id := ticket.ID()
-	if db.IsTicketExist(id) == true {
-		return fmt.Errorf("AddTicket: %s Ticket exists", id.String())
+	tickets, err := db.AllTickets()
+	if err != nil {
+		return fmt.Errorf("AddTicket error: %v", err)
 	}
-	value := ticket.ToValHash()
-	db.setTicketState(id, value)
+	tickets, err = tickets.AddTicket(&ticket)
+	if err != nil {
+		return fmt.Errorf("AddTicket error: %v", err)
+	}
+	db.tickets = tickets
 	return nil
 }
 
 // RemoveTicket wacom
 func (db *StateDB) RemoveTicket(id common.Hash) error {
-	if db.IsTicketExist(id) == false {
-		return fmt.Errorf("RemoveTicket: %s Ticket not found", id.String())
+	tickets, err := db.AllTickets()
+	if err != nil {
+		return fmt.Errorf("RemoveTicket error: %v", err)
 	}
-	db.setTicketState(id, common.Hash{})
+	tickets, err = tickets.RemoveTicket(id)
+	if err != nil {
+		return fmt.Errorf("RemoveTicket error: %v", err)
+	}
+	db.tickets = tickets
 	return nil
+}
+
+func (db *StateDB) UpdateTickets(blockNumber *big.Int) (common.Hash, error) {
+	db.rwlock.Lock()
+	defer db.rwlock.Unlock()
+
+	blob, err := rlp.EncodeToBytes(&db.tickets)
+	if err != nil {
+		log.Error("Unable to encode tickets")
+		return common.Hash{}, fmt.Errorf("Unable to encode tickets. err: %v", err)
+	}
+
+	var buf bytes.Buffer
+	zw := gzip.NewWriter(&buf)
+	if _, err := zw.Write(blob); err != nil {
+		return common.Hash{}, fmt.Errorf("Unable to zip tickets data")
+	}
+	if err := zw.Close(); err != nil {
+		return common.Hash{}, fmt.Errorf("Unable to zip tickets")
+	}
+	data := buf.Bytes()
+
+	hash := db.SetData(common.TicketKeyAddress, data)
+	cachedTicketSlice.Add(hash, db.tickets)
+	return hash, nil
 }
 
 // AllSwaps wacom

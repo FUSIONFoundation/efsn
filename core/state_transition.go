@@ -223,7 +223,10 @@ func (st *StateTransition) TransitionDb() (ret []byte, usedGas uint64, failed bo
 		st.state.SetNonce(msg.From(), st.state.GetNonce(sender.Address())+1)
 
 		if st.to() == common.FSNCallAddress {
-			st.handleFsnCall()
+			errc := st.handleFsnCall()
+			if errc != nil && common.DebugMode {
+				log.Info("handleFsnCall error", "err", errc)
+			}
 		}
 
 		ret, st.gas, vmerr = evm.Call(sender, st.to(), st.data, st.gas, st.value)
@@ -406,11 +409,11 @@ func (st *StateTransition) handleFsnCall() error {
 	case common.BuyTicketFunc:
 		outputCommandInfo("BuyTicketFunc", "from", st.msg.From())
 		from := st.msg.From()
-		id := common.TicketID(from, height)
+		id := common.TicketID(from, height.Uint64(), 0)
 
 		if st.state.IsTicketExist(id) {
 			st.addLog(common.BuyTicketFunc, param.Data, common.NewKeyValue("Error", "Ticket already exist"))
-			return fmt.Errorf("Ticket already exist")
+			return fmt.Errorf(id.String() + " Ticket already exist")
 		}
 
 		buyTicketParam := common.BuyTicketParam{}
@@ -437,11 +440,12 @@ func (st *StateTransition) handleFsnCall() error {
 		}
 
 		ticket := common.Ticket{
-			Owner:      from,
-			Height:     height,
-			StartTime:  buyTicketParam.Start,
-			ExpireTime: end,
-			Value:      value,
+			ID: id,
+			TicketBody: common.TicketBody{
+				Height:     height.Uint64(),
+				StartTime:  start,
+				ExpireTime: end,
+			},
 		}
 
 		useAsset := false

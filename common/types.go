@@ -451,12 +451,6 @@ func ParseBig256(s string) (*big.Int, bool) {
 	return bigint, ok
 }
 
-// TicketPrice  place holder for ticket price
-func TicketPrice(blocknumber *big.Int) *big.Int {
-	oneFSN := big.NewInt(1000000000000000000)
-	return new(big.Int).Mul(big.NewInt(5000), oneFSN)
-}
-
 // FSNCallParam wacom
 type FSNCallParam struct {
 	Func FSNCallFunc
@@ -710,126 +704,6 @@ var SystemAsset = Asset{
 	Total:       new(big.Int).Mul(big.NewInt(81920000), big.NewInt(1000000000000000000)),
 	ID:          SystemAssetID,
 	Description: "https://fusion.org",
-}
-
-// Ticket wacom
-type Ticket struct {
-	Owner      Address
-	Height     *big.Int `json:",string"`
-	StartTime  uint64
-	ExpireTime uint64
-	Value      *big.Int `json:",string"`
-}
-
-func (t *Ticket) IsInGenesis() bool {
-	return t.Height.Sign() <= 0
-}
-
-func (t *Ticket) ID() Hash {
-	return TicketID(t.Owner, t.Height)
-}
-
-func (t *Ticket) ToValHash() Hash {
-	h := Hash{}
-	copy(h[:8], Uint64ToBytes(t.StartTime))
-	copy(h[8:16], Uint64ToBytes(t.ExpireTime))
-	copy(h[HashLength-len(t.Value.Bytes()):], t.Value.Bytes())
-	return h
-}
-
-func TicketID(owner Address, height *big.Int) Hash {
-	h := Hash{}
-	copy(h[:AddressLength], owner[:])
-	if height.Sign() < 0 {
-		h[AddressLength] = 0xff
-	}
-	copy(h[HashLength-len(height.Bytes()):], height.Bytes())
-	return h
-}
-
-func (t *Ticket) MarshalJSON() ([]byte, error) {
-	height := t.Height
-	if t.IsInGenesis() {
-		height = Big0
-	}
-	return json.Marshal(&struct {
-		ID         Hash
-		Owner      Address
-		Height     string
-		StartTime  uint64
-		ExpireTime uint64
-		Value      string
-	}{
-		ID:         t.ID(),
-		Owner:      t.Owner,
-		Height:     height.String(),
-		StartTime:  t.StartTime,
-		ExpireTime: t.ExpireTime,
-		Value:      t.Value.String(),
-	})
-}
-
-func (t *Ticket) String() string {
-	b, _ := json.Marshal(t)
-	return string(b)
-}
-
-func ParseTicket(key, value Hash) (*Ticket, error) {
-	if key == (Hash{}) {
-		return nil, fmt.Errorf("ParseTicket: empty key")
-	}
-	if value == (Hash{}) {
-		return nil, fmt.Errorf("ParseTicket: empty value")
-	}
-	owner := BytesToAddress(key[:AddressLength])
-	sign := key[AddressLength]
-	height := new(big.Int).SetBytes(key[AddressLength+1:])
-	if sign == 0xff {
-		height = new(big.Int).Sub(Big0, height)
-	}
-	start := BytesToUint64(value[:8])
-	end := BytesToUint64(value[8:16])
-	val := new(big.Int).SetBytes(value[16:])
-	return &Ticket{
-		Owner:      owner,
-		Height:     height,
-		StartTime:  start,
-		ExpireTime: end,
-		Value:      val,
-	}, nil
-}
-
-type TicketSlice []Ticket
-type TicketPtrSlice []*Ticket
-
-func (s TicketSlice) String() string {
-	b, _ := json.Marshal(s)
-	return string(b)
-}
-
-func (s TicketPtrSlice) String() string {
-	b, _ := json.Marshal(s)
-	return string(b)
-}
-
-func (s TicketSlice) ToMap() map[Hash]Ticket {
-	r := make(map[Hash]Ticket, len(s))
-	for _, t := range s {
-		id := t.ID()
-		if t.IsInGenesis() {
-			t.Height = Big0
-		}
-		r[id] = t
-	}
-	return r
-}
-
-func (s TicketSlice) DeepCopy() TicketSlice {
-	r := make(TicketSlice, 0, len(s))
-	for _, t := range s {
-		r = append(r, t)
-	}
-	return r
 }
 
 // Swap wacom

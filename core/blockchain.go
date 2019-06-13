@@ -167,6 +167,9 @@ func NewBlockChain(db ethdb.Database, cacheConfig *CacheConfig, chainConfig *par
 	}
 	bc.SetValidator(NewBlockValidator(chainConfig, bc, engine))
 	bc.SetProcessor(NewStateProcessor(chainConfig, bc, engine))
+	if datong, ok := engine.(*datong.DaTong); ok {
+		datong.SetStateCache(bc.stateCache)
+	}
 
 	var err error
 	bc.hc, err = NewHeaderChain(db, chainConfig, engine, bc.getProcInterrupt)
@@ -286,7 +289,7 @@ func (bc *BlockChain) SetHead(head uint64) error {
 		bc.currentBlock.Store(bc.GetBlock(currentHeader.Hash(), currentHeader.Number.Uint64()))
 	}
 	if currentBlock := bc.CurrentBlock(); currentBlock != nil {
-		if _, err := state.New(currentBlock.Root(), bc.stateCache); err != nil {
+		if _, err := bc.State(); err != nil {
 			// Rewound state missing, rolled back to before pivot, reset to genesis
 			bc.currentBlock.Store(bc.genesisBlock)
 		}
@@ -378,12 +381,12 @@ func (bc *BlockChain) Processor() Processor {
 
 // State returns a new mutable state based on the current HEAD block.
 func (bc *BlockChain) State() (*state.StateDB, error) {
-	return bc.StateAt(bc.CurrentBlock().Root())
+	return bc.StateAt(bc.CurrentBlock().Root(), bc.CurrentBlock().MixDigest())
 }
 
 // StateAt returns a new mutable state based on a particular point in time.
-func (bc *BlockChain) StateAt(root common.Hash) (*state.StateDB, error) {
-	return state.New(root, bc.stateCache)
+func (bc *BlockChain) StateAt(root common.Hash, mixDigest common.Hash) (*state.StateDB, error) {
+	return state.New(root, mixDigest, bc.stateCache)
 }
 
 // Reset purges the entire blockchain, restoring it to its genesis state.
@@ -428,23 +431,11 @@ func (bc *BlockChain) repair(head **types.Block) error {
 	for {
 		blockNumber := (*head).Number()
 		// Abort if we've rewound to a head block that does have associated state
-		if statedb, err := state.New((*head).Root(), bc.stateCache); err == nil {
-			if tickets, err := statedb.AllTickets(); err == nil {
-				ok := true
-				for _, t := range tickets {
-					if t.Height.Cmp(blockNumber) > 0 {
-						log.Info("Wrong ticket state", "id", t.ID().String(), "block height", blockNumber, "ticket height", t.Height)
-						ok = false
-						break
-					}
-				}
-				if ok {
-					if rewound {
-						log.Info("Rewound blockchain to past state", "number", blockNumber, "hash", (*head).Hash())
-					}
-					return nil
-				}
+		if _, err := bc.StateAt((*head).Root(), (*head).MixDigest()); err == nil {
+			if rewound {
+				log.Info("Rewound blockchain to past state", "number", blockNumber, "hash", (*head).Hash())
 			}
+			return nil
 		} else if !rewound {
 			log.Warn("Head state missing, repairing chain", "number", blockNumber, "hash", (*head).Hash())
 		}
@@ -1111,7 +1102,7 @@ func (bc *BlockChain) insertChain(chain types.Blocks) (int, []interface{}, []*ty
 
 		//err := <-results
 		datong.SetHeaders(headers[:i])
-		err := bc.engine.VerifyHeader(bc, headers[i], seals[i])
+		err := bc.engine.VerifyHeader(bc, block.RawHeader(), seals[i])
 		if err == nil {
 			err = bc.Validator().ValidateBody(block)
 		}
@@ -1186,7 +1177,7 @@ func (bc *BlockChain) insertChain(chain types.Blocks) (int, []interface{}, []*ty
 		} else {
 			parent = chain[i-1]
 		}
-		state, err := state.New(parent.Root(), bc.stateCache)
+		state, err := bc.StateAt(parent.Root(), parent.MixDigest())
 		if err != nil {
 			return i, events, coalescedLogs, err
 		}
