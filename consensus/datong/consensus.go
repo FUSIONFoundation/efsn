@@ -345,7 +345,8 @@ func (dt *DaTong) Finalize(chain consensus.ChainReader, header *types.Header, st
 	if err != nil {
 		return nil, err
 	}
-	if len(tickets) <= 1 {
+	numTickets := tickets.NumberOfTickets()
+	if numTickets <= 1 {
 		log.Warn("Next block doesn't have ticket, wait buy ticket")
 		return nil, errors.New("Next block doesn't have ticket, wait buy ticket")
 	}
@@ -384,16 +385,19 @@ func (dt *DaTong) Finalize(chain consensus.ChainReader, header *types.Header, st
 
 	remainingWeight := new(big.Int)
 	ticketNumber := 0
-	for _, t := range tickets {
-		if _, deleted := deletedTickets[t.ID]; deleted {
-			continue
-		}
-		if t.ExpireTime <= parentTime {
-			deleteTicket(&t, ticketExpired, !t.IsInGenesis())
-		} else {
-			ticketNumber++
-			weight := new(big.Int).Sub(header.Number, t.BlockHeight())
-			remainingWeight = remainingWeight.Add(remainingWeight, weight)
+	for _, v := range tickets {
+		for _, t := range v.Tickets {
+			id := common.TicketID(v.Owner, t.Height, t.StartTime)
+			if _, deleted := deletedTickets[id]; deleted {
+				continue
+			}
+			if t.ExpireTime <= parentTime {
+				deleteTicket(&common.Ticket{ID: id, TicketBody: t}, ticketExpired, false)
+			} else {
+				ticketNumber++
+				weight := new(big.Int).Sub(header.Number, t.BlockHeight())
+				remainingWeight = remainingWeight.Add(remainingWeight, weight)
+			}
 		}
 	}
 	if ticketNumber <= 0 {
@@ -517,7 +521,7 @@ func (dt *DaTong) Close() error {
 	return nil
 }
 
-func (dt *DaTong) getAllTickets(header *types.Header) (common.TicketSlice, error) {
+func (dt *DaTong) getAllTickets(header *types.Header) (common.TicketsDataSlice, error) {
 	statedb, err := state.New(header.Root, header.MixDigest, dt.stateCache)
 	if err != nil {
 		return nil, fmt.Errorf("getAllTickets error:%v", err)
@@ -637,6 +641,39 @@ func (dt *DaTong) HaveBlockBroaded(header *types.Header) bool {
 	return ticketInfo.broad
 }
 
+func calcDisInfo(tickets *common.TicketsData, parent *types.Header) *DisInfo {
+	parentHash := parent.Hash()
+	owner := tickets.Owner
+
+	var minTicket *common.TicketBody
+	var minDist *big.Int
+	for _, t := range tickets.Tickets {
+		hash := parentHash
+		if t.IsInGenesis() {
+			index := t.StartTime
+			hash = crypto.Keccak256Hash(new(big.Int).SetUint64(index).Bytes())
+		}
+		w := new(big.Int).Sub(parent.Number, t.BlockHeight())
+		w = new(big.Int).Add(w, common.Big1)
+		w2 := new(big.Int).Mul(w, w)
+
+		tid := crypto.Keccak256Hash(owner[:], hash[:])
+		id := new(big.Int).SetBytes(crypto.Keccak256(parentHash[:], tid[:], []byte(owner.Hex())))
+		id2 := new(big.Int).Mul(id, id)
+		s := new(big.Int).Add(w2, id2)
+
+		if minDist == nil || s.Cmp(minDist) < 0 {
+			minTicket = &t
+			minDist = s
+		}
+	}
+	ticket := &common.Ticket{
+		ID:         common.TicketID(owner, minTicket.Height, minTicket.StartTime),
+		TicketBody: *minTicket,
+	}
+	return &DisInfo{tk: ticket, res: minDist}
+}
+
 func (dt *DaTong) calcBlockDifficulty(chain consensus.ChainReader, header *types.Header, parent *types.Header) (*big.Int, *common.Ticket, uint64, common.TicketPtrSlice, error) {
 	if header.GetSelectedTicket() != nil {
 		return header.Difficulty, header.GetSelectedTicket(), header.Nonce.Uint64(), header.GetRetreatTickets(), nil
@@ -645,83 +682,54 @@ func (dt *DaTong) calcBlockDifficulty(chain consensus.ChainReader, header *types
 	if err != nil {
 		return nil, nil, 0, nil, err
 	}
-	tickets := make(common.TicketSlice, 0, len(parentTickets))
-	ticketOwners := make(map[common.Address]struct{})
-	haveTicket := false
+	blockHeight := header.Number.Uint64()
 	var weight, number uint64
 	for _, v := range parentTickets {
-		if v.BlockHeight().Cmp(header.Number) < 0 {
-			owner := v.Owner()
-			if owner == header.Coinbase {
-				number++
-				weight += header.Number.Uint64() - v.Height + 1
-				haveTicket = true
+		if v.Owner == header.Coinbase {
+			number += uint64(len(v.Tickets))
+			for _, t := range v.Tickets {
+				weight += blockHeight - t.Height + 1
 			}
-			tickets = append(tickets, v)
-			_, exist := ticketOwners[owner]
-			if exist == false {
-				ticketOwners[owner] = struct{}{}
-			}
-		} else {
-			return nil, nil, 0, nil, fmt.Errorf("Ticket (%v) has height (%v) greater than block height (%v)", v.ID.String(), v.Height, parent.Number.Uint64())
+			break
 		}
+	}
+	if number == 0 {
+		return nil, nil, 0, nil, errors.New("Miner doesn't have ticket")
 	}
 	dt.weight.SetUint64(weight)
 	dt.validTicketNumber.SetUint64(number)
-	if !haveTicket {
-		return nil, nil, 0, nil, errors.New("Miner doesn't have ticket")
-	}
 
 	// calc balance before selected ticket from stored tickets list
-	ticketsTotalAmount := uint64(len(tickets))
 	var (
 		selected *common.Ticket
 		retreat  common.TicketPtrSlice
 	)
 
 	// make consensus by tickets sequence(selectedTime) with: parentHash, weigth, ticketID, coinbase
-	parentHash := parent.Hash()
-	list := make(DistanceSlice, 0, len(tickets))
-	for i := 0; i < len(tickets); i++ {
-		ticket := tickets[i]
-		hash := parentHash
-		if ticket.IsInGenesis() {
-			index := uint64(common.BytesToUint32(ticket.ID[28:32]))
-			hash = crypto.Keccak256Hash(new(big.Int).SetUint64(index).Bytes())
-		}
-		w := new(big.Int).Sub(parent.Number, ticket.BlockHeight())
-		w = new(big.Int).Add(w, common.Big1)
-		w2 := new(big.Int).Mul(w, w)
-
-		owner := ticket.Owner()
-		tid := crypto.Keccak256Hash(owner[:], hash[:])
-		id := new(big.Int).SetBytes(crypto.Keccak256(parentHash[:], tid[:], []byte(owner.Hex())))
-		id2 := new(big.Int).Mul(id, id)
-		s := new(big.Int).Add(w2, id2)
-
-		ht := &DisInfo{tk: &ticket, res: s}
+	list := make(DistanceSlice, 0, len(parentTickets))
+	for _, v := range parentTickets {
+		ht := calcDisInfo(&v, parent)
 		list = append(list, ht)
 	}
 	sort.Sort(list)
-	norep := make(map[common.Address]bool)
 	for _, t := range list {
 		owner := t.tk.Owner()
 		if owner == header.Coinbase {
 			selected = t.tk
 			break
-		} else if _, exist := norep[owner]; exist == false {
-			norep[owner] = true
+		} else {
 			retreat = append(retreat, t.tk) // one miner one selected ticket
 		}
 	}
-	selectedTime := uint64(len(norep))
 	if selected == nil {
 		return nil, nil, 0, nil, errors.New("myself tickets not selected in maxBlockTime")
 	}
 
+	selectedTime := uint64(len(retreat))
+	ticketsTotalAmount, numberOfticketOwners := parentTickets.NumberOfTicketsAndOwners()
+
 	// cacl difficulty
 	difficulty := new(big.Int).SetUint64(ticketsTotalAmount - selectedTime)
-
 	if selectedTime > 0 {
 		// base10 = base * 10 (base > 1)
 		base10 := int64(16)
@@ -738,8 +746,6 @@ func (dt *DaTong) calcBlockDifficulty(chain consensus.ChainReader, header *types
 			difficulty = common.Big1
 		}
 	}
-
-	numberOfticketOwners := uint64(len(ticketOwners))
 	adjust := new(big.Int).SetUint64(numberOfticketOwners - selectedTime)
 	difficulty = new(big.Int).Add(difficulty, adjust)
 

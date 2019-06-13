@@ -716,17 +716,15 @@ func (s *Service) reportStats(conn *websocket.Conn) error {
 
 			etherbase := s.eth.Miner().Etherbase()
 			if etherbase != (common.Address{}) {
-				block := s.eth.BlockChain().CurrentBlock()
-				header := block.Header()
+				header := s.eth.BlockChain().CurrentBlock().Header()
 				statedb, _ := s.eth.BlockChain().StateAt(header.Root, header.MixDigest)
 				tickets, _ := statedb.AllTickets()
-				mytickets := int64(0)
 				for _, t := range tickets {
-					if t.Owner() == etherbase {
-						mytickets++
+					if t.Owner == etherbase {
+						myTicketNumber = big.NewInt(int64(len(t.Tickets)))
+						break
 					}
 				}
-				myTicketNumber = big.NewInt(mytickets)
 			}
 		}
 

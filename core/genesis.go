@@ -247,13 +247,14 @@ func (g *Genesis) ToBlock(db ethdb.Database) *types.Block {
 	timestamp := new(big.Int).SetUint64(g.Timestamp)
 
 	if g.TicketCreateInfo != nil {
-		var x uint64
-		for x = 0; x < g.TicketCreateInfo.Count; x++ {
+		for x := uint64(0); x < g.TicketCreateInfo.Count; x++ {
 			ticket := common.Ticket{
-				ID:         common.TicketID(g.TicketCreateInfo.Owner, common.Big0, timestamp, new(big.Int).SetUint64(x)),
-				Height:     0,
-				StartTime:  g.TicketCreateInfo.Time,
-				ExpireTime: g.TicketCreateInfo.Time + 30*24*3600,
+				ID: common.TicketID(g.TicketCreateInfo.Owner, 0, x),
+				TicketBody: common.TicketBody{
+					Height:     0,
+					StartTime:  x,
+					ExpireTime: g.TicketCreateInfo.Time + 30*24*3600,
+				},
 			}
 			statedb.AddTicket(ticket)
 		}

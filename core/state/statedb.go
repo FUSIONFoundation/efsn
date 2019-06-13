@@ -84,7 +84,7 @@ type StateDB struct {
 	validRevisions []revision
 	nextRevisionId int
 
-	tickets common.TicketSlice
+	tickets common.TicketsDataSlice
 
 	lock   sync.Mutex
 	rwlock sync.RWMutex
@@ -92,7 +92,7 @@ type StateDB struct {
 
 type CachedTickets struct {
 	hash    common.Hash
-	tickets common.TicketSlice
+	tickets common.TicketsDataSlice
 }
 
 const maxCachedTicketsCount = 101
@@ -110,7 +110,7 @@ var cachedTicketSlice = CachedTicketSlice{
 	end:     0,
 }
 
-func (cts *CachedTicketSlice) Add(hash common.Hash, tickets common.TicketSlice) {
+func (cts *CachedTicketSlice) Add(hash common.Hash, tickets common.TicketsDataSlice) {
 	if cts.Get(hash) != nil {
 		return
 	}
@@ -130,9 +130,9 @@ func (cts *CachedTicketSlice) Add(hash common.Hash, tickets common.TicketSlice) 
 	}
 }
 
-func (cts CachedTicketSlice) Get(hash common.Hash) common.TicketSlice {
+func (cts CachedTicketSlice) Get(hash common.Hash) common.TicketsDataSlice {
 	if hash == (common.Hash{}) {
-		return common.TicketSlice{}
+		return common.TicketsDataSlice{}
 	}
 
 	cts.rwlock.RLock()
@@ -1047,7 +1047,7 @@ func (db *StateDB) GetTicket(id common.Hash) (*common.Ticket, error) {
 }
 
 // AllTickets wacom
-func (db *StateDB) AllTickets() (common.TicketSlice, error) {
+func (db *StateDB) AllTickets() (common.TicketsDataSlice, error) {
 	if len(db.tickets) != 0 {
 		return db.tickets, nil
 	}
@@ -1064,7 +1064,7 @@ func (db *StateDB) AllTickets() (common.TicketSlice, error) {
 
 	blob := db.GetData(common.TicketKeyAddress)
 	if len(blob) == 0 {
-		return common.TicketSlice{}, nil
+		return common.TicketsDataSlice{}, nil
 	}
 
 	gz, err := gzip.NewReader(bytes.NewBuffer(blob))
@@ -1080,7 +1080,7 @@ func (db *StateDB) AllTickets() (common.TicketSlice, error) {
 	}
 	data := buf.Bytes()
 
-	var tickets common.TicketSlice
+	var tickets common.TicketsDataSlice
 	if err := rlp.DecodeBytes(data, &tickets); err != nil {
 		log.Error("Unable to decode tickets")
 		return nil, fmt.Errorf("Unable to decode tickets, err: %v", err)
