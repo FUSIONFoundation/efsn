@@ -47,14 +47,6 @@ func (t *Ticket) Value() *big.Int {
 	return TicketPrice(new(big.Int).SetUint64(t.Height))
 }
 
-func (t *Ticket) ToValHash() Hash {
-	h := Hash{}
-	copy(h[:8], Uint64ToBytes(t.Height))
-	copy(h[8:16], Uint64ToBytes(t.StartTime))
-	copy(h[16:24], Uint64ToBytes(t.ExpireTime))
-	return h
-}
-
 func TicketID(owner Address, height *big.Int, timestamp *big.Int, difficulty *big.Int) Hash {
 	h := Hash{}
 	copy(h[:20], owner[:])
@@ -85,24 +77,6 @@ func (t *Ticket) MarshalJSON() ([]byte, error) {
 func (t *Ticket) String() string {
 	b, _ := json.Marshal(t)
 	return string(b)
-}
-
-func ParseTicket(key, value Hash) (*Ticket, error) {
-	if key == (Hash{}) {
-		return nil, fmt.Errorf("ParseTicket: empty key")
-	}
-	if value == (Hash{}) {
-		return nil, fmt.Errorf("ParseTicket: empty value")
-	}
-	height := BytesToUint64(value[:8])
-	start := BytesToUint64(value[8:16])
-	end := BytesToUint64(value[16:24])
-	return &Ticket{
-		ID:         key,
-		Height:     height,
-		StartTime:  start,
-		ExpireTime: end,
-	}, nil
 }
 
 func (s TicketSlice) String() string {
@@ -139,14 +113,6 @@ func (s TicketSlice) DeepCopy() TicketSlice {
 		r[i] = t
 	}
 	return r
-}
-
-func (s TicketSlice) AllIds() []Hash {
-	ids := make([]Hash, len(s))
-	for i, t := range s {
-		ids[i] = t.ID
-	}
-	return ids
 }
 
 func (s TicketSlice) Get(id Hash) (*Ticket, error) {

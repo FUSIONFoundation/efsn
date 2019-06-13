@@ -1024,13 +1024,6 @@ func (db *StateDB) UpdateAsset(asset common.Asset) error {
 	return nil
 }
 
-func (db *StateDB) setTicketState(key, value common.Hash) {
-	stateObject := db.GetOrNewStateObject(common.TicketKeyAddress)
-	if stateObject != nil {
-		stateObject.SetState(db.db, key, value)
-	}
-}
-
 // IsTicketExist wacom
 func (db *StateDB) IsTicketExist(id common.Hash) bool {
 	tickets, err := db.AllTickets()
@@ -1045,15 +1038,12 @@ func (db *StateDB) IsTicketExist(id common.Hash) bool {
 
 // GetTicket wacom
 func (db *StateDB) GetTicket(id common.Hash) (*common.Ticket, error) {
-	stateObject := db.getStateObject(common.TicketKeyAddress)
-	if stateObject != nil && id != (common.Hash{}) {
-		value := stateObject.GetState(db.db, id)
-		ticket, err := common.ParseTicket(id, value)
-		if err == nil {
-			return ticket, err
-		}
+	tickets, err := db.AllTickets()
+	if err != nil {
+		log.Error("GetTicket unable to retrieve all tickets")
+		return nil, fmt.Errorf("GetTicket error: %v", err)
 	}
-	return nil, fmt.Errorf("GetTicket: %s Ticket not found", id.String())
+	return tickets.Get(id)
 }
 
 // AllTickets wacom
