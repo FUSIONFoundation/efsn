@@ -84,8 +84,7 @@ type StateDB struct {
 	validRevisions []revision
 	nextRevisionId int
 
-	ticketsHash common.Hash
-	tickets     common.TicketSlice
+	tickets common.TicketSlice
 
 	lock   sync.Mutex
 	rwlock sync.RWMutex
@@ -115,13 +114,15 @@ func (cts *CachedTicketSlice) Add(hash common.Hash, tickets common.TicketSlice) 
 	if cts.Get(hash) != nil {
 		return
 	}
-	cts.rwlock.Lock()
-	defer cts.rwlock.Unlock()
 
 	elem := CachedTickets{
 		hash:    hash,
 		tickets: tickets.DeepCopy(),
 	}
+
+	cts.rwlock.Lock()
+	defer cts.rwlock.Unlock()
+
 	cts.tickets[cts.end] = elem
 	cts.end = (cts.end + 1) % maxCachedTicketsCount
 	if cts.end == cts.start {
@@ -130,6 +131,10 @@ func (cts *CachedTicketSlice) Add(hash common.Hash, tickets common.TicketSlice) 
 }
 
 func (cts CachedTicketSlice) Get(hash common.Hash) common.TicketSlice {
+	if hash == (common.Hash{}) {
+		return common.TicketSlice{}
+	}
+
 	cts.rwlock.RLock()
 	defer cts.rwlock.RUnlock()
 
@@ -156,7 +161,6 @@ func New(root common.Hash, mixDigest common.Hash, db Database) (*StateDB, error)
 		logs:              make(map[common.Hash][]*types.Log),
 		preimages:         make(map[common.Hash][]byte),
 		journal:           newJournal(),
-		ticketsHash:       mixDigest,
 		tickets:           nil,
 	}
 	return statedb, nil
@@ -352,12 +356,19 @@ func (self *StateDB) GetCommittedState(addr common.Address, hash common.Hash) co
 }
 
 func (self *StateDB) GetData(addr common.Address) []byte {
-
-	stateObject := self.GetOrNewStateObject(addr)
+	stateObject := self.getStateObject(addr)
 	if stateObject != nil {
 		return stateObject.Code(self.db)
 	}
 	return nil
+}
+
+func (self *StateDB) GetDataHash(addr common.Address) common.Hash {
+	stateObject := self.getStateObject(addr)
+	if stateObject != nil {
+		return common.BytesToHash(stateObject.CodeHash())
+	}
+	return common.Hash{}
 }
 
 // Database retrieves the low level database supporting the lower level trie ops.
@@ -453,12 +464,14 @@ func (self *StateDB) SetState(addr common.Address, key, value common.Hash) {
 	}
 }
 
-func (self *StateDB) SetData(addr common.Address, value []byte) {
-
+func (self *StateDB) SetData(addr common.Address, value []byte) common.Hash {
 	stateObject := self.GetOrNewStateObject(addr)
 	if stateObject != nil {
-		stateObject.SetCode(crypto.Keccak256Hash(value), value)
+		hash := crypto.Keccak256Hash(value)
+		stateObject.SetCode(hash, value)
+		return hash
 	}
+	return common.Hash{}
 }
 
 // Suicide marks the given account as suicided.
@@ -631,7 +644,6 @@ func (self *StateDB) Copy() *StateDB {
 		logSize:           self.logSize,
 		preimages:         make(map[common.Hash][]byte),
 		journal:           newJournal(),
-		ticketsHash:       self.ticketsHash,
 		tickets:           self.tickets.DeepCopy(),
 	}
 	// Copy the dirty states, logs, and preimages
@@ -1050,7 +1062,7 @@ func (db *StateDB) AllTickets() (common.TicketSlice, error) {
 		return db.tickets, nil
 	}
 
-	key := db.ticketsHash
+	key := db.GetDataHash(common.TicketKeyAddress)
 	ts := cachedTicketSlice.Get(key)
 	if ts != nil {
 		db.tickets = ts.DeepCopy()
@@ -1060,7 +1072,7 @@ func (db *StateDB) AllTickets() (common.TicketSlice, error) {
 	db.rwlock.RLock()
 	defer db.rwlock.RUnlock()
 
-	blob := db.GetStructData(common.TicketKeyAddress, key.Bytes())
+	blob := db.GetData(common.TicketKeyAddress)
 	if len(blob) == 0 {
 		return common.TicketSlice{}, nil
 	}
@@ -1076,21 +1088,12 @@ func (db *StateDB) AllTickets() (common.TicketSlice, error) {
 	if err := gz.Close(); err != nil {
 		return nil, fmt.Errorf("Close read zip tickets: %v", err)
 	}
-
 	data := buf.Bytes()
-	var ids []common.Hash
-	if err := rlp.DecodeBytes(data, &ids); err != nil {
-		log.Error("AllTickets: Unable to decode tickets " + key.String())
+
+	var tickets common.TicketSlice
+	if err := rlp.DecodeBytes(data, &tickets); err != nil {
+		log.Error("Unable to decode tickets")
 		return nil, fmt.Errorf("Unable to decode tickets, err: %v", err)
-	}
-	tickets := make(common.TicketSlice, len(ids))
-	for i, id := range ids {
-		ticket, err := db.GetTicket(id)
-		if err != nil {
-			log.Error("AllTickets error: " + err.Error())
-			return nil, fmt.Errorf("AllTickets error: %v", err)
-		}
-		tickets[i] = *ticket
 	}
 	db.tickets = tickets
 	cachedTicketSlice.Add(key, db.tickets)
@@ -1129,28 +1132,10 @@ func (db *StateDB) UpdateTickets(blockNumber *big.Int) (common.Hash, error) {
 	db.rwlock.Lock()
 	defer db.rwlock.Unlock()
 
-	for i := len(db.tickets) - 1; i >= 0; i-- {
-		ticket := db.tickets[i]
-		if ticket.BlockHeight().Cmp(blockNumber) != 0 {
-			break
-		}
-		value := ticket.ToValHash()
-		db.setTicketState(ticket.ID, value)
-	}
-
-	ids := db.tickets.AllIds()
-	blob, err := rlp.EncodeToBytes(&ids)
+	blob, err := rlp.EncodeToBytes(&db.tickets)
 	if err != nil {
-		log.Error("UpdateTickets: Unable to encode tickets")
-		return common.Hash{}, fmt.Errorf("Unable to encode tickets, err: %v", err)
-	}
-	hash := crypto.Keccak256Hash(blob)
-	ts := cachedTicketSlice.Get(hash)
-	if ts != nil {
-		if common.DebugMode {
-			log.Info("UpdateTickets: ignore as already stored", "hash", hash.String())
-		}
-		return hash, nil
+		log.Error("Unable to encode tickets")
+		return common.Hash{}, fmt.Errorf("Unable to encode tickets. err: %v", err)
 	}
 
 	var buf bytes.Buffer
@@ -1161,9 +1146,9 @@ func (db *StateDB) UpdateTickets(blockNumber *big.Int) (common.Hash, error) {
 	if err := zw.Close(); err != nil {
 		return common.Hash{}, fmt.Errorf("Unable to zip tickets")
 	}
-
 	data := buf.Bytes()
-	db.SetStructData(common.TicketKeyAddress, hash.Bytes(), data)
+
+	hash := db.SetData(common.TicketKeyAddress, data)
 	cachedTicketSlice.Add(hash, db.tickets)
 	return hash, nil
 }

@@ -400,14 +400,9 @@ func (dt *DaTong) Finalize(chain consensus.ChainReader, header *types.Header, st
 		log.Warn("Next block have no ticket, wait buy ticket.")
 		return nil, errors.New("Next block have no ticket, wait buy ticket.")
 	}
-	ticketsIDHash, err := headerState.UpdateTickets(header.Number)
+	_, err = headerState.UpdateTickets(header.Number)
 	if err != nil {
 		return nil, errors.New("UpdateTickets failed")
-	}
-	if header.MixDigest == (common.Hash{}) {
-		header.MixDigest = ticketsIDHash
-	} else if header.MixDigest != ticketsIDHash {
-		return nil, fmt.Errorf("verify MixDigest failed, have %v, want %v", header.MixDigest, ticketsIDHash)
 	}
 
 	snap.SetWeight(remainingWeight)

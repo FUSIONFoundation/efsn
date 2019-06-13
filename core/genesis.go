@@ -246,7 +246,6 @@ func (g *Genesis) ToBlock(db ethdb.Database) *types.Block {
 	blockNumber := new(big.Int).SetUint64(g.Number)
 	timestamp := new(big.Int).SetUint64(g.Timestamp)
 
-	var ticketsIDHash common.Hash
 	if g.TicketCreateInfo != nil {
 		var x uint64
 		for x = 0; x < g.TicketCreateInfo.Count; x++ {
@@ -258,7 +257,7 @@ func (g *Genesis) ToBlock(db ethdb.Database) *types.Block {
 			}
 			statedb.AddTicket(ticket)
 		}
-		ticketsIDHash, _ = statedb.UpdateTickets(common.Big0)
+		statedb.UpdateTickets(common.Big0)
 	}
 
 	statedb.GenAsset(common.SystemAsset)
@@ -273,7 +272,7 @@ func (g *Genesis) ToBlock(db ethdb.Database) *types.Block {
 		GasLimit:   g.GasLimit,
 		GasUsed:    g.GasUsed,
 		Difficulty: g.Difficulty,
-		MixDigest:  ticketsIDHash,
+		MixDigest:  g.Mixhash,
 		Coinbase:   g.Coinbase,
 		Root:       root,
 	}
