@@ -846,9 +846,9 @@ func (db *StateDB) GenNotation(addr common.Address) error {
 }
 
 type notationPersist struct {
-	deleted bool
-	count   uint64
-	address common.Address
+	Deleted bool
+	Count   uint64
+	Address common.Address
 }
 
 func (db *StateDB) getNotationCount() (uint64, error) {
@@ -858,12 +858,12 @@ func (db *StateDB) getNotationCount() (uint64, error) {
 	}
 	var np notationPersist
 	rlp.DecodeBytes(data, &np)
-	return np.count, nil
+	return np.Count, nil
 }
 
 func (db *StateDB) setNotationCount(newCount uint64) error {
 	np := notationPersist{
-		count: newCount,
+		Count: newCount,
 	}
 	data, err := rlp.EncodeToBytes(&np)
 	if err != nil {
@@ -875,8 +875,8 @@ func (db *StateDB) setNotationCount(newCount uint64) error {
 
 func (db *StateDB) setNotationToAddressLookup(notation uint64, address common.Address) error {
 	np := notationPersist{
-		count:   notation,
-		address: address,
+		Count:   notation,
+		Address: address,
 	}
 	data, err := rlp.EncodeToBytes(&np)
 	if err != nil {
@@ -901,10 +901,10 @@ func (db *StateDB) GetAddressByNotation(notation uint64) (common.Address, error)
 	if err != nil {
 		return common.Address{}, err
 	}
-	if np.deleted {
+	if np.Deleted {
 		return common.Address{}, fmt.Errorf("notation was deleted")
 	}
-	return np.address, nil
+	return np.Address, nil
 }
 
 // TransferNotation wacom
@@ -972,8 +972,8 @@ func (db *StateDB) AllAssets() (map[common.Hash]common.Asset, error) {
 }
 
 type assetPersist struct {
-	deleted bool // if true swap was recalled and should not be returned
-	asset   common.Asset
+	Deleted bool // if true swap was recalled and should not be returned
+	Asset   common.Asset
 }
 
 // GetAsset wacom
@@ -984,10 +984,10 @@ func (db *StateDB) GetAsset(assetID common.Hash) (common.Asset, error) {
 		return common.Asset{}, fmt.Errorf("asset not found")
 	}
 	rlp.DecodeBytes(data, &asset)
-	if asset.deleted {
+	if asset.Deleted {
 		return common.Asset{}, fmt.Errorf("asset deleted")
 	}
-	return asset.asset, nil
+	return asset.Asset, nil
 }
 
 // GenAsset wacom
@@ -997,8 +997,8 @@ func (db *StateDB) GenAsset(asset common.Asset) error {
 		return fmt.Errorf("%s asset exists", asset.ID.String())
 	}
 	assetToSave := assetPersist{
-		deleted: false,
-		asset:   asset,
+		Deleted: false,
+		Asset:   asset,
 	}
 	data, err := rlp.EncodeToBytes(&assetToSave)
 	if err != nil {
@@ -1013,8 +1013,8 @@ func (db *StateDB) UpdateAsset(asset common.Asset) error {
 	/** to update a asset we just overwrite it
 	 */
 	assetToSave := assetPersist{
-		deleted: false,
-		asset:   asset,
+		Deleted: false,
+		Asset:   asset,
 	}
 	data, err := rlp.EncodeToBytes(&assetToSave)
 	if err != nil {
@@ -1152,8 +1152,8 @@ func (db *StateDB) AllSwaps() (map[common.Hash]common.Swap, error) {
 *
  */
 type swapPersist struct {
-	deleted bool // if true swap was recalled and should not be returned
-	swap    common.Swap
+	Deleted bool // if true swap was recalled and should not be returned
+	Swap    common.Swap
 }
 
 // GetSwap wacom
@@ -1164,10 +1164,10 @@ func (db *StateDB) GetSwap(swapID common.Hash) (common.Swap, error) {
 		return common.Swap{}, fmt.Errorf("swap not found")
 	}
 	rlp.DecodeBytes(data, &swap)
-	if swap.deleted {
+	if swap.Deleted {
 		return common.Swap{}, fmt.Errorf("swap deleted")
 	}
-	return swap.swap, nil
+	return swap.Swap, nil
 }
 
 // AddSwap wacom
@@ -1177,8 +1177,8 @@ func (db *StateDB) AddSwap(swap common.Swap) error {
 		return fmt.Errorf("%s Swap exists", swap.ID.String())
 	}
 	swapToSave := swapPersist{
-		deleted: false,
-		swap:    swap,
+		Deleted: false,
+		Swap:    swap,
 	}
 	data, err := rlp.EncodeToBytes(&swapToSave)
 	if err != nil {
@@ -1193,8 +1193,8 @@ func (db *StateDB) UpdateSwap(swap common.Swap) error {
 	/** to update a swap we just overwrite it
 	 */
 	swapToSave := swapPersist{
-		deleted: false,
-		swap:    swap,
+		Deleted: false,
+		Swap:    swap,
 	}
 	data, err := rlp.EncodeToBytes(&swapToSave)
 	if err != nil {
@@ -1212,8 +1212,8 @@ func (db *StateDB) RemoveSwap(id common.Hash) error {
 	}
 
 	swapToSave := swapPersist{
-		deleted: true,
-		swap:    swapFound,
+		Deleted: true,
+		Swap:    swapFound,
 	}
 	data, err := rlp.EncodeToBytes(&swapToSave)
 	if err != nil {
@@ -1227,8 +1227,8 @@ func (db *StateDB) RemoveSwap(id common.Hash) error {
 *
  */
 type multiSwapPersist struct {
-	deleted bool // if true swap was recalled and should not be returned
-	swap    common.MultiSwap
+	Deleted bool // if true swap was recalled and should not be returned
+	Swap    common.MultiSwap
 }
 
 // GetMultiSwap wacom
@@ -1239,10 +1239,10 @@ func (db *StateDB) GetMultiSwap(swapID common.Hash) (common.MultiSwap, error) {
 		return common.MultiSwap{}, fmt.Errorf("multi swap not found")
 	}
 	rlp.DecodeBytes(data, &swap)
-	if swap.deleted {
+	if swap.Deleted {
 		return common.MultiSwap{}, fmt.Errorf("multi swap deleted")
 	}
-	return swap.swap, nil
+	return swap.Swap, nil
 }
 
 // AddMultiSwap wacom
@@ -1252,8 +1252,8 @@ func (db *StateDB) AddMultiSwap(swap common.MultiSwap) error {
 		return fmt.Errorf("%s Multi Swap exists", swap.ID.String())
 	}
 	swapToSave := multiSwapPersist{
-		deleted: false,
-		swap:    swap,
+		Deleted: false,
+		Swap:    swap,
 	}
 	data, err := rlp.EncodeToBytes(&swapToSave)
 	if err != nil {
@@ -1268,8 +1268,8 @@ func (db *StateDB) UpdateMultiSwap(swap common.MultiSwap) error {
 	/** to update a swap we just overwrite it
 	 */
 	swapToSave := multiSwapPersist{
-		deleted: false,
-		swap:    swap,
+		Deleted: false,
+		Swap:    swap,
 	}
 	data, err := rlp.EncodeToBytes(&swapToSave)
 	if err != nil {
@@ -1287,8 +1287,8 @@ func (db *StateDB) RemoveMultiSwap(id common.Hash) error {
 	}
 
 	swapToSave := multiSwapPersist{
-		deleted: true,
-		swap:    swapFound,
+		Deleted: true,
+		Swap:    swapFound,
 	}
 	data, err := rlp.EncodeToBytes(&swapToSave)
 	if err != nil {
