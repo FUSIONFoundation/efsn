@@ -175,13 +175,32 @@ func (s TicketBodySlice) DeepCopy() TicketBodySlice {
 	return res
 }
 
+func (s TicketsData) DeepCopy() TicketsData {
+	return TicketsData{
+		Owner:   s.Owner,
+		Tickets: s.Tickets.DeepCopy(),
+	}
+}
+
+func (s TicketsData) ToMap() map[Hash]TicketDisplay {
+	return s.ToTicketSlice().ToMap()
+}
+
+func (s TicketsData) ToTicketSlice() TicketSlice {
+	res := make(TicketSlice, len(s.Tickets))
+	for i, t := range s.Tickets {
+		res[i] = Ticket{
+			ID:         TicketID(s.Owner, t.Height, t.StartTime),
+			TicketBody: t,
+		}
+	}
+	return res
+}
+
 func (s TicketsDataSlice) DeepCopy() TicketsDataSlice {
 	res := make(TicketsDataSlice, len(s))
 	for i, v := range s {
-		res[i] = TicketsData{
-			Owner:   v.Owner,
-			Tickets: v.Tickets.DeepCopy(),
-		}
+		res[i] = v.DeepCopy()
 	}
 	return res
 }
@@ -191,20 +210,20 @@ func (s TicketsDataSlice) ToMap() map[Hash]TicketDisplay {
 }
 
 func (s TicketsDataSlice) ToTicketSlice() TicketSlice {
-	count := 0
+	res := make(TicketSlice, 0, s.NumberOfTickets())
 	for _, v := range s {
-		count += len(v.Tickets)
-	}
-	res := make(TicketSlice, 0, count)
-	for _, v := range s {
-		for _, t := range v.Tickets {
-			res = append(res, Ticket{
-				ID:         TicketID(v.Owner, t.Height, t.StartTime),
-				TicketBody: t,
-			})
-		}
+		res = append(res, v.ToTicketSlice()...)
 	}
 	return res
+}
+
+func (s TicketsDataSlice) NumberOfTicketsByAddress(addr Address) uint64 {
+	for _, v := range s {
+		if v.Owner == addr {
+			return uint64(len(v.Tickets))
+		}
+	}
+	return 0
 }
 
 func (s TicketsDataSlice) NumberOfTickets() uint64 {

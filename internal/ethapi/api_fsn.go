@@ -524,30 +524,47 @@ func (s *PublicFusionAPI) AssetExistForAddress(ctx context.Context, assetName st
 	return common.Hash{}, fmt.Errorf("AllAssetsByAddress has been depreciated, use api.fusionnetwork.io")
 }
 
-// AllTickets wacom
-func (s *PublicFusionAPI) AllTickets(ctx context.Context, blockNr rpc.BlockNumber) (map[common.Hash]common.TicketDisplay, error) {
+func (s *PublicFusionAPI) getAllTickets(ctx context.Context, blockNr rpc.BlockNumber) (common.TicketsDataSlice, error) {
 	state, _, err := s.b.StateAndHeaderByNumber(ctx, blockNr)
 	if state == nil || err != nil {
 		return nil, err
 	}
 	tickets, err := state.AllTickets()
+	if err == nil {
+		err = state.Error()
+	}
 	if err != nil {
 		log.Debug("AllTickets:apifsn.go unable to retrieve previous tickets")
+		return nil, fmt.Errorf("AllTickets:apifsn.go unable to retrieve previous tickets. error: %v", err)
+	}
+	return tickets, nil
+}
+
+// AllTickets wacom
+func (s *PublicFusionAPI) AllTickets(ctx context.Context, blockNr rpc.BlockNumber) (map[common.Hash]common.TicketDisplay, error) {
+	tickets, err := s.getAllTickets(ctx, blockNr)
+	if err != nil {
 		return nil, err
 	}
-	return tickets.ToMap(), state.Error()
+	return tickets.ToMap(), nil
 }
 
 // TotalNumberOfTickets wacom
 func (s *PublicFusionAPI) TotalNumberOfTickets(ctx context.Context, blockNr rpc.BlockNumber) (int, error) {
-	tickets, err := s.AllTickets(ctx, blockNr)
-	return len(tickets), err
+	tickets, err := s.getAllTickets(ctx, blockNr)
+	if err != nil {
+		return 0, err
+	}
+	return int(tickets.NumberOfTickets()), err
 }
 
 // TotalNumberOfTicketsByAddress wacom
 func (s *PublicFusionAPI) TotalNumberOfTicketsByAddress(ctx context.Context, address common.Address, blockNr rpc.BlockNumber) (int, error) {
-	tickets, err := s.AllTicketsByAddress(ctx, address, blockNr)
-	return len(tickets), err
+	tickets, err := s.getAllTickets(ctx, blockNr)
+	if err != nil {
+		return 0, err
+	}
+	return int(tickets.NumberOfTicketsByAddress(address)), err
 }
 
 // TicketPrice wacom
@@ -561,22 +578,16 @@ func (s *PublicFusionAPI) TicketPrice(ctx context.Context, blockNr rpc.BlockNumb
 
 // AllTicketsByAddress wacom
 func (s *PublicFusionAPI) AllTicketsByAddress(ctx context.Context, address common.Address, blockNr rpc.BlockNumber) (map[common.Hash]common.TicketDisplay, error) {
-	state, _, err := s.b.StateAndHeaderByNumber(ctx, blockNr)
-	if state == nil || err != nil {
-		return nil, err
-	}
-	tickets, err := state.AllTickets()
+	tickets, err := s.getAllTickets(ctx, blockNr)
 	if err != nil {
-		log.Debug("AllTicketsByAddress:api_fsn.go unable to retrieve previous tickets")
 		return nil, err
 	}
-	var ret = make(map[common.Hash]common.TicketDisplay)
-	for k, v := range tickets.ToMap() {
+	for _, v := range tickets {
 		if v.Owner == address {
-			ret[k] = v
+			return v.ToMap(), nil
 		}
 	}
-	return ret, state.Error()
+	return nil, nil
 }
 
 // AllSwaps wacom
