@@ -1392,20 +1392,6 @@ func (pool *TxPool) validateFsnCallTx(tx *types.Transaction) error {
 		if err := buyTicketParam.Check(height, timestamp, 0); err != nil {
 			return err
 		}
-		found := false
-		pool.all.Range(func(hash common.Hash, tx *types.Transaction) bool {
-			if tx.IsBuyTicketTx() {
-				sender, _ := types.Sender(pool.signer, tx)
-				if from == sender {
-					found = true
-					return false
-				}
-			}
-			return true
-		})
-		if found == true {
-			return fmt.Errorf("%v has already bought a ticket in txpool", from.String())
-		}
 
 		start := buyTicketParam.Start
 		end := buyTicketParam.End
@@ -1421,6 +1407,29 @@ func (pool *TxPool) validateFsnCallTx(tx *types.Transaction) error {
 
 		if state.GetTimeLockBalance(common.SystemAssetID, from).Cmp(needValue) < 0 {
 			fsnValue = value
+		}
+
+		found := false
+		var oldTxHash common.Hash
+		pool.all.Range(func(hash common.Hash, tx1 *types.Transaction) bool {
+			if tx1.IsBuyTicketTx() {
+				sender, _ := types.Sender(pool.signer, tx1)
+				if from == sender {
+					if tx.Nonce() < tx1.Nonce() {
+						oldTxHash = hash
+					} else {
+						found = true
+					}
+					return false
+				}
+			}
+			return true
+		})
+		if found == true {
+			return fmt.Errorf("%v has already bought a ticket in txpool", from.String())
+		}
+		if oldTxHash != (common.Hash{}) {
+			pool.removeTx(oldTxHash, true)
 		}
 
 	case common.AssetValueChangeFunc, common.OldAssetValueChangeFunc:
