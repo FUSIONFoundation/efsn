@@ -24,7 +24,6 @@ import (
 	"runtime"
 	"time"
 
-	mapset "github.com/deckarep/golang-set"
 	"github.com/FusionFoundation/efsn/common"
 	"github.com/FusionFoundation/efsn/common/math"
 	"github.com/FusionFoundation/efsn/consensus"
@@ -34,6 +33,7 @@ import (
 	"github.com/FusionFoundation/efsn/crypto/sha3"
 	"github.com/FusionFoundation/efsn/params"
 	"github.com/FusionFoundation/efsn/rlp"
+	mapset "github.com/deckarep/golang-set"
 )
 
 // Ethash proof-of-work protocol constants.
@@ -82,10 +82,9 @@ func (ethash *Ethash) Author(header *types.Header) (common.Address, error) {
 
 // PreProcess update state if needed from various block info
 // used with some PoS Systems
-func (c *Ethash) PreProcess( chain consensus.ChainReader, header *types.Header, statedb *state.StateDB ) error {
+func (c *Ethash) PreProcess(chain consensus.ChainReader, header *types.Header, statedb *state.StateDB) error {
 	return nil
 }
-
 
 // VerifyHeader checks whether a header conforms to the consensus rules of the
 // stock Ethereum ethash engine.
@@ -629,16 +628,10 @@ func accumulateRewards(config *params.ChainConfig, state *state.StateDB, header 
 		r.Sub(r, header.Number)
 		r.Mul(r, blockReward)
 		r.Div(r, big8)
-		state.AddBalance( uncle.Coinbase, common.SystemAssetID, r)
+		state.AddBalance(uncle.Coinbase, common.SystemAssetID, r)
 
 		r.Div(blockReward, big32)
 		reward.Add(reward, r)
 	}
-	state.AddBalance(header.Coinbase, common.SystemAssetID,  reward)
+	state.AddBalance(header.Coinbase, common.SystemAssetID, reward)
 }
-
-func (dt *Ethash) UpdateBlockBroadcast(header *types.Header) {}
-func (dt *Ethash) HaveBlockBroaded(header *types.Header) bool {
-	return false
-}
-

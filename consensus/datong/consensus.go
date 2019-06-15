@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"math"
 	"math/big"
 	"sort"
 	"sync"
@@ -52,19 +51,11 @@ var (
 type SignerFn func(accounts.Account, []byte) ([]byte, error)
 
 var (
-	maxBytes                  = bytes.Repeat([]byte{0xff}, common.HashLength)
-	maxDiff                   = new(big.Int).SetBytes(maxBytes)
-	maxProb                   = new(big.Int)
-	extraVanity               = 32
-	extraSeal                 = 65
-	MinBlockTime       int64  = 7   // 7 seconds
-	maxBlockTime       uint64 = 600 // 10 minutes
-	ticketWeightStep          = 2   // 2%
-	SelectedTicketTime        = &selectedTicketTime{info: make(map[common.Hash]*selectedInfo)}
-	maxTickets                = new(big.Int).SetBytes(maxBytes)
-)
+	extraVanity         = 32
+	extraSeal           = 65
+	MinBlockTime int64  = 7   // 7 seconds
+	maxBlockTime uint64 = 600 // 10 minutes
 
-var (
 	emptyUncleHash = types.CalcUncleHash(nil)
 )
 
@@ -83,7 +74,6 @@ type DaTong struct {
 
 // New wacom
 func New(config *params.DaTongConfig, db ethdb.Database) *DaTong {
-	maxProb.SetUint64(uint64(math.Pow(2, float64(config.Period+1))))
 	return &DaTong{
 		config:     config,
 		db:         db,
@@ -591,62 +581,6 @@ func GenGenesisExtraData(number *big.Int) []byte {
 	data = append(data, snap.Bytes()...)
 	data = append(data, bytes.Repeat([]byte{0x00}, extraSeal)...)
 	return data
-}
-
-type selectedInfo struct {
-	round uint64 // selected round
-	list  uint64 // tickets number before myself in selected list
-	broad bool
-}
-
-// store selected-ticket spend time
-type selectedTicketTime struct {
-	info map[common.Hash]*selectedInfo
-	sync.Mutex
-}
-
-func calcHeaderHash(header *types.Header) []byte {
-	snap, err := newSnapshotWithData(getSnapDataByHeader(header))
-	if err != nil {
-		return nil
-	}
-	ticketID := snap.GetVoteTicket()
-	// hash (header.Number + ticketID + header.Coinbase)
-	sum := header.Number.String() + ticketID.String() + header.Coinbase.String()
-	return crypto.Keccak256([]byte(sum))
-}
-
-func (dt *DaTong) UpdateBlockBroadcast(header *types.Header) {
-	SelectedTicketTime.Lock()
-	defer SelectedTicketTime.Unlock()
-
-	hash := calcHeaderHash(header)
-	if hash == nil {
-		return
-	}
-	ticketInfo := SelectedTicketTime.info[common.BytesToHash(hash)]
-	if ticketInfo == nil {
-		sl := &selectedInfo{round: maxTickets.Uint64(), list: maxTickets.Uint64(), broad: true}
-		SelectedTicketTime.info[common.BytesToHash(hash)] = sl
-		ticketInfo = SelectedTicketTime.info[common.BytesToHash(hash)]
-	} else {
-		ticketInfo.broad = true
-	}
-}
-
-func (dt *DaTong) HaveBlockBroaded(header *types.Header) bool {
-	SelectedTicketTime.Lock()
-	defer SelectedTicketTime.Unlock()
-
-	hash := calcHeaderHash(header)
-	if hash == nil {
-		return false
-	}
-	ticketInfo := SelectedTicketTime.info[common.BytesToHash(hash)]
-	if ticketInfo == nil {
-		return false
-	}
-	return ticketInfo.broad
 }
 
 func calcDisInfo(tickets *common.TicketsData, parent *types.Header) *DisInfo {

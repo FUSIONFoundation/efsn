@@ -516,10 +516,6 @@ func (w *worker) resultLoop() {
 				log.Error("Block found but no relative pending task", "number", block.Number(), "sealhash", sealhash, "hash", hash)
 				continue
 			}
-			if w.engine.HaveBlockBroaded(block.Header()) {
-				log.Warn("resultLoop", "HaveBlockBroaded", "", "number", block.NumberU64())
-				continue
-			}
 			// Different block could share same sealhash, deep copy here to prevent write-write conflict.
 			var (
 				receipts = make([]*types.Receipt, len(task.receipts))
@@ -542,8 +538,8 @@ func (w *worker) resultLoop() {
 				continue
 			}
 			//spew.Printf("w.chain.WriteBlockWithState, block: %#v\n", block)
-			w.engine.UpdateBlockBroadcast(block.Header())
-			log.Info("Successfully sealed new block", "number", block.Number(), "sealhash", sealhash, "hash", hash,
+			log.Info("Successfully sealed new block",
+				"number", block.Number(), "sealhash", sealhash, "hash", hash,
 				"difficulty", block.Difficulty(),
 				"elapsed", common.PrettyDuration(time.Since(task.createdAt)))
 
