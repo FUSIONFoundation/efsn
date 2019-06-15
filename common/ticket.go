@@ -332,5 +332,30 @@ func (s TicketsDataSlice) RemoveTicket(id Hash) (TicketsDataSlice, error) {
 		return s, nil
 	}
 	log.Info("RemoveTicket: ticket not found", "id", id.String())
-	return nil, fmt.Errorf("RemoveTicket: %v ticket not found", id.String())
+	return s, fmt.Errorf("RemoveTicket: %v ticket not found", id.String())
+}
+
+func (s TicketsDataSlice) ClearExpiredTickets(timestamp uint64) (TicketsDataSlice, error) {
+	haveTicket := false
+	expiredIds := make([]Hash, 0)
+	for _, v := range s {
+		for _, t := range v.Tickets {
+			if t.ExpireTime <= timestamp {
+				id := TicketID(v.Owner, t.Height, t.StartTime)
+				expiredIds = append(expiredIds, id)
+			} else if !haveTicket {
+				haveTicket = true
+			}
+		}
+	}
+	if !haveTicket {
+		return s, fmt.Errorf("Next block have no ticket, wait buy ticket.")
+	}
+	if len(expiredIds) == 0 {
+		return s, nil
+	}
+	for _, id := range expiredIds {
+		s, _ = s.RemoveTicket(id)
+	}
+	return s, nil
 }

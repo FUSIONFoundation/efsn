@@ -562,7 +562,6 @@ func (s *Service) assembleBlockStats(block *types.Block) *blockStats {
 	if _, ok := s.engine.(*datong.DaTong); ok {
 		snap, err := datong.NewSnapshotFromHeader(header)
 		if err == nil {
-			weight = snap.Weight
 			ticketNumber = snap.TicketNumber
 		}
 	}

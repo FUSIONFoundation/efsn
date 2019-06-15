@@ -307,7 +307,6 @@ func (dt *DaTong) Finalize(chain consensus.ChainReader, header *types.Header, st
 	if err != nil {
 		return nil, err
 	}
-	parentTime := parent.Time.Uint64()
 	selected := header.GetSelectedTicket()
 	retreat := header.GetRetreatTickets()
 	if selected == nil {
@@ -325,7 +324,6 @@ func (dt *DaTong) Finalize(chain consensus.ChainReader, header *types.Header, st
 
 	//update tickets
 	headerState := statedb
-	deletedTickets := make(map[common.Hash]struct{})
 	tickets, err := headerState.AllTickets()
 	if err != nil {
 		return nil, err
@@ -337,6 +335,9 @@ func (dt *DaTong) Finalize(chain consensus.ChainReader, header *types.Header, st
 	}
 
 	returnTicket := func(ticket *common.Ticket) {
+		if ticket.ExpireTime <= header.Time.Uint64() {
+			return
+		}
 		value := common.NewTimeLock(&common.TimeLockItem{
 			StartTime: ticket.StartTime,
 			EndTime:   ticket.ExpireTime,
@@ -347,7 +348,6 @@ func (dt *DaTong) Finalize(chain consensus.ChainReader, header *types.Header, st
 
 	deleteTicket := func(ticket *common.Ticket, logType ticketLogType, returnBack bool) {
 		id := ticket.ID
-		deletedTickets[id] = struct{}{}
 		headerState.RemoveTicket(id)
 		snap.AddLog(&ticketLog{
 			TicketID: id,
@@ -368,30 +368,9 @@ func (dt *DaTong) Finalize(chain consensus.ChainReader, header *types.Header, st
 		deleteTicket(t, ticketRetreat, !(t.IsInGenesis() || i == 0))
 	}
 
-	remainingWeight := new(big.Int)
-	ticketNumber := 0
-	for _, v := range tickets {
-		for _, t := range v.Tickets {
-			id := common.TicketID(v.Owner, t.Height, t.StartTime)
-			if _, deleted := deletedTickets[id]; deleted {
-				continue
-			}
-			if t.ExpireTime <= parentTime {
-				deleteTicket(&common.Ticket{ID: id, TicketBody: t}, ticketExpired, false)
-			} else {
-				ticketNumber++
-				weight := new(big.Int).Sub(header.Number, t.BlockHeight())
-				remainingWeight = remainingWeight.Add(remainingWeight, weight)
-			}
-		}
-	}
-	if ticketNumber <= 0 {
-		log.Warn("Next block have no ticket, wait buy ticket.")
-		return nil, errors.New("Next block have no ticket, wait buy ticket.")
-	}
-	hash, err := headerState.UpdateTickets(header.Number)
+	hash, err := headerState.UpdateTickets(header.Number, parent.Time.Uint64())
 	if err != nil {
-		return nil, errors.New("UpdateTickets failed")
+		return nil, errors.New("UpdateTickets failed: " + err.Error())
 	}
 	if header.MixDigest == (common.Hash{}) {
 		header.MixDigest = hash
@@ -399,9 +378,7 @@ func (dt *DaTong) Finalize(chain consensus.ChainReader, header *types.Header, st
 		return nil, fmt.Errorf("MixDigest mismatch, have:%v, want:%v", header.MixDigest, hash)
 	}
 
-	snap.SetWeight(remainingWeight)
-	snap.SetTicketWeight(remainingWeight)
-	snap.SetTicketNumber(ticketNumber)
+	snap.SetTicketNumber(int(headerState.TotalNumberOfTickets()))
 	snapBytes := snap.Bytes()
 	header.Extra = header.Extra[:extraVanity]
 	header.Extra = append(header.Extra, snapBytes...)
@@ -560,17 +537,6 @@ func calcRewards(height *big.Int) *big.Int {
 		reward = new(big.Int).Div(reward, div2)
 	}
 	return reward
-}
-
-// GenGenesisExtraData wacom
-func GenGenesisExtraData(number *big.Int) []byte {
-	data := make([]byte, extraVanity)
-	snap := newSnapshot()
-	snap.SetWeight(number)
-	snap.SetTicketWeight(number)
-	data = append(data, snap.Bytes()...)
-	data = append(data, bytes.Repeat([]byte{0x00}, extraSeal)...)
-	return data
 }
 
 func calcDisInfo(tickets *common.TicketsData, parent *types.Header) *DisInfo {

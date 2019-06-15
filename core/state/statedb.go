@@ -1071,7 +1071,7 @@ func (db *StateDB) AllTickets() (common.TicketsDataSlice, error) {
 
 	blob := db.GetData(common.TicketKeyAddress)
 	if len(blob) == 0 {
-		return common.TicketsDataSlice{}, nil
+		return common.TicketsDataSlice{}, db.Error()
 	}
 
 	gz, err := gzip.NewReader(bytes.NewBuffer(blob))
@@ -1125,9 +1125,23 @@ func (db *StateDB) RemoveTicket(id common.Hash) error {
 	return nil
 }
 
-func (db *StateDB) UpdateTickets(blockNumber *big.Int) (common.Hash, error) {
+func (db *StateDB) TotalNumberOfTickets() uint64 {
+	db.rwlock.RLock()
+	defer db.rwlock.RUnlock()
+
+	return db.tickets.NumberOfTickets()
+}
+
+func (db *StateDB) UpdateTickets(blockNumber *big.Int, timestamp uint64) (common.Hash, error) {
 	db.rwlock.Lock()
 	defer db.rwlock.Unlock()
+
+	tickets := db.tickets
+	tickets, err := tickets.ClearExpiredTickets(timestamp)
+	if err != nil {
+		return common.Hash{}, err
+	}
+	db.tickets = tickets
 
 	blob, err := rlp.EncodeToBytes(&db.tickets)
 	if err != nil {
