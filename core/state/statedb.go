@@ -84,7 +84,8 @@ type StateDB struct {
 	validRevisions []revision
 	nextRevisionId int
 
-	tickets common.TicketsDataSlice
+	ticketsHash common.Hash
+	tickets     common.TicketsDataSlice
 
 	lock   sync.Mutex
 	rwlock sync.RWMutex
@@ -147,6 +148,10 @@ func (cts CachedTicketSlice) Get(hash common.Hash) common.TicketsDataSlice {
 	return nil
 }
 
+func GetCachedTickets(hash common.Hash) common.TicketsDataSlice {
+	return cachedTicketSlice.Get(hash)
+}
+
 // Create a new state from a given trie.
 func New(root common.Hash, mixDigest common.Hash, db Database) (*StateDB, error) {
 	tr, err := db.OpenTrie(root)
@@ -161,6 +166,7 @@ func New(root common.Hash, mixDigest common.Hash, db Database) (*StateDB, error)
 		logs:              make(map[common.Hash][]*types.Log),
 		preimages:         make(map[common.Hash][]byte),
 		journal:           newJournal(),
+		ticketsHash:       mixDigest,
 		tickets:           nil,
 	}
 	return statedb, nil
@@ -644,6 +650,7 @@ func (self *StateDB) Copy() *StateDB {
 		logSize:           self.logSize,
 		preimages:         make(map[common.Hash][]byte),
 		journal:           newJournal(),
+		ticketsHash:       self.ticketsHash,
 		tickets:           self.tickets.DeepCopy(),
 	}
 	// Copy the dirty states, logs, and preimages
@@ -1052,7 +1059,7 @@ func (db *StateDB) AllTickets() (common.TicketsDataSlice, error) {
 		return db.tickets, nil
 	}
 
-	key := db.GetDataHash(common.TicketKeyAddress)
+	key := db.ticketsHash
 	ts := cachedTicketSlice.Get(key)
 	if ts != nil {
 		db.tickets = ts.DeepCopy()

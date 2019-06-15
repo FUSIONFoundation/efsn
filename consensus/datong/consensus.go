@@ -404,9 +404,14 @@ func (dt *DaTong) Finalize(chain consensus.ChainReader, header *types.Header, st
 		log.Warn("Next block have no ticket, wait buy ticket.")
 		return nil, errors.New("Next block have no ticket, wait buy ticket.")
 	}
-	_, err = headerState.UpdateTickets(header.Number)
+	hash, err := headerState.UpdateTickets(header.Number)
 	if err != nil {
 		return nil, errors.New("UpdateTickets failed")
+	}
+	if header.MixDigest == (common.Hash{}) {
+		header.MixDigest = hash
+	} else if header.MixDigest != hash {
+		return nil, fmt.Errorf("MixDigest mismatch, have:%v, want:%v", header.MixDigest, hash)
 	}
 
 	snap.SetWeight(remainingWeight)
@@ -522,6 +527,9 @@ func (dt *DaTong) Close() error {
 }
 
 func (dt *DaTong) getAllTickets(header *types.Header) (common.TicketsDataSlice, error) {
+	if ts := state.GetCachedTickets(header.MixDigest); ts != nil {
+		return ts, nil
+	}
 	statedb, err := state.New(header.Root, header.MixDigest, dt.stateCache)
 	if err != nil {
 		return nil, fmt.Errorf("getAllTickets error:%v", err)
