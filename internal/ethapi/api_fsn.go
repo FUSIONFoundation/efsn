@@ -10,6 +10,7 @@ import (
 	"github.com/FusionFoundation/efsn/accounts"
 	"github.com/FusionFoundation/efsn/common"
 	"github.com/FusionFoundation/efsn/common/hexutil"
+	"github.com/FusionFoundation/efsn/core/rawdb"
 	"github.com/FusionFoundation/efsn/core/types"
 	"github.com/FusionFoundation/efsn/log"
 	"github.com/FusionFoundation/efsn/rlp"
@@ -588,6 +589,60 @@ func (s *PublicFusionAPI) AllTicketsByAddress(ctx context.Context, address commo
 		}
 	}
 	return nil, nil
+}
+
+func (s *PublicFusionAPI) getSwapIDByTxHash(hash common.Hash) common.Hash {
+	var swapID common.Hash
+	tx, _, _, _ := rawdb.ReadTransaction(s.b.ChainDb(), hash)
+	if tx == nil {
+		tx = s.b.GetPoolTransaction(hash)
+	}
+	if tx != nil {
+		var signer types.Signer = types.FrontierSigner{}
+		if tx.Protected() {
+			signer = types.NewEIP155Signer(tx.ChainId())
+		}
+		if msg, err := tx.AsMessage(signer); err == nil {
+			swapID = msg.AsTransaction().Hash()
+		}
+	}
+	return swapID
+}
+
+// GetSwap wacom
+func (s *PublicFusionAPI) GetSwap(ctx context.Context, swapID common.Hash, blockNr rpc.BlockNumber) (*common.Swap, error) {
+	state, _, err := s.b.StateAndHeaderByNumber(ctx, blockNr)
+	if state == nil || err != nil {
+		return nil, err
+	}
+	if swap, err := state.GetSwap(swapID); err == nil {
+		return &swap, nil
+	}
+	// treat swapId as tx hash, deduct swap id from the tx
+	if id := s.getSwapIDByTxHash(swapID); id != (common.Hash{}) {
+		if swap, err := state.GetSwap(id); err == nil {
+			return &swap, nil
+		}
+	}
+	return nil, fmt.Errorf("Swap not found")
+}
+
+// GetMultiSwap wacom
+func (s *PublicFusionAPI) GetMultiSwap(ctx context.Context, swapID common.Hash, blockNr rpc.BlockNumber) (*common.MultiSwap, error) {
+	state, _, err := s.b.StateAndHeaderByNumber(ctx, blockNr)
+	if state == nil || err != nil {
+		return nil, err
+	}
+	if swap, err := state.GetMultiSwap(swapID); err == nil {
+		return &swap, nil
+	}
+	// treat swapId as tx hash, deduct swap id from the tx
+	if id := s.getSwapIDByTxHash(swapID); id != (common.Hash{}) {
+		if swap, err := state.GetMultiSwap(id); err == nil {
+			return &swap, nil
+		}
+	}
+	return nil, fmt.Errorf("MultiSwap not found")
 }
 
 // AllSwaps wacom

@@ -982,6 +982,24 @@ web3._extend({
 				null
 			]
 		}),
+		new web3._extend.Method({
+			name: 'getSwap',
+			call: 'fsn_getSwap',
+			params: 2,
+			inputFormatter: [
+				null,
+				web3._extend.formatters.inputDefaultBlockNumberFormatter
+			]
+		}),
+		new web3._extend.Method({
+			name: 'getMultiSwap',
+			call: 'fsn_getMultiSwap',
+			params: 2,
+			inputFormatter: [
+				null,
+				web3._extend.formatters.inputDefaultBlockNumberFormatter
+			]
+		}),
 	],
 	properties:[
 		new web3._extend.Property({
