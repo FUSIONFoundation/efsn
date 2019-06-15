@@ -65,11 +65,9 @@ type DaTong struct {
 	db         ethdb.Database
 	stateCache state.Database
 
-	signer            common.Address
-	signFn            SignerFn
-	lock              sync.RWMutex
-	weight            *big.Int
-	validTicketNumber *big.Int
+	signer common.Address
+	signFn SignerFn
+	lock   sync.RWMutex
 }
 
 // New wacom
@@ -78,9 +76,6 @@ func New(config *params.DaTongConfig, db ethdb.Database) *DaTong {
 		config:     config,
 		db:         db,
 		stateCache: nil,
-
-		weight:            new(big.Int),
-		validTicketNumber: new(big.Int),
 	}
 }
 
@@ -496,11 +491,6 @@ func (dt *DaTong) CalcDifficulty(chain consensus.ChainReader, time uint64, paren
 	return nil
 }
 
-// ConsensusData wacom
-func (dt *DaTong) ConsensusData() []*big.Int {
-	return []*big.Int{dt.weight, dt.validTicketNumber}
-}
-
 // APIs returns the RPC APIs this consensus engine provides.
 func (dt *DaTong) APIs(chain consensus.ChainReader) []rpc.API {
 	return []rpc.API{{
@@ -624,22 +614,16 @@ func (dt *DaTong) calcBlockDifficulty(chain consensus.ChainReader, header *types
 	if err != nil {
 		return nil, nil, 0, nil, err
 	}
-	blockHeight := header.Number.Uint64()
-	var weight, number uint64
+	haveTicket := false
 	for _, v := range parentTickets {
 		if v.Owner == header.Coinbase {
-			number += uint64(len(v.Tickets))
-			for _, t := range v.Tickets {
-				weight += blockHeight - t.Height + 1
-			}
+			haveTicket = true
 			break
 		}
 	}
-	if number == 0 {
+	if !haveTicket {
 		return nil, nil, 0, nil, errors.New("Miner doesn't have ticket")
 	}
-	dt.weight.SetUint64(weight)
-	dt.validTicketNumber.SetUint64(number)
 
 	// calc balance before selected ticket from stored tickets list
 	var (
