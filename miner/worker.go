@@ -494,6 +494,7 @@ func (w *worker) taskLoop() {
 // resultLoop is a standalone goroutine to handle sealing result submitting
 // and flush relative data to the database.
 func (w *worker) resultLoop() {
+	fastBlockNumber := w.chain.CurrentFastBlock().NumberU64()
 	for {
 		select {
 		case block := <-w.resultCh:
@@ -505,6 +506,14 @@ func (w *worker) resultLoop() {
 			if w.chain.HasBlock(block.Hash(), block.NumberU64()) {
 				continue
 			}
+			if !w.chain.CacheDisabled() && block.NumberU64() < fastBlockNumber {
+				if common.DebugMode {
+					log.Info("full block is lower than fast block",
+						"full", block.NumberU64(), "fast", fastBlockNumber)
+				}
+				continue
+			}
+
 			var (
 				sealhash = w.engine.SealHash(block.Header())
 				hash     = block.Hash()

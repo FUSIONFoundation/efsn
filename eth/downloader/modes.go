@@ -39,7 +39,7 @@ func DefaultSyncMode() SyncMode {
 }
 
 func FullGcModeSupported() bool {
-	return false
+	return true
 }
 
 func DefaultGcMode() string {

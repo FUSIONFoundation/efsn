@@ -139,7 +139,7 @@ type BlockChain struct {
 func NewBlockChain(db ethdb.Database, cacheConfig *CacheConfig, chainConfig *params.ChainConfig, engine consensus.Engine, vmConfig vm.Config, shouldPreserve func(block *types.Block) bool) (*BlockChain, error) {
 	if cacheConfig == nil {
 		cacheConfig = &CacheConfig{
-			TrieNodeLimit: 256 * 1024 * 1024,
+			TrieNodeLimit: 256,
 			TrieTimeLimit: 5 * time.Minute,
 		}
 	}
@@ -203,6 +203,10 @@ func NewBlockChain(db ethdb.Database, cacheConfig *CacheConfig, chainConfig *par
 
 func (bc *BlockChain) getProcInterrupt() bool {
 	return atomic.LoadInt32(&bc.procInterrupt) == 1
+}
+
+func (bc *BlockChain) CacheDisabled() bool {
+	return bc.cacheConfig.Disabled
 }
 
 // loadLastState loads the last known chain state from the database. This method
@@ -944,7 +948,7 @@ func (bc *BlockChain) WriteBlockWithState(block *types.Block, receipts []*types.
 			chosen := header.Number.Uint64()
 
 			// If we exceeded out time allowance, flush an entire trie to disk
-			if bc.gcproc > bc.cacheConfig.TrieTimeLimit {
+			if bc.gcproc > bc.cacheConfig.TrieTimeLimit || (chosen%3000 == 0) {
 				// If we're exceeding limits but haven't reached a large enough memory gap,
 				// warn the user that the system is becoming unstable.
 				if chosen < lastWrite+triesInMemory && bc.gcproc >= 2*bc.cacheConfig.TrieTimeLimit {
