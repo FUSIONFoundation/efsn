@@ -2,6 +2,8 @@ package datong
 
 import (
 	"bytes"
+	"encoding/base64"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"math/big"
@@ -12,6 +14,7 @@ import (
 	"github.com/FusionFoundation/efsn/accounts"
 	"github.com/FusionFoundation/efsn/common"
 	"github.com/FusionFoundation/efsn/consensus"
+	"github.com/FusionFoundation/efsn/core/rawdb"
 	"github.com/FusionFoundation/efsn/core/state"
 	"github.com/FusionFoundation/efsn/core/types"
 	"github.com/FusionFoundation/efsn/crypto"
@@ -483,15 +486,109 @@ func (dt *DaTong) Close() error {
 	return nil
 }
 
-func (dt *DaTong) getAllTickets(header *types.Header) (common.TicketsDataSlice, error) {
+func (dt *DaTong) getAllTickets(chain consensus.ChainReader, header *types.Header) (common.TicketsDataSlice, error) {
 	if ts := state.GetCachedTickets(header.MixDigest); ts != nil {
 		return ts, nil
 	}
 	statedb, err := state.New(header.Root, header.MixDigest, dt.stateCache)
-	if err != nil {
-		return nil, fmt.Errorf("getAllTickets error:%v", err)
+	if err == nil {
+		return statedb.AllTickets()
 	}
-	return statedb.AllTickets()
+
+	// get tickets from past state
+	var tickets common.TicketsDataSlice
+	parent := header
+	parents := []*types.Header{parent}
+	for {
+		if parent = chain.GetHeader(parent.ParentHash, parent.Number.Uint64()-1); parent == nil {
+			return nil, fmt.Errorf("Can not find parent", "number", parent.Number.Uint64()-1, "hash", parent.ParentHash)
+		}
+		if statedb, err := state.New(parent.Root, parent.MixDigest, dt.stateCache); err == nil {
+			if tickets, err = statedb.AllTickets(); err != nil {
+				return nil, err
+			}
+			break
+		}
+		parents = append(parents, parent)
+	}
+	if common.DebugMode {
+		log.Info("getAllTickets find tickets from past state", "current", header.Number, "past", parent.Number)
+		defer func(bstart time.Time) {
+			log.Info("getAllTickets from past state spend time", "duration", common.PrettyDuration(time.Since(bstart)))
+		}(time.Now())
+	}
+
+	// deduct the current tickets
+	buyTicketTopic := common.Hash{}
+	buyTicketTopic[common.HashLength-1] = uint8(common.BuyTicketFunc)
+	processLog := func(l *types.Log) error {
+		if !(len(l.Topics) == 1 && l.Topics[0] == buyTicketTopic) {
+			return nil
+		}
+		maps := make(map[string]interface{})
+		err := json.Unmarshal(l.Data, &maps)
+		if err != nil {
+			return err
+		}
+
+		idstr := maps["Ticket"].(string)
+		datastr := maps["Base"].(string)
+
+		data, err := base64.StdEncoding.DecodeString(datastr)
+		if err != nil {
+			return err
+		}
+
+		buyTicketParam := common.BuyTicketParam{}
+		rlp.DecodeBytes(data, &buyTicketParam)
+
+		ticket := &common.Ticket{
+			ID: common.HexToHash(idstr),
+			TicketBody: common.TicketBody{
+				Height:     l.BlockNumber,
+				StartTime:  buyTicketParam.Start,
+				ExpireTime: buyTicketParam.End,
+			},
+		}
+		tickets, err = tickets.AddTicket(ticket)
+		return err
+	}
+	processSnap := func(h *types.Header) error {
+		snap, err := NewSnapshotFromHeader(h)
+		if err != nil {
+			return err
+		}
+		tickets, err = tickets.RemoveTicket(snap.Selected)
+		if err != nil {
+			return err
+		}
+		for _, id := range snap.Retreat {
+			tickets, err = tickets.RemoveTicket(id)
+			if err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+
+	for i := len(parents) - 1; i >= 0; i-- {
+		hash := parents[i].Hash()
+		if number := rawdb.ReadHeaderNumber(dt.db, hash); number != nil {
+			receipts := rawdb.ReadReceipts(dt.db, hash, *number)
+			for _, receipt := range receipts {
+				for _, log := range receipt.Logs {
+					if err := processLog(log); err != nil {
+						return nil, err
+					}
+				}
+			}
+		}
+		if err := processSnap(parents[i]); err != nil {
+			return nil, err
+		}
+	}
+
+	return tickets.ClearExpiredTickets(header.Time.Uint64())
 }
 
 func sigHash(header *types.Header) (hash common.Hash) {
@@ -576,7 +673,7 @@ func (dt *DaTong) calcBlockDifficulty(chain consensus.ChainReader, header *types
 	if header.GetSelectedTicket() != nil {
 		return header.Difficulty, header.GetSelectedTicket(), header.Nonce.Uint64(), header.GetRetreatTickets(), nil
 	}
-	parentTickets, err := dt.getAllTickets(parent)
+	parentTickets, err := dt.getAllTickets(chain, parent)
 	if err != nil {
 		return nil, nil, 0, nil, err
 	}
