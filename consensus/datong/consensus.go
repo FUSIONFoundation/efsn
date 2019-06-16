@@ -588,7 +588,14 @@ func (dt *DaTong) getAllTickets(chain consensus.ChainReader, header *types.Heade
 		}
 	}
 
-	return tickets.ClearExpiredTickets(header.Time.Uint64())
+	tickets, err = tickets.ClearExpiredTickets(header.Time.Uint64())
+	if err != nil {
+		return nil, err
+	}
+	if err := state.AddCachedTickets(header.MixDigest, tickets); err != nil {
+		return nil, err
+	}
+	return tickets, nil
 }
 
 func sigHash(header *types.Header) (hash common.Hash) {

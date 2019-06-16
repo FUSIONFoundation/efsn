@@ -152,6 +152,36 @@ func GetCachedTickets(hash common.Hash) common.TicketsDataSlice {
 	return cachedTicketSlice.Get(hash)
 }
 
+func calcTicketsStorageData(tickets common.TicketsDataSlice) ([]byte, error) {
+	blob, err := rlp.EncodeToBytes(&tickets)
+	if err != nil {
+		return nil, fmt.Errorf("Unable to encode tickets. err: %v", err)
+	}
+
+	var buf bytes.Buffer
+	zw := gzip.NewWriter(&buf)
+	if _, err := zw.Write(blob); err != nil {
+		return nil, fmt.Errorf("Unable to zip tickets data")
+	}
+	if err := zw.Close(); err != nil {
+		return nil, fmt.Errorf("Unable to zip tickets")
+	}
+	data := buf.Bytes()
+	return data, nil
+}
+
+func AddCachedTickets(hash common.Hash, tickets common.TicketsDataSlice) error {
+	data, err := calcTicketsStorageData(tickets)
+	if err != nil {
+		return fmt.Errorf("AddCachedTickets: %v", err)
+	}
+	if hash != crypto.Keccak256Hash(data) {
+		return fmt.Errorf("AddCachedTickets: hash mismatch")
+	}
+	cachedTicketSlice.Add(hash, tickets)
+	return nil
+}
+
 // Create a new state from a given trie.
 func New(root common.Hash, mixDigest common.Hash, db Database) (*StateDB, error) {
 	tr, err := db.OpenTrie(root)
@@ -1139,25 +1169,14 @@ func (db *StateDB) UpdateTickets(blockNumber *big.Int, timestamp uint64) (common
 	tickets := db.tickets
 	tickets, err := tickets.ClearExpiredTickets(timestamp)
 	if err != nil {
-		return common.Hash{}, err
+		return common.Hash{}, fmt.Errorf("UpdateTickets: %v", err)
 	}
 	db.tickets = tickets
 
-	blob, err := rlp.EncodeToBytes(&db.tickets)
+	data, err := calcTicketsStorageData(db.tickets)
 	if err != nil {
-		log.Error("Unable to encode tickets")
-		return common.Hash{}, fmt.Errorf("Unable to encode tickets. err: %v", err)
+		return common.Hash{}, fmt.Errorf("UpdateTickets: %v", err)
 	}
-
-	var buf bytes.Buffer
-	zw := gzip.NewWriter(&buf)
-	if _, err := zw.Write(blob); err != nil {
-		return common.Hash{}, fmt.Errorf("Unable to zip tickets data")
-	}
-	if err := zw.Close(); err != nil {
-		return common.Hash{}, fmt.Errorf("Unable to zip tickets")
-	}
-	data := buf.Bytes()
 
 	hash := db.SetData(common.TicketKeyAddress, data)
 	cachedTicketSlice.Add(hash, db.tickets)
