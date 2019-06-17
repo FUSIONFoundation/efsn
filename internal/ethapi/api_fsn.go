@@ -596,36 +596,35 @@ func (s *PublicFusionAPI) AllTicketsByAddress(ctx context.Context, address commo
 	return nil, nil
 }
 
-
 // AllInfoForAddress wacom
 type AllInfoForAddress struct {
-	Tickets map[common.Hash]common.TicketDisplay `json:"tickets"`
-	Balances map[common.Hash]string `json:"balances"`
-	Timelocks  map[common.Hash]*common.TimeLock `json:"timeLockBalances"`
-	Notation uint64 `json:"notation"`
+	Tickets   map[common.Hash]common.TicketDisplay `json:"tickets"`
+	Balances  map[common.Hash]string               `json:"balances"`
+	Timelocks map[common.Hash]*common.TimeLock     `json:"timeLockBalances"`
+	Notation  uint64                               `json:"notation"`
 }
 
-// AllInfoForAddress wacom
-func (s * PublicFusionAPI) AllInfoForAddress( ctx context.Context, address common.Address, blockNr rpc.BlockNumber ) (AllInfoForAddress, error ) {
-	allTickets, err := s.AllTicketsByAddress( ctx, address, blockNr) 
+// AllInfoByAddress wacom
+func (s *PublicFusionAPI) AllInfoByAddress(ctx context.Context, address common.Address, blockNr rpc.BlockNumber) (AllInfoForAddress, error) {
+	allTickets, err := s.AllTicketsByAddress(ctx, address, blockNr)
 	if err != nil {
-		return AllInfoForAddress{},err
+		return AllInfoForAddress{}, err
 	}
-	allBalances, err := s.GetAllBalances( ctx, address, blockNr )
+	allBalances, err := s.GetAllBalances(ctx, address, blockNr)
 	if err != nil {
-		return AllInfoForAddress{},err
+		return AllInfoForAddress{}, err
 	}
-	allTimeLockBalances, err := s.GetAllTimeLockBalances( ctx, address, blockNr )
+	allTimeLockBalances, err := s.GetAllTimeLockBalances(ctx, address, blockNr)
 	if err != nil {
-		return AllInfoForAddress{},err
+		return AllInfoForAddress{}, err
 	}
-	notation, _ := s.GetNotation( ctx, address, blockNr)
+	notation, _ := s.GetNotation(ctx, address, blockNr)
 
 	return AllInfoForAddress{
-		Tickets:      allTickets,
-		Balances:     allBalances,
-		Timelocks:  allTimeLockBalances,
-		Notation: notation,
+		Tickets:   allTickets,
+		Balances:  allBalances,
+		Timelocks: allTimeLockBalances,
+		Notation:  notation,
 	}, nil
 }
 
