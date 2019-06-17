@@ -596,6 +596,91 @@ func (s *PublicFusionAPI) AllTicketsByAddress(ctx context.Context, address commo
 	return nil, nil
 }
 
+// TxAndReceipt wacom
+type TxAndReceipt struct {
+	Tx           *RPCTransaction        `json:"tx"`
+	Receipt      map[string]interface{} `json:"receipt"`
+	ReceiptFound bool                   `json:"receiptFound"`
+}
+
+// GetTransactionAndReceipt returns the transaction receipt for the given transaction hash.
+func (s *PublicFusionAPI) GetTransactionAndReceipt(ctx context.Context, hash common.Hash) (TxAndReceipt, error) {
+	// Try to return an already finalized transaction
+	var orgTx *RPCTransaction
+	if tx, blockHash, blockNumber, index := rawdb.ReadTransaction(s.b.ChainDb(), hash); tx != nil {
+		orgTx = newRPCTransaction(tx, blockHash, blockNumber, index)
+	} else if tx := s.b.GetPoolTransaction(hash); tx != nil {
+		// No finalized transaction, try to retrieve it from the pool
+		orgTx = newRPCPendingTransaction(tx)
+	} else {
+		return TxAndReceipt{}, fmt.Errorf("Tx not found")
+	}
+
+	tx, blockHash, blockNumber, index := rawdb.ReadTransaction(s.b.ChainDb(), hash)
+	if tx == nil {
+		return TxAndReceipt{
+			Tx:           orgTx,
+			Receipt:      nil,
+			ReceiptFound: false,
+		}, nil
+	}
+	receipts, err := s.b.GetReceipts(ctx, blockHash)
+	if err != nil {
+		return TxAndReceipt{
+			Tx:           orgTx,
+			Receipt:      nil,
+			ReceiptFound: false,
+		}, nil
+	}
+	if len(receipts) <= int(index) {
+		return TxAndReceipt{
+			Tx:           orgTx,
+			Receipt:      nil,
+			ReceiptFound: false,
+		}, nil
+	}
+	receipt := receipts[index]
+
+	var signer types.Signer = types.FrontierSigner{}
+	if tx.Protected() {
+		signer = types.NewEIP155Signer(tx.ChainId())
+	}
+	from, _ := types.Sender(signer, tx)
+
+	fields := map[string]interface{}{
+		"blockHash":         blockHash,
+		"blockNumber":       hexutil.Uint64(blockNumber),
+		"transactionHash":   hash,
+		"transactionIndex":  hexutil.Uint64(index),
+		"from":              from,
+		"to":                tx.To(),
+		"gasUsed":           hexutil.Uint64(receipt.GasUsed),
+		"cumulativeGasUsed": hexutil.Uint64(receipt.CumulativeGasUsed),
+		"contractAddress":   nil,
+		"logs":              receipt.Logs,
+		"logsBloom":         receipt.Bloom,
+	}
+
+	// Assign receipt status or post state.
+	if len(receipt.PostState) > 0 {
+		fields["root"] = hexutil.Bytes(receipt.PostState)
+	} else {
+		fields["status"] = hexutil.Uint(receipt.Status)
+	}
+	if receipt.Logs == nil {
+		fields["logs"] = [][]*types.Log{}
+	}
+	// If the ContractAddress is 20 0x0 bytes, assume it is not a contract creation
+	if receipt.ContractAddress != (common.Address{}) {
+		fields["contractAddress"] = receipt.ContractAddress
+	}
+	return TxAndReceipt{
+		Tx:           orgTx,
+		Receipt:      fields,
+		ReceiptFound: true,
+	}, nil
+}
+
 // AllInfoForAddress wacom
 type AllInfoForAddress struct {
 	Tickets   map[common.Hash]common.TicketDisplay `json:"tickets"`

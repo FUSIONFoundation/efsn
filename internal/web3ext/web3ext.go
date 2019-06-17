@@ -877,6 +877,14 @@ web3._extend({
 			]
 		}),
 		new web3._extend.Method({
+			name: 'getTransactionAndReceipt',
+			call: 'fsn_getTransactionAndReceipt',
+			params: 1,
+			inputFormatter: [
+				web3._extend.formatters.inputTransactionFormatter			
+			]
+		}),
+		new web3._extend.Method({
 			name: 'allAssetsByAddress',
 			call: 'fsn_allAssetsByAddress',
 			params: 2,
@@ -1104,6 +1112,14 @@ web3._extend({
 			inputFormatter: [
 				web3._extend.formatters.inputAddressFormatter,
 				web3._extend.formatters.inputDefaultBlockNumberFormatter
+			]
+		}),
+		new web3._extend.Method({
+			name: 'getTransactionAndReceipt',
+			call: 'fsn_getTransactionAndReceipt',
+			params: 1,
+			inputFormatter: [
+				web3._extend.formatters.inputTransactionFormatter			
 			]
 		}),
 		new web3._extend.Method({
