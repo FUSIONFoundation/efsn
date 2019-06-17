@@ -643,7 +643,12 @@ func calcRewards(height *big.Int) *big.Int {
 	return reward
 }
 
-func calcDisInfo(tickets *common.TicketsData, parent *types.Header) *DisInfo {
+type DisInfoWithIndex struct {
+	index int
+	info  *DisInfo
+}
+
+func calcDisInfo(ind int, tickets common.TicketsData, parent *types.Header, ch chan *DisInfoWithIndex) {
 	parentHash := parent.Hash()
 	owner := tickets.Owner
 
@@ -673,7 +678,8 @@ func calcDisInfo(tickets *common.TicketsData, parent *types.Header) *DisInfo {
 		ID:         common.TicketID(owner, minTicket.Height, minTicket.StartTime),
 		TicketBody: *minTicket,
 	}
-	return &DisInfo{tk: ticket, res: minDist}
+	result := &DisInfoWithIndex{index: ind, info: &DisInfo{tk: ticket, res: minDist}}
+	ch <- result
 }
 
 func (dt *DaTong) calcBlockDifficulty(chain consensus.ChainReader, header *types.Header, parent *types.Header) (*big.Int, *common.Ticket, uint64, common.TicketPtrSlice, error) {
@@ -694,6 +700,7 @@ func (dt *DaTong) calcBlockDifficulty(chain consensus.ChainReader, header *types
 	if !haveTicket {
 		return nil, nil, 0, nil, errors.New("Miner doesn't have ticket")
 	}
+	ticketsTotalAmount, numberOfticketOwners := parentTickets.NumberOfTicketsAndOwners()
 
 	// calc balance before selected ticket from stored tickets list
 	var (
@@ -702,11 +709,16 @@ func (dt *DaTong) calcBlockDifficulty(chain consensus.ChainReader, header *types
 	)
 
 	// make consensus by tickets sequence(selectedTime) with: parentHash, weigth, ticketID, coinbase
-	list := make(DistanceSlice, 0, len(parentTickets))
-	for _, v := range parentTickets {
-		ht := calcDisInfo(&v, parent)
-		list = append(list, ht)
+	ch := make(chan *DisInfoWithIndex, numberOfticketOwners)
+	list := make(DistanceSlice, numberOfticketOwners)
+	for k, v := range parentTickets {
+		go calcDisInfo(k, v, parent, ch)
 	}
+	for i := 0; i < int(numberOfticketOwners); i++ {
+		v := <-ch
+		list[v.index] = v.info
+	}
+	close(ch)
 	sort.Sort(list)
 	for _, t := range list {
 		owner := t.tk.Owner()
@@ -722,7 +734,6 @@ func (dt *DaTong) calcBlockDifficulty(chain consensus.ChainReader, header *types
 	}
 
 	selectedTime := uint64(len(retreat))
-	ticketsTotalAmount, numberOfticketOwners := parentTickets.NumberOfTicketsAndOwners()
 
 	// cacl difficulty
 	difficulty := new(big.Int).SetUint64(ticketsTotalAmount - selectedTime)

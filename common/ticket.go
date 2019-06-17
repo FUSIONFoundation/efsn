@@ -227,25 +227,19 @@ func (s TicketsDataSlice) NumberOfTicketsByAddress(addr Address) uint64 {
 }
 
 func (s TicketsDataSlice) NumberOfTickets() uint64 {
-	numTickets, _ := s.NumberOfTicketsAndOwners()
-	return numTickets
+	numTickets := 0
+	for _, v := range s {
+		numTickets += len(v.Tickets)
+	}
+	return uint64(numTickets)
 }
 
 func (s TicketsDataSlice) NumberOfOwners() uint64 {
-	_, numOwners := s.NumberOfTicketsAndOwners()
-	return numOwners
+	return uint64(len(s))
 }
 
 func (s TicketsDataSlice) NumberOfTicketsAndOwners() (uint64, uint64) {
-	var numTickets, numOwners uint64
-	for _, v := range s {
-		count := uint64(len(v.Tickets))
-		if count > 0 {
-			numTickets += count
-			numOwners++
-		}
-	}
-	return numTickets, numOwners
+	return s.NumberOfTickets(), s.NumberOfOwners()
 }
 
 func (s TicketsDataSlice) Get(id Hash) (*Ticket, error) {
