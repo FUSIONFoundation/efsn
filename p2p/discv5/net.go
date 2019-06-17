@@ -830,7 +830,7 @@ const (
 
 	// Packet type events.
 	// These correspond to packet types in the UDP protocol.
-	pingPacket = iota + 75
+	pingPacket = iota + 50
 	pongPacket
 	findnodePacket
 	neighborsPacket
