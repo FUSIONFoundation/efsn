@@ -931,7 +931,7 @@ func (db *StateDB) GetAddressByNotation(notation uint64) (common.Address, error)
 	binary.PutUvarint(buf, notation)
 	data := db.GetStructData(common.NotationKeyAddress, buf)
 	if len(data) == 0 || data == nil {
-		return common.Address{}, fmt.Errorf("does not exist")
+		return common.Address{}, fmt.Errorf("notation %v does not exist", notation)
 	}
 	var np notationPersist
 	err := rlp.DecodeBytes(data, &np)
@@ -954,7 +954,8 @@ func (db *StateDB) TransferNotation(notation uint64, from common.Address, to com
 	if stateObjectTo == nil {
 		return fmt.Errorf("Unable to get to address")
 	}
-	address, err := db.GetAddressByNotation(notation)
+	displayNotation := db.CalcNotationDisplay(notation)
+	address, err := db.GetAddressByNotation(displayNotation)
 	if err != nil {
 		return err
 	}
@@ -966,10 +967,10 @@ func (db *StateDB) TransferNotation(notation uint64, from common.Address, to com
 	if oldNotationTo != 0 {
 		// need to clear notation to address
 		// user should transfer an old notation or can burn it like this
-		db.setNotationToAddressLookup(oldNotationTo, common.Address{})
+		db.setNotationToAddressLookup(db.CalcNotationDisplay(oldNotationTo), common.Address{})
 	}
-	db.setNotationToAddressLookup(notation, to)
-	stateObjectTo.SetNotation(notation / 100)
+	db.setNotationToAddressLookup(displayNotation, to)
+	stateObjectTo.SetNotation(notation)
 	stateObjectFrom.SetNotation(0)
 	return nil
 }
