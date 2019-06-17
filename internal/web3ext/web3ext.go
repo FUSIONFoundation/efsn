@@ -868,6 +868,15 @@ web3._extend({
 			]
 		}),
 		new web3._extend.Method({
+			name: 'allInfoByAddress',
+			call: 'fsn_allInfoByAddress',
+			params: 2,
+			inputFormatter: [
+				web3._extend.formatters.inputAddressFormatter,
+				web3._extend.formatters.inputDefaultBlockNumberFormatter
+			]
+		}),
+		new web3._extend.Method({
 			name: 'allAssetsByAddress',
 			call: 'fsn_allAssetsByAddress',
 			params: 2,
@@ -1082,6 +1091,15 @@ web3._extend({
 		new web3._extend.Method({
 			name: 'allTicketsByAddress',
 			call: 'fsn_allTicketsByAddress',
+			params: 2,
+			inputFormatter: [
+				web3._extend.formatters.inputAddressFormatter,
+				web3._extend.formatters.inputDefaultBlockNumberFormatter
+			]
+		}),
+		new web3._extend.Method({
+			name: 'allInfoByAddress',
+			call: 'fsn_allInfoByAddress',
 			params: 2,
 			inputFormatter: [
 				web3._extend.formatters.inputAddressFormatter,

@@ -596,6 +596,39 @@ func (s *PublicFusionAPI) AllTicketsByAddress(ctx context.Context, address commo
 	return nil, nil
 }
 
+
+// AllInfoForAddress wacom
+type AllInfoForAddress struct {
+	Tickets map[common.Hash]common.TicketDisplay `json:"tickets"`
+	Balances map[common.Hash]string `json:"balances"`
+	Timelocks  map[common.Hash]*common.TimeLock `json:"timeLockBalances"`
+	Notation uint64 `json:"notation"`
+}
+
+// AllInfoForAddress wacom
+func (s * PublicFusionAPI) AllInfoForAddress( ctx context.Context, address common.Address, blockNr rpc.BlockNumber ) (AllInfoForAddress, error ) {
+	allTickets, err := s.AllTicketsByAddress( ctx, address, blockNr) 
+	if err != nil {
+		return AllInfoForAddress{},err
+	}
+	allBalances, err := s.GetAllBalances( ctx, address, blockNr )
+	if err != nil {
+		return AllInfoForAddress{},err
+	}
+	allTimeLockBalances, err := s.GetAllTimeLockBalances( ctx, address, blockNr )
+	if err != nil {
+		return AllInfoForAddress{},err
+	}
+	notation, _ := s.GetNotation( ctx, address, blockNr)
+
+	return AllInfoForAddress{
+		Tickets:      allTickets,
+		Balances:     allBalances,
+		Timelocks:  allTimeLockBalances,
+		Notation: notation,
+	}, nil
+}
+
 func (s *PublicFusionAPI) getIDByTxHash(hash common.Hash) common.Hash {
 	var id common.Hash
 	tx, _, _, _ := rawdb.ReadTransaction(s.b.ChainDb(), hash)
