@@ -865,18 +865,19 @@ func (db *StateDB) GenNotation(addr common.Address) error {
 	stateObject := db.GetOrNewStateObject(addr)
 	if stateObject != nil {
 		if n := db.GetNotation(addr); n != 0 {
-			return fmt.Errorf("Account %s has a notation:%d", addr.String(), db.CalcNotationDisplay(n))
+			return fmt.Errorf("Account %s has a notation:%d", addr.String(), n)
 		}
 		// get last notation value
 		nextNotation, err := db.getNotationCount()
-		nextNotation += 1
+		nextNotation++
 		if err != nil {
 			log.Error("GenNotation: Unable to get next notation value")
 			return err
 		}
+		newNotation := db.calcNotationDisplay(nextNotation)
 		db.setNotationCount(nextNotation)
-		db.setNotationToAddressLookup(db.CalcNotationDisplay(nextNotation), addr)
-		stateObject.SetNotation(nextNotation)
+		db.setNotationToAddressLookup(newNotation, addr)
+		stateObject.SetNotation(newNotation)
 		return nil
 	}
 	return nil
@@ -954,7 +955,7 @@ func (db *StateDB) TransferNotation(notation uint64, from common.Address, to com
 	if stateObjectTo == nil {
 		return fmt.Errorf("Unable to get to address")
 	}
-	displayNotation := db.CalcNotationDisplay(notation)
+	displayNotation := notation
 	address, err := db.GetAddressByNotation(displayNotation)
 	if err != nil {
 		return err
@@ -967,7 +968,7 @@ func (db *StateDB) TransferNotation(notation uint64, from common.Address, to com
 	if oldNotationTo != 0 {
 		// need to clear notation to address
 		// user should transfer an old notation or can burn it like this
-		db.setNotationToAddressLookup(db.CalcNotationDisplay(oldNotationTo), common.Address{})
+		db.setNotationToAddressLookup(oldNotationTo, common.Address{})
 	}
 	db.setNotationToAddressLookup(displayNotation, to)
 	stateObjectTo.SetNotation(notation)
@@ -976,7 +977,7 @@ func (db *StateDB) TransferNotation(notation uint64, from common.Address, to com
 }
 
 // CalcNotationDisplay wacom
-func (db *StateDB) CalcNotationDisplay(notation uint64) uint64 {
+func (db *StateDB) calcNotationDisplay(notation uint64) uint64 {
 	if notation == 0 {
 		return notation
 	}

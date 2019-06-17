@@ -473,7 +473,7 @@ func (s *PublicFusionAPI) GetNotation(ctx context.Context, address common.Addres
 	if state == nil || err != nil {
 		return 0, err
 	}
-	b := state.CalcNotationDisplay(state.GetNotation(address))
+	b := state.GetNotation(address)
 	return b, state.Error()
 }
 
@@ -706,7 +706,7 @@ func (s *PrivateFusionAPI) GenNotation(ctx context.Context, args FusionBaseArgs,
 	notation := state.GetNotation(args.From)
 
 	if notation != 0 {
-		return common.Hash{}, fmt.Errorf("An address can have only one notation, you already have a mapped notation:%d", state.CalcNotationDisplay(notation))
+		return common.Hash{}, fmt.Errorf("An address can have only one notation, you already have a mapped notation:%d", notation)
 	}
 
 	var param = common.FSNCallParam{Func: common.GenNotationFunc}
@@ -1244,7 +1244,7 @@ func (s *FusionTransactionAPI) BuildGenNotationTx(ctx context.Context, args Fusi
 	}
 	notation := state.GetNotation(args.From)
 	if notation != 0 {
-		return nil, fmt.Errorf("An address can have only one notation, you already have a mapped notation:%d", state.CalcNotationDisplay(notation))
+		return nil, fmt.Errorf("An address can have only one notation, you already have a mapped notation:%d", notation)
 	}
 	var param = common.FSNCallParam{Func: common.GenNotationFunc}
 	data, err := param.ToBytes()
