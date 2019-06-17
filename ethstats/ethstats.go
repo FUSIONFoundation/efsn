@@ -713,7 +713,7 @@ func (s *Service) reportStats(conn *websocket.Conn) error {
 			if statedb, err := s.eth.BlockChain().StateAt(header.Root, header.MixDigest); err == nil {
 				if tickets, err := statedb.AllTickets(); err == nil {
 					ticketNumber = new(big.Int).SetUint64(tickets.NumberOfTickets())
-					etherbase := s.eth.Miner().Etherbase()
+					etherbase, _ := s.eth.Etherbase()
 					if etherbase != (common.Address{}) {
 						myTicketNumber = new(big.Int).SetUint64(tickets.NumberOfTicketsByAddress(etherbase))
 					}
