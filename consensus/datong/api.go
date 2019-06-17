@@ -24,6 +24,10 @@ func (api *API) GetSnapshot(number *rpc.BlockNumber) (*Snapshot, error) {
 	if header == nil {
 		return nil, errUnknownBlock
 	}
+	if  header.Number.Uint64() == 0  {
+		// return an empty snapshot
+		return  newSnapshot().ToShow() , nil
+	}
 	snap, err := newSnapshotWithData(getSnapDataByHeader(header))
 	if err != nil {
 		return nil, err
@@ -36,6 +40,10 @@ func (api *API) GetSnapshotAtHash(hash common.Hash) (*Snapshot, error) {
 	header := api.chain.GetHeaderByHash(hash)
 	if header == nil {
 		return nil, errUnknownBlock
+	}
+	if  header.Number.Uint64() == 0  {
+		// return an empty snapshot
+		return  newSnapshot().ToShow() , nil
 	}
 	snap, err := newSnapshotWithData(getSnapDataByHeader(header))
 	if err != nil {
