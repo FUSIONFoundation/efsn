@@ -502,12 +502,17 @@ func (s *PublicFusionAPI) GetAsset(ctx context.Context, assetID common.Hash, blo
 	if state == nil || err != nil {
 		return nil, err
 	}
-	asset, assetErr := state.GetAsset(assetID)
-
-	if assetErr != nil {
-		return nil, fmt.Errorf("Asset not found")
+	if asset, err := state.GetAsset(assetID); err == nil {
+		return &asset, nil
 	}
-	return &asset, nil
+
+	// treat assetID as tx hash, deduct asset id from the tx
+	if id := s.getIDByTxHash(assetID); id != (common.Hash{}) {
+		if asset, err := state.GetAsset(id); err == nil {
+			return &asset, nil
+		}
+	}
+	return nil, fmt.Errorf("Asset not found")
 }
 
 // AllAssets wacom
@@ -591,8 +596,8 @@ func (s *PublicFusionAPI) AllTicketsByAddress(ctx context.Context, address commo
 	return nil, nil
 }
 
-func (s *PublicFusionAPI) getSwapIDByTxHash(hash common.Hash) common.Hash {
-	var swapID common.Hash
+func (s *PublicFusionAPI) getIDByTxHash(hash common.Hash) common.Hash {
+	var id common.Hash
 	tx, _, _, _ := rawdb.ReadTransaction(s.b.ChainDb(), hash)
 	if tx == nil {
 		tx = s.b.GetPoolTransaction(hash)
@@ -603,10 +608,10 @@ func (s *PublicFusionAPI) getSwapIDByTxHash(hash common.Hash) common.Hash {
 			signer = types.NewEIP155Signer(tx.ChainId())
 		}
 		if msg, err := tx.AsMessage(signer); err == nil {
-			swapID = msg.AsTransaction().Hash()
+			id = msg.AsTransaction().Hash()
 		}
 	}
-	return swapID
+	return id
 }
 
 // GetSwap wacom
@@ -619,7 +624,7 @@ func (s *PublicFusionAPI) GetSwap(ctx context.Context, swapID common.Hash, block
 		return &swap, nil
 	}
 	// treat swapId as tx hash, deduct swap id from the tx
-	if id := s.getSwapIDByTxHash(swapID); id != (common.Hash{}) {
+	if id := s.getIDByTxHash(swapID); id != (common.Hash{}) {
 		if swap, err := state.GetSwap(id); err == nil {
 			return &swap, nil
 		}
@@ -637,7 +642,7 @@ func (s *PublicFusionAPI) GetMultiSwap(ctx context.Context, swapID common.Hash, 
 		return &swap, nil
 	}
 	// treat swapId as tx hash, deduct swap id from the tx
-	if id := s.getSwapIDByTxHash(swapID); id != (common.Hash{}) {
+	if id := s.getIDByTxHash(swapID); id != (common.Hash{}) {
 		if swap, err := state.GetMultiSwap(id); err == nil {
 			return &swap, nil
 		}
