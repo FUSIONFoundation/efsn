@@ -125,10 +125,15 @@ func (snap *snapshot) SetTicketNumber(ticketNumber int) {
 }
 
 func (snap *snapshot) ToShow() *Snapshot {
-	retreat := make([]common.Hash, 0, len(snap.logs)-1)
-	for i := 1; i < len(snap.logs); i++ {
-		if snap.logs[i].Type == ticketRetreat {
-			retreat = append(retreat, snap.logs[i].TicketID)
+	var retreat []common.Hash
+	if len(snap.logs) == 0 {
+		retreat = make([]common.Hash, 0, 0 )
+	} else {
+		retreat = make([]common.Hash, 0, len(snap.logs)-1)
+		for i := 1; i < len(snap.logs); i++ {
+			if snap.logs[i].Type == ticketRetreat {
+				retreat = append(retreat, snap.logs[i].TicketID)
+			}
 		}
 	}
 	return &Snapshot{
