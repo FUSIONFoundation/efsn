@@ -881,7 +881,7 @@ web3._extend({
 			call: 'fsn_getTransactionAndReceipt',
 			params: 1,
 			inputFormatter: [
-				web3._extend.formatters.inputTransactionFormatter			
+				null			
 			]
 		}),
 		new web3._extend.Method({
@@ -1119,7 +1119,7 @@ web3._extend({
 			call: 'fsn_getTransactionAndReceipt',
 			params: 1,
 			inputFormatter: [
-				web3._extend.formatters.inputTransactionFormatter			
+				null			
 			]
 		}),
 		new web3._extend.Method({
