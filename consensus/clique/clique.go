@@ -247,10 +247,9 @@ func (c *Clique) VerifyHeader(chain consensus.ChainReader, header *types.Header,
 	return c.verifyHeader(chain, header, nil)
 }
 
-
 // PreProcess update state if needed from various block info
 // used with some PoS Systems
-func (c *Clique) PreProcess( chain consensus.ChainReader, header *types.Header, statedb *state.StateDB ) error {
+func (c *Clique) PreProcess(chain consensus.ChainReader, header *types.Header, statedb *state.StateDB) error {
 	return nil
 }
 
@@ -723,8 +722,3 @@ func (dt *Clique) UpdateCurrentCommit(header *types.Header, block *types.Block, 
 func (dt *Clique) HaveBroaded(header *types.Header, block *types.Block) bool { //TODO
 	return false
 }
-func (c *Clique) UpdateBlockBroadcast(header *types.Header) {}
-func (c *Clique) HaveBlockBroaded(header *types.Header) bool {
-	return false
-}
-

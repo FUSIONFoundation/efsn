@@ -10,6 +10,7 @@ import (
 	"github.com/FusionFoundation/efsn/accounts"
 	"github.com/FusionFoundation/efsn/common"
 	"github.com/FusionFoundation/efsn/common/hexutil"
+	"github.com/FusionFoundation/efsn/core/rawdb"
 	"github.com/FusionFoundation/efsn/core/types"
 	"github.com/FusionFoundation/efsn/log"
 	"github.com/FusionFoundation/efsn/rlp"
@@ -501,12 +502,17 @@ func (s *PublicFusionAPI) GetAsset(ctx context.Context, assetID common.Hash, blo
 	if state == nil || err != nil {
 		return nil, err
 	}
-	asset, assetErr := state.GetAsset(assetID)
-
-	if assetErr != nil {
-		return nil, fmt.Errorf("Asset not found")
+	if asset, err := state.GetAsset(assetID); err == nil {
+		return &asset, nil
 	}
-	return &asset, nil
+
+	// treat assetID as tx hash, deduct asset id from the tx
+	if id := s.getIDByTxHash(assetID); id != (common.Hash{}) {
+		if asset, err := state.GetAsset(id); err == nil {
+			return &asset, nil
+		}
+	}
+	return nil, fmt.Errorf("Asset not found")
 }
 
 // AllAssets wacom
@@ -524,30 +530,47 @@ func (s *PublicFusionAPI) AssetExistForAddress(ctx context.Context, assetName st
 	return common.Hash{}, fmt.Errorf("AllAssetsByAddress has been depreciated, use api.fusionnetwork.io")
 }
 
-// AllTickets wacom
-func (s *PublicFusionAPI) AllTickets(ctx context.Context, blockNr rpc.BlockNumber) (map[common.Hash]common.TicketDisplay, error) {
+func (s *PublicFusionAPI) getAllTickets(ctx context.Context, blockNr rpc.BlockNumber) (common.TicketsDataSlice, error) {
 	state, _, err := s.b.StateAndHeaderByNumber(ctx, blockNr)
 	if state == nil || err != nil {
 		return nil, err
 	}
 	tickets, err := state.AllTickets()
+	if err == nil {
+		err = state.Error()
+	}
 	if err != nil {
 		log.Debug("AllTickets:apifsn.go unable to retrieve previous tickets")
+		return nil, fmt.Errorf("AllTickets:apifsn.go unable to retrieve previous tickets. error: %v", err)
+	}
+	return tickets, nil
+}
+
+// AllTickets wacom
+func (s *PublicFusionAPI) AllTickets(ctx context.Context, blockNr rpc.BlockNumber) (map[common.Hash]common.TicketDisplay, error) {
+	tickets, err := s.getAllTickets(ctx, blockNr)
+	if err != nil {
 		return nil, err
 	}
-	return tickets.ToMap(), state.Error()
+	return tickets.ToMap(), nil
 }
 
 // TotalNumberOfTickets wacom
 func (s *PublicFusionAPI) TotalNumberOfTickets(ctx context.Context, blockNr rpc.BlockNumber) (int, error) {
-	tickets, err := s.AllTickets(ctx, blockNr)
-	return len(tickets), err
+	tickets, err := s.getAllTickets(ctx, blockNr)
+	if err != nil {
+		return 0, err
+	}
+	return int(tickets.NumberOfTickets()), err
 }
 
 // TotalNumberOfTicketsByAddress wacom
 func (s *PublicFusionAPI) TotalNumberOfTicketsByAddress(ctx context.Context, address common.Address, blockNr rpc.BlockNumber) (int, error) {
-	tickets, err := s.AllTicketsByAddress(ctx, address, blockNr)
-	return len(tickets), err
+	tickets, err := s.getAllTickets(ctx, blockNr)
+	if err != nil {
+		return 0, err
+	}
+	return int(tickets.NumberOfTicketsByAddress(address)), err
 }
 
 // TicketPrice wacom
@@ -561,22 +584,70 @@ func (s *PublicFusionAPI) TicketPrice(ctx context.Context, blockNr rpc.BlockNumb
 
 // AllTicketsByAddress wacom
 func (s *PublicFusionAPI) AllTicketsByAddress(ctx context.Context, address common.Address, blockNr rpc.BlockNumber) (map[common.Hash]common.TicketDisplay, error) {
+	tickets, err := s.getAllTickets(ctx, blockNr)
+	if err != nil {
+		return nil, err
+	}
+	for _, v := range tickets {
+		if v.Owner == address {
+			return v.ToMap(), nil
+		}
+	}
+	return nil, nil
+}
+
+func (s *PublicFusionAPI) getIDByTxHash(hash common.Hash) common.Hash {
+	var id common.Hash
+	tx, _, _, _ := rawdb.ReadTransaction(s.b.ChainDb(), hash)
+	if tx == nil {
+		tx = s.b.GetPoolTransaction(hash)
+	}
+	if tx != nil {
+		var signer types.Signer = types.FrontierSigner{}
+		if tx.Protected() {
+			signer = types.NewEIP155Signer(tx.ChainId())
+		}
+		if msg, err := tx.AsMessage(signer); err == nil {
+			id = msg.AsTransaction().Hash()
+		}
+	}
+	return id
+}
+
+// GetSwap wacom
+func (s *PublicFusionAPI) GetSwap(ctx context.Context, swapID common.Hash, blockNr rpc.BlockNumber) (*common.Swap, error) {
 	state, _, err := s.b.StateAndHeaderByNumber(ctx, blockNr)
 	if state == nil || err != nil {
 		return nil, err
 	}
-	tickets, err := state.AllTickets()
-	if err != nil {
-		log.Debug("AllTicketsByAddress:api_fsn.go unable to retrieve previous tickets")
-		return nil, err
+	if swap, err := state.GetSwap(swapID); err == nil {
+		return &swap, nil
 	}
-	var ret = make(map[common.Hash]common.TicketDisplay)
-	for k, v := range tickets.ToMap() {
-		if v.Owner == address {
-			ret[k] = v
+	// treat swapId as tx hash, deduct swap id from the tx
+	if id := s.getIDByTxHash(swapID); id != (common.Hash{}) {
+		if swap, err := state.GetSwap(id); err == nil {
+			return &swap, nil
 		}
 	}
-	return ret, state.Error()
+	return nil, fmt.Errorf("Swap not found")
+}
+
+// GetMultiSwap wacom
+func (s *PublicFusionAPI) GetMultiSwap(ctx context.Context, swapID common.Hash, blockNr rpc.BlockNumber) (*common.MultiSwap, error) {
+	state, _, err := s.b.StateAndHeaderByNumber(ctx, blockNr)
+	if state == nil || err != nil {
+		return nil, err
+	}
+	if swap, err := state.GetMultiSwap(swapID); err == nil {
+		return &swap, nil
+	}
+	// treat swapId as tx hash, deduct swap id from the tx
+	if id := s.getIDByTxHash(swapID); id != (common.Hash{}) {
+		if swap, err := state.GetMultiSwap(id); err == nil {
+			return &swap, nil
+		}
+	}
+	return nil, fmt.Errorf("MultiSwap not found")
 }
 
 // AllSwaps wacom

@@ -63,7 +63,7 @@ type Engine interface {
 
 	// PreProcess update state if needed from various block info
 	// used with some PoS Systems
-	PreProcess( chain ChainReader, header *types.Header, statedb *state.StateDB ) error
+	PreProcess(chain ChainReader, header *types.Header, statedb *state.StateDB) error
 
 	// VerifyHeaders is similar to VerifyHeader, but verifies a batch of headers
 	// concurrently. The method returns a quit channel to abort the operations and
@@ -99,9 +99,6 @@ type Engine interface {
 
 	// SealHash returns the hash of a block prior to it being sealed.
 	SealHash(header *types.Header) common.Hash
-
-	UpdateBlockBroadcast(header *types.Header)
-	HaveBlockBroaded(header *types.Header) bool
 
 	// CalcDifficulty is the difficulty adjustment algorithm. It returns the difficulty
 	// that a new block should have.

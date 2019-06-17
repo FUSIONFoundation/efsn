@@ -562,7 +562,6 @@ func (s *Service) assembleBlockStats(block *types.Block) *blockStats {
 	if _, ok := s.engine.(*datong.DaTong); ok {
 		snap, err := datong.NewSnapshotFromHeader(header)
 		if err == nil {
-			weight = snap.Weight
 			ticketNumber = snap.TicketNumber
 		}
 	}
@@ -709,20 +708,14 @@ func (s *Service) reportStats(conn *websocket.Conn) error {
 	if s.eth != nil {
 		mining = s.eth.Miner().Mining()
 		hashrate = int(s.eth.Miner().HashRate())
-		if datong, ok := s.engine.(*datong.DaTong); ok {
-			data := datong.ConsensusData()
-			weight = data[0]
-			ticketNumber = data[1]
-
-			etherbase := s.eth.Miner().Etherbase()
-			if etherbase != (common.Address{}) {
-				header := s.eth.BlockChain().CurrentBlock().Header()
-				statedb, _ := s.eth.BlockChain().StateAt(header.Root, header.MixDigest)
-				tickets, _ := statedb.AllTickets()
-				for _, t := range tickets {
-					if t.Owner == etherbase {
-						myTicketNumber = big.NewInt(int64(len(t.Tickets)))
-						break
+		if _, ok := s.engine.(*datong.DaTong); ok {
+			header := s.eth.BlockChain().CurrentBlock().Header()
+			if statedb, err := s.eth.BlockChain().StateAt(header.Root, header.MixDigest); err == nil {
+				if tickets, err := statedb.AllTickets(); err == nil {
+					ticketNumber = new(big.Int).SetUint64(tickets.NumberOfTickets())
+					etherbase, _ := s.eth.Etherbase()
+					if etherbase != (common.Address{}) {
+						myTicketNumber = new(big.Int).SetUint64(tickets.NumberOfTicketsByAddress(etherbase))
 					}
 				}
 			}

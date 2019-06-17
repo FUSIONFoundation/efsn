@@ -494,6 +494,7 @@ func (w *worker) taskLoop() {
 // resultLoop is a standalone goroutine to handle sealing result submitting
 // and flush relative data to the database.
 func (w *worker) resultLoop() {
+	fastBlockNumber := w.chain.CurrentFastBlock().NumberU64()
 	for {
 		select {
 		case block := <-w.resultCh:
@@ -505,6 +506,14 @@ func (w *worker) resultLoop() {
 			if w.chain.HasBlock(block.Hash(), block.NumberU64()) {
 				continue
 			}
+			if !w.chain.CacheDisabled() && block.NumberU64() < fastBlockNumber {
+				if common.DebugMode {
+					log.Info("full block is lower than fast block",
+						"full", block.NumberU64(), "fast", fastBlockNumber)
+				}
+				continue
+			}
+
 			var (
 				sealhash = w.engine.SealHash(block.Header())
 				hash     = block.Hash()
@@ -514,10 +523,6 @@ func (w *worker) resultLoop() {
 			w.pendingMu.RUnlock()
 			if !exist {
 				log.Error("Block found but no relative pending task", "number", block.Number(), "sealhash", sealhash, "hash", hash)
-				continue
-			}
-			if w.engine.HaveBlockBroaded(block.Header()) {
-				log.Warn("resultLoop", "HaveBlockBroaded", "", "number", block.NumberU64())
 				continue
 			}
 			// Different block could share same sealhash, deep copy here to prevent write-write conflict.
@@ -542,8 +547,8 @@ func (w *worker) resultLoop() {
 				continue
 			}
 			//spew.Printf("w.chain.WriteBlockWithState, block: %#v\n", block)
-			w.engine.UpdateBlockBroadcast(block.Header())
-			log.Info("Successfully sealed new block", "number", block.Number(), "sealhash", sealhash, "hash", hash,
+			log.Info("Successfully sealed new block",
+				"number", block.Number(), "sealhash", sealhash, "hash", hash,
 				"difficulty", block.Difficulty(),
 				"elapsed", common.PrettyDuration(time.Since(task.createdAt)))
 
