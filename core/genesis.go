@@ -28,6 +28,7 @@ import (
 	"github.com/FusionFoundation/efsn/common"
 	"github.com/FusionFoundation/efsn/common/hexutil"
 	"github.com/FusionFoundation/efsn/common/math"
+	"github.com/FusionFoundation/efsn/consensus/datong"
 	"github.com/FusionFoundation/efsn/core/rawdb"
 	"github.com/FusionFoundation/efsn/core/state"
 	"github.com/FusionFoundation/efsn/core/types"
@@ -259,6 +260,7 @@ func (g *Genesis) ToBlock(db ethdb.Database) *types.Block {
 			statedb.AddTicket(ticket)
 		}
 		g.Mixhash, _ = statedb.UpdateTickets(common.Big0, g.Timestamp)
+		g.ExtraData = datong.GenerateGenesisExtraData(g.ExtraData, g.TicketCreateInfo.Count)
 	}
 
 	statedb.GenAsset(common.SystemAsset)

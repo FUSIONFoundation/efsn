@@ -12,6 +12,22 @@ type API struct {
 	chain consensus.ChainReader
 }
 
+func getSnapshotByHeader(header *types.Header) (*Snapshot, error) {
+	// Ensure we have an actually valid block and return its snapshot
+	if header == nil {
+		return nil, errUnknownBlock
+	}
+	snap, err := NewSnapshotFromHeader(header)
+	if err != nil {
+		if header.Number.Uint64() == 0 {
+			// return an empty snapshot
+			return newSnapshot().ToShow(), nil
+		}
+		return nil, err
+	}
+	return snap, nil
+}
+
 // GetSnapshot wacom
 func (api *API) GetSnapshot(number *rpc.BlockNumber) (*Snapshot, error) {
 	var header *types.Header
@@ -20,34 +36,11 @@ func (api *API) GetSnapshot(number *rpc.BlockNumber) (*Snapshot, error) {
 	} else {
 		header = api.chain.GetHeaderByNumber(uint64(number.Int64()))
 	}
-	// Ensure we have an actually valid block and return its snapshot
-	if header == nil {
-		return nil, errUnknownBlock
-	}
-	if  header.Number.Uint64() == 0  {
-		// return an empty snapshot
-		return  newSnapshot().ToShow() , nil
-	}
-	snap, err := newSnapshotWithData(getSnapDataByHeader(header))
-	if err != nil {
-		return nil, err
-	}
-	return snap.ToShow(), nil
+	return getSnapshotByHeader(header)
 }
 
 // GetSnapshotAtHash wacom
 func (api *API) GetSnapshotAtHash(hash common.Hash) (*Snapshot, error) {
 	header := api.chain.GetHeaderByHash(hash)
-	if header == nil {
-		return nil, errUnknownBlock
-	}
-	if  header.Number.Uint64() == 0  {
-		// return an empty snapshot
-		return  newSnapshot().ToShow() , nil
-	}
-	snap, err := newSnapshotWithData(getSnapDataByHeader(header))
-	if err != nil {
-		return nil, err
-	}
-	return snap.ToShow(), nil
+	return getSnapshotByHeader(header)
 }
