@@ -493,6 +493,8 @@ func (dt *DaTong) getAllTickets(chain consensus.ChainReader, header *types.Heade
 	statedb, err := state.New(header.Root, header.MixDigest, dt.stateCache)
 	if err == nil {
 		return statedb.AllTickets()
+	} else if header.Number.Uint64() == 0 {
+		return nil, err
 	}
 
 	// get tickets from past state
@@ -503,16 +505,19 @@ func (dt *DaTong) getAllTickets(chain consensus.ChainReader, header *types.Heade
 		if parent = chain.GetHeader(parent.ParentHash, parent.Number.Uint64()-1); parent == nil {
 			return nil, fmt.Errorf("Can not find parent", "number", parent.Number.Uint64()-1, "hash", parent.ParentHash)
 		}
-		if statedb, err := state.New(parent.Root, parent.MixDigest, dt.stateCache); err == nil {
+		statedb, err = state.New(parent.Root, parent.MixDigest, dt.stateCache)
+		if err == nil {
 			if tickets, err = statedb.AllTickets(); err != nil {
 				return nil, err
 			}
 			break
+		} else if parent.Number.Uint64() == 0 {
+			return nil, err
 		}
 		parents = append(parents, parent)
 	}
+	log.Info("getAllTickets find tickets from past state", "current", header.Number, "past", parent.Number)
 	if common.DebugMode {
-		log.Info("getAllTickets find tickets from past state", "current", header.Number, "past", parent.Number)
 		defer func(bstart time.Time) {
 			log.Info("getAllTickets from past state spend time", "duration", common.PrettyDuration(time.Since(bstart)))
 		}(time.Now())
@@ -531,8 +536,11 @@ func (dt *DaTong) getAllTickets(chain consensus.ChainReader, header *types.Heade
 			return err
 		}
 
-		idstr := maps["Ticket"].(string)
-		datastr := maps["Base"].(string)
+		idstr, idok := maps["Ticket"].(string)
+		datastr, dataok := maps["Base"].(string)
+		if !idok || !dataok {
+			return errors.New("buy ticket log has wrong data")
+		}
 
 		data, err := base64.StdEncoding.DecodeString(datastr)
 		if err != nil {
