@@ -880,9 +880,6 @@ web3._extend({
 			name: 'getTransactionAndReceipt',
 			call: 'fsn_getTransactionAndReceipt',
 			params: 1,
-			inputFormatter: [
-				null			
-			]
 		}),
 		new web3._extend.Method({
 			name: 'allAssetsByAddress',
@@ -1118,9 +1115,6 @@ web3._extend({
 			name: 'getTransactionAndReceipt',
 			call: 'fsn_getTransactionAndReceipt',
 			params: 1,
-			inputFormatter: [
-				null			
-			]
 		}),
 		new web3._extend.Method({
 			name: 'totalNumberOfTickets',
