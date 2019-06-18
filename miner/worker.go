@@ -513,6 +513,12 @@ func (w *worker) resultLoop() {
 				}
 				continue
 			}
+			if w.unconfirmed.Has(block.ParentHash()) {
+				if common.DebugMode {
+					log.Info("ignore duplicate result", "number", block.NumberU64(), "parent", block.ParentHash())
+				}
+				continue
+			}
 
 			var (
 				sealhash = w.engine.SealHash(block.Header())
@@ -566,7 +572,7 @@ func (w *worker) resultLoop() {
 			w.chain.PostChainEvents(events, logs)
 
 			// Insert the block into the set of pending ones to resultLoop for confirmations
-			w.unconfirmed.Insert(block.NumberU64(), block.Hash())
+			w.unconfirmed.Insert(block.NumberU64(), block.Hash(), block.ParentHash())
 
 		case <-w.exitCh:
 			return

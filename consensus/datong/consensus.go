@@ -432,8 +432,6 @@ func (dt *DaTong) Seal(chain consensus.ChainReader, block *types.Block, results 
 
 		select {
 		case results <- block.WithSeal(header):
-			// One of the threads found a block, abort all others
-			stop = make(chan struct{})
 		default:
 			log.Warn("Sealing result is not read by miner", "sealhash", dt.SealHash(header))
 		}
@@ -706,7 +704,7 @@ func (dt *DaTong) calcBlockDifficulty(chain consensus.ChainReader, header *types
 		}
 	}
 	if !haveTicket {
-		return nil, nil, 0, nil, errors.New("Miner doesn't have ticket")
+		return nil, nil, 0, nil, fmt.Errorf("Miner doesn't have ticket at block height %v", parent.Number)
 	}
 	ticketsTotalAmount, numberOfticketOwners := parentTickets.NumberOfTicketsAndOwners()
 

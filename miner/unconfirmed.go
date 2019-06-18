@@ -40,6 +40,7 @@ type chainRetriever interface {
 type unconfirmedBlock struct {
 	index uint64
 	hash  common.Hash
+	phash common.Hash
 }
 
 // unconfirmedBlocks implements a data structure to maintain locally mined blocks
@@ -61,8 +62,28 @@ func newUnconfirmedBlocks(chain chainRetriever, depth uint) *unconfirmedBlocks {
 	}
 }
 
+func (set *unconfirmedBlocks) Has(parentHash common.Hash) bool {
+	set.lock.RLock()
+	defer set.lock.RUnlock()
+
+	if set.blocks == nil {
+		return false
+	}
+
+	r := set.blocks
+	for i := 0; i < r.Len(); i++ {
+		item := r.Value.(*unconfirmedBlock)
+		if item.phash == parentHash {
+			return true
+		}
+		r = r.Prev()
+	}
+
+	return false
+}
+
 // Insert adds a new block to the set of unconfirmed ones.
-func (set *unconfirmedBlocks) Insert(index uint64, hash common.Hash) {
+func (set *unconfirmedBlocks) Insert(index uint64, hash common.Hash, parentHash common.Hash) {
 	// If a new block was mined locally, shift out any old enough blocks
 	set.Shift(index)
 
@@ -71,6 +92,7 @@ func (set *unconfirmedBlocks) Insert(index uint64, hash common.Hash) {
 	item.Value = &unconfirmedBlock{
 		index: index,
 		hash:  hash,
+		phash: parentHash,
 	}
 	// Set as the initial ring or append to the end
 	set.lock.Lock()
