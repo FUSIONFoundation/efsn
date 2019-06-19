@@ -1018,7 +1018,9 @@ func (bc *BlockChain) WriteBlockWithState(block *types.Block, receipts []*types.
 		bc.insert(block)
 		// (auto) buy ticket when block height changed
 		if common.AutoBuyTicket == true { // if enable
-			common.AutoBuyTicketChan <- 1
+			go func() { // do not block process
+				common.AutoBuyTicketChan <- 1
+			}()
 		}
 	}
 	bc.futureBlocks.Remove(block.Hash())
@@ -1383,6 +1385,9 @@ func (bc *BlockChain) reorg(oldBlock, newBlock *types.Block) error {
 		}
 		logFn("Chain split detected", "number", commonBlock.Number(), "hash", commonBlock.Hash(),
 			"drop", len(oldChain), "dropfrom", oldChain[0].Hash(), "add", len(newChain), "addfrom", newChain[0].Hash())
+		if oldChain[0].Coinbase() == newChain[0].Coinbase() {
+			logFn("multiple block mined", "number", oldChain[0].Number(), "order", oldChain[0].Nonce(), "miner", oldChain[0].Coinbase())
+		}
 	} else {
 		log.Error("Impossible reorg, please file an issue", "oldnum", oldBlock.Number(), "oldhash", oldBlock.Hash(), "newnum", newBlock.Number(), "newhash", newBlock.Hash())
 	}
