@@ -1492,6 +1492,10 @@ func (pool *TxPool) validateFsnCallTx(tx *types.Transaction) error {
 			return fmt.Errorf("USAN's cannot be swapped")
 		}
 
+		if _, err := state.GetAsset(makeSwapParam.ToAssetID); err != nil {
+			return fmt.Errorf("ToAssetID asset %v not found", makeSwapParam.ToAssetID.String())
+		}
+
 		if makeSwapParam.FromAssetID == common.OwnerUSANAssetID {
 			notation := state.GetNotation(from)
 			if notation == 0 {
@@ -1641,6 +1645,16 @@ func (pool *TxPool) validateFsnCallTx(tx *types.Transaction) error {
 
 		if err := makeSwapParam.Check(height, timestamp); err != nil {
 			return err
+		}
+
+		for _, toAssetID := range makeSwapParam.ToAssetID {
+			if toAssetID == common.OwnerUSANAssetID {
+				return fmt.Errorf("USAN's cannot be multi swapped")
+			}
+
+			if _, err := state.GetAsset(toAssetID); err != nil {
+				return fmt.Errorf("ToAssetID asset %v not found", toAssetID.String())
+			}
 		}
 
 		ln := len(makeSwapParam.FromAssetID)

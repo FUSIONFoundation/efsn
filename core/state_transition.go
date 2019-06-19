@@ -225,7 +225,9 @@ func (st *StateTransition) TransitionDb() (ret []byte, usedGas uint64, failed bo
 		if st.to() == common.FSNCallAddress {
 			errc := st.handleFsnCall()
 			if errc != nil && common.DebugMode {
-				log.Info("handleFsnCall error", "err", errc)
+				param := common.FSNCallParam{}
+				rlp.DecodeBytes(st.msg.Data(), &param)
+				log.Info("handleFsnCall error", "number", st.evm.Context.BlockNumber, "Func", param.Func, "err", errc)
 			}
 		}
 
@@ -563,6 +565,12 @@ func (st *StateTransition) handleFsnCall() error {
 
 		if makeSwapParam.ToAssetID == common.OwnerUSANAssetID {
 			err := fmt.Errorf("USAN's cannot be swapped")
+			st.addLog(common.MakeSwapFunc, makeSwapParam, common.NewKeyValue("Error", err.Error()))
+			return err
+		}
+
+		if _, err := st.state.GetAsset(makeSwapParam.ToAssetID); err != nil {
+			err := fmt.Errorf("ToAssetID's asset not found")
 			st.addLog(common.MakeSwapFunc, makeSwapParam, common.NewKeyValue("Error", err.Error()))
 			return err
 		}
@@ -929,6 +937,20 @@ func (st *StateTransition) handleFsnCall() error {
 		if err := makeSwapParam.Check(height, timestamp); err != nil {
 			st.addLog(common.MakeMultiSwapFunc, makeSwapParam, common.NewKeyValue("Error", err.Error()))
 			return err
+		}
+
+		for _, toAssetID := range makeSwapParam.ToAssetID {
+			if toAssetID == common.OwnerUSANAssetID {
+				err := fmt.Errorf("USAN's cannot be multi swapped")
+				st.addLog(common.MakeMultiSwapFunc, makeSwapParam, common.NewKeyValue("Error", err.Error()))
+				return err
+			}
+
+			if _, err := st.state.GetAsset(toAssetID); err != nil {
+				err := fmt.Errorf("ToAssetID's asset not found")
+				st.addLog(common.MakeMultiSwapFunc, makeSwapParam, common.NewKeyValue("Error", err.Error()))
+				return err
+			}
 		}
 
 		ln := len(makeSwapParam.FromAssetID)
