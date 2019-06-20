@@ -1432,23 +1432,9 @@ func (pool *TxPool) validateFsnCallTx(tx *types.Transaction) error {
 			pool.removeTx(oldTxHash, true)
 		}
 
-	case common.AssetValueChangeFunc, common.OldAssetValueChangeFunc:
-		var assetValueChangeParamEx common.AssetValueChangeExParam
-		if param.Func == common.OldAssetValueChangeFunc {
-			// convert old data to new format
-			assetValueChangeParam := common.AssetValueChangeParam{}
-			rlp.DecodeBytes(param.Data, &assetValueChangeParam)
-			assetValueChangeParamEx = common.AssetValueChangeExParam{
-				AssetID:     assetValueChangeParam.AssetID,
-				To:          assetValueChangeParam.To,
-				Value:       assetValueChangeParam.Value,
-				IsInc:       assetValueChangeParam.IsInc,
-				TransacData: "",
-			}
-		} else {
-			assetValueChangeParamEx = common.AssetValueChangeExParam{}
-			rlp.DecodeBytes(param.Data, &assetValueChangeParamEx)
-		}
+	case common.AssetValueChangeFunc:
+		assetValueChangeParamEx := common.AssetValueChangeExParam{}
+		rlp.DecodeBytes(param.Data, &assetValueChangeParamEx)
 
 		if err := assetValueChangeParamEx.Check(height); err != nil {
 			return err

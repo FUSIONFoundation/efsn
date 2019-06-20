@@ -485,24 +485,10 @@ func (st *StateTransition) handleFsnCall() error {
 		}
 		st.addLog(common.BuyTicketFunc, param.Data, common.NewKeyValue("TicketID", ticket.ID), common.NewKeyValue("TicketOwner", ticket.Owner))
 		return nil
-	case common.AssetValueChangeFunc, common.OldAssetValueChangeFunc:
+	case common.AssetValueChangeFunc:
 		outputCommandInfo("AssetValueChangeFunc", "from", st.msg.From())
-		var assetValueChangeParamEx common.AssetValueChangeExParam
-		if param.Func == common.OldAssetValueChangeFunc {
-			// convert old data to new format
-			assetValueChangeParam := common.AssetValueChangeParam{}
-			rlp.DecodeBytes(param.Data, &assetValueChangeParam)
-			assetValueChangeParamEx = common.AssetValueChangeExParam{
-				AssetID:     assetValueChangeParam.AssetID,
-				To:          assetValueChangeParam.To,
-				Value:       assetValueChangeParam.Value,
-				IsInc:       assetValueChangeParam.IsInc,
-				TransacData: "",
-			}
-		} else {
-			assetValueChangeParamEx = common.AssetValueChangeExParam{}
-			rlp.DecodeBytes(param.Data, &assetValueChangeParamEx)
-		}
+		assetValueChangeParamEx := common.AssetValueChangeExParam{}
+		rlp.DecodeBytes(param.Data, &assetValueChangeParamEx)
 
 		if err := assetValueChangeParamEx.Check(height); err != nil {
 			st.addLog(common.AssetValueChangeFunc, assetValueChangeParamEx, common.NewKeyValue("Error", err.Error()))

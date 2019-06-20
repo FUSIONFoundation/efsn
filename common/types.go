@@ -408,7 +408,7 @@ const (
 	TimeLockFunc
 	// BuyTicketFunc wacom
 	BuyTicketFunc
-	// OldAssetValueChangeFunc wacom
+	// OldAssetValueChangeFunc wacom (deprecated)
 	OldAssetValueChangeFunc
 	// MakeSwapFunc wacom
 	MakeSwapFunc
@@ -484,14 +484,6 @@ type SendAssetParam struct {
 	AssetID Hash
 	To      Address
 	Value   *big.Int `json:",string"`
-}
-
-// AssetValueChangeParam wacom
-type AssetValueChangeParam struct {
-	AssetID Hash
-	To      Address
-	Value   *big.Int `json:",string"`
-	IsInc   bool
 }
 
 // AssetValueChangeExParam wacom
@@ -594,11 +586,6 @@ func (p *TimeLockParam) ToBytes() ([]byte, error) {
 
 // ToBytes wacom
 func (p *BuyTicketParam) ToBytes() ([]byte, error) {
-	return rlp.EncodeToBytes(p)
-}
-
-// ToBytes wacom
-func (p *AssetValueChangeParam) ToBytes() ([]byte, error) {
 	return rlp.EncodeToBytes(p)
 }
 
@@ -882,14 +869,6 @@ func (p *BuyTicketParam) Check(blockNumber *big.Int, timestamp uint64, adjust in
 		if end < timestamp+uint64(7*24*3600+adjust) {
 			return fmt.Errorf("BuyTicket end must be greater than latest block time + 1 week")
 		}
-	}
-	return nil
-}
-
-// Check wacom
-func (p *AssetValueChangeParam) Check(blockNumber *big.Int) error {
-	if p.Value == nil || p.Value.Cmp(Big0) <= 0 {
-		return fmt.Errorf("Value must be set and greater than 0")
 	}
 	return nil
 }
