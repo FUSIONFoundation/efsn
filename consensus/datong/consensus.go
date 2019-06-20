@@ -649,40 +649,59 @@ func calcRewards(height *big.Int) *big.Int {
 	return reward
 }
 
+// get rid of header.Extra[0:extraVanity] of user custom data
+func posHash(header *types.Header) (hash common.Hash) {
+	hasher := sha3.NewKeccak256()
+	rlp.Encode(hasher, []interface{}{
+		header.ParentHash,
+		header.UncleHash,
+		header.Coinbase,
+		header.Root,
+		header.TxHash,
+		header.ReceiptHash,
+		header.Bloom,
+		header.Difficulty,
+		header.Number,
+		header.GasLimit,
+		header.GasUsed,
+		header.Time,
+		header.Extra[extraVanity : len(header.Extra)-extraSeal],
+		header.MixDigest,
+		header.Nonce,
+	})
+	hasher.Sum(hash[:0])
+	return hash
+}
+
 type DisInfoWithIndex struct {
 	index int
 	info  *DisInfo
 }
 
 func calcDisInfo(ind int, tickets common.TicketsData, parent *types.Header, ch chan *DisInfoWithIndex) {
-	parentHash := parent.Hash()
+	posHash := posHash(parent)
 	owner := tickets.Owner
 
-	var minTicket *common.TicketBody
+	var minTicket common.TicketBody
 	var minDist *big.Int
 	for _, t := range tickets.Tickets {
-		hash := parentHash
-		if t.IsInGenesis() {
-			index := t.StartTime
-			hash = crypto.Keccak256Hash(new(big.Int).SetUint64(index).Bytes())
-		}
 		w := new(big.Int).Sub(parent.Number, t.BlockHeight())
 		w = new(big.Int).Add(w, common.Big1)
 		w2 := new(big.Int).Mul(w, w)
 
-		tid := crypto.Keccak256Hash(owner[:], hash[:])
-		id := new(big.Int).SetBytes(crypto.Keccak256(parentHash[:], tid[:], []byte(owner.Hex())))
+		tid := crypto.Keccak256Hash(owner[:], t.BlockHeight().Bytes())
+		id := new(big.Int).SetBytes(crypto.Keccak256(posHash[:], tid[:], []byte(owner.Hex())))
 		id2 := new(big.Int).Mul(id, id)
 		s := new(big.Int).Add(w2, id2)
 
 		if minDist == nil || s.Cmp(minDist) < 0 {
-			minTicket = &t
+			minTicket = t
 			minDist = s
 		}
 	}
 	ticket := &common.Ticket{
 		ID:         common.TicketID(owner, minTicket.Height, minTicket.StartTime),
-		TicketBody: *minTicket,
+		TicketBody: minTicket,
 	}
 	result := &DisInfoWithIndex{index: ind, info: &DisInfo{tk: ticket, res: minDist}}
 	ch <- result
