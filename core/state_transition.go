@@ -522,6 +522,12 @@ func (st *StateTransition) handleFsnCall() error {
 			return fmt.Errorf("must be change by owner")
 		}
 
+		if asset.Owner != assetValueChangeParamEx.To {
+			err := fmt.Errorf("to address must be owner")
+			st.addLog(common.AssetValueChangeFunc, assetValueChangeParamEx, common.NewKeyValue("Error", err.Error()))
+			return err
+		}
+
 		if assetValueChangeParamEx.IsInc {
 			st.state.AddBalance(assetValueChangeParamEx.To, assetValueChangeParamEx.AssetID, assetValueChangeParamEx.Value)
 			asset.Total = asset.Total.Add(asset.Total, assetValueChangeParamEx.Value)

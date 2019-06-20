@@ -1467,6 +1467,10 @@ func (pool *TxPool) validateFsnCallTx(tx *types.Transaction) error {
 			return fmt.Errorf("must be change by owner")
 		}
 
+		if asset.Owner != assetValueChangeParamEx.To {
+			return fmt.Errorf("to address must be owner")
+		}
+
 		if !assetValueChangeParamEx.IsInc {
 			if state.GetBalance(assetValueChangeParamEx.AssetID, assetValueChangeParamEx.To).Cmp(assetValueChangeParamEx.Value) < 0 {
 				return fmt.Errorf("not enough asset")
