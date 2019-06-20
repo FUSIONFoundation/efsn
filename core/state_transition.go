@@ -28,6 +28,7 @@ import (
 	"github.com/FusionFoundation/efsn/common"
 	"github.com/FusionFoundation/efsn/core/types"
 	"github.com/FusionFoundation/efsn/core/vm"
+	"github.com/FusionFoundation/efsn/crypto"
 	"github.com/FusionFoundation/efsn/log"
 	"github.com/FusionFoundation/efsn/params"
 	"github.com/FusionFoundation/efsn/rlp"
@@ -411,7 +412,8 @@ func (st *StateTransition) handleFsnCall() error {
 	case common.BuyTicketFunc:
 		outputCommandInfo("BuyTicketFunc", "from", st.msg.From())
 		from := st.msg.From()
-		id := common.TicketID(from, height.Uint64(), 0)
+		hash := st.evm.GetHash(height.Uint64() - 1)
+		id := crypto.Keccak256Hash(from[:], hash[:])
 
 		if st.state.IsTicketExist(id) {
 			st.addLog(common.BuyTicketFunc, param.Data, common.NewKeyValue("Error", "Ticket already exist"))
@@ -442,8 +444,9 @@ func (st *StateTransition) handleFsnCall() error {
 		}
 
 		ticket := common.Ticket{
-			ID: id,
+			Owner: from,
 			TicketBody: common.TicketBody{
+				ID:         id,
 				Height:     height.Uint64(),
 				StartTime:  start,
 				ExpireTime: end,
@@ -480,7 +483,7 @@ func (st *StateTransition) handleFsnCall() error {
 			st.addLog(common.BuyTicketFunc, param.Data, common.NewKeyValue("Error", "unable to add ticket"))
 			return err
 		}
-		st.addLog(common.BuyTicketFunc, param.Data, common.NewKeyValue("Ticket", ticket.ID))
+		st.addLog(common.BuyTicketFunc, param.Data, common.NewKeyValue("TicketID", ticket.ID), common.NewKeyValue("TicketOwner", ticket.Owner))
 		return nil
 	case common.AssetValueChangeFunc, common.OldAssetValueChangeFunc:
 		outputCommandInfo("AssetValueChangeFunc", "from", st.msg.From())

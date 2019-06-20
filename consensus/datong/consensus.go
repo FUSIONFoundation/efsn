@@ -221,7 +221,7 @@ func (dt *DaTong) verifySeal(chain consensus.ChainReader, header *types.Header, 
 		return errv
 	}
 	// verify ticket with signer
-	if tk.Owner() != header.Coinbase {
+	if tk.Owner != header.Coinbase {
 		return errors.New("Coinbase is not the voted ticket owner")
 	}
 	// check ticket ID
@@ -346,7 +346,7 @@ func (dt *DaTong) Finalize(chain consensus.ChainReader, header *types.Header, st
 			EndTime:   ticket.ExpireTime,
 			Value:     ticket.Value(),
 		})
-		headerState.AddTimeLockBalance(ticket.Owner(), common.SystemAssetID, value, header.Number, header.Time.Uint64())
+		headerState.AddTimeLockBalance(ticket.Owner, common.SystemAssetID, value, header.Number, header.Time.Uint64())
 	}
 
 	deleteTicket := func(ticket *common.Ticket, logType ticketLogType, returnBack bool) {
@@ -534,9 +534,10 @@ func (dt *DaTong) getAllTickets(chain consensus.ChainReader, header *types.Heade
 			return err
 		}
 
-		idstr, idok := maps["Ticket"].(string)
+		idstr, idok := maps["TicketID"].(string)
+		ownerstr, ownerok := maps["TicketOwner"].(string)
 		datastr, dataok := maps["Base"].(string)
-		if !idok || !dataok {
+		if !idok || !ownerok || !dataok {
 			return errors.New("buy ticket log has wrong data")
 		}
 
@@ -549,8 +550,9 @@ func (dt *DaTong) getAllTickets(chain consensus.ChainReader, header *types.Heade
 		rlp.DecodeBytes(data, &buyTicketParam)
 
 		ticket := &common.Ticket{
-			ID: common.HexToHash(idstr),
+			Owner: common.HexToAddress(ownerstr),
 			TicketBody: common.TicketBody{
+				ID:         common.HexToHash(idstr),
 				Height:     l.BlockNumber,
 				StartTime:  buyTicketParam.Start,
 				ExpireTime: buyTicketParam.End,
@@ -685,12 +687,10 @@ func calcDisInfo(ind int, tickets common.TicketsData, parent *types.Header, ch c
 	var minTicket common.TicketBody
 	var minDist *big.Int
 	for _, t := range tickets.Tickets {
-		w := new(big.Int).Sub(parent.Number, t.BlockHeight())
-		w = new(big.Int).Add(w, common.Big1)
+		w := new(big.Int).SetUint64(parent.Number.Uint64() - t.Height + 1)
 		w2 := new(big.Int).Mul(w, w)
 
-		tid := crypto.Keccak256Hash(owner[:], t.BlockHeight().Bytes())
-		id := new(big.Int).SetBytes(crypto.Keccak256(posHash[:], tid[:], []byte(owner.Hex())))
+		id := new(big.Int).SetBytes(crypto.Keccak256(posHash[:], t.ID[:], []byte(owner.Hex())))
 		id2 := new(big.Int).Mul(id, id)
 		s := new(big.Int).Add(w2, id2)
 
@@ -700,7 +700,7 @@ func calcDisInfo(ind int, tickets common.TicketsData, parent *types.Header, ch c
 		}
 	}
 	ticket := &common.Ticket{
-		ID:         common.TicketID(owner, minTicket.Height, minTicket.StartTime),
+		Owner:      owner,
 		TicketBody: minTicket,
 	}
 	result := &DisInfoWithIndex{index: ind, info: &DisInfo{tk: ticket, res: minDist}}
@@ -746,7 +746,7 @@ func (dt *DaTong) calcBlockDifficulty(chain consensus.ChainReader, header *types
 	close(ch)
 	sort.Sort(list)
 	for _, t := range list {
-		owner := t.tk.Owner()
+		owner := t.tk.Owner
 		if owner == header.Coinbase {
 			selected = t.tk
 			break

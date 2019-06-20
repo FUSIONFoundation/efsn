@@ -16,6 +16,7 @@ func TicketPrice(blocknumber *big.Int) *big.Int {
 
 // Ticket wacom
 type TicketBody struct {
+	ID         Hash
 	Height     uint64
 	StartTime  uint64
 	ExpireTime uint64
@@ -24,7 +25,7 @@ type TicketBody struct {
 type TicketBodySlice []TicketBody
 
 type Ticket struct {
-	ID Hash
+	Owner Address
 	TicketBody
 }
 
@@ -50,33 +51,12 @@ func (t *TicketBody) IsInGenesis() bool {
 	return t.Height == 0
 }
 
-func (t *Ticket) Owner() Address {
-	return BytesToAddress(t.ID[:AddressLength])
-}
-
 func (t *TicketBody) BlockHeight() *big.Int {
 	return new(big.Int).SetUint64(t.Height)
 }
 
 func (t *TicketBody) Value() *big.Int {
 	return TicketPrice(new(big.Int).SetUint64(t.Height))
-}
-
-func TicketID(owner Address, height uint64, index uint64) Hash {
-	h := Hash{}
-	copy(h[:20], owner[:])
-	copy(h[20:28], Uint64ToBytes(height))
-	if height == 0 {
-		copy(h[28:32], Uint32ToBytes(uint32(index)))
-	}
-	return h
-}
-
-func ParseTicketID(id Hash) (Address, uint64, uint64) {
-	owner := BytesToAddress(id[:20])
-	height := BytesToUint64(id[20:28])
-	index := BytesToUint32(id[28:32])
-	return owner, height, uint64(index)
 }
 
 func (t *Ticket) MarshalJSON() ([]byte, error) {
@@ -89,7 +69,7 @@ func (t *Ticket) MarshalJSON() ([]byte, error) {
 		Value      string
 	}{
 		ID:         t.ID,
-		Owner:      t.Owner(),
+		Owner:      t.Owner,
 		Height:     t.Height,
 		StartTime:  t.StartTime,
 		ExpireTime: t.ExpireTime,
@@ -114,7 +94,7 @@ func (s TicketPtrSlice) String() string {
 
 func (t *Ticket) ToDisplay() TicketDisplay {
 	return TicketDisplay{
-		Owner:      t.Owner(),
+		Owner:      t.Owner,
 		Height:     t.Height,
 		StartTime:  t.StartTime,
 		ExpireTime: t.ExpireTime,
@@ -136,35 +116,6 @@ func (s TicketSlice) DeepCopy() TicketSlice {
 		r[i] = t
 	}
 	return r
-}
-
-func (s TicketSlice) Get(id Hash) (*Ticket, error) {
-	for _, t := range s {
-		if t.ID == id {
-			return &t, nil
-		}
-	}
-	return nil, fmt.Errorf("%v ticket not fount", id.String())
-}
-
-func (s TicketSlice) AddTicket(ticket *Ticket) (TicketSlice, error) {
-	for _, t := range s {
-		if t.ID == ticket.ID {
-			return s, fmt.Errorf("AddTicket: %v ticket exist", t.ID.String())
-		}
-	}
-	s = append(s, *ticket)
-	return s, nil
-}
-
-func (s TicketSlice) RemoveTicket(id Hash) (TicketSlice, error) {
-	for i, t := range s {
-		if t.ID == id {
-			s = append(s[:i], s[i+1:]...)
-			return s, nil
-		}
-	}
-	return nil, fmt.Errorf("RemoveTicket: %v ticket not fount", id.String())
 }
 
 func (s TicketBodySlice) DeepCopy() TicketBodySlice {
@@ -190,7 +141,7 @@ func (s TicketsData) ToTicketSlice() TicketSlice {
 	res := make(TicketSlice, len(s.Tickets))
 	for i, t := range s.Tickets {
 		res[i] = Ticket{
-			ID:         TicketID(s.Owner, t.Height, t.StartTime),
+			Owner:      s.Owner,
 			TicketBody: t,
 		}
 	}
@@ -243,33 +194,21 @@ func (s TicketsDataSlice) NumberOfTicketsAndOwners() (uint64, uint64) {
 }
 
 func (s TicketsDataSlice) Get(id Hash) (*Ticket, error) {
-	owner, height, index := ParseTicketID(id)
-	isInGenesis := height == 0
-	var tickets TicketBodySlice
 	for _, v := range s {
-		if v.Owner == owner {
-			tickets = v.Tickets
-			break
+		for _, t := range v.Tickets {
+			if t.ID == id {
+				return &Ticket{Owner: v.Owner, TicketBody: t}, nil
+			}
 		}
-	}
-	for _, t := range tickets {
-		if t.Height != height {
-			continue
-		}
-		if isInGenesis && t.StartTime != index {
-			continue
-		}
-		return &Ticket{ID: id, TicketBody: t}, nil
 	}
 	return nil, fmt.Errorf("%v ticket not fount", id.String())
 }
 
 func (s TicketsDataSlice) AddTicket(ticket *Ticket) (TicketsDataSlice, error) {
-	owner := ticket.Owner()
 	var tickets TicketBodySlice
 	row := 0
 	for i, v := range s {
-		if v.Owner == owner {
+		if v.Owner == ticket.Owner {
 			tickets = v.Tickets
 			row = i
 			break
@@ -277,7 +216,7 @@ func (s TicketsDataSlice) AddTicket(ticket *Ticket) (TicketsDataSlice, error) {
 	}
 	if tickets == nil {
 		s = append(s, TicketsData{
-			Owner:   owner,
+			Owner:   ticket.Owner,
 			Tickets: TicketBodySlice{ticket.TicketBody},
 		})
 		return s, nil
@@ -287,7 +226,7 @@ func (s TicketsDataSlice) AddTicket(ticket *Ticket) (TicketsDataSlice, error) {
 		tickets = append(tickets, ticket.TicketBody)
 	} else {
 		for _, t := range tickets {
-			if t.Height == ticket.Height {
+			if t.ID == ticket.ID {
 				log.Info("AddTicket: ticket exist", "id", ticket.ID.String())
 				return s, fmt.Errorf("AddTicket: %v ticket exist", ticket.ID.String())
 			}
@@ -299,31 +238,20 @@ func (s TicketsDataSlice) AddTicket(ticket *Ticket) (TicketsDataSlice, error) {
 }
 
 func (s TicketsDataSlice) RemoveTicket(id Hash) (TicketsDataSlice, error) {
-	owner, height, index := ParseTicketID(id)
-	isInGenesis := height == 0
-	var tickets TicketBodySlice
-	row := 0
 	for i, v := range s {
-		if v.Owner == owner {
-			tickets = v.Tickets
-			row = i
-			break
+		tickets := v.Tickets
+		for j, t := range tickets {
+			if t.ID != id {
+				continue
+			}
+			if len(tickets) == 1 {
+				s = append(s[:i], s[i+1:]...)
+			} else {
+				tickets = append(tickets[:j], tickets[j+1:]...)
+				s[i].Tickets = tickets
+			}
+			return s, nil
 		}
-	}
-	for j, t := range tickets {
-		if t.Height != height {
-			continue
-		}
-		if isInGenesis && t.StartTime != index {
-			continue
-		}
-		if len(tickets) == 1 {
-			s = append(s[:row], s[row+1:]...)
-		} else {
-			tickets = append(tickets[:j], tickets[j+1:]...)
-			s[row].Tickets = tickets
-		}
-		return s, nil
 	}
 	log.Info("RemoveTicket: ticket not found", "id", id.String())
 	return s, fmt.Errorf("RemoveTicket: %v ticket not found", id.String())
@@ -335,8 +263,7 @@ func (s TicketsDataSlice) ClearExpiredTickets(timestamp uint64) (TicketsDataSlic
 	for _, v := range s {
 		for _, t := range v.Tickets {
 			if t.ExpireTime <= timestamp {
-				id := TicketID(v.Owner, t.Height, t.StartTime)
-				expiredIds = append(expiredIds, id)
+				expiredIds = append(expiredIds, t.ID)
 			} else if !haveTicket {
 				haveTicket = true
 			}
