@@ -1432,23 +1432,9 @@ func (pool *TxPool) validateFsnCallTx(tx *types.Transaction) error {
 			pool.removeTx(oldTxHash, true)
 		}
 
-	case common.AssetValueChangeFunc, common.OldAssetValueChangeFunc:
-		var assetValueChangeParamEx common.AssetValueChangeExParam
-		if param.Func == common.OldAssetValueChangeFunc {
-			// convert old data to new format
-			assetValueChangeParam := common.AssetValueChangeParam{}
-			rlp.DecodeBytes(param.Data, &assetValueChangeParam)
-			assetValueChangeParamEx = common.AssetValueChangeExParam{
-				AssetID:     assetValueChangeParam.AssetID,
-				To:          assetValueChangeParam.To,
-				Value:       assetValueChangeParam.Value,
-				IsInc:       assetValueChangeParam.IsInc,
-				TransacData: "",
-			}
-		} else {
-			assetValueChangeParamEx = common.AssetValueChangeExParam{}
-			rlp.DecodeBytes(param.Data, &assetValueChangeParamEx)
-		}
+	case common.AssetValueChangeFunc:
+		assetValueChangeParamEx := common.AssetValueChangeExParam{}
+		rlp.DecodeBytes(param.Data, &assetValueChangeParamEx)
 
 		if err := assetValueChangeParamEx.Check(height); err != nil {
 			return err
@@ -1465,6 +1451,10 @@ func (pool *TxPool) validateFsnCallTx(tx *types.Transaction) error {
 
 		if asset.Owner != from {
 			return fmt.Errorf("must be change by owner")
+		}
+
+		if asset.Owner != assetValueChangeParamEx.To {
+			return fmt.Errorf("to address must be owner")
 		}
 
 		if !assetValueChangeParamEx.IsInc {
@@ -1490,6 +1480,10 @@ func (pool *TxPool) validateFsnCallTx(tx *types.Transaction) error {
 
 		if makeSwapParam.ToAssetID == common.OwnerUSANAssetID {
 			return fmt.Errorf("USAN's cannot be swapped")
+		}
+
+		if _, err := state.GetAsset(makeSwapParam.ToAssetID); err != nil {
+			return fmt.Errorf("ToAssetID asset %v not found", makeSwapParam.ToAssetID.String())
 		}
 
 		if makeSwapParam.FromAssetID == common.OwnerUSANAssetID {
@@ -1641,6 +1635,16 @@ func (pool *TxPool) validateFsnCallTx(tx *types.Transaction) error {
 
 		if err := makeSwapParam.Check(height, timestamp); err != nil {
 			return err
+		}
+
+		for _, toAssetID := range makeSwapParam.ToAssetID {
+			if toAssetID == common.OwnerUSANAssetID {
+				return fmt.Errorf("USAN's cannot be multi swapped")
+			}
+
+			if _, err := state.GetAsset(toAssetID); err != nil {
+				return fmt.Errorf("ToAssetID asset %v not found", toAssetID.String())
+			}
 		}
 
 		ln := len(makeSwapParam.FromAssetID)

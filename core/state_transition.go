@@ -28,6 +28,7 @@ import (
 	"github.com/FusionFoundation/efsn/common"
 	"github.com/FusionFoundation/efsn/core/types"
 	"github.com/FusionFoundation/efsn/core/vm"
+	"github.com/FusionFoundation/efsn/crypto"
 	"github.com/FusionFoundation/efsn/log"
 	"github.com/FusionFoundation/efsn/params"
 	"github.com/FusionFoundation/efsn/rlp"
@@ -225,7 +226,9 @@ func (st *StateTransition) TransitionDb() (ret []byte, usedGas uint64, failed bo
 		if st.to() == common.FSNCallAddress {
 			errc := st.handleFsnCall()
 			if errc != nil && common.DebugMode {
-				log.Info("handleFsnCall error", "err", errc)
+				param := common.FSNCallParam{}
+				rlp.DecodeBytes(st.msg.Data(), &param)
+				log.Info("handleFsnCall error", "number", st.evm.Context.BlockNumber, "Func", param.Func, "err", errc)
 			}
 		}
 
@@ -409,7 +412,8 @@ func (st *StateTransition) handleFsnCall() error {
 	case common.BuyTicketFunc:
 		outputCommandInfo("BuyTicketFunc", "from", st.msg.From())
 		from := st.msg.From()
-		id := common.TicketID(from, height.Uint64(), 0)
+		hash := st.evm.GetHash(height.Uint64() - 1)
+		id := crypto.Keccak256Hash(from[:], hash[:])
 
 		if st.state.IsTicketExist(id) {
 			st.addLog(common.BuyTicketFunc, param.Data, common.NewKeyValue("Error", "Ticket already exist"))
@@ -440,8 +444,9 @@ func (st *StateTransition) handleFsnCall() error {
 		}
 
 		ticket := common.Ticket{
-			ID: id,
+			Owner: from,
 			TicketBody: common.TicketBody{
+				ID:         id,
 				Height:     height.Uint64(),
 				StartTime:  start,
 				ExpireTime: end,
@@ -478,26 +483,12 @@ func (st *StateTransition) handleFsnCall() error {
 			st.addLog(common.BuyTicketFunc, param.Data, common.NewKeyValue("Error", "unable to add ticket"))
 			return err
 		}
-		st.addLog(common.BuyTicketFunc, param.Data, common.NewKeyValue("Ticket", ticket.ID))
+		st.addLog(common.BuyTicketFunc, param.Data, common.NewKeyValue("TicketID", ticket.ID), common.NewKeyValue("TicketOwner", ticket.Owner))
 		return nil
-	case common.AssetValueChangeFunc, common.OldAssetValueChangeFunc:
+	case common.AssetValueChangeFunc:
 		outputCommandInfo("AssetValueChangeFunc", "from", st.msg.From())
-		var assetValueChangeParamEx common.AssetValueChangeExParam
-		if param.Func == common.OldAssetValueChangeFunc {
-			// convert old data to new format
-			assetValueChangeParam := common.AssetValueChangeParam{}
-			rlp.DecodeBytes(param.Data, &assetValueChangeParam)
-			assetValueChangeParamEx = common.AssetValueChangeExParam{
-				AssetID:     assetValueChangeParam.AssetID,
-				To:          assetValueChangeParam.To,
-				Value:       assetValueChangeParam.Value,
-				IsInc:       assetValueChangeParam.IsInc,
-				TransacData: "",
-			}
-		} else {
-			assetValueChangeParamEx = common.AssetValueChangeExParam{}
-			rlp.DecodeBytes(param.Data, &assetValueChangeParamEx)
-		}
+		assetValueChangeParamEx := common.AssetValueChangeExParam{}
+		rlp.DecodeBytes(param.Data, &assetValueChangeParamEx)
 
 		if err := assetValueChangeParamEx.Check(height); err != nil {
 			st.addLog(common.AssetValueChangeFunc, assetValueChangeParamEx, common.NewKeyValue("Error", err.Error()))
@@ -518,6 +509,12 @@ func (st *StateTransition) handleFsnCall() error {
 		if asset.Owner != st.msg.From() {
 			st.addLog(common.AssetValueChangeFunc, assetValueChangeParamEx, common.NewKeyValue("Error", "must be change by owner"))
 			return fmt.Errorf("must be change by owner")
+		}
+
+		if asset.Owner != assetValueChangeParamEx.To {
+			err := fmt.Errorf("to address must be owner")
+			st.addLog(common.AssetValueChangeFunc, assetValueChangeParamEx, common.NewKeyValue("Error", err.Error()))
+			return err
 		}
 
 		if assetValueChangeParamEx.IsInc {
@@ -563,6 +560,12 @@ func (st *StateTransition) handleFsnCall() error {
 
 		if makeSwapParam.ToAssetID == common.OwnerUSANAssetID {
 			err := fmt.Errorf("USAN's cannot be swapped")
+			st.addLog(common.MakeSwapFunc, makeSwapParam, common.NewKeyValue("Error", err.Error()))
+			return err
+		}
+
+		if _, err := st.state.GetAsset(makeSwapParam.ToAssetID); err != nil {
+			err := fmt.Errorf("ToAssetID's asset not found")
 			st.addLog(common.MakeSwapFunc, makeSwapParam, common.NewKeyValue("Error", err.Error()))
 			return err
 		}
@@ -929,6 +932,20 @@ func (st *StateTransition) handleFsnCall() error {
 		if err := makeSwapParam.Check(height, timestamp); err != nil {
 			st.addLog(common.MakeMultiSwapFunc, makeSwapParam, common.NewKeyValue("Error", err.Error()))
 			return err
+		}
+
+		for _, toAssetID := range makeSwapParam.ToAssetID {
+			if toAssetID == common.OwnerUSANAssetID {
+				err := fmt.Errorf("USAN's cannot be multi swapped")
+				st.addLog(common.MakeMultiSwapFunc, makeSwapParam, common.NewKeyValue("Error", err.Error()))
+				return err
+			}
+
+			if _, err := st.state.GetAsset(toAssetID); err != nil {
+				err := fmt.Errorf("ToAssetID's asset not found")
+				st.addLog(common.MakeMultiSwapFunc, makeSwapParam, common.NewKeyValue("Error", err.Error()))
+				return err
+			}
 		}
 
 		ln := len(makeSwapParam.FromAssetID)

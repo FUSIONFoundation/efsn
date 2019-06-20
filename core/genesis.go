@@ -28,9 +28,11 @@ import (
 	"github.com/FusionFoundation/efsn/common"
 	"github.com/FusionFoundation/efsn/common/hexutil"
 	"github.com/FusionFoundation/efsn/common/math"
+	"github.com/FusionFoundation/efsn/consensus/datong"
 	"github.com/FusionFoundation/efsn/core/rawdb"
 	"github.com/FusionFoundation/efsn/core/state"
 	"github.com/FusionFoundation/efsn/core/types"
+	"github.com/FusionFoundation/efsn/crypto"
 	"github.com/FusionFoundation/efsn/ethdb"
 	"github.com/FusionFoundation/efsn/log"
 	"github.com/FusionFoundation/efsn/params"
@@ -248,17 +250,22 @@ func (g *Genesis) ToBlock(db ethdb.Database) *types.Block {
 
 	if g.TicketCreateInfo != nil {
 		for x := uint64(0); x < g.TicketCreateInfo.Count; x++ {
+			from := g.TicketCreateInfo.Owner
+			hash := crypto.Keccak256Hash(new(big.Int).SetUint64(x).Bytes())
+			id := crypto.Keccak256Hash(from[:], hash[:])
 			ticket := common.Ticket{
-				ID: common.TicketID(g.TicketCreateInfo.Owner, 0, x),
+				Owner: from,
 				TicketBody: common.TicketBody{
+					ID:         id,
 					Height:     0,
-					StartTime:  x,
+					StartTime:  g.TicketCreateInfo.Time,
 					ExpireTime: g.TicketCreateInfo.Time + 30*24*3600,
 				},
 			}
 			statedb.AddTicket(ticket)
 		}
 		g.Mixhash, _ = statedb.UpdateTickets(common.Big0, g.Timestamp)
+		g.ExtraData = datong.GenerateGenesisExtraData(g.ExtraData, g.TicketCreateInfo.Count)
 	}
 
 	statedb.GenAsset(common.SystemAsset)

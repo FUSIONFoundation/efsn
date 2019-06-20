@@ -221,7 +221,7 @@ func (dt *DaTong) verifySeal(chain consensus.ChainReader, header *types.Header, 
 		return errv
 	}
 	// verify ticket with signer
-	if tk.Owner() != header.Coinbase {
+	if tk.Owner != header.Coinbase {
 		return errors.New("Coinbase is not the voted ticket owner")
 	}
 	// check ticket ID
@@ -346,7 +346,7 @@ func (dt *DaTong) Finalize(chain consensus.ChainReader, header *types.Header, st
 			EndTime:   ticket.ExpireTime,
 			Value:     ticket.Value(),
 		})
-		headerState.AddTimeLockBalance(ticket.Owner(), common.SystemAssetID, value, header.Number, header.Time.Uint64())
+		headerState.AddTimeLockBalance(ticket.Owner, common.SystemAssetID, value, header.Number, header.Time.Uint64())
 	}
 
 	deleteTicket := func(ticket *common.Ticket, logType ticketLogType, returnBack bool) {
@@ -432,8 +432,6 @@ func (dt *DaTong) Seal(chain consensus.ChainReader, block *types.Block, results 
 
 		select {
 		case results <- block.WithSeal(header):
-			// One of the threads found a block, abort all others
-			stop = make(chan struct{})
 		default:
 			log.Warn("Sealing result is not read by miner", "sealhash", dt.SealHash(header))
 		}
@@ -493,6 +491,8 @@ func (dt *DaTong) getAllTickets(chain consensus.ChainReader, header *types.Heade
 	statedb, err := state.New(header.Root, header.MixDigest, dt.stateCache)
 	if err == nil {
 		return statedb.AllTickets()
+	} else if header.Number.Uint64() == 0 {
+		return nil, err
 	}
 
 	// get tickets from past state
@@ -503,16 +503,19 @@ func (dt *DaTong) getAllTickets(chain consensus.ChainReader, header *types.Heade
 		if parent = chain.GetHeader(parent.ParentHash, parent.Number.Uint64()-1); parent == nil {
 			return nil, fmt.Errorf("Can not find parent", "number", parent.Number.Uint64()-1, "hash", parent.ParentHash)
 		}
-		if statedb, err := state.New(parent.Root, parent.MixDigest, dt.stateCache); err == nil {
+		statedb, err = state.New(parent.Root, parent.MixDigest, dt.stateCache)
+		if err == nil {
 			if tickets, err = statedb.AllTickets(); err != nil {
 				return nil, err
 			}
 			break
+		} else if parent.Number.Uint64() == 0 {
+			return nil, err
 		}
 		parents = append(parents, parent)
 	}
+	log.Info("getAllTickets find tickets from past state", "current", header.Number, "past", parent.Number)
 	if common.DebugMode {
-		log.Info("getAllTickets find tickets from past state", "current", header.Number, "past", parent.Number)
 		defer func(bstart time.Time) {
 			log.Info("getAllTickets from past state spend time", "duration", common.PrettyDuration(time.Since(bstart)))
 		}(time.Now())
@@ -531,8 +534,12 @@ func (dt *DaTong) getAllTickets(chain consensus.ChainReader, header *types.Heade
 			return err
 		}
 
-		idstr := maps["Ticket"].(string)
-		datastr := maps["Base"].(string)
+		idstr, idok := maps["TicketID"].(string)
+		ownerstr, ownerok := maps["TicketOwner"].(string)
+		datastr, dataok := maps["Base"].(string)
+		if !idok || !ownerok || !dataok {
+			return errors.New("buy ticket log has wrong data")
+		}
 
 		data, err := base64.StdEncoding.DecodeString(datastr)
 		if err != nil {
@@ -543,8 +550,9 @@ func (dt *DaTong) getAllTickets(chain consensus.ChainReader, header *types.Heade
 		rlp.DecodeBytes(data, &buyTicketParam)
 
 		ticket := &common.Ticket{
-			ID: common.HexToHash(idstr),
+			Owner: common.HexToAddress(ownerstr),
 			TicketBody: common.TicketBody{
+				ID:         common.HexToHash(idstr),
 				Height:     l.BlockNumber,
 				StartTime:  buyTicketParam.Start,
 				ExpireTime: buyTicketParam.End,
@@ -643,40 +651,57 @@ func calcRewards(height *big.Int) *big.Int {
 	return reward
 }
 
+// get rid of header.Extra[0:extraVanity] of user custom data
+func posHash(header *types.Header) (hash common.Hash) {
+	hasher := sha3.NewKeccak256()
+	rlp.Encode(hasher, []interface{}{
+		header.ParentHash,
+		header.UncleHash,
+		header.Coinbase,
+		header.Root,
+		header.TxHash,
+		header.ReceiptHash,
+		header.Bloom,
+		header.Difficulty,
+		header.Number,
+		header.GasLimit,
+		header.GasUsed,
+		header.Time,
+		header.Extra[extraVanity : len(header.Extra)-extraSeal],
+		header.MixDigest,
+		header.Nonce,
+	})
+	hasher.Sum(hash[:0])
+	return hash
+}
+
 type DisInfoWithIndex struct {
 	index int
 	info  *DisInfo
 }
 
 func calcDisInfo(ind int, tickets common.TicketsData, parent *types.Header, ch chan *DisInfoWithIndex) {
-	parentHash := parent.Hash()
+	posHash := posHash(parent)
 	owner := tickets.Owner
 
-	var minTicket *common.TicketBody
+	var minTicket common.TicketBody
 	var minDist *big.Int
 	for _, t := range tickets.Tickets {
-		hash := parentHash
-		if t.IsInGenesis() {
-			index := t.StartTime
-			hash = crypto.Keccak256Hash(new(big.Int).SetUint64(index).Bytes())
-		}
-		w := new(big.Int).Sub(parent.Number, t.BlockHeight())
-		w = new(big.Int).Add(w, common.Big1)
+		w := new(big.Int).SetUint64(parent.Number.Uint64() - t.Height + 1)
 		w2 := new(big.Int).Mul(w, w)
 
-		tid := crypto.Keccak256Hash(owner[:], hash[:])
-		id := new(big.Int).SetBytes(crypto.Keccak256(parentHash[:], tid[:], []byte(owner.Hex())))
+		id := new(big.Int).SetBytes(crypto.Keccak256(posHash[:], t.ID[:], []byte(owner.Hex())))
 		id2 := new(big.Int).Mul(id, id)
 		s := new(big.Int).Add(w2, id2)
 
 		if minDist == nil || s.Cmp(minDist) < 0 {
-			minTicket = &t
+			minTicket = t
 			minDist = s
 		}
 	}
 	ticket := &common.Ticket{
-		ID:         common.TicketID(owner, minTicket.Height, minTicket.StartTime),
-		TicketBody: *minTicket,
+		Owner:      owner,
+		TicketBody: minTicket,
 	}
 	result := &DisInfoWithIndex{index: ind, info: &DisInfo{tk: ticket, res: minDist}}
 	ch <- result
@@ -698,7 +723,7 @@ func (dt *DaTong) calcBlockDifficulty(chain consensus.ChainReader, header *types
 		}
 	}
 	if !haveTicket {
-		return nil, nil, 0, nil, errors.New("Miner doesn't have ticket")
+		return nil, nil, 0, nil, fmt.Errorf("Miner doesn't have ticket at block height %v", parent.Number)
 	}
 	ticketsTotalAmount, numberOfticketOwners := parentTickets.NumberOfTicketsAndOwners()
 
@@ -721,7 +746,7 @@ func (dt *DaTong) calcBlockDifficulty(chain consensus.ChainReader, header *types
 	close(ch)
 	sort.Sort(list)
 	for _, t := range list {
-		owner := t.tk.Owner()
+		owner := t.tk.Owner
 		if owner == header.Coinbase {
 			selected = t.tk
 			break

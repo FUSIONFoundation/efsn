@@ -49,8 +49,8 @@ func newSnapshotWithData(data []byte) (*snapshot, error) {
 
 // NewSnapshotFromHeader wacom
 func NewSnapshotFromHeader(header *types.Header) (*Snapshot, error) {
-	snap := newSnapshot()
-	if err := snap.SetBytes(getSnapDataByHeader(header)); err != nil {
+	snap, err := newSnapshotWithData(getSnapDataByHeader(header))
+	if err != nil {
 		return nil, err
 	}
 	return snap.ToShow(), nil
@@ -127,7 +127,7 @@ func (snap *snapshot) SetTicketNumber(ticketNumber int) {
 func (snap *snapshot) ToShow() *Snapshot {
 	var retreat []common.Hash
 	if len(snap.logs) == 0 {
-		retreat = make([]common.Hash, 0, 0 )
+		retreat = make([]common.Hash, 0, 0)
 	} else {
 		retreat = make([]common.Hash, 0, len(snap.logs)-1)
 		for i := 1; i < len(snap.logs); i++ {
@@ -146,4 +146,22 @@ func (snap *snapshot) ToShow() *Snapshot {
 func calcCheck(data []byte) byte {
 	hash := crypto.Keccak256Hash(data)
 	return hash[0]
+}
+
+func GenerateGenesisExtraData(old []byte, ticketNumber uint64) []byte {
+	snap := newSnapshot()
+	snap.SetTicketNumber(int(ticketNumber))
+	snapBytes := snap.Bytes()
+
+	extraData := make([]byte, extraVanity)
+	copy(extraData[:], old)
+
+	extraData = append(extraData, snapBytes...)
+
+	if len(old) >= extraVanity+extraSeal {
+		extraData = append(extraData, old[len(old)-extraSeal:]...)
+	} else {
+		extraData = append(extraData, make([]byte, extraSeal)...)
+	}
+	return extraData
 }

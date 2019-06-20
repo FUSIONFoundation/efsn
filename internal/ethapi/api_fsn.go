@@ -62,15 +62,6 @@ type BuyTicketArgs struct {
 	End   *hexutil.Uint64 `json:"end"`
 }
 
-// AssetValueChangeArgs wacom
-type AssetValueChangeArgs struct {
-	FusionBaseArgs
-	AssetID common.Hash    `json:"asset"`
-	To      common.Address `json:"to"`
-	Value   *hexutil.Big   `json:"value"`
-	IsInc   bool           `json:"isInc"`
-}
-
 type AssetValueChangeExArgs struct {
 	FusionBaseArgs
 	AssetID     common.Hash    `json:"asset"`
@@ -213,16 +204,6 @@ func (args *BuyTicketArgs) init(defStart uint64) {
 		args.End = new(hexutil.Uint64)
 		*(*uint64)(args.End) = uint64(*args.Start) + 30*24*3600
 	}
-}
-
-func (args *AssetValueChangeArgs) toData() ([]byte, error) {
-	param := common.AssetValueChangeParam{
-		AssetID: args.AssetID,
-		To:      args.To,
-		Value:   args.Value.ToInt(),
-		IsInc:   args.IsInc,
-	}
-	return param.ToBytes()
 }
 
 func (args *AssetValueChangeExArgs) toParam() *common.AssetValueChangeExParam {
@@ -789,15 +770,20 @@ type PrivateFusionAPI struct {
 var privateFusionAPI = &PrivateFusionAPI{}
 
 func AutoBuyTicket(account common.Address, passwd string) {
+	fbase := FusionBaseArgs{From: account}
+	args := BuyTicketArgs{FusionBaseArgs: fbase}
+
 	for {
-		select {
-		case <-common.AutoBuyTicketChan:
-			if privateFusionAPI.b.IsMining() {
-				fbase := FusionBaseArgs{From: account}
-				args := BuyTicketArgs{FusionBaseArgs: fbase}
-				privateFusionAPI.BuyTicket(nil, args, passwd)
+		<-common.AutoBuyTicketChan
+	COMSUMEALL:
+		for {
+			select {
+			case <-common.AutoBuyTicketChan:
+			default:
+				break COMSUMEALL
 			}
 		}
+		privateFusionAPI.BuyTicket(nil, args, passwd)
 	}
 }
 
