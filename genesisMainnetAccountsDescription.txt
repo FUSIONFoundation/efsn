@@ -1,6 +1,6 @@
 -- The following fees are deducted from the total supply, they are documented below
 
-    8 Miners 800000 FSN
+    8 Miners 80000 FSN
     1 USAN GENERATOR 110000
     TOTAL 190000 FSN to be deducted from 57344000 =  57154000
 
@@ -11,18 +11,20 @@ FusionMainnetTokens  0x9c48c796cb0bed51a14291bc8cc56dab5aed7b5c 571540000 000000
 
 -- The following foundation miners are credited with 10 000 FSN for startup
 -- 8 Miners for a total 80 000 FSN 
-Miner1  0xd2452651834e8f0c19c9d85e0bf09fe99283dabc    100000 00000000000000000000 (0x21e19e0c9bab2400000)    //  web3.toHex( web3.toWei( "10000", "ether") )
-Miner2  0x7da669ea4234473e224a8f5a5f6257729e6f03cd    100000 00000000000000000000 (0x21e19e0c9bab2400000)    //  web3.toHex( web3.toWei( "10000", "ether") )
-Miner3  0x8e448859d7502b1ecf0c8d18008feeff89a30c60    100000 00000000000000000000 (0x21e19e0c9bab2400000)    //  web3.toHex( web3.toWei( "10000", "ether") )
-Miner4  0x722c6716dad0d7f8c1adbfd3360edbe99813f3aa    100000 00000000000000000000 (0x21e19e0c9bab2400000)    //  web3.toHex( web3.toWei( "10000", "ether") )
-Miner5  0x0e93335afe434a73e005cab8bd1b2dc153b73549    100000 00000000000000000000 (0x21e19e0c9bab2400000)    //  web3.toHex( web3.toWei( "10000", "ether") )
-Miner6  0xe3db01c89dcdd68b80e7dfdf931b00a6335d72dd    100000 00000000000000000000 (0x21e19e0c9bab2400000)    //  web3.toHex( web3.toWei( "10000", "ether") )
-Miner7  0xc4a9441afb052cb454240136cce71fb09316ea94    100000 00000000000000000000 (0x21e19e0c9bab2400000)    //  web3.toHex( web3.toWei( "10000", "ether") )
-Miner8  0xfa37b7c3f21060458361ed5322be5af3740bce3c    100000 00000000000000000000 (0x21e19e0c9bab2400000)    //  web3.toHex( web3.toWei( "10000", "ether") )
+Miner1  0xd2452651834e8f0c19c9d85e0bf09fe99283dabc    10000 00000000000000000000 (0x21e19e0c9bab2400000)    //  web3.toHex( web3.toWei( "10000", "ether") )
+Miner2  0x7da669ea4234473e224a8f5a5f6257729e6f03cd    10000 00000000000000000000 (0x21e19e0c9bab2400000)    //  web3.toHex( web3.toWei( "10000", "ether") )
+Miner3  0x8e448859d7502b1ecf0c8d18008feeff89a30c60    10000 00000000000000000000 (0x21e19e0c9bab2400000)    //  web3.toHex( web3.toWei( "10000", "ether") )
+Miner4  0x722c6716dad0d7f8c1adbfd3360edbe99813f3aa    10000 00000000000000000000 (0x21e19e0c9bab2400000)    //  web3.toHex( web3.toWei( "10000", "ether") )
+Miner5  0x0e93335afe434a73e005cab8bd1b2dc153b73549    10000 00000000000000000000 (0x21e19e0c9bab2400000)    //  web3.toHex( web3.toWei( "10000", "ether") )
+Miner6  0xe3db01c89dcdd68b80e7dfdf931b00a6335d72dd    10000 00000000000000000000 (0x21e19e0c9bab2400000)    //  web3.toHex( web3.toWei( "10000", "ether") )
+Miner7  0xc4a9441afb052cb454240136cce71fb09316ea94    10000 00000000000000000000 (0x21e19e0c9bab2400000)    //  web3.toHex( web3.toWei( "10000", "ether") )
+Miner8  0xfa37b7c3f21060458361ed5322be5af3740bce3c    10000 00000000000000000000 (0x21e19e0c9bab2400000)    //  web3.toHex( web3.toWei( "10000", "ether") )
 
 
 -- THE USAN GENERATOR IS CREDIT WITH 110 000 TO GENERATE FOUNDATION USANs
 USAN GENERATOR   0x0Ac469cf34C4d65515E4eF27eAF0F71F15C5A2fd 110000 000000000000000000 0x174b1ca8ab05a8c00000 web3.toHex( web3.toWei( "110000", "ether") )
+
+The foundation will need to move 190000 Ethereum FSN (ERC-20) to the reserve account of the EZ-Swap manager
 
 during devinternal genesis.json for generator will have an extra zero to increase balance to send supply to others
 day of launch this will be removed
