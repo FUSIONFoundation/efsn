@@ -1105,7 +1105,7 @@ func (s *PrivateFusionAPI) checkAssetValueChange(ctx context.Context, args Asset
 	}
 
 	if asset.Owner != args.From {
-		return common.Hash{}, fmt.Errorf("must be change by onwer")
+		return common.Hash{}, fmt.Errorf("can only be changed by onwer")
 	}
 
 	currentBalance := state.GetBalance(args.AssetID, args.To)
@@ -1669,7 +1669,7 @@ func (s *FusionTransactionAPI) buildAssetValueChangeTx(ctx context.Context, args
 	}
 
 	if asset.Owner != args.From {
-		return nil, fmt.Errorf("must be change by onwer")
+		return nil, fmt.Errorf("can only be changed by onwer")
 	}
 
 	currentBalance := state.GetBalance(args.AssetID, args.To)

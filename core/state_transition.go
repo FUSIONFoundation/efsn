@@ -508,13 +508,7 @@ func (st *StateTransition) handleFsnCall() error {
 
 		if asset.Owner != st.msg.From() {
 			st.addLog(common.AssetValueChangeFunc, assetValueChangeParamEx, common.NewKeyValue("Error", "must be change by owner"))
-			return fmt.Errorf("must be change by owner")
-		}
-
-		if asset.Owner != assetValueChangeParamEx.To {
-			err := fmt.Errorf("to address must be owner")
-			st.addLog(common.AssetValueChangeFunc, assetValueChangeParamEx, common.NewKeyValue("Error", err.Error()))
-			return err
+			return fmt.Errorf("can only be changed by owner")
 		}
 
 		if assetValueChangeParamEx.IsInc {

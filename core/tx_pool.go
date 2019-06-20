@@ -1450,11 +1450,7 @@ func (pool *TxPool) validateFsnCallTx(tx *types.Transaction) error {
 		}
 
 		if asset.Owner != from {
-			return fmt.Errorf("must be change by owner")
-		}
-
-		if asset.Owner != assetValueChangeParamEx.To {
-			return fmt.Errorf("to address must be owner")
+			return fmt.Errorf("can only be changed by owner")
 		}
 
 		if !assetValueChangeParamEx.IsInc {
