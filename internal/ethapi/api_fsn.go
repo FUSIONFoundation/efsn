@@ -1108,6 +1108,10 @@ func (s *PrivateFusionAPI) checkAssetValueChange(ctx context.Context, args Asset
 		return common.Hash{}, fmt.Errorf("can only be changed by onwer")
 	}
 
+	if asset.Owner != args.To && !args.IsInc {
+		return common.Hash{},  fmt.Errorf("decrement can only happen to asset's own account")
+	}
+
 	currentBalance := state.GetBalance(args.AssetID, args.To)
 	val := args.Value.ToInt()
 	if !args.IsInc {
@@ -1670,6 +1674,10 @@ func (s *FusionTransactionAPI) buildAssetValueChangeTx(ctx context.Context, args
 
 	if asset.Owner != args.From {
 		return nil, fmt.Errorf("can only be changed by onwer")
+	}
+
+	if asset.Owner != args.To && !args.IsInc {
+		return nil,  fmt.Errorf("decrement can only happen to asset's own account")
 	}
 
 	currentBalance := state.GetBalance(args.AssetID, args.To)

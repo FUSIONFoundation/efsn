@@ -1453,6 +1453,11 @@ func (pool *TxPool) validateFsnCallTx(tx *types.Transaction) error {
 			return fmt.Errorf("can only be changed by owner")
 		}
 
+		if asset.Owner != assetValueChangeParamEx.To && !assetValueChangeParamEx.IsInc {
+			err := fmt.Errorf("decrement can only happen to asset's own account")
+			return err
+	}
+
 		if !assetValueChangeParamEx.IsInc {
 			if state.GetBalance(assetValueChangeParamEx.AssetID, assetValueChangeParamEx.To).Cmp(assetValueChangeParamEx.Value) < 0 {
 				return fmt.Errorf("not enough asset")

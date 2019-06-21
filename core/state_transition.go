@@ -507,10 +507,16 @@ func (st *StateTransition) handleFsnCall() error {
 		}
 
 		if asset.Owner != st.msg.From() {
-			st.addLog(common.AssetValueChangeFunc, assetValueChangeParamEx, common.NewKeyValue("Error", "must be change by owner"))
+			st.addLog(common.AssetValueChangeFunc, assetValueChangeParamEx, common.NewKeyValue("Error", "can only be changed by owner"))
 			return fmt.Errorf("can only be changed by owner")
 		}
 
+		if asset.Owner != assetValueChangeParamEx.To && !assetValueChangeParamEx.IsInc {
+				err := fmt.Errorf("decrement can only happen to asset's own account")
+				st.addLog(common.AssetValueChangeFunc, assetValueChangeParamEx, common.NewKeyValue("Error", err.Error()))
+				return err
+		}
+			
 		if assetValueChangeParamEx.IsInc {
 			st.state.AddBalance(assetValueChangeParamEx.To, assetValueChangeParamEx.AssetID, assetValueChangeParamEx.Value)
 			asset.Total = asset.Total.Add(asset.Total, assetValueChangeParamEx.Value)
