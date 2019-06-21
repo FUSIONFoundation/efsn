@@ -1309,8 +1309,8 @@ func (pool *TxPool) validateFsnCallTx(tx *types.Transaction) error {
 	height := common.BigMaxUint64
 	timestamp := uint64(time.Now().Unix())
 
-	fee := common.Big0
-	fsnValue := common.Big0
+	fee := big.NewInt(0)
+	fsnValue := big.NewInt(0)
 
 	param := common.FSNCallParam{}
 	rlp.DecodeBytes(tx.Data(), &param)
@@ -1456,7 +1456,7 @@ func (pool *TxPool) validateFsnCallTx(tx *types.Transaction) error {
 		if asset.Owner != assetValueChangeParamEx.To && !assetValueChangeParamEx.IsInc {
 			err := fmt.Errorf("decrement can only happen to asset's own account")
 			return err
-	}
+		}
 
 		if !assetValueChangeParamEx.IsInc {
 			if state.GetBalance(assetValueChangeParamEx.AssetID, assetValueChangeParamEx.To).Cmp(assetValueChangeParamEx.Value) < 0 {

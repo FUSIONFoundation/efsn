@@ -287,24 +287,52 @@ func (args *TakeSwapArgs) toData() ([]byte, error) {
 
 func (args *MakeMultiSwapArgs) init() {
 
-	if args.FromStartTime == nil || len(args.FromStartTime) == 0 {
-		args.FromStartTime = make([]*hexutil.Uint64, 1)
-		*(*uint64)(args.FromStartTime[0]) = common.TimeLockNow
+	ln := len(args.MinFromAmount)
+
+	l := len(args.FromStartTime)
+	if l < ln {
+		temp := make([]*hexutil.Uint64, ln)
+		copy(temp[:l], args.FromStartTime)
+		for i := l; i < ln; i++ {
+			temp[i] = new(hexutil.Uint64)
+			*(*uint64)(temp[i]) = common.TimeLockNow
+		}
+		args.FromStartTime = temp
 	}
 
-	if args.FromEndTime == nil || len(args.FromEndTime) == 0 {
-		args.FromEndTime = make([]*hexutil.Uint64, 1)
-		*(*uint64)(args.FromEndTime[0]) = common.TimeLockForever
+	l = len(args.FromEndTime)
+	if l < ln {
+		temp := make([]*hexutil.Uint64, ln)
+		copy(temp[:l], args.FromEndTime)
+		for i := l; i < ln; i++ {
+			temp[i] = new(hexutil.Uint64)
+			*(*uint64)(temp[i]) = common.TimeLockForever
+		}
+		args.FromEndTime = temp
 	}
 
-	if args.ToStartTime == nil || len(args.ToStartTime) == 0 {
-		args.ToStartTime = make([]*hexutil.Uint64, 1)
-		*(*uint64)(args.ToStartTime[0]) = common.TimeLockNow
+	ln = len(args.MinToAmount)
+
+	l = len(args.ToStartTime)
+	if l < ln {
+		temp := make([]*hexutil.Uint64, ln)
+		copy(temp[:l], args.ToStartTime)
+		for i := l; i < ln; i++ {
+			temp[i] = new(hexutil.Uint64)
+			*(*uint64)(temp[i]) = common.TimeLockNow
+		}
+		args.ToStartTime = temp
 	}
 
-	if args.ToEndTime == nil || len(args.ToEndTime) == 0 {
-		args.ToEndTime = make([]*hexutil.Uint64, 1)
-		*(*uint64)(args.ToEndTime[0]) = common.TimeLockForever
+	l = len(args.ToEndTime)
+	if l < ln {
+		temp := make([]*hexutil.Uint64, ln)
+		copy(temp[:l], args.ToEndTime)
+		for i := l; i < ln; i++ {
+			temp[i] = new(hexutil.Uint64)
+			*(*uint64)(temp[i]) = common.TimeLockForever
+		}
+		args.ToEndTime = temp
 	}
 }
 
@@ -1109,7 +1137,7 @@ func (s *PrivateFusionAPI) checkAssetValueChange(ctx context.Context, args Asset
 	}
 
 	if asset.Owner != args.To && !args.IsInc {
-		return common.Hash{},  fmt.Errorf("decrement can only happen to asset's own account")
+		return common.Hash{}, fmt.Errorf("decrement can only happen to asset's own account")
 	}
 
 	currentBalance := state.GetBalance(args.AssetID, args.To)
@@ -1677,7 +1705,7 @@ func (s *FusionTransactionAPI) buildAssetValueChangeTx(ctx context.Context, args
 	}
 
 	if asset.Owner != args.To && !args.IsInc {
-		return nil,  fmt.Errorf("decrement can only happen to asset's own account")
+		return nil, fmt.Errorf("decrement can only happen to asset's own account")
 	}
 
 	currentBalance := state.GetBalance(args.AssetID, args.To)
@@ -1971,7 +1999,7 @@ func (s *FusionTransactionAPI) BuildMakeMultiSwapTx(ctx context.Context, args Ma
 }
 
 // BuildRecallMultiSwapTx ss
-func (s *FusionTransactionAPI) BuildMultiRecallSwapTx(ctx context.Context, args RecallMultiSwapArgs) (*types.Transaction, error) {
+func (s *FusionTransactionAPI) BuildRecallMultiSwapTx(ctx context.Context, args RecallMultiSwapArgs) (*types.Transaction, error) {
 	state, _, err := s.b.StateAndHeaderByNumber(ctx, rpc.LatestBlockNumber)
 	if state == nil || err != nil {
 		return nil, err

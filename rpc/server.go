@@ -25,8 +25,8 @@ import (
 	"sync"
 	"sync/atomic"
 
-	mapset "github.com/deckarep/golang-set"
 	"github.com/FusionFoundation/efsn/log"
+	mapset "github.com/deckarep/golang-set"
 )
 
 const MetadataApi = "rpc"
@@ -238,10 +238,17 @@ func (s *Server) Stop() {
 }
 
 // createSubscription will call the subscription callback and returns the subscription id or error.
-func (s *Server) createSubscription(ctx context.Context, c ServerCodec, req *serverRequest) (ID, error) {
+func (s *Server) createSubscription(ctx context.Context, c ServerCodec, req *serverRequest) (id ID, err error) {
 	// subscription have as first argument the context following optional arguments
 	args := []reflect.Value{req.callb.rcvr, reflect.ValueOf(ctx)}
 	args = append(args, req.args...)
+
+	defer func() {
+		if r := recover(); r != nil {
+			id = ""
+			err = fmt.Errorf("rpc callback panic: %v", r)
+		}
+	}()
 	reply := req.callb.method.Func.Call(args)
 
 	if !reply[1].IsNil() { // subscription creation failed
@@ -252,7 +259,7 @@ func (s *Server) createSubscription(ctx context.Context, c ServerCodec, req *ser
 }
 
 // handle executes a request and returns the response from the callback.
-func (s *Server) handle(ctx context.Context, codec ServerCodec, req *serverRequest) (interface{}, func()) {
+func (s *Server) handle(ctx context.Context, codec ServerCodec, req *serverRequest) (response interface{}, callback func()) {
 	if req.err != nil {
 		return codec.CreateErrorResponse(&req.id, req.err), nil
 	}
@@ -306,6 +313,13 @@ func (s *Server) handle(ctx context.Context, codec ServerCodec, req *serverReque
 	}
 
 	// execute RPC method and return result
+	defer func() {
+		if r := recover(); r != nil {
+			panicErr := fmt.Errorf("rpc callback panic: %v", r)
+			response = codec.CreateErrorResponse(&req.id, &callbackError{panicErr.Error()})
+			callback = nil
+		}
+	}()
 	reply := req.callb.method.Func.Call(arguments)
 	if len(reply) == 0 {
 		return codec.CreateResponse(req.id, nil), nil

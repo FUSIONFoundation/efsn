@@ -512,11 +512,11 @@ func (st *StateTransition) handleFsnCall() error {
 		}
 
 		if asset.Owner != assetValueChangeParamEx.To && !assetValueChangeParamEx.IsInc {
-				err := fmt.Errorf("decrement can only happen to asset's own account")
-				st.addLog(common.AssetValueChangeFunc, assetValueChangeParamEx, common.NewKeyValue("Error", err.Error()))
-				return err
+			err := fmt.Errorf("decrement can only happen to asset's own account")
+			st.addLog(common.AssetValueChangeFunc, assetValueChangeParamEx, common.NewKeyValue("Error", err.Error()))
+			return err
 		}
-			
+
 		if assetValueChangeParamEx.IsInc {
 			st.state.AddBalance(assetValueChangeParamEx.To, assetValueChangeParamEx.AssetID, assetValueChangeParamEx.Value)
 			asset.Total = asset.Total.Add(asset.Total, assetValueChangeParamEx.Value)
@@ -1041,11 +1041,6 @@ func (st *StateTransition) handleFsnCall() error {
 				}
 			}
 
-			if err := st.state.AddMultiSwap(swap); err != nil {
-				st.addLog(common.MakeMultiSwapFunc, makeSwapParam, common.NewKeyValue("Error", "System error can't add swap"))
-				return err
-			}
-
 			// take from the owner the asset
 			if useAsset[i] == true {
 				st.state.SubBalance(st.msg.From(), makeSwapParam.FromAssetID[i], total[i])
@@ -1053,6 +1048,12 @@ func (st *StateTransition) handleFsnCall() error {
 				st.state.SubTimeLockBalance(st.msg.From(), makeSwapParam.FromAssetID[i], needValue[i], height, timestamp)
 			}
 		}
+
+		if err := st.state.AddMultiSwap(swap); err != nil {
+			st.addLog(common.MakeMultiSwapFunc, makeSwapParam, common.NewKeyValue("Error", "System error can't add swap"))
+			return err
+		}
+
 		st.addLog(common.MakeMultiSwapFunc, makeSwapParam, common.NewKeyValue("SwapID", swap.ID))
 		return nil
 	case common.TakeMultiSwapFunc:
