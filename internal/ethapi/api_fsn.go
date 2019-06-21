@@ -1940,6 +1940,15 @@ func (s *FusionTransactionAPI) TakeSwap(ctx context.Context, args TakeSwapArgs) 
 	return s.sendTransaction(ctx, args.From, tx)
 }
 
+// MakeMultiSwap wacom
+func (s *FusionTransactionAPI) MakeMultiSwap(ctx context.Context, args MakeMultiSwapArgs) ( common.Hash, error) {
+	tx, err := s.BuildMakeMultiSwapTx(ctx, args)
+	if err != nil {
+		return common.Hash{}, err
+	}
+	return s.sendTransaction(ctx, args.From, tx)
+}
+
 // BuildMakeMultiSwapTx ss
 func (s *FusionTransactionAPI) BuildMakeMultiSwapTx(ctx context.Context, args MakeMultiSwapArgs) (*types.Transaction, error) {
 	state, header, err := s.b.StateAndHeaderByNumber(ctx, rpc.LatestBlockNumber)
@@ -1998,6 +2007,15 @@ func (s *FusionTransactionAPI) BuildMakeMultiSwapTx(ctx context.Context, args Ma
 	return s.buildTransaction(ctx, sendArgs)
 }
 
+// RecallMultiSwap wacom
+func (s *FusionTransactionAPI) RecallMultiSwap(ctx context.Context, args RecallMultiSwapArgs) ( common.Hash, error) {
+	tx, err := s.BuildRecallMultiSwapTx(ctx, args)
+	if err != nil {
+		return common.Hash{}, err
+	}
+	return s.sendTransaction(ctx, args.From, tx)
+}
+
 // BuildRecallMultiSwapTx ss
 func (s *FusionTransactionAPI) BuildRecallMultiSwapTx(ctx context.Context, args RecallMultiSwapArgs) (*types.Transaction, error) {
 	state, _, err := s.b.StateAndHeaderByNumber(ctx, rpc.LatestBlockNumber)
@@ -2033,6 +2051,15 @@ func (s *FusionTransactionAPI) BuildRecallMultiSwapTx(ctx context.Context, args 
 	sendArgs.To = &common.FSNCallAddress
 	sendArgs.Data = &argsData
 	return s.buildTransaction(ctx, sendArgs)
+}
+
+// TakeMultiSwap wacom
+func (s *FusionTransactionAPI) TakeMultiSwap(ctx context.Context, args TakeMultiSwapArgs) ( common.Hash, error) {
+	tx, err := s.BuildTakeMultiSwapTx(ctx, args)
+	if err != nil {
+		return common.Hash{}, err
+	}
+	return s.sendTransaction(ctx, args.From, tx)
 }
 
 // BuildTakeSwapTx ss

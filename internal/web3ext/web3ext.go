@@ -979,6 +979,33 @@ web3._extend({
 			]
 		}),
 		new web3._extend.Method({
+			name: 'makeMultiSwap',
+			call: 'fsn_makeMultiSwap',
+			params: 2,
+			inputFormatter: [
+				web3._extend.formatters.inputTransactionFormatter,
+				null
+			]
+		}),
+		new web3._extend.Method({
+			name: 'recallMultiSwap',
+			call: 'fsn_recallMultiSwap',
+			params: 2,
+			inputFormatter: [
+				web3._extend.formatters.inputTransactionFormatter,
+				null
+			]
+		}),
+		new web3._extend.Method({
+			name: 'takeMultiSwap',
+			call: 'fsn_takeMultiSwap',
+			params: 2,
+			inputFormatter: [
+				web3._extend.formatters.inputTransactionFormatter,
+				null
+			]
+		}),
+		new web3._extend.Method({
 			name: 'recallSwap',
 			call: 'fsn_recallSwap',
 			params: 2,
@@ -1401,6 +1428,33 @@ web3._extend({
 			params: 1,
 			inputFormatter: [
 				web3._extend.formatters.inputTransactionFormatter			
+			]
+		}),
+		new web3._extend.Method({
+			name: 'makeMultiSwap',
+			call: 'fsntx_makeMultiSwap',
+			params: 2,
+			inputFormatter: [
+				web3._extend.formatters.inputTransactionFormatter,
+				null
+			]
+		}),
+		new web3._extend.Method({
+			name: 'recallMultiSwap',
+			call: 'fsntx_recallMultiSwap',
+			params: 2,
+			inputFormatter: [
+				web3._extend.formatters.inputTransactionFormatter,
+				null
+			]
+		}),
+		new web3._extend.Method({
+			name: 'takeMultiSwap',
+			call: 'fsntx_takeMultiSwap',
+			params: 2,
+			inputFormatter: [
+				web3._extend.formatters.inputTransactionFormatter,
+				null
 			]
 		}),
 		new web3._extend.Method({
