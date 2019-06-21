@@ -1013,6 +1013,12 @@ func (st *StateTransition) handleFsnCall() error {
 				}
 			}
 		}
+		
+		if err := st.state.AddMultiSwap(swap); err != nil {
+			st.addLog(common.MakeMultiSwapFunc, makeSwapParam, common.NewKeyValue("Error", "System error can't add swap"))
+			return err
+		}
+
 		// then deduct
 		for i := 0; i < ln; i++ {
 			if useAsset[i] == true {
@@ -1048,12 +1054,6 @@ func (st *StateTransition) handleFsnCall() error {
 				st.state.SubTimeLockBalance(st.msg.From(), makeSwapParam.FromAssetID[i], needValue[i], height, timestamp)
 			}
 		}
-
-		if err := st.state.AddMultiSwap(swap); err != nil {
-			st.addLog(common.MakeMultiSwapFunc, makeSwapParam, common.NewKeyValue("Error", "System error can't add swap"))
-			return err
-		}
-
 		st.addLog(common.MakeMultiSwapFunc, makeSwapParam, common.NewKeyValue("SwapID", swap.ID))
 		return nil
 	case common.TakeMultiSwapFunc:
