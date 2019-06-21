@@ -761,9 +761,13 @@ type MultiSwap struct {
 // DeepCopy wacom
 func (s *MultiSwap) DeepCopy() MultiSwap {
 	minFromAmount := make([]*big.Int, len(s.MinFromAmount))
-	copy(minFromAmount, s.MinFromAmount)
+	for k, v := range s.MinFromAmount {
+		minFromAmount[k] = new(big.Int).SetBytes(v.Bytes())
+	}
 	minToAmount := make([]*big.Int, len(s.MinToAmount))
-	copy(minToAmount, s.MinToAmount)
+	for k, v := range s.MinToAmount {
+		minToAmount[k] = new(big.Int).SetBytes(v.Bytes())
+	}
 	swapSize := *s.SwapSize
 	swapTime := *s.Time
 	targets := make([]Address, len(s.Targes))
