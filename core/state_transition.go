@@ -1013,7 +1013,7 @@ func (st *StateTransition) handleFsnCall() error {
 				}
 			}
 		}
-		
+
 		if err := st.state.AddMultiSwap(swap); err != nil {
 			st.addLog(common.MakeMultiSwapFunc, makeSwapParam, common.NewKeyValue("Error", "System error can't add swap"))
 			return err
@@ -1024,6 +1024,11 @@ func (st *StateTransition) handleFsnCall() error {
 			if useAsset[i] == true {
 				if st.state.GetBalance(makeSwapParam.FromAssetID[i], st.msg.From()).Cmp(total[i]) < 0 {
 					st.addLog(common.MakeMultiSwapFunc, makeSwapParam, common.NewKeyValue("Error", "not enough from asset"))
+					// make sure swap added is not
+					// usable
+					swap.Owner = common.Address{}
+					st.state.UpdateMultiSwap(swap)
+					st.state.RemoveMultiSwap(swap.ID)
 					return fmt.Errorf("not enough from asset")
 				}
 			} else {
@@ -1031,6 +1036,11 @@ func (st *StateTransition) handleFsnCall() error {
 				if available.Cmp(needValue[i]) < 0 {
 
 					if st.state.GetBalance(makeSwapParam.FromAssetID[i], st.msg.From()).Cmp(total[i]) < 0 {
+						// make sure swap added is not
+						// usable
+						swap.Owner = common.Address{}
+						st.state.UpdateMultiSwap(swap)
+						st.state.RemoveMultiSwap(swap.ID)
 						st.addLog(common.MakeMultiSwapFunc, makeSwapParam, common.NewKeyValue("Error", "not enough time lock or asset balance"))
 						return fmt.Errorf("not enough time lock or asset balance")
 					}
