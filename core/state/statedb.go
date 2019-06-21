@@ -314,7 +314,7 @@ func (self *StateDB) GetBalance(assetID common.Hash, addr common.Address) *big.I
 	if stateObject != nil {
 		return stateObject.Balance(assetID)
 	}
-	return common.Big0
+	return big.NewInt(0)
 }
 
 func (self *StateDB) GetAllTimeLockBalances(addr common.Address) map[common.Hash]*common.TimeLock {
