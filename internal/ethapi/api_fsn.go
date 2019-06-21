@@ -1999,7 +1999,7 @@ func (s *FusionTransactionAPI) BuildMakeMultiSwapTx(ctx context.Context, args Ma
 }
 
 // BuildRecallMultiSwapTx ss
-func (s *FusionTransactionAPI) BuildMultiRecallSwapTx(ctx context.Context, args RecallMultiSwapArgs) (*types.Transaction, error) {
+func (s *FusionTransactionAPI) BuildRecallMultiSwapTx(ctx context.Context, args RecallMultiSwapArgs) (*types.Transaction, error) {
 	state, _, err := s.b.StateAndHeaderByNumber(ctx, rpc.LatestBlockNumber)
 	if state == nil || err != nil {
 		return nil, err
