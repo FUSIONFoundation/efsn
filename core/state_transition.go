@@ -128,6 +128,7 @@ func NewStateTransition(evm *vm.EVM, msg Message, gp *GasPool) *StateTransition 
 		value:    msg.Value(),
 		data:     msg.Data(),
 		state:    evm.StateDB,
+		fee:      big.NewInt(0),
 	}
 }
 
@@ -192,11 +193,16 @@ func (st *StateTransition) preCheck() error {
 // returning the result including the used gas. It returns an error if failed.
 // An error indicates a consensus issue.
 func (st *StateTransition) TransitionDb() (ret []byte, usedGas uint64, failed bool, err error) {
-	st.fee = st.FsnCallFee()
+	msg := st.msg
+	var fsnCallParam *common.FSNCallParam
+	if common.IsFsnCall(msg.To()) {
+		fsnCallParam = &common.FSNCallParam{}
+		rlp.DecodeBytes(msg.Data(), fsnCallParam)
+		st.fee = common.GetFsnCallFee(msg.To(), fsnCallParam.Func)
+	}
 	if err = st.preCheck(); err != nil {
 		return
 	}
-	msg := st.msg
 	sender := vm.AccountRef(msg.From())
 	homestead := st.evm.ChainConfig().IsHomestead(st.evm.BlockNumber)
 	contractCreation := msg.To() == nil
@@ -223,12 +229,12 @@ func (st *StateTransition) TransitionDb() (ret []byte, usedGas uint64, failed bo
 		// Increment the nonce for the next transaction
 		st.state.SetNonce(msg.From(), st.state.GetNonce(sender.Address())+1)
 
-		if st.to() == common.FSNCallAddress {
-			errc := st.handleFsnCall()
-			if errc != nil && common.DebugMode {
-				param := common.FSNCallParam{}
-				rlp.DecodeBytes(st.msg.Data(), &param)
-				log.Info("handleFsnCall error", "number", st.evm.Context.BlockNumber, "Func", param.Func, "err", errc)
+		if fsnCallParam != nil {
+			errc := st.handleFsnCall(fsnCallParam)
+			if errc != nil {
+				if common.DebugMode {
+					log.Info("handleFsnCall error", "number", st.evm.Context.BlockNumber, "Func", fsnCallParam.Func, "err", errc)
+				}
 			}
 		}
 
@@ -283,12 +289,10 @@ func outputCommandInfo(param1 string, param2 string, param3 interface{}) {
 	}
 }
 
-func (st *StateTransition) handleFsnCall() error {
+func (st *StateTransition) handleFsnCall(param *common.FSNCallParam) error {
 	height := st.evm.Context.BlockNumber
 	timestamp := st.evm.Context.ParentTime.Uint64()
 
-	param := common.FSNCallParam{}
-	rlp.DecodeBytes(st.msg.Data(), &param)
 	switch param.Func {
 	case common.GenNotationFunc:
 		outputCommandInfo("GenNotationFunc", "from", st.msg.From())
@@ -1231,24 +1235,4 @@ func (st *StateTransition) addLog(typ common.FSNCallFunc, value interface{}, key
 		Data:        data,
 		BlockNumber: st.evm.BlockNumber.Uint64(),
 	})
-}
-
-func (st *StateTransition) FsnCallFee() *big.Int {
-	fee := common.Big0
-	if st.to() != common.FSNCallAddress {
-		return fee
-	}
-	param := common.FSNCallParam{}
-	rlp.DecodeBytes(st.msg.Data(), &param)
-	switch param.Func {
-	case common.GenNotationFunc:
-		fee = big.NewInt(1000000000000000000) // 1 FSN
-	case common.GenAssetFunc:
-		fee = big.NewInt(1000000000000000000) // 1 FSN
-	case common.MakeSwapFunc, common.MakeSwapFuncExt, common.MakeMultiSwapFunc:
-		fee = big.NewInt(10000000000000000) // 0.01 FSN
-	case common.TimeLockFunc:
-		fee = big.NewInt(1000000000000000) // 0.001 FSN
-	}
-	return fee
 }

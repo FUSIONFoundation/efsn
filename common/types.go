@@ -432,6 +432,28 @@ const (
 	TakeMultiSwapFunc
 )
 
+func IsFsnCall(to *Address) bool {
+	return to != nil && *to == FSNCallAddress
+}
+
+func GetFsnCallFee(to *Address, funcType FSNCallFunc) *big.Int {
+	fee := big.NewInt(0)
+	if !IsFsnCall(to) {
+		return fee
+	}
+	switch funcType {
+	case GenNotationFunc:
+		fee = big.NewInt(100000000000000000) // 0.1 FSN
+	case GenAssetFunc:
+		fee = big.NewInt(10000000000000000) // 0.01 FSN
+	case MakeSwapFunc, MakeSwapFuncExt, MakeMultiSwapFunc:
+		fee = big.NewInt(1000000000000000) // 0.001 FSN
+	case TimeLockFunc:
+		fee = big.NewInt(1000000000000000) // 0.001 FSN
+	}
+	return fee
+}
+
 // ParseBig256 parses s as a 256 bit integer in decimal or hexadecimal syntax.
 // Leading zeros are accepted. The empty string parses as zero.
 func ParseBig256(s string) (*big.Int, bool) {
