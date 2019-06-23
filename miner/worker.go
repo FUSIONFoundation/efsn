@@ -620,6 +620,9 @@ func (w *worker) commitTransaction(tx *types.Transaction, coinbase common.Addres
 	receipt, _, err := core.ApplyTransaction(w.config, w.chain, &coinbase, w.current.gasPool, w.current.state, w.current.header, tx, &w.current.header.GasUsed, vm.Config{})
 	if err != nil {
 		w.current.state.RevertToSnapshot(snap)
+		if common.DebugMode {
+			log.Info("ApplyTransaction failed in mining", "err", err)
+		}
 		return nil, err
 	}
 	w.current.txs = append(w.current.txs, tx)

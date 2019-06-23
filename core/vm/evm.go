@@ -89,6 +89,7 @@ type Context struct {
 	Time        *big.Int       // Provides information for TIME
 	ParentTime  *big.Int       // Provides information for TIME
 	Difficulty  *big.Int       // Provides information for DIFFICULTY
+	MixDigest   common.Hash    // Provides information for MIXDIGEST
 }
 
 // EVM is the Ethereum Virtual Machine base object and provides

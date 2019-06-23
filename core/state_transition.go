@@ -232,7 +232,11 @@ func (st *StateTransition) TransitionDb() (ret []byte, usedGas uint64, failed bo
 		if fsnCallParam != nil {
 			errc := st.handleFsnCall(fsnCallParam)
 			if errc != nil {
-				if common.DebugMode {
+				isInMining := st.evm.Context.MixDigest == (common.Hash{})
+				if isInMining {
+					// don't pack tx if handle FsnCall meet error
+					return nil, 0, false, errc
+				} else if common.DebugMode {
 					log.Info("handleFsnCall error", "number", st.evm.Context.BlockNumber, "Func", fsnCallParam.Func, "err", errc)
 				}
 			}
