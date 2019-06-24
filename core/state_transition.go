@@ -1125,8 +1125,17 @@ func (st *StateTransition) handleFsnCall(param *common.FSNCallParam) error {
 		toEnd := make([]uint64, lnTo)
 		toNeedValue := make([]*common.TimeLock, lnFrom)
 
-		// check to account balances
+		accountBalances := make(map[common.Hash]*big.Int)
+		accountTimeLockBalances := make(map[common.Hash]*common.TimeLock)
+
 		for i := 0; i < lnTo; i++ {
+			if _, exist := accountBalances[swap.ToAssetID[i]]; !exist {
+				balance := st.state.GetBalance(swap.ToAssetID[i], st.msg.From())
+				timelock := st.state.GetTimeLockBalance(swap.ToAssetID[i], st.msg.From())
+				accountBalances[swap.ToAssetID[i]] = new(big.Int).Set(balance)
+				accountTimeLockBalances[swap.ToAssetID[i]] = timelock.Clone()
+			}
+
 			toTotal[i] = new(big.Int).Mul(swap.MinToAmount[i], takeSwapParam.Size)
 			toStart[i] = swap.ToStartTime[i]
 			toEnd[i] = swap.ToEndTime[i]
@@ -1136,19 +1145,61 @@ func (st *StateTransition) handleFsnCall(param *common.FSNCallParam) error {
 				EndTime:   toEnd[i],
 				Value:     toTotal[i],
 			})
+		}
 
+		// check to account balances
+		for i := 0; i < lnTo; i++ {
+			balance := accountBalances[swap.ToAssetID[i]]
+			timeLockBalance := accountTimeLockBalances[swap.ToAssetID[i]]
+			if toUseAsset[i] == true {
+				if balance.Cmp(toTotal[i]) < 0 {
+					err = fmt.Errorf("not enough from asset")
+					st.addLog(common.TakeMultiSwapFunc, takeSwapParam, common.NewKeyValue("Error", err.Error()))
+					return err
+				}
+				balance.Sub(balance, toTotal[i])
+			} else {
+				if err := toNeedValue[i].IsValid(); err == nil {
+					continue
+				}
+				if timeLockBalance.Cmp(toNeedValue[i]) < 0 {
+					if balance.Cmp(toTotal[i]) < 0 {
+						err = fmt.Errorf("not enough time lock or asset balance")
+						st.addLog(common.TakeMultiSwapFunc, takeSwapParam, common.NewKeyValue("Error", err.Error()))
+						return err
+					}
+
+					balance.Sub(balance, toTotal[i])
+					totalValue := common.NewTimeLock(&common.TimeLockItem{
+						StartTime: timestamp,
+						EndTime:   common.TimeLockForever,
+						Value:     toTotal[i],
+					})
+					timeLockBalance.Add(timeLockBalance, totalValue)
+				}
+				timeLockBalance.Sub(timeLockBalance, toNeedValue[i])
+			}
+		}
+
+		// then deduct
+		var deductErr error
+		for i := 0; i < lnTo; i++ {
 			if toUseAsset[i] == true {
 				if st.state.GetBalance(swap.ToAssetID[i], st.msg.From()).Cmp(toTotal[i]) < 0 {
-					st.addLog(common.TakeMultiSwapFunc, takeSwapParam, common.NewKeyValue("Error", "not enough to asset"))
-					return fmt.Errorf("not enough to asset")
+					deductErr = fmt.Errorf("not enough from asset")
+					break
 				}
+				st.state.SubBalance(st.msg.From(), swap.ToAssetID[i], toTotal[i])
 			} else {
+				if err := toNeedValue[i].IsValid(); err == nil {
+					continue
+				}
 				available := st.state.GetTimeLockBalance(swap.ToAssetID[i], st.msg.From())
 				if available.Cmp(toNeedValue[i]) < 0 {
 
 					if st.state.GetBalance(swap.ToAssetID[i], st.msg.From()).Cmp(toTotal[i]) < 0 {
-						st.addLog(common.TakeMultiSwapFunc, takeSwapParam, common.NewKeyValue("Error", "not enough time lock balance"))
-						return fmt.Errorf("not enough time lock or asset balance")
+						deductErr = fmt.Errorf("not enough time lock or asset balance")
+						break
 					}
 
 					// subtract the asset from the balance
@@ -1160,9 +1211,17 @@ func (st *StateTransition) handleFsnCall(param *common.FSNCallParam) error {
 						Value:     toTotal[i],
 					})
 					st.state.AddTimeLockBalance(st.msg.From(), swap.ToAssetID[i], totalValue, height, timestamp)
-
 				}
+				st.state.SubTimeLockBalance(st.msg.From(), swap.ToAssetID[i], toNeedValue[i], height, timestamp)
 			}
+		}
+
+		if deductErr != nil {
+			if common.DebugMode {
+				log.Info("TakeMultiSwapFunc deduct error, why check balance before have no effect?")
+			}
+			st.addLog(common.TakeMultiSwapFunc, takeSwapParam, common.NewKeyValue("Error", deductErr.Error()))
+			return deductErr
 		}
 
 		if swap.SwapSize.Cmp(takeSwapParam.Size) == 0 {
@@ -1182,11 +1241,9 @@ func (st *StateTransition) handleFsnCall(param *common.FSNCallParam) error {
 		for i := 0; i < lnTo; i++ {
 			if toUseAsset[i] == true {
 				st.state.AddBalance(swap.Owner, swap.ToAssetID[i], toTotal[i])
-				st.state.SubBalance(st.msg.From(), swap.ToAssetID[i], toTotal[i])
 			} else {
 				if err := toNeedValue[i].IsValid(); err == nil {
 					st.state.AddTimeLockBalance(swap.Owner, swap.ToAssetID[i], toNeedValue[i], height, timestamp)
-					st.state.SubTimeLockBalance(st.msg.From(), swap.ToAssetID[i], toNeedValue[i], height, timestamp)
 				}
 			}
 		}
