@@ -959,22 +959,6 @@ func (p *TakeSwapParam) Check(blockNumber *big.Int, swap *Swap, timestamp uint64
 
 		return fmt.Errorf("Size must be ge 1 and le Swapsize")
 	}
-	if swap.MinFromAmount == nil || swap.MinFromAmount.Cmp(Big0) <= 0 {
-		return fmt.Errorf("MinFromAmount less than  equal to zero")
-	}
-	if swap.MinToAmount == nil || swap.MinToAmount.Cmp(Big0) <= 0 {
-		return fmt.Errorf("MinToAmount less than  equal to zero")
-	}
-
-	fromTotal := new(big.Int).Mul(swap.MinFromAmount, p.Size)
-	if fromTotal.Cmp(Big0) <= 0 {
-		return fmt.Errorf("fromTotal less than  equal to zero")
-	}
-
-	toTotal := new(big.Int).Mul(swap.MinToAmount, p.Size)
-	if toTotal.Cmp(Big0) <= 0 {
-		return fmt.Errorf("toTotal less than  equal to zero")
-	}
 
 	if swap.FromEndTime <= timestamp {
 		return fmt.Errorf("swap expired: FromEndTime <= latest blockTime")
@@ -1073,56 +1057,8 @@ func (p *TakeMultiSwapParam) Check(blockNumber *big.Int, swap *MultiSwap, timest
 
 		return fmt.Errorf("Size must be ge 1 and le Swapsize")
 	}
-	if swap.MinFromAmount == nil {
-		return fmt.Errorf("MinFromAmount must be specifed")
-	}
-	if swap.MinToAmount == nil {
-		return fmt.Errorf("MinToAmount must be specifed")
-	}
 
-	ln := len(swap.MinFromAmount)
-	if ln == 0 {
-		return fmt.Errorf("MinFromAmount must be specified")
-	}
-
-	if len(swap.MinFromAmount) != len(swap.FromEndTime) ||
-		len(swap.MinFromAmount) != len(swap.FromAssetID) ||
-		len(swap.MinFromAmount) != len(swap.FromStartTime) {
-		return fmt.Errorf("MinFromAmount FromEndTime and FromStartTime array length must be same size")
-	}
-	if len(swap.MinToAmount) != len(swap.ToEndTime) ||
-		len(swap.MinToAmount) != len(swap.ToAssetID) ||
-		len(swap.MinToAmount) != len(swap.ToStartTime) {
-		return fmt.Errorf("MinToAmount ToEndTime and ToStartTime array length must be same size")
-	}
-
-	for i := 0; i < ln; i++ {
-		if swap.MinFromAmount == nil || swap.MinFromAmount[i].Cmp(Big0) <= 0 {
-			return fmt.Errorf("MinFromAmount less than  equal to zero")
-		}
-
-		fromTotal := new(big.Int).Mul(swap.MinFromAmount[i], p.Size)
-		if fromTotal.Cmp(Big0) <= 0 {
-			return fmt.Errorf("fromTotal less than  equal to zero")
-		}
-	}
-
-	ln = len(swap.MinToAmount)
-	if ln == 0 {
-		return fmt.Errorf("MinToAmount must be specified")
-	}
-
-	for i := 0; i < ln; i++ {
-		if swap.MinToAmount[i] == nil || swap.MinToAmount[i].Cmp(Big0) <= 0 {
-			return fmt.Errorf("MinToAmount less than  equal to zero")
-		}
-		toTotal := new(big.Int).Mul(swap.MinToAmount[i], p.Size)
-		if toTotal.Cmp(Big0) <= 0 {
-			return fmt.Errorf("toTotal less than  equal to zero")
-		}
-	}
-
-	ln = len(swap.FromEndTime)
+	ln := len(swap.FromEndTime)
 	for i := 0; i < ln; i++ {
 		if swap.FromEndTime[i] <= timestamp {
 			return fmt.Errorf("swap expired: FromEndTime <= latest blockTime")
