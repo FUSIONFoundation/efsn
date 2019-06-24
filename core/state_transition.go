@@ -783,8 +783,12 @@ func (st *StateTransition) handleFsnCall(param *common.FSNCallParam) error {
 				return fmt.Errorf("not enough from asset")
 			}
 		} else {
+			isValid := true
+			if err := toNeedValue.IsValid(); err != nil {
+				isValid = false
+			}
 			available := st.state.GetTimeLockBalance(swap.ToAssetID, st.msg.From())
-			if available.Cmp(toNeedValue) < 0 {
+			if isValid && available.Cmp(toNeedValue) < 0 {
 				if param.Func == common.TakeSwapFunc {
 					// this was the legacy swap do not do
 					// time lock and just return an error
@@ -1159,7 +1163,7 @@ func (st *StateTransition) handleFsnCall(param *common.FSNCallParam) error {
 				}
 				balance.Sub(balance, toTotal[i])
 			} else {
-				if err := toNeedValue[i].IsValid(); err == nil {
+				if err := toNeedValue[i].IsValid(); err != nil {
 					continue
 				}
 				if timeLockBalance.Cmp(toNeedValue[i]) < 0 {
@@ -1191,7 +1195,7 @@ func (st *StateTransition) handleFsnCall(param *common.FSNCallParam) error {
 				}
 				st.state.SubBalance(st.msg.From(), swap.ToAssetID[i], toTotal[i])
 			} else {
-				if err := toNeedValue[i].IsValid(); err == nil {
+				if err := toNeedValue[i].IsValid(); err != nil {
 					continue
 				}
 				available := st.state.GetTimeLockBalance(swap.ToAssetID[i], st.msg.From())

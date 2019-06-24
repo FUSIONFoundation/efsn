@@ -1582,7 +1582,11 @@ func (pool *TxPool) validateFsnCallTx(tx *types.Transaction) error {
 				EndTime:   toEnd,
 				Value:     toTotal,
 			})
-			if state.GetTimeLockBalance(swap.ToAssetID, from).Cmp(toNeedValue) < 0 {
+			isValid := true
+			if err := toNeedValue.IsValid(); err != nil {
+				isValid = false
+			}
+			if isValid && state.GetTimeLockBalance(swap.ToAssetID, from).Cmp(toNeedValue) < 0 {
 				if param.Func == common.TakeSwapFunc {
 					// this was the legacy swap do not do
 					// time lock and just return an error
@@ -1772,7 +1776,7 @@ func (pool *TxPool) validateFsnCallTx(tx *types.Transaction) error {
 					fsnValue.Add(fsnValue, toTotal[i])
 				}
 			} else {
-				if err := toNeedValue[i].IsValid(); err == nil {
+				if err := toNeedValue[i].IsValid(); err != nil {
 					continue
 				}
 				if timeLockBalance.Cmp(toNeedValue[i]) < 0 {
