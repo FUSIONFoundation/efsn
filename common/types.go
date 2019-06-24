@@ -925,6 +925,11 @@ func (p *MakeSwapParam) Check(blockNumber *big.Int, timestamp uint64) error {
 		return fmt.Errorf("size * MinFromAmount too large")
 	}
 
+	toTotal := new(big.Int).Mul(p.MinToAmount, p.SwapSize)
+	if toTotal.Cmp(Big0) <= 0 {
+		return fmt.Errorf("size * MinToAmount too large")
+	}
+
 	if p.FromStartTime > p.FromEndTime {
 		return fmt.Errorf("MakeSwap FromStartTime > FromEndTime")
 	}
@@ -1032,6 +1037,10 @@ func (p *MakeMultiSwapParam) Check(blockNumber *big.Int, timestamp uint64) error
 	for i := 0; i < ln; i++ {
 		if p.MinToAmount[i] == nil || p.MinToAmount[i].Cmp(Big0) <= 0 {
 			return fmt.Errorf("MinToAmounts must be ge 1")
+		}
+		toTotal := new(big.Int).Mul(p.MinToAmount[i], p.SwapSize)
+		if toTotal.Cmp(Big0) <= 0 {
+			return fmt.Errorf("size * MinToAmount too large")
 		}
 	}
 
