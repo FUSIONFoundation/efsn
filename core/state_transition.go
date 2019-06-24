@@ -889,6 +889,11 @@ func (st *StateTransition) handleFsnCall(param *common.FSNCallParam) error {
 			return err
 		}
 
+		if err := st.state.RemoveMultiSwap(swap.ID); err != nil {
+			st.addLog(common.RecallMultiSwapFunc, recallSwapParam, common.NewKeyValue("Error", "Unable to remove swap"))
+			return err
+		}
+
 		ln := len(swap.FromAssetID)
 		for i := 0; i < ln; i++ {
 			if swap.FromAssetID[i] == common.OwnerUSANAssetID {
@@ -907,11 +912,6 @@ func (st *StateTransition) handleFsnCall(param *common.FSNCallParam) error {
 				EndTime:   end,
 				Value:     total,
 			})
-
-			if err := st.state.RemoveMultiSwap(swap.ID); err != nil {
-				st.addLog(common.RecallMultiSwapFunc, recallSwapParam, common.NewKeyValue("Error", "Unable to remove swap"))
-				return err
-			}
 
 			// return to the owner the balance
 			if useAsset == true {
