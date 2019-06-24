@@ -1651,9 +1651,19 @@ func (pool *TxPool) validateFsnCallTx(tx *types.Transaction) error {
 		total := make([]*big.Int, ln)
 		needValue := make([]*common.TimeLock, ln)
 
+		accountBalances := make(map[common.Hash]*big.Int)
+		accountTimeLockBalances := make(map[common.Hash]*common.TimeLock)
+
 		for i := 0; i < ln; i++ {
 			if makeSwapParam.FromAssetID[i] == common.OwnerUSANAssetID {
 				return fmt.Errorf("USAN's cannot be multi swapped")
+			}
+
+			if _, exist := accountBalances[makeSwapParam.FromAssetID[i]]; !exist {
+				balance := state.GetBalance(makeSwapParam.FromAssetID[i], from)
+				timelock := state.GetTimeLockBalance(makeSwapParam.FromAssetID[i], from)
+				accountBalances[makeSwapParam.FromAssetID[i]] = new(big.Int).Set(balance)
+				accountTimeLockBalances[makeSwapParam.FromAssetID[i]] = timelock.Clone()
 			}
 
 			total[i] = new(big.Int).Mul(makeSwapParam.MinFromAmount[i], makeSwapParam.SwapSize)
@@ -1674,21 +1684,34 @@ func (pool *TxPool) validateFsnCallTx(tx *types.Transaction) error {
 		ln = len(makeSwapParam.FromAssetID)
 		// check balances first
 		for i := 0; i < ln; i++ {
+			balance := accountBalances[makeSwapParam.FromAssetID[i]]
+			timeLockBalance := accountTimeLockBalances[makeSwapParam.FromAssetID[i]]
 			if useAsset[i] == true {
-				if makeSwapParam.FromAssetID[i] == common.SystemAssetID {
-					fsnValue.Add(fsnValue, total[i])
-				} else if state.GetBalance(makeSwapParam.FromAssetID[i], from).Cmp(total[i]) < 0 {
+				if balance.Cmp(total[i]) < 0 {
 					return fmt.Errorf("not enough from asset")
 				}
+				balance.Sub(balance, total[i])
+				if makeSwapParam.FromAssetID[i] == common.SystemAssetID {
+					fsnValue.Add(fsnValue, total[i])
+				}
 			} else {
-				available := state.GetTimeLockBalance(makeSwapParam.FromAssetID[i], from)
-				if available.Cmp(needValue[i]) < 0 {
-					if makeSwapParam.FromAssetID[i] == common.SystemAssetID {
-						fsnValue.Add(fsnValue, total[i])
-					} else if state.GetBalance(makeSwapParam.FromAssetID[i], from).Cmp(total[i]) < 0 {
+				if timeLockBalance.Cmp(needValue[i]) < 0 {
+					if balance.Cmp(total[i]) < 0 {
 						return fmt.Errorf("not enough time lock or asset balance")
 					}
+
+					balance.Sub(balance, total[i])
+					if makeSwapParam.FromAssetID[i] == common.SystemAssetID {
+						fsnValue.Add(fsnValue, total[i])
+					}
+					totalValue := common.NewTimeLock(&common.TimeLockItem{
+						StartTime: timestamp,
+						EndTime:   common.TimeLockForever,
+						Value:     total[i],
+					})
+					timeLockBalance.Add(timeLockBalance, totalValue)
 				}
+				timeLockBalance.Sub(timeLockBalance, needValue[i])
 			}
 		}
 
