@@ -949,16 +949,6 @@ func (p *MakeSwapParam) Check(blockNumber *big.Int, timestamp uint64) error {
 
 // Check wacom
 func (p *RecallSwapParam) Check(blockNumber *big.Int, swap *Swap) error {
-	if swap.MinFromAmount == nil || swap.MinFromAmount.Cmp(Big0) <= 0 {
-		return fmt.Errorf("swap illegal: MinFromAmount must be set and greater than 0")
-	}
-	if swap.SwapSize == nil || swap.SwapSize.Cmp(Big0) <= 0 {
-		return fmt.Errorf("swap illegal: SwapSize must be set and greater than 0")
-	}
-	total := new(big.Int).Mul(swap.MinFromAmount, swap.SwapSize)
-	if total.Cmp(Big0) <= 0 {
-		return fmt.Errorf("size * minFromAmount too large")
-	}
 	return nil
 }
 
@@ -1073,30 +1063,6 @@ func (p *MakeMultiSwapParam) Check(blockNumber *big.Int, timestamp uint64) error
 
 // Check wacom
 func (p *RecallMultiSwapParam) Check(blockNumber *big.Int, swap *MultiSwap) error {
-	if swap.MinFromAmount == nil {
-		return fmt.Errorf("MinFromAmount must be specifed")
-	}
-	if swap.MinToAmount == nil {
-		return fmt.Errorf("MinToAmount must be specifed")
-	}
-	ln := len(swap.MinFromAmount)
-	if ln == 0 {
-		return fmt.Errorf("MinFromAmount must be specified")
-	}
-	if swap.SwapSize == nil || swap.SwapSize.Cmp(Big0) <= 0 {
-		return fmt.Errorf("SwapSize must be ge 1")
-	}
-
-	for i := 0; i < ln; i++ {
-		if swap.MinFromAmount[i] == nil || swap.MinFromAmount[i].Cmp(Big0) <= 0 {
-			return fmt.Errorf("MinFromAmounts must be ge 1")
-		}
-		total := new(big.Int).Mul(swap.MinFromAmount[i], swap.SwapSize)
-		if total.Cmp(Big0) <= 0 {
-			return fmt.Errorf("size * MinFromAmount too large")
-		}
-	}
-
 	return nil
 }
 

@@ -697,33 +697,26 @@ func (st *StateTransition) handleFsnCall(param *common.FSNCallParam) error {
 			return err
 		}
 
-		if swap.FromAssetID == common.OwnerUSANAssetID {
-			if err := st.state.RemoveSwap(swap.ID); err != nil {
-				st.addLog(common.RecallSwapFunc, recallSwapParam, common.NewKeyValue("Error", "Unable to remove swap"))
-				return err
-			}
-		} else {
+		if err := st.state.RemoveSwap(swap.ID); err != nil {
+			st.addLog(common.RecallSwapFunc, recallSwapParam, common.NewKeyValue("Error", "Unable to remove swap"))
+			return err
+		}
+
+		if swap.FromAssetID != common.OwnerUSANAssetID {
 			total := new(big.Int).Mul(swap.MinFromAmount, swap.SwapSize)
 			start := swap.FromStartTime
 			end := swap.FromEndTime
 			useAsset := start == common.TimeLockNow && end == common.TimeLockForever
-			var needValue *common.TimeLock
-
-			needValue = common.NewTimeLock(&common.TimeLockItem{
-				StartTime: common.MaxUint64(start, timestamp),
-				EndTime:   end,
-				Value:     total,
-			})
-
-			if err := st.state.RemoveSwap(swap.ID); err != nil {
-				st.addLog(common.RecallSwapFunc, recallSwapParam, common.NewKeyValue("Error", "Unable to remove swap"))
-				return err
-			}
 
 			// return to the owner the balance
 			if useAsset == true {
 				st.state.AddBalance(st.msg.From(), swap.FromAssetID, total)
 			} else {
+				needValue := common.NewTimeLock(&common.TimeLockItem{
+					StartTime: common.MaxUint64(start, timestamp),
+					EndTime:   end,
+					Value:     total,
+				})
 				if err := needValue.IsValid(); err == nil {
 					st.state.AddTimeLockBalance(st.msg.From(), swap.FromAssetID, needValue, height, timestamp)
 				}
@@ -896,27 +889,21 @@ func (st *StateTransition) handleFsnCall(param *common.FSNCallParam) error {
 
 		ln := len(swap.FromAssetID)
 		for i := 0; i < ln; i++ {
-			if swap.FromAssetID[i] == common.OwnerUSANAssetID {
-				err := fmt.Errorf("Cannot multiswap USANs")
-				st.addLog(common.RecallMultiSwapFunc, recallSwapParam, common.NewKeyValue("Error", "Cannot multiswap USANs"))
-				return err
-			}
 			total := new(big.Int).Mul(swap.MinFromAmount[i], swap.SwapSize)
 			start := swap.FromStartTime[i]
 			end := swap.FromEndTime[i]
 			useAsset := start == common.TimeLockNow && end == common.TimeLockForever
-			var needValue *common.TimeLock
-
-			needValue = common.NewTimeLock(&common.TimeLockItem{
-				StartTime: common.MaxUint64(start, timestamp),
-				EndTime:   end,
-				Value:     total,
-			})
 
 			// return to the owner the balance
 			if useAsset == true {
 				st.state.AddBalance(st.msg.From(), swap.FromAssetID[i], total)
 			} else {
+				needValue := common.NewTimeLock(&common.TimeLockItem{
+					StartTime: common.MaxUint64(start, timestamp),
+					EndTime:   end,
+					Value:     total,
+				})
+
 				if err := needValue.IsValid(); err == nil {
 					st.state.AddTimeLockBalance(st.msg.From(), swap.FromAssetID[i], needValue, height, timestamp)
 				}
