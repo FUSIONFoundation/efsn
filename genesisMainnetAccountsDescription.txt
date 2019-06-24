@@ -1,13 +1,13 @@
 -- The following fees are deducted from the total supply, they are documented below
 
     8 Miners 80000 FSN
-    1 USAN GENERATOR 110000
-    TOTAL 190000 FSN to be deducted from 57344000 =  57154000
+    1 USAN GENERATOR 20720
+    TOTAL  100720 FSN to be deducted from 57344000 =  57243280
 
-    Foundation will start with 57154000 FSN
+    Foundation will start with 57243280 FSN
 
                                 
-FusionMainnetTokens  0x9c48c796cb0bed51a14291bc8cc56dab5aed7b5c 571540000 00000000000000000 0x2f46d48c5e29f0c5400000    // web3.toHex( web3.toWei( "57154000", "ether") )
+FusionMainnetTokens  0x8e6bDa71f3f0F49dDD29969De79aFCFac4457379 57243280 00000000000000000 0x2f59bc6d43683a40400000    // web3.toHex( web3.toWei( "57243280", "ether") )
 
 -- The following foundation miners are credited with 10 000 FSN for startup
 -- 8 Miners for a total 80 000 FSN 
@@ -22,9 +22,14 @@ Miner8  0xfa37b7c3f21060458361ed5322be5af3740bce3c    10000 00000000000000000000
 
 
 -- THE USAN GENERATOR IS CREDIT WITH 110 000 TO GENERATE FOUNDATION USANs
-USAN GENERATOR   0x0Ac469cf34C4d65515E4eF27eAF0F71F15C5A2fd 110000 000000000000000000 0x174b1ca8ab05a8c00000 web3.toHex( web3.toWei( "110000", "ether") )
+USAN GENERATOR   0x0Ac469cf34C4d65515E4eF27eAF0F71F15C5A2fd 20720 000000000000000000 0x4633bc36cbc2dc00000 web3.toHex( web3.toWei( "20720", "ether") )
+        012345678912345678
 
-The foundation will need to move 190000 Ethereum FSN (ERC-20) to the reserve account of the EZ-Swap manager
+       .103600000000000000   * 100000
+ 10360.0000000000000000000   * 2 just in case of error during run
+ 20720.0000000000000000000   Total for usan generator
+
+The foundation will need to move 100720 Ethereum FSN (ERC-20) to the reserve account of the foundation
 
 during devinternal genesis.json for generator will have an extra zero to increase balance to send supply to others
 day of launch this will be removed
