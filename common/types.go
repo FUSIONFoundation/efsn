@@ -972,15 +972,11 @@ func (p *TakeSwapParam) Check(blockNumber *big.Int, swap *Swap, timestamp uint64
 
 // Check wacom
 func (p *MakeMultiSwapParam) Check(blockNumber *big.Int, timestamp uint64) error {
-	if p.MinFromAmount == nil {
+	if p.MinFromAmount == nil || len(p.MinFromAmount) == 0 {
 		return fmt.Errorf("MinFromAmount must be specifed")
 	}
-	if p.MinToAmount == nil {
+	if p.MinToAmount == nil || len(p.MinToAmount) == 0 {
 		return fmt.Errorf("MinToAmount must be specifed")
-	}
-	ln := len(p.MinFromAmount)
-	if ln == 0 {
-		return fmt.Errorf("MinFromAmount must be specified")
 	}
 	if p.SwapSize == nil || p.SwapSize.Cmp(Big0) <= 0 {
 		return fmt.Errorf("SwapSize must be ge 1")
@@ -997,6 +993,7 @@ func (p *MakeMultiSwapParam) Check(blockNumber *big.Int, timestamp uint64) error
 		return fmt.Errorf("MinToAmount ToEndTime and ToStartTime array length must be same size")
 	}
 
+	ln := len(p.MinFromAmount)
 	for i := 0; i < ln; i++ {
 		if p.MinFromAmount[i] == nil || p.MinFromAmount[i].Cmp(Big0) <= 0 {
 			return fmt.Errorf("MinFromAmounts must be ge 1")
