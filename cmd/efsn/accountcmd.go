@@ -17,6 +17,7 @@
 package main
 
 import (
+	"encoding/hex"
 	"fmt"
 	"io/ioutil"
 
@@ -188,6 +189,22 @@ this import mechanism is not needed when you transfer an account between
 nodes.
 `,
 			},
+			{
+				Name:   "showkey",
+				Usage:  "Show private key of a keystore file",
+				Action: utils.MigrateFlags(accountShowkey),
+				Flags: []cli.Flag{
+					utils.PasswordFileFlag,
+				},
+				ArgsUsage: "<keyFile>",
+				Description: `
+Show private key of a keystore file
+
+For non-interactive use the passphrase can be specified with the --password flag:
+
+    efsn account showkey [options] <keyFile>
+`,
+			},
 		},
 	}
 )
@@ -332,6 +349,28 @@ func accountUpdate(ctx *cli.Context) error {
 			utils.Fatalf("Could not update the account: %v", err)
 		}
 	}
+	return nil
+}
+
+func accountShowkey(ctx *cli.Context) error {
+	keyfile := ctx.Args().First()
+	if len(keyfile) == 0 {
+		utils.Fatalf("keyfile must be given as argument")
+	}
+	keyJSON, err := ioutil.ReadFile(keyfile)
+	if err != nil {
+		utils.Fatalf("Could not read wallet file: %v", err)
+	}
+
+	// Decrypt key with passphrase.
+	passphrase := getPassPhrase("", false, 0, utils.MakePasswordList(ctx))
+	key, err := keystore.DecryptKey(keyJSON, passphrase)
+	if err != nil {
+		utils.Fatalf("Error decrypting key: %v", err)
+	}
+	privateKey := hex.EncodeToString(crypto.FromECDSA(key.PrivateKey))
+
+	fmt.Printf("Address: {%s}, PrivateKey: {%s}\n", key.Address.String(), privateKey)
 	return nil
 }
 
