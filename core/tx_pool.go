@@ -1131,6 +1131,15 @@ func (pool *TxPool) demoteUnexecutables() {
 			pool.all.Remove(hash)
 			pool.priced.Removed()
 		}
+		// Drop all FsnCall transactions that are invalid
+		filter := func(tx *types.Transaction) bool { return pool.validateFsnCallTx(tx) != nil }
+		removes, adjusts := list.FilterInvalid(filter)
+		for _, tx := range removes {
+			hash := tx.Hash()
+			log.Trace("Removed invalid pending transaction", "hash", hash)
+			pool.all.Remove(hash)
+			pool.priced.Removed()
+		}
 		// Drop all transactions that are too costly (low balance or out of gas), and queue any invalids back for later
 		drops, invalids := list.Filter(pool.currentState.GetBalance(common.SystemAssetID, addr), pool.currentMaxGas)
 		for _, tx := range drops {
@@ -1144,6 +1153,15 @@ func (pool *TxPool) demoteUnexecutables() {
 			hash := tx.Hash()
 			log.Trace("Demoting pending transaction", "hash", hash)
 			pool.enqueueTx(hash, tx)
+		}
+		if adjusts.Len() > 0 {
+			adjusts = types.TxDifference(adjusts, drops)
+			adjusts = types.TxDifference(adjusts, invalids)
+			for _, tx := range adjusts {
+				hash := tx.Hash()
+				log.Trace("Demoting pending transaction", "hash", hash)
+				pool.enqueueTx(hash, tx)
+			}
 		}
 		// If there's a gap in front, alert (should never happen) and postpone all transactions
 		if list.Len() > 0 && list.txs.Get(nonce) == nil {
