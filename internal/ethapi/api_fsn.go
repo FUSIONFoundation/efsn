@@ -789,17 +789,12 @@ func (s *PublicFusionAPI) AllSwapsByAddress(ctx context.Context, address common.
 }
 
 //--------------------------------------------- PublicFusionAPI buile send tx args-------------------------------------
+type FSNCallArgs interface {
+	toSendArgs() SendTxArgs
+}
 
-func (s *PublicFusionAPI) BuildGenNotationSendTxArgs(ctx context.Context, args FusionBaseArgs) (*SendTxArgs, error) {
-	state, _, err := s.b.StateAndHeaderByNumber(ctx, rpc.LatestBlockNumber)
-	if state == nil || err != nil {
-		return nil, err
-	}
-	notation := state.GetNotation(args.From)
-	if notation != 0 {
-		return nil, fmt.Errorf("An address can have only one notation, you already have a mapped notation:%d", notation)
-	}
-	var param = common.FSNCallParam{Func: common.GenNotationFunc}
+func FSNCallArgsToSendTxArgs(args FSNCallArgs, funcType common.FSNCallFunc, funcData []byte) (*SendTxArgs, error) {
+	var param = common.FSNCallParam{Func: funcType, Data: funcData}
 	data, err := param.ToBytes()
 	if err != nil {
 		return nil, err
@@ -811,6 +806,19 @@ func (s *PublicFusionAPI) BuildGenNotationSendTxArgs(ctx context.Context, args F
 	return &sendArgs, nil
 }
 
+func (s *PublicFusionAPI) BuildGenNotationSendTxArgs(ctx context.Context, args FusionBaseArgs) (*SendTxArgs, error) {
+	state, _, err := s.b.StateAndHeaderByNumber(ctx, rpc.LatestBlockNumber)
+	if state == nil || err != nil {
+		return nil, err
+	}
+	notation := state.GetNotation(args.From)
+	if notation != 0 {
+		return nil, fmt.Errorf("An address can have only one notation, you already have a mapped notation:%d", notation)
+	}
+
+	return FSNCallArgsToSendTxArgs(&args, common.GenNotationFunc, nil)
+}
+
 func (s *PublicFusionAPI) BuildGenAssetSendTxArgs(ctx context.Context, args GenAssetArgs) (*SendTxArgs, error) {
 	if err := args.toParam().Check(common.BigMaxUint64); err != nil {
 		return nil, err
@@ -820,17 +828,7 @@ func (s *PublicFusionAPI) BuildGenAssetSendTxArgs(ctx context.Context, args GenA
 	if err != nil {
 		return nil, err
 	}
-
-	var param = common.FSNCallParam{Func: common.GenAssetFunc, Data: funcData}
-	data, err := param.ToBytes()
-	if err != nil {
-		return nil, err
-	}
-	var argsData = hexutil.Bytes(data)
-	sendArgs := args.toSendArgs()
-	sendArgs.To = &common.FSNCallAddress
-	sendArgs.Data = &argsData
-	return &sendArgs, nil
+	return FSNCallArgsToSendTxArgs(&args, common.GenAssetFunc, funcData)
 }
 
 func (s *PublicFusionAPI) BuildSendAssetSendTxArgs(ctx context.Context, args SendAssetArgs) (*SendTxArgs, error) {
@@ -850,17 +848,7 @@ func (s *PublicFusionAPI) BuildSendAssetSendTxArgs(ctx context.Context, args Sen
 	if err != nil {
 		return nil, err
 	}
-	var param = common.FSNCallParam{Func: common.SendAssetFunc, Data: funcData}
-	data, err := param.ToBytes()
-	if err != nil {
-		return nil, err
-	}
-	var argsData = hexutil.Bytes(data)
-	sendArgs := args.toSendArgs()
-	sendArgs.To = &common.FSNCallAddress
-	sendArgs.Data = &argsData
-	sendArgs.Value = (*hexutil.Big)(big.NewInt(0))
-	return &sendArgs, nil
+	return FSNCallArgsToSendTxArgs(&args, common.SendAssetFunc, funcData)
 }
 
 func (s *PublicFusionAPI) BuildAssetToTimeLockSendTxArgs(ctx context.Context, args TimeLockArgs) (*SendTxArgs, error) {
@@ -883,20 +871,12 @@ func (s *PublicFusionAPI) BuildAssetToTimeLockSendTxArgs(ctx context.Context, ar
 	if state.GetBalance(args.AssetID, args.From).Cmp(args.Value.ToInt()) < 0 {
 		return nil, fmt.Errorf("not enough asset")
 	}
+
 	funcData, err := args.toData(common.AssetToTimeLock)
 	if err != nil {
 		return nil, err
 	}
-	var param = common.FSNCallParam{Func: common.TimeLockFunc, Data: funcData}
-	data, err := param.ToBytes()
-	if err != nil {
-		return nil, err
-	}
-	var argsData = hexutil.Bytes(data)
-	sendArgs := args.toSendArgs()
-	sendArgs.To = &common.FSNCallAddress
-	sendArgs.Data = &argsData
-	return &sendArgs, nil
+	return FSNCallArgsToSendTxArgs(&args, common.TimeLockFunc, funcData)
 }
 
 func (s *PublicFusionAPI) BuildTimeLockToTimeLockSendTxArgs(ctx context.Context, args TimeLockArgs) (*SendTxArgs, error) {
@@ -925,16 +905,7 @@ func (s *PublicFusionAPI) BuildTimeLockToTimeLockSendTxArgs(ctx context.Context,
 	if err != nil {
 		return nil, err
 	}
-	var param = common.FSNCallParam{Func: common.TimeLockFunc, Data: funcData}
-	data, err := param.ToBytes()
-	if err != nil {
-		return nil, err
-	}
-	var argsData = hexutil.Bytes(data)
-	sendArgs := args.toSendArgs()
-	sendArgs.To = &common.FSNCallAddress
-	sendArgs.Data = &argsData
-	return &sendArgs, nil
+	return FSNCallArgsToSendTxArgs(&args, common.TimeLockFunc, funcData)
 }
 
 func (s *PublicFusionAPI) BuildTimeLockToAssetSendTxArgs(ctx context.Context, args TimeLockArgs) (*SendTxArgs, error) {
@@ -959,20 +930,12 @@ func (s *PublicFusionAPI) BuildTimeLockToAssetSendTxArgs(ctx context.Context, ar
 	if state.GetTimeLockBalance(args.AssetID, args.From).Cmp(needValue) < 0 {
 		return nil, fmt.Errorf("not enough time lock balance")
 	}
+
 	funcData, err := args.toData(common.TimeLockToAsset)
 	if err != nil {
 		return nil, err
 	}
-	var param = common.FSNCallParam{Func: common.TimeLockFunc, Data: funcData}
-	data, err := param.ToBytes()
-	if err != nil {
-		return nil, err
-	}
-	var argsData = hexutil.Bytes(data)
-	sendArgs := args.toSendArgs()
-	sendArgs.To = &common.FSNCallAddress
-	sendArgs.Data = &argsData
-	return &sendArgs, nil
+	return FSNCallArgsToSendTxArgs(&args, common.TimeLockFunc, funcData)
 }
 
 func (s *PublicFusionAPI) BuildBuyTicketSendTxArgs(ctx context.Context, args BuyTicketArgs) (*SendTxArgs, error) {
@@ -1008,20 +971,12 @@ func (s *PublicFusionAPI) BuildBuyTicketSendTxArgs(ctx context.Context, args Buy
 			return nil, fmt.Errorf("not enough time lock or asset balance")
 		}
 	}
-	data, err := args.toData()
+
+	funcData, err := args.toData()
 	if err != nil {
 		return nil, err
 	}
-	var param = common.FSNCallParam{Func: common.BuyTicketFunc, Data: data}
-	data, err = param.ToBytes()
-	if err != nil {
-		return nil, err
-	}
-	var argsData = hexutil.Bytes(data)
-	sendArgs := args.toSendArgs()
-	sendArgs.To = &common.FSNCallAddress
-	sendArgs.Data = &argsData
-	return &sendArgs, nil
+	return FSNCallArgsToSendTxArgs(&args, common.BuyTicketFunc, funcData)
 }
 
 func (s *PublicFusionAPI) BuildAssetValueChangeSendTxArgs(ctx context.Context, args AssetValueChangeExArgs) (*SendTxArgs, error) {
@@ -1063,16 +1018,7 @@ func (s *PublicFusionAPI) BuildAssetValueChangeSendTxArgs(ctx context.Context, a
 	if err != nil {
 		return nil, err
 	}
-	var param = common.FSNCallParam{Func: common.AssetValueChangeFunc, Data: funcData}
-	data, err := param.ToBytes()
-	if err != nil {
-		return nil, err
-	}
-	var argsData = hexutil.Bytes(data)
-	sendArgs := args.toSendArgs()
-	sendArgs.To = &common.FSNCallAddress
-	sendArgs.Data = &argsData
-	return &sendArgs, nil
+	return FSNCallArgsToSendTxArgs(&args, common.AssetValueChangeFunc, funcData)
 }
 
 func (s *PublicFusionAPI) BuildMakeSwapSendTxArgs(ctx context.Context, args MakeSwapArgs) (*SendTxArgs, error) {
@@ -1120,16 +1066,7 @@ func (s *PublicFusionAPI) BuildMakeSwapSendTxArgs(ctx context.Context, args Make
 	if err != nil {
 		return nil, err
 	}
-	var param = common.FSNCallParam{Func: common.MakeSwapFuncExt, Data: funcData}
-	data, err := param.ToBytes()
-	if err != nil {
-		return nil, err
-	}
-	var argsData = hexutil.Bytes(data)
-	sendArgs := args.toSendArgs()
-	sendArgs.To = &common.FSNCallAddress
-	sendArgs.Data = &argsData
-	return &sendArgs, nil
+	return FSNCallArgsToSendTxArgs(&args, common.MakeSwapFuncExt, funcData)
 }
 
 func (s *PublicFusionAPI) BuildRecallSwapSendTxArgs(ctx context.Context, args RecallSwapArgs) (*SendTxArgs, error) {
@@ -1156,16 +1093,7 @@ func (s *PublicFusionAPI) BuildRecallSwapSendTxArgs(ctx context.Context, args Re
 	if err != nil {
 		return nil, err
 	}
-	var param = common.FSNCallParam{Func: common.RecallSwapFunc, Data: funcData}
-	data, err := param.ToBytes()
-	if err != nil {
-		return nil, err
-	}
-	var argsData = hexutil.Bytes(data)
-	sendArgs := args.toSendArgs()
-	sendArgs.To = &common.FSNCallAddress
-	sendArgs.Data = &argsData
-	return &sendArgs, nil
+	return FSNCallArgsToSendTxArgs(&args, common.RecallSwapFunc, funcData)
 }
 
 func (s *PublicFusionAPI) BuildTakeSwapSendTxArgs(ctx context.Context, args TakeSwapArgs) (*SendTxArgs, error) {
@@ -1207,20 +1135,12 @@ func (s *PublicFusionAPI) BuildTakeSwapSendTxArgs(ctx context.Context, args Take
 			}
 		}
 	}
+
 	funcData, err := args.toData()
 	if err != nil {
 		return nil, err
 	}
-	var param = common.FSNCallParam{Func: common.TakeSwapFuncExt, Data: funcData}
-	data, err := param.ToBytes()
-	if err != nil {
-		return nil, err
-	}
-	var argsData = hexutil.Bytes(data)
-	sendArgs := args.toSendArgs()
-	sendArgs.To = &common.FSNCallAddress
-	sendArgs.Data = &argsData
-	return &sendArgs, nil
+	return FSNCallArgsToSendTxArgs(&args, common.TakeSwapFuncExt, funcData)
 }
 
 func (s *PublicFusionAPI) BuildMakeMultiSwapSendTxArgs(ctx context.Context, args MakeMultiSwapArgs) (*SendTxArgs, error) {
@@ -1268,16 +1188,7 @@ func (s *PublicFusionAPI) BuildMakeMultiSwapSendTxArgs(ctx context.Context, args
 	if err != nil {
 		return nil, err
 	}
-	var param = common.FSNCallParam{Func: common.MakeMultiSwapFunc, Data: funcData}
-	data, err := param.ToBytes()
-	if err != nil {
-		return nil, err
-	}
-	var argsData = hexutil.Bytes(data)
-	sendArgs := args.toSendArgs()
-	sendArgs.To = &common.FSNCallAddress
-	sendArgs.Data = &argsData
-	return &sendArgs, nil
+	return FSNCallArgsToSendTxArgs(&args, common.MakeMultiSwapFunc, funcData)
 }
 
 func (s *PublicFusionAPI) BuildRecallMultiSwapSendTxArgs(ctx context.Context, args RecallMultiSwapArgs) (*SendTxArgs, error) {
@@ -1304,16 +1215,7 @@ func (s *PublicFusionAPI) BuildRecallMultiSwapSendTxArgs(ctx context.Context, ar
 	if err != nil {
 		return nil, err
 	}
-	var param = common.FSNCallParam{Func: common.RecallMultiSwapFunc, Data: funcData}
-	data, err := param.ToBytes()
-	if err != nil {
-		return nil, err
-	}
-	var argsData = hexutil.Bytes(data)
-	sendArgs := args.toSendArgs()
-	sendArgs.To = &common.FSNCallAddress
-	sendArgs.Data = &argsData
-	return &sendArgs, nil
+	return FSNCallArgsToSendTxArgs(&args, common.RecallMultiSwapFunc, funcData)
 }
 
 func (s *PublicFusionAPI) BuildTakeMultiSwapSendTxArgs(ctx context.Context, args TakeMultiSwapArgs) (*SendTxArgs, error) {
@@ -1358,20 +1260,12 @@ func (s *PublicFusionAPI) BuildTakeMultiSwapSendTxArgs(ctx context.Context, args
 			}
 		}
 	}
+
 	funcData, err := args.toData()
 	if err != nil {
 		return nil, err
 	}
-	var param = common.FSNCallParam{Func: common.TakeMultiSwapFunc, Data: funcData}
-	data, err := param.ToBytes()
-	if err != nil {
-		return nil, err
-	}
-	var argsData = hexutil.Bytes(data)
-	sendArgs := args.toSendArgs()
-	sendArgs.To = &common.FSNCallAddress
-	sendArgs.Data = &argsData
-	return &sendArgs, nil
+	return FSNCallArgsToSendTxArgs(&args, common.TakeMultiSwapFunc, funcData)
 }
 
 //--------------------------------------------- PrivateFusionAPI -------------------------------------
