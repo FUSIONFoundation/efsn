@@ -29,7 +29,7 @@ const (
 	// and put its version into the hundreds place
 	// so 16001 means ethereum VersionPath=16
 	// efsn patch = 001
-	VersionPatch = 16012 // Patch version component of the current release
+	VersionPatch = 16014 // Patch version component of the current release
 
 	VersionMeta = "unstable" // Version metadata to append to the version string
 )
