@@ -1002,6 +1002,12 @@ func (p *MakeMultiSwapParam) Check(blockNumber *big.Int, timestamp uint64) error
 		if total.Cmp(Big0) <= 0 {
 			return fmt.Errorf("size * MinFromAmount too large")
 		}
+		if p.FromStartTime[i] > p.FromEndTime[i] {
+			return fmt.Errorf("MakeMultiSwap FromStartTime > FromEndTime")
+		}
+		if p.FromEndTime[i] <= timestamp {
+			return fmt.Errorf("MakeMultiSwap FromEndTime <= latest blockTime")
+		}
 	}
 
 	ln = len(p.MinToAmount)
@@ -1013,31 +1019,16 @@ func (p *MakeMultiSwapParam) Check(blockNumber *big.Int, timestamp uint64) error
 		if toTotal.Cmp(Big0) <= 0 {
 			return fmt.Errorf("size * MinToAmount too large")
 		}
-	}
-
-	if len(p.Description) > 1024 {
-		return fmt.Errorf("MakeSwap description length is greater than 1024 chars")
-	}
-
-	if p.FromStartTime == nil || p.FromEndTime == nil ||
-		len(p.FromStartTime) != len(p.FromEndTime) {
-		return fmt.Errorf("start and end time must be specified and must be same length")
-	}
-
-	ln = len(p.FromStartTime)
-	for i := 0; i < ln; i++ {
-		if p.FromStartTime[i] > p.FromEndTime[i] {
-			return fmt.Errorf("MakeMultiSwap FromStartTime > FromEndTime")
-		}
 		if p.ToStartTime[i] > p.ToEndTime[i] {
 			return fmt.Errorf("MakeMultiSwap ToStartTime > ToEndTime")
-		}
-		if p.FromEndTime[i] <= timestamp {
-			return fmt.Errorf("MakeMultiSwap FromEndTime <= latest blockTime")
 		}
 		if p.ToEndTime[i] <= timestamp {
 			return fmt.Errorf("MakeMultiSwap ToEndTime <= latest blockTime")
 		}
+	}
+
+	if len(p.Description) > 1024 {
+		return fmt.Errorf("MakeSwap description length is greater than 1024 chars")
 	}
 	return nil
 }
