@@ -860,6 +860,9 @@ func (p *SendAssetParam) Check(blockNumber *big.Int) error {
 	if p.To == (Address{}) {
 		return fmt.Errorf("receiver address must be set and not zero address")
 	}
+	if p.AssetID == (Hash{}) {
+		return fmt.Errorf("empty asset ID, 'asset' must be specified instead of AssetID.")
+	}
 	return nil
 }
 
