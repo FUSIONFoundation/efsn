@@ -416,6 +416,8 @@ func (args *TimeLockArgs) init() {
 	}
 }
 
+//--------------------------------------------- PublicFusionAPI -------------------------------------
+
 // PublicFusionAPI ss
 type PublicFusionAPI struct {
 	b Backend
@@ -786,593 +788,25 @@ func (s *PublicFusionAPI) AllSwapsByAddress(ctx context.Context, address common.
 	return nil, fmt.Errorf("AllSwapsByAddress has been depreciated please use api.fusionnetwork.io")
 }
 
-// PrivateFusionAPI ss
-type PrivateFusionAPI struct {
-	am        *accounts.Manager
-	nonceLock *AddrLocker
-	b         Backend
-	papi      *PrivateAccountAPI
+//--------------------------------------------- PublicFusionAPI buile send tx args-------------------------------------
+type FSNCallArgs interface {
+	toSendArgs() SendTxArgs
 }
 
-// store privateFusionAPI
-var privateFusionAPI = &PrivateFusionAPI{}
-
-func AutoBuyTicket(account common.Address, passwd string) {
-	fbase := FusionBaseArgs{From: account}
-	args := BuyTicketArgs{FusionBaseArgs: fbase}
-
-	for {
-		<-common.AutoBuyTicketChan
-	COMSUMEALL:
-		for {
-			select {
-			case <-common.AutoBuyTicketChan:
-			default:
-				break COMSUMEALL
-			}
-		}
-		privateFusionAPI.BuyTicket(nil, args, passwd)
-	}
-}
-
-// NewPrivateFusionAPI ss
-func NewPrivateFusionAPI(b Backend, nonceLock *AddrLocker, papi *PrivateAccountAPI) *PrivateFusionAPI {
-	privateFusionAPI = &PrivateFusionAPI{
-		am:        b.AccountManager(),
-		nonceLock: nonceLock,
-		b:         b,
-		papi:      papi,
-	}
-	return privateFusionAPI
-}
-
-// GenNotation ss
-func (s *PrivateFusionAPI) GenNotation(ctx context.Context, args FusionBaseArgs, passwd string) (common.Hash, error) {
-
-	state, _, err := s.b.StateAndHeaderByNumber(ctx, rpc.LatestBlockNumber)
-	if state == nil || err != nil {
-		return common.Hash{}, err
-	}
-
-	notation := state.GetNotation(args.From)
-
-	if notation != 0 {
-		return common.Hash{}, fmt.Errorf("An address can have only one notation, you already have a mapped notation:%d", notation)
-	}
-
-	var param = common.FSNCallParam{Func: common.GenNotationFunc}
+func FSNCallArgsToSendTxArgs(args FSNCallArgs, funcType common.FSNCallFunc, funcData []byte) (*SendTxArgs, error) {
+	var param = common.FSNCallParam{Func: funcType, Data: funcData}
 	data, err := param.ToBytes()
 	if err != nil {
-		return common.Hash{}, err
-	}
-	var argsData = hexutil.Bytes(data)
-	sendArgs := args.toSendArgs()
-	sendArgs.To = &common.FSNCallAddress
-	sendArgs.Data = &argsData
-	return s.papi.SendTransaction(ctx, sendArgs, passwd)
-}
-
-// GenAsset ss
-func (s *PrivateFusionAPI) GenAsset(ctx context.Context, args GenAssetArgs, passwd string) (common.Hash, error) {
-	if err := args.toParam().Check(common.BigMaxUint64); err != nil {
-		return common.Hash{}, err
-	}
-
-	funcData, err := args.toData()
-	if err != nil {
-		return common.Hash{}, err
-	}
-
-	var param = common.FSNCallParam{Func: common.GenAssetFunc, Data: funcData}
-	data, err := param.ToBytes()
-	if err != nil {
-		return common.Hash{}, err
-	}
-	var argsData = hexutil.Bytes(data)
-	sendArgs := args.toSendArgs()
-	sendArgs.To = &common.FSNCallAddress
-	sendArgs.Data = &argsData
-	return s.papi.SendTransaction(ctx, sendArgs, passwd)
-}
-
-// SendAsset ss
-func (s *PrivateFusionAPI) SendAsset(ctx context.Context, args SendAssetArgs, passwd string) (common.Hash, error) {
-	state, _, err := s.b.StateAndHeaderByNumber(ctx, rpc.LatestBlockNumber)
-	if state == nil || err != nil {
-		return common.Hash{}, err
-	}
-	if err := args.toParam().Check(common.BigMaxUint64); err != nil {
-		return common.Hash{}, err
-	}
-
-	if state.GetBalance(args.AssetID, args.From).Cmp(args.Value.ToInt()) < 0 {
-		return common.Hash{}, fmt.Errorf("not enough asset")
-	}
-
-	funcData, err := args.toData()
-	if err != nil {
-		return common.Hash{}, err
-	}
-	var param = common.FSNCallParam{Func: common.SendAssetFunc, Data: funcData}
-	data, err := param.ToBytes()
-	if err != nil {
-		return common.Hash{}, err
-	}
-	var argsData = hexutil.Bytes(data)
-	sendArgs := args.toSendArgs()
-	sendArgs.To = &common.FSNCallAddress
-	sendArgs.Data = &argsData
-	sendArgs.Value = (*hexutil.Big)(big.NewInt(0))
-	return s.papi.SendTransaction(ctx, sendArgs, passwd)
-}
-
-// AssetToTimeLock ss
-func (s *PrivateFusionAPI) AssetToTimeLock(ctx context.Context, args TimeLockArgs, passwd string) (common.Hash, error) {
-	state, header, err := s.b.StateAndHeaderByNumber(ctx, rpc.LatestBlockNumber)
-	if state == nil || err != nil {
-		return common.Hash{}, err
-	}
-	args.init()
-	if err := args.toParam(common.AssetToTimeLock).Check(common.BigMaxUint64, header.Time.Uint64()); err != nil {
-		return common.Hash{}, err
-	}
-	needValue := common.NewTimeLock(&common.TimeLockItem{
-		StartTime: common.MaxUint64(uint64(*args.StartTime), header.Time.Uint64()),
-		EndTime:   uint64(*args.EndTime),
-		Value:     args.Value.ToInt(),
-	})
-	if err := needValue.IsValid(); err != nil {
-		return common.Hash{}, fmt.Errorf("AssetToTimeLock err:%v", err.Error())
-	}
-	if state.GetBalance(args.AssetID, args.From).Cmp(args.Value.ToInt()) < 0 {
-		return common.Hash{}, fmt.Errorf("not enough asset")
-	}
-	funcData, err := args.toData(common.AssetToTimeLock)
-	if err != nil {
-		return common.Hash{}, err
-	}
-	var param = common.FSNCallParam{Func: common.TimeLockFunc, Data: funcData}
-	data, err := param.ToBytes()
-	if err != nil {
-		return common.Hash{}, err
-	}
-	var argsData = hexutil.Bytes(data)
-	sendArgs := args.toSendArgs()
-	sendArgs.To = &common.FSNCallAddress
-	sendArgs.Data = &argsData
-	return s.papi.SendTransaction(ctx, sendArgs, passwd)
-}
-
-// TimeLockToTimeLock ss
-func (s *PrivateFusionAPI) TimeLockToTimeLock(ctx context.Context, args TimeLockArgs, passwd string) (common.Hash, error) {
-	state, header, err := s.b.StateAndHeaderByNumber(ctx, rpc.LatestBlockNumber)
-	if state == nil || err != nil {
-		return common.Hash{}, err
-	}
-
-	args.init()
-	if err := args.toParam(common.TimeLockToTimeLock).Check(common.BigMaxUint64, header.Time.Uint64()); err != nil {
-		return common.Hash{}, err
-	}
-	needValue := common.NewTimeLock(&common.TimeLockItem{
-		StartTime: common.MaxUint64(uint64(*args.StartTime), header.Time.Uint64()),
-		EndTime:   uint64(*args.EndTime),
-		Value:     args.Value.ToInt(),
-	})
-	if err := needValue.IsValid(); err != nil {
-		return common.Hash{}, fmt.Errorf("TimeLockToTimeLock err:%v", err.Error())
-	}
-
-	if state.GetTimeLockBalance(args.AssetID, args.From).Cmp(needValue) < 0 {
-		return common.Hash{}, fmt.Errorf("not enough time lock balance")
-	}
-
-	funcData, err := args.toData(common.TimeLockToTimeLock)
-	if err != nil {
-		return common.Hash{}, err
-	}
-	var param = common.FSNCallParam{Func: common.TimeLockFunc, Data: funcData}
-	data, err := param.ToBytes()
-	if err != nil {
-		return common.Hash{}, err
-	}
-	var argsData = hexutil.Bytes(data)
-	sendArgs := args.toSendArgs()
-	sendArgs.To = &common.FSNCallAddress
-	sendArgs.Data = &argsData
-	return s.papi.SendTransaction(ctx, sendArgs, passwd)
-}
-
-// TimeLockToAsset ss
-func (s *PrivateFusionAPI) TimeLockToAsset(ctx context.Context, args TimeLockArgs, passwd string) (common.Hash, error) {
-	state, header, err := s.b.StateAndHeaderByNumber(ctx, rpc.LatestBlockNumber)
-	if state == nil || err != nil {
-		return common.Hash{}, err
-	}
-	args.init()
-	*(*uint64)(args.StartTime) = header.Time.Uint64()
-	*(*uint64)(args.EndTime) = common.TimeLockForever
-	if err := args.toParam(common.TimeLockToAsset).Check(common.BigMaxUint64, header.Time.Uint64()); err != nil {
-		return common.Hash{}, err
-	}
-	needValue := common.NewTimeLock(&common.TimeLockItem{
-		StartTime: uint64(*args.StartTime),
-		EndTime:   uint64(*args.EndTime),
-		Value:     args.Value.ToInt(),
-	})
-	if err := needValue.IsValid(); err != nil {
-		return common.Hash{}, fmt.Errorf("TimeLockToAsset err:%v", err.Error())
-	}
-	if state.GetTimeLockBalance(args.AssetID, args.From).Cmp(needValue) < 0 {
-		return common.Hash{}, fmt.Errorf("not enough time lock balance")
-	}
-	funcData, err := args.toData(common.TimeLockToAsset)
-	if err != nil {
-		return common.Hash{}, err
-	}
-	var param = common.FSNCallParam{Func: common.TimeLockFunc, Data: funcData}
-	data, err := param.ToBytes()
-	if err != nil {
-		return common.Hash{}, err
-	}
-	var argsData = hexutil.Bytes(data)
-	sendArgs := args.toSendArgs()
-	sendArgs.To = &common.FSNCallAddress
-	sendArgs.Data = &argsData
-	return s.papi.SendTransaction(ctx, sendArgs, passwd)
-}
-
-/** on our public gateways too many buyTickets are past through
-this cache of purchase on block will stop multiple purchase
-attempt on a block (which state_transistion also flags).
-the goals is to limit the number of buytickets being processed
-if it is know that they will fail anyway
-*/
-func doesTicketPurchaseExistsForBlock(blockNbr int64, from common.Address) bool {
-	buyTicketOnBlockMapMutex.Lock()
-	defer buyTicketOnBlockMapMutex.Unlock()
-	if lastBlockOfBuyTickets == 0 || lastBlockOfBuyTickets != blockNbr {
-		lastBlockOfBuyTickets = blockNbr
-		buyTicketOnBlockMap = make(map[common.Address]bool)
-	}
-	_, found := buyTicketOnBlockMap[from]
-	return found
-}
-
-// only record on purchase ticket successfully
-func addTicketPurchaseForBlock(from common.Address) {
-	buyTicketOnBlockMapMutex.Lock()
-	defer buyTicketOnBlockMapMutex.Unlock()
-	buyTicketOnBlockMap[from] = true
-}
-
-// BuyTicket ss
-func (s *PrivateFusionAPI) BuyTicket(ctx context.Context, args BuyTicketArgs, passwd string) (common.Hash, error) {
-	state, header, err := s.b.StateAndHeaderByNumber(ctx, rpc.LatestBlockNumber)
-	if state == nil || err != nil {
-		return common.Hash{}, err
-	}
-
-	if doesTicketPurchaseExistsForBlock(header.Number.Int64(), args.From) {
-		log.Info("Purchase of BuyTicket for this block already submitted")
-		return common.Hash{}, fmt.Errorf("Purchase of BuyTicket for this block already submitted")
-	}
-
-	args.init(header.Time.Uint64())
-	now := uint64(time.Now().Unix())
-	if err := args.toParam().Check(common.BigMaxUint64, now, 600); err != nil {
-		return common.Hash{}, err
-	}
-
-	start := uint64(*args.Start)
-	end := uint64(*args.End)
-	value := common.TicketPrice(header.Number)
-	needValue := common.NewTimeLock(&common.TimeLockItem{
-		StartTime: common.MaxUint64(start, header.Time.Uint64()),
-		EndTime:   end,
-		Value:     value,
-	})
-	if err := needValue.IsValid(); err != nil {
-		return common.Hash{}, fmt.Errorf("BuyTicket err:%v", err.Error())
-	}
-	if state.GetTimeLockBalance(common.SystemAssetID, args.From).Cmp(needValue) < 0 {
-		if state.GetBalance(common.SystemAssetID, args.From).Cmp(value) < 0 {
-			return common.Hash{}, fmt.Errorf("not enough time lock or asset balance")
-		}
-	}
-	data, err := args.toData()
-	if err != nil {
-		return common.Hash{}, err
-	}
-	var param = common.FSNCallParam{Func: common.BuyTicketFunc, Data: data}
-	data, err = param.ToBytes()
-	if err != nil {
-		return common.Hash{}, err
-	}
-	var argsData = hexutil.Bytes(data)
-	sendArgs := args.toSendArgs()
-	sendArgs.To = &common.FSNCallAddress
-	sendArgs.Data = &argsData
-	hash, err := s.papi.SendTransaction(ctx, sendArgs, passwd)
-	if err != nil {
-		return common.Hash{}, err
-	}
-	addTicketPurchaseForBlock(args.From)
-	return hash, err
-}
-
-// IncAsset ss
-func (s *PrivateFusionAPI) IncAsset(ctx context.Context, args AssetValueChangeExArgs, passwd string) (common.Hash, error) {
-	args.IsInc = true
-	return s.checkAssetValueChange(ctx, args, passwd)
-}
-
-// DecAsset ss
-func (s *PrivateFusionAPI) DecAsset(ctx context.Context, args AssetValueChangeExArgs, passwd string) (common.Hash, error) {
-	args.IsInc = false
-	return s.checkAssetValueChange(ctx, args, passwd)
-}
-
-func (s *PrivateFusionAPI) checkAssetValueChange(ctx context.Context, args AssetValueChangeExArgs, passwd string) (common.Hash, error) {
-	state, _, err := s.b.StateAndHeaderByNumber(ctx, rpc.LatestBlockNumber)
-	if state == nil || err != nil {
-		return common.Hash{}, err
-	}
-
-	if err := args.toParam().Check(common.BigMaxUint64); err != nil {
-		return common.Hash{}, err
-	}
-
-	asset, assetError := state.GetAsset(args.AssetID)
-	if assetError != nil {
-		return common.Hash{}, fmt.Errorf("asset not found")
-	}
-
-	if !asset.CanChange {
-		return common.Hash{}, fmt.Errorf("asset can't inc or dec")
-	}
-
-	if asset.Owner != args.From {
-		return common.Hash{}, fmt.Errorf("can only be changed by onwer")
-	}
-
-	if asset.Owner != args.To && !args.IsInc {
-		return common.Hash{}, fmt.Errorf("decrement can only happen to asset's own account")
-	}
-
-	currentBalance := state.GetBalance(args.AssetID, args.To)
-	val := args.Value.ToInt()
-	if !args.IsInc {
-		if currentBalance.Cmp(val) < 0 {
-			return common.Hash{}, fmt.Errorf("not enough asset")
-		}
-	}
-
-	funcData, err := args.toData()
-	if err != nil {
-		return common.Hash{}, err
-	}
-	var param = common.FSNCallParam{Func: common.AssetValueChangeFunc, Data: funcData}
-	data, err := param.ToBytes()
-	if err != nil {
-		return common.Hash{}, err
-	}
-	var argsData = hexutil.Bytes(data)
-	sendArgs := args.toSendArgs()
-	sendArgs.To = &common.FSNCallAddress
-	sendArgs.Data = &argsData
-	return s.papi.SendTransaction(ctx, sendArgs, passwd)
-}
-
-// MakeSwap ss
-func (s *PrivateFusionAPI) MakeSwap(ctx context.Context, args MakeSwapArgs, passwd string) (common.Hash, error) {
-	state, header, err := s.b.StateAndHeaderByNumber(ctx, rpc.LatestBlockNumber)
-	if state == nil || err != nil {
-		return common.Hash{}, err
-	}
-
-	args.init()
-	now := uint64(time.Now().Unix())
-	if err := args.toParam(header.Time).Check(common.BigMaxUint64, now); err != nil {
-		return common.Hash{}, err
-	}
-
-	total := new(big.Int).Mul(args.MinFromAmount.ToInt(), args.SwapSize)
-	start := uint64(*args.FromStartTime)
-	end := uint64(*args.FromEndTime)
-
-	if args.FromAssetID == common.OwnerUSANAssetID {
-		notation := state.GetNotation(args.From)
-		if notation == 0 {
-			return common.Hash{}, fmt.Errorf("from address does not have a notation")
-		}
-	} else if start == common.TimeLockNow && end == common.TimeLockForever {
-		if state.GetBalance(args.FromAssetID, args.From).Cmp(total) < 0 {
-			return common.Hash{}, fmt.Errorf("not enough from asset")
-		}
-	} else {
-		needValue := common.NewTimeLock(&common.TimeLockItem{
-			StartTime: common.MaxUint64(start, header.Time.Uint64()),
-			EndTime:   end,
-			Value:     total,
-		})
-		if err := needValue.IsValid(); err != nil {
-			return common.Hash{}, fmt.Errorf("MakeSwap from err:%v", err.Error())
-		}
-		if state.GetTimeLockBalance(args.FromAssetID, args.From).Cmp(needValue) < 0 {
-			if state.GetBalance(args.FromAssetID, args.From).Cmp(total) < 0 {
-				return common.Hash{}, fmt.Errorf("not enough time lock or asset balance")
-			}
-		}
-	}
-
-	funcData, err := args.toData(header.Time)
-	if err != nil {
-		return common.Hash{}, err
-	}
-	var param = common.FSNCallParam{Func: common.MakeSwapFuncExt, Data: funcData}
-	data, err := param.ToBytes()
-	if err != nil {
-		return common.Hash{}, err
-	}
-	var argsData = hexutil.Bytes(data)
-	sendArgs := args.toSendArgs()
-	sendArgs.To = &common.FSNCallAddress
-	sendArgs.Data = &argsData
-	return s.papi.SendTransaction(ctx, sendArgs, passwd)
-}
-
-// RecallSwap ss
-func (s *PrivateFusionAPI) RecallSwap(ctx context.Context, args RecallSwapArgs, passwd string) (common.Hash, error) {
-	state, _, err := s.b.StateAndHeaderByNumber(ctx, rpc.LatestBlockNumber)
-	if state == nil || err != nil {
-		return common.Hash{}, err
-	}
-	var swap common.Swap
-	swap, err = state.GetSwap(args.SwapID)
-	if err != nil {
-		return common.Hash{}, err
-	}
-	if err := args.toParam().Check(common.BigMaxUint64, &swap); err != nil {
-		return common.Hash{}, err
-	}
-
-	if swap.Owner != args.From {
-		return common.Hash{}, fmt.Errorf("Must be swap owner can recall")
-	}
-
-	funcData, err := args.toData()
-	if err != nil {
-		return common.Hash{}, err
-	}
-	var param = common.FSNCallParam{Func: common.RecallSwapFunc, Data: funcData}
-	data, err := param.ToBytes()
-	if err != nil {
-		return common.Hash{}, err
-	}
-	var argsData = hexutil.Bytes(data)
-	sendArgs := args.toSendArgs()
-	sendArgs.To = &common.FSNCallAddress
-	sendArgs.Data = &argsData
-	return s.papi.SendTransaction(ctx, sendArgs, passwd)
-}
-
-// TakeSwap ss
-func (s *PrivateFusionAPI) TakeSwap(ctx context.Context, args TakeSwapArgs, passwd string) (common.Hash, error) {
-	state, _, err := s.b.StateAndHeaderByNumber(ctx, rpc.LatestBlockNumber)
-	if state == nil || err != nil {
-		return common.Hash{}, err
-	}
-
-	swap, err := state.GetSwap(args.SwapID)
-	if err != nil {
-		return common.Hash{}, err
-	}
-
-	now := uint64(time.Now().Unix())
-	if err := args.toParam().Check(common.BigMaxUint64, &swap, now); err != nil {
-		return common.Hash{}, err
-	}
-
-	total := new(big.Int).Mul(swap.MinToAmount, args.Size)
-
-	start := swap.ToStartTime
-	end := swap.ToEndTime
-
-	if start == common.TimeLockNow && end == common.TimeLockForever {
-		if state.GetBalance(swap.ToAssetID, args.From).Cmp(total) < 0 {
-			return common.Hash{}, fmt.Errorf("not enough from asset")
-		}
-	} else {
-		needValue := common.NewTimeLock(&common.TimeLockItem{
-			StartTime: start,
-			EndTime:   end,
-			Value:     total,
-		})
-		if err := needValue.IsValid(); err != nil {
-			return common.Hash{}, fmt.Errorf("TakeSwap to err:%v", err.Error())
-		}
-		if state.GetTimeLockBalance(swap.ToAssetID, args.From).Cmp(needValue) < 0 {
-			if state.GetBalance(swap.ToAssetID, args.From).Cmp(total) < 0 {
-				return common.Hash{}, fmt.Errorf("not enough time lock or asset balance")
-			}
-		}
-	}
-
-	funcData, err := args.toData()
-	if err != nil {
-		return common.Hash{}, err
-	}
-	var param = common.FSNCallParam{Func: common.TakeSwapFuncExt, Data: funcData}
-	data, err := param.ToBytes()
-	if err != nil {
-		return common.Hash{}, err
-	}
-	var argsData = hexutil.Bytes(data)
-	sendArgs := args.toSendArgs()
-	sendArgs.To = &common.FSNCallAddress
-	sendArgs.Data = &argsData
-	return s.papi.SendTransaction(ctx, sendArgs, passwd)
-}
-
-// FusionTransactionAPI ss
-type FusionTransactionAPI struct {
-	am        *accounts.Manager
-	nonceLock *AddrLocker
-	b         Backend
-	txapi     *PublicTransactionPoolAPI
-}
-
-// NewFusionTransactionAPI ss
-func NewFusionTransactionAPI(b Backend, nonceLock *AddrLocker, txapi *PublicTransactionPoolAPI) *FusionTransactionAPI {
-	return &FusionTransactionAPI{
-		am:        b.AccountManager(),
-		nonceLock: nonceLock,
-		b:         b,
-		txapi:     txapi,
-	}
-}
-
-func (s *FusionTransactionAPI) buildTransaction(ctx context.Context, args SendTxArgs) (*types.Transaction, error) {
-	if args.Nonce == nil {
-		s.nonceLock.LockAddr(args.From)
-		defer s.nonceLock.UnlockAddr(args.From)
-	}
-	if err := args.setDefaults(ctx, s.b); err != nil {
 		return nil, err
 	}
-	tx := args.toTransaction()
-	return tx, nil
+	var argsData = hexutil.Bytes(data)
+	sendArgs := args.toSendArgs()
+	sendArgs.To = &common.FSNCallAddress
+	sendArgs.Data = &argsData
+	return &sendArgs, nil
 }
 
-func (s *FusionTransactionAPI) sendTransaction(ctx context.Context, from common.Address, tx *types.Transaction) (common.Hash, error) {
-	account := accounts.Account{Address: from}
-	wallet, err := s.b.AccountManager().Find(account)
-	if err != nil {
-		return common.Hash{}, err
-	}
-	var chainID *big.Int
-	if config := s.b.ChainConfig(); config.IsEIP155(s.b.CurrentBlock().Number()) {
-		chainID = config.ChainID
-	}
-	signed, err := wallet.SignTx(account, tx, chainID)
-	if err != nil {
-		return common.Hash{}, err
-	}
-	return s.SendRawTransaction(ctx, signed)
-}
-
-// SendRawTransaction wacom
-func (s *FusionTransactionAPI) SendRawTransaction(ctx context.Context, tx *types.Transaction) (common.Hash, error) {
-	encodedTx, err := rlp.EncodeToBytes(tx)
-	if err != nil {
-		return common.Hash{}, err
-	}
-	return s.txapi.SendRawTransaction(ctx, encodedTx)
-}
-
-// BuildGenNotationTx ss
-func (s *FusionTransactionAPI) BuildGenNotationTx(ctx context.Context, args FusionBaseArgs) (*types.Transaction, error) {
+func (s *PublicFusionAPI) BuildGenNotationSendTxArgs(ctx context.Context, args FusionBaseArgs) (*SendTxArgs, error) {
 	state, _, err := s.b.StateAndHeaderByNumber(ctx, rpc.LatestBlockNumber)
 	if state == nil || err != nil {
 		return nil, err
@@ -1381,30 +815,11 @@ func (s *FusionTransactionAPI) BuildGenNotationTx(ctx context.Context, args Fusi
 	if notation != 0 {
 		return nil, fmt.Errorf("An address can have only one notation, you already have a mapped notation:%d", notation)
 	}
-	var param = common.FSNCallParam{Func: common.GenNotationFunc}
-	data, err := param.ToBytes()
-	if err != nil {
-		return nil, err
-	}
-	var argsData = hexutil.Bytes(data)
-	sendArgs := args.toSendArgs()
-	sendArgs.To = &common.FSNCallAddress
-	sendArgs.Data = &argsData
-	return s.buildTransaction(ctx, sendArgs)
+
+	return FSNCallArgsToSendTxArgs(&args, common.GenNotationFunc, nil)
 }
 
-// GenNotation ss
-func (s *FusionTransactionAPI) GenNotation(ctx context.Context, args FusionBaseArgs) (common.Hash, error) {
-
-	tx, err := s.BuildGenNotationTx(ctx, args)
-	if err != nil {
-		return common.Hash{}, err
-	}
-	return s.sendTransaction(ctx, args.From, tx)
-}
-
-// BuildGenAssetTx ss
-func (s *FusionTransactionAPI) BuildGenAssetTx(ctx context.Context, args GenAssetArgs) (*types.Transaction, error) {
+func (s *PublicFusionAPI) BuildGenAssetSendTxArgs(ctx context.Context, args GenAssetArgs) (*SendTxArgs, error) {
 	if err := args.toParam().Check(common.BigMaxUint64); err != nil {
 		return nil, err
 	}
@@ -1413,30 +828,10 @@ func (s *FusionTransactionAPI) BuildGenAssetTx(ctx context.Context, args GenAsse
 	if err != nil {
 		return nil, err
 	}
-
-	var param = common.FSNCallParam{Func: common.GenAssetFunc, Data: funcData}
-	data, err := param.ToBytes()
-	if err != nil {
-		return nil, err
-	}
-	var argsData = hexutil.Bytes(data)
-	sendArgs := args.toSendArgs()
-	sendArgs.To = &common.FSNCallAddress
-	sendArgs.Data = &argsData
-	return s.buildTransaction(ctx, sendArgs)
+	return FSNCallArgsToSendTxArgs(&args, common.GenAssetFunc, funcData)
 }
 
-// GenAsset ss
-func (s *FusionTransactionAPI) GenAsset(ctx context.Context, args GenAssetArgs) (common.Hash, error) {
-	tx, err := s.BuildGenAssetTx(ctx, args)
-	if err != nil {
-		return common.Hash{}, err
-	}
-	return s.sendTransaction(ctx, args.From, tx)
-}
-
-// BuildSendAssetTx ss
-func (s *FusionTransactionAPI) BuildSendAssetTx(ctx context.Context, args SendAssetArgs) (*types.Transaction, error) {
+func (s *PublicFusionAPI) BuildSendAssetSendTxArgs(ctx context.Context, args SendAssetArgs) (*SendTxArgs, error) {
 	state, _, err := s.b.StateAndHeaderByNumber(ctx, rpc.LatestBlockNumber)
 	if state == nil || err != nil {
 		return nil, err
@@ -1453,30 +848,10 @@ func (s *FusionTransactionAPI) BuildSendAssetTx(ctx context.Context, args SendAs
 	if err != nil {
 		return nil, err
 	}
-	var param = common.FSNCallParam{Func: common.SendAssetFunc, Data: funcData}
-	data, err := param.ToBytes()
-	if err != nil {
-		return nil, err
-	}
-	var argsData = hexutil.Bytes(data)
-	sendArgs := args.toSendArgs()
-	sendArgs.To = &common.FSNCallAddress
-	sendArgs.Data = &argsData
-	sendArgs.Value = (*hexutil.Big)(big.NewInt(0))
-	return s.buildTransaction(ctx, sendArgs)
+	return FSNCallArgsToSendTxArgs(&args, common.SendAssetFunc, funcData)
 }
 
-// SendAsset ss
-func (s *FusionTransactionAPI) SendAsset(ctx context.Context, args SendAssetArgs) (common.Hash, error) {
-	tx, err := s.BuildSendAssetTx(ctx, args)
-	if err != nil {
-		return common.Hash{}, err
-	}
-	return s.sendTransaction(ctx, args.From, tx)
-}
-
-// BuildAssetToTimeLockTx ss
-func (s *FusionTransactionAPI) BuildAssetToTimeLockTx(ctx context.Context, args TimeLockArgs) (*types.Transaction, error) {
+func (s *PublicFusionAPI) BuildAssetToTimeLockSendTxArgs(ctx context.Context, args TimeLockArgs) (*SendTxArgs, error) {
 	state, header, err := s.b.StateAndHeaderByNumber(ctx, rpc.LatestBlockNumber)
 	if state == nil || err != nil {
 		return nil, err
@@ -1496,33 +871,15 @@ func (s *FusionTransactionAPI) BuildAssetToTimeLockTx(ctx context.Context, args 
 	if state.GetBalance(args.AssetID, args.From).Cmp(args.Value.ToInt()) < 0 {
 		return nil, fmt.Errorf("not enough asset")
 	}
+
 	funcData, err := args.toData(common.AssetToTimeLock)
 	if err != nil {
 		return nil, err
 	}
-	var param = common.FSNCallParam{Func: common.TimeLockFunc, Data: funcData}
-	data, err := param.ToBytes()
-	if err != nil {
-		return nil, err
-	}
-	var argsData = hexutil.Bytes(data)
-	sendArgs := args.toSendArgs()
-	sendArgs.To = &common.FSNCallAddress
-	sendArgs.Data = &argsData
-	return s.buildTransaction(ctx, sendArgs)
+	return FSNCallArgsToSendTxArgs(&args, common.TimeLockFunc, funcData)
 }
 
-// AssetToTimeLock ss
-func (s *FusionTransactionAPI) AssetToTimeLock(ctx context.Context, args TimeLockArgs) (common.Hash, error) {
-	tx, err := s.BuildAssetToTimeLockTx(ctx, args)
-	if err != nil {
-		return common.Hash{}, err
-	}
-	return s.sendTransaction(ctx, args.From, tx)
-}
-
-// BuildTimeLockToTimeLockTx ss
-func (s *FusionTransactionAPI) BuildTimeLockToTimeLockTx(ctx context.Context, args TimeLockArgs) (*types.Transaction, error) {
+func (s *PublicFusionAPI) BuildTimeLockToTimeLockSendTxArgs(ctx context.Context, args TimeLockArgs) (*SendTxArgs, error) {
 	state, header, err := s.b.StateAndHeaderByNumber(ctx, rpc.LatestBlockNumber)
 	if state == nil || err != nil {
 		return nil, err
@@ -1548,29 +905,10 @@ func (s *FusionTransactionAPI) BuildTimeLockToTimeLockTx(ctx context.Context, ar
 	if err != nil {
 		return nil, err
 	}
-	var param = common.FSNCallParam{Func: common.TimeLockFunc, Data: funcData}
-	data, err := param.ToBytes()
-	if err != nil {
-		return nil, err
-	}
-	var argsData = hexutil.Bytes(data)
-	sendArgs := args.toSendArgs()
-	sendArgs.To = &common.FSNCallAddress
-	sendArgs.Data = &argsData
-	return s.buildTransaction(ctx, sendArgs)
+	return FSNCallArgsToSendTxArgs(&args, common.TimeLockFunc, funcData)
 }
 
-// TimeLockToTimeLock ss
-func (s *FusionTransactionAPI) TimeLockToTimeLock(ctx context.Context, args TimeLockArgs) (common.Hash, error) {
-	tx, err := s.BuildTimeLockToTimeLockTx(ctx, args)
-	if err != nil {
-		return common.Hash{}, err
-	}
-	return s.sendTransaction(ctx, args.From, tx)
-}
-
-// BuildTimeLockToAssetTx ss
-func (s *FusionTransactionAPI) BuildTimeLockToAssetTx(ctx context.Context, args TimeLockArgs) (*types.Transaction, error) {
+func (s *PublicFusionAPI) BuildTimeLockToAssetSendTxArgs(ctx context.Context, args TimeLockArgs) (*SendTxArgs, error) {
 	state, header, err := s.b.StateAndHeaderByNumber(ctx, rpc.LatestBlockNumber)
 	if state == nil || err != nil {
 		return nil, err
@@ -1592,33 +930,15 @@ func (s *FusionTransactionAPI) BuildTimeLockToAssetTx(ctx context.Context, args 
 	if state.GetTimeLockBalance(args.AssetID, args.From).Cmp(needValue) < 0 {
 		return nil, fmt.Errorf("not enough time lock balance")
 	}
+
 	funcData, err := args.toData(common.TimeLockToAsset)
 	if err != nil {
 		return nil, err
 	}
-	var param = common.FSNCallParam{Func: common.TimeLockFunc, Data: funcData}
-	data, err := param.ToBytes()
-	if err != nil {
-		return nil, err
-	}
-	var argsData = hexutil.Bytes(data)
-	sendArgs := args.toSendArgs()
-	sendArgs.To = &common.FSNCallAddress
-	sendArgs.Data = &argsData
-	return s.buildTransaction(ctx, sendArgs)
+	return FSNCallArgsToSendTxArgs(&args, common.TimeLockFunc, funcData)
 }
 
-// TimeLockToAsset ss
-func (s *FusionTransactionAPI) TimeLockToAsset(ctx context.Context, args TimeLockArgs) (common.Hash, error) {
-	tx, err := s.BuildTimeLockToAssetTx(ctx, args)
-	if err != nil {
-		return common.Hash{}, err
-	}
-	return s.sendTransaction(ctx, args.From, tx)
-}
-
-// BuildBuyTicketTx ss
-func (s *FusionTransactionAPI) BuildBuyTicketTx(ctx context.Context, args BuyTicketArgs) (*types.Transaction, error) {
+func (s *PublicFusionAPI) BuildBuyTicketSendTxArgs(ctx context.Context, args BuyTicketArgs) (*SendTxArgs, error) {
 	state, header, err := s.b.StateAndHeaderByNumber(ctx, rpc.LatestBlockNumber)
 	if state == nil || err != nil {
 		return nil, err
@@ -1651,37 +971,15 @@ func (s *FusionTransactionAPI) BuildBuyTicketTx(ctx context.Context, args BuyTic
 			return nil, fmt.Errorf("not enough time lock or asset balance")
 		}
 	}
-	data, err := args.toData()
+
+	funcData, err := args.toData()
 	if err != nil {
 		return nil, err
 	}
-	var param = common.FSNCallParam{Func: common.BuyTicketFunc, Data: data}
-	data, err = param.ToBytes()
-	if err != nil {
-		return nil, err
-	}
-	var argsData = hexutil.Bytes(data)
-	sendArgs := args.toSendArgs()
-	sendArgs.To = &common.FSNCallAddress
-	sendArgs.Data = &argsData
-	return s.buildTransaction(ctx, sendArgs)
+	return FSNCallArgsToSendTxArgs(&args, common.BuyTicketFunc, funcData)
 }
 
-// BuyTicket ss
-func (s *FusionTransactionAPI) BuyTicket(ctx context.Context, args BuyTicketArgs) (common.Hash, error) {
-	tx, err := s.BuildBuyTicketTx(ctx, args)
-	if err != nil {
-		return common.Hash{}, err
-	}
-	hash, err := s.sendTransaction(ctx, args.From, tx)
-	if err != nil {
-		return common.Hash{}, err
-	}
-	addTicketPurchaseForBlock(args.From)
-	return hash, err
-}
-
-func (s *FusionTransactionAPI) buildAssetValueChangeTx(ctx context.Context, args AssetValueChangeExArgs) (*types.Transaction, error) {
+func (s *PublicFusionAPI) BuildAssetValueChangeSendTxArgs(ctx context.Context, args AssetValueChangeExArgs) (*SendTxArgs, error) {
 	state, _, err := s.b.StateAndHeaderByNumber(ctx, rpc.LatestBlockNumber)
 	if state == nil || err != nil {
 		return nil, err
@@ -1720,50 +1018,10 @@ func (s *FusionTransactionAPI) buildAssetValueChangeTx(ctx context.Context, args
 	if err != nil {
 		return nil, err
 	}
-	var param = common.FSNCallParam{Func: common.AssetValueChangeFunc, Data: funcData}
-	data, err := param.ToBytes()
-	if err != nil {
-		return nil, err
-	}
-	var argsData = hexutil.Bytes(data)
-	sendArgs := args.toSendArgs()
-	sendArgs.To = &common.FSNCallAddress
-	sendArgs.Data = &argsData
-	return s.buildTransaction(ctx, sendArgs)
+	return FSNCallArgsToSendTxArgs(&args, common.AssetValueChangeFunc, funcData)
 }
 
-// BuildIncAssetTx ss
-func (s *FusionTransactionAPI) BuildIncAssetTx(ctx context.Context, args AssetValueChangeExArgs) (*types.Transaction, error) {
-	args.IsInc = true
-	return s.buildAssetValueChangeTx(ctx, args)
-}
-
-// IncAsset ss
-func (s *FusionTransactionAPI) IncAsset(ctx context.Context, args AssetValueChangeExArgs) (common.Hash, error) {
-	tx, err := s.BuildIncAssetTx(ctx, args)
-	if err != nil {
-		return common.Hash{}, err
-	}
-	return s.sendTransaction(ctx, args.From, tx)
-}
-
-// BuildDecAssetTx ss
-func (s *FusionTransactionAPI) BuildDecAssetTx(ctx context.Context, args AssetValueChangeExArgs) (*types.Transaction, error) {
-	args.IsInc = false
-	return s.buildAssetValueChangeTx(ctx, args)
-}
-
-// DecAsset ss
-func (s *FusionTransactionAPI) DecAsset(ctx context.Context, args AssetValueChangeExArgs) (common.Hash, error) {
-	tx, err := s.BuildDecAssetTx(ctx, args)
-	if err != nil {
-		return common.Hash{}, err
-	}
-	return s.sendTransaction(ctx, args.From, tx)
-}
-
-// BuildMakeSwapTx ss
-func (s *FusionTransactionAPI) BuildMakeSwapTx(ctx context.Context, args MakeSwapArgs) (*types.Transaction, error) {
+func (s *PublicFusionAPI) BuildMakeSwapSendTxArgs(ctx context.Context, args MakeSwapArgs) (*SendTxArgs, error) {
 	state, header, err := s.b.StateAndHeaderByNumber(ctx, rpc.LatestBlockNumber)
 	if state == nil || err != nil {
 		return nil, err
@@ -1808,29 +1066,10 @@ func (s *FusionTransactionAPI) BuildMakeSwapTx(ctx context.Context, args MakeSwa
 	if err != nil {
 		return nil, err
 	}
-	var param = common.FSNCallParam{Func: common.MakeSwapFuncExt, Data: funcData}
-	data, err := param.ToBytes()
-	if err != nil {
-		return nil, err
-	}
-	var argsData = hexutil.Bytes(data)
-	sendArgs := args.toSendArgs()
-	sendArgs.To = &common.FSNCallAddress
-	sendArgs.Data = &argsData
-	return s.buildTransaction(ctx, sendArgs)
+	return FSNCallArgsToSendTxArgs(&args, common.MakeSwapFuncExt, funcData)
 }
 
-// MakeSwap ss
-func (s *FusionTransactionAPI) MakeSwap(ctx context.Context, args MakeSwapArgs) (common.Hash, error) {
-	tx, err := s.BuildMakeSwapTx(ctx, args)
-	if err != nil {
-		return common.Hash{}, err
-	}
-	return s.sendTransaction(ctx, args.From, tx)
-}
-
-// BuildRecallSwapTx ss
-func (s *FusionTransactionAPI) BuildRecallSwapTx(ctx context.Context, args RecallSwapArgs) (*types.Transaction, error) {
+func (s *PublicFusionAPI) BuildRecallSwapSendTxArgs(ctx context.Context, args RecallSwapArgs) (*SendTxArgs, error) {
 	state, _, err := s.b.StateAndHeaderByNumber(ctx, rpc.LatestBlockNumber)
 	if state == nil || err != nil {
 		return nil, err
@@ -1854,29 +1093,10 @@ func (s *FusionTransactionAPI) BuildRecallSwapTx(ctx context.Context, args Recal
 	if err != nil {
 		return nil, err
 	}
-	var param = common.FSNCallParam{Func: common.RecallSwapFunc, Data: funcData}
-	data, err := param.ToBytes()
-	if err != nil {
-		return nil, err
-	}
-	var argsData = hexutil.Bytes(data)
-	sendArgs := args.toSendArgs()
-	sendArgs.To = &common.FSNCallAddress
-	sendArgs.Data = &argsData
-	return s.buildTransaction(ctx, sendArgs)
+	return FSNCallArgsToSendTxArgs(&args, common.RecallSwapFunc, funcData)
 }
 
-// RecallSwap ss
-func (s *FusionTransactionAPI) RecallSwap(ctx context.Context, args RecallSwapArgs) (common.Hash, error) {
-	tx, err := s.BuildRecallSwapTx(ctx, args)
-	if err != nil {
-		return common.Hash{}, err
-	}
-	return s.sendTransaction(ctx, args.From, tx)
-}
-
-// BuildTakeSwapTx ss
-func (s *FusionTransactionAPI) BuildTakeSwapTx(ctx context.Context, args TakeSwapArgs) (*types.Transaction, error) {
+func (s *PublicFusionAPI) BuildTakeSwapSendTxArgs(ctx context.Context, args TakeSwapArgs) (*SendTxArgs, error) {
 	state, _, err := s.b.StateAndHeaderByNumber(ctx, rpc.LatestBlockNumber)
 	if state == nil || err != nil {
 		return nil, err
@@ -1915,42 +1135,15 @@ func (s *FusionTransactionAPI) BuildTakeSwapTx(ctx context.Context, args TakeSwa
 			}
 		}
 	}
+
 	funcData, err := args.toData()
 	if err != nil {
 		return nil, err
 	}
-	var param = common.FSNCallParam{Func: common.TakeSwapFuncExt, Data: funcData}
-	data, err := param.ToBytes()
-	if err != nil {
-		return nil, err
-	}
-	var argsData = hexutil.Bytes(data)
-	sendArgs := args.toSendArgs()
-	sendArgs.To = &common.FSNCallAddress
-	sendArgs.Data = &argsData
-	return s.buildTransaction(ctx, sendArgs)
+	return FSNCallArgsToSendTxArgs(&args, common.TakeSwapFuncExt, funcData)
 }
 
-// TakeSwap ss
-func (s *FusionTransactionAPI) TakeSwap(ctx context.Context, args TakeSwapArgs) (common.Hash, error) {
-	tx, err := s.BuildTakeSwapTx(ctx, args)
-	if err != nil {
-		return common.Hash{}, err
-	}
-	return s.sendTransaction(ctx, args.From, tx)
-}
-
-// MakeMultiSwap wacom
-func (s *FusionTransactionAPI) MakeMultiSwap(ctx context.Context, args MakeMultiSwapArgs) ( common.Hash, error) {
-	tx, err := s.BuildMakeMultiSwapTx(ctx, args)
-	if err != nil {
-		return common.Hash{}, err
-	}
-	return s.sendTransaction(ctx, args.From, tx)
-}
-
-// BuildMakeMultiSwapTx ss
-func (s *FusionTransactionAPI) BuildMakeMultiSwapTx(ctx context.Context, args MakeMultiSwapArgs) (*types.Transaction, error) {
+func (s *PublicFusionAPI) BuildMakeMultiSwapSendTxArgs(ctx context.Context, args MakeMultiSwapArgs) (*SendTxArgs, error) {
 	state, header, err := s.b.StateAndHeaderByNumber(ctx, rpc.LatestBlockNumber)
 	if state == nil || err != nil {
 		return nil, err
@@ -1995,29 +1188,10 @@ func (s *FusionTransactionAPI) BuildMakeMultiSwapTx(ctx context.Context, args Ma
 	if err != nil {
 		return nil, err
 	}
-	var param = common.FSNCallParam{Func: common.MakeMultiSwapFunc, Data: funcData}
-	data, err := param.ToBytes()
-	if err != nil {
-		return nil, err
-	}
-	var argsData = hexutil.Bytes(data)
-	sendArgs := args.toSendArgs()
-	sendArgs.To = &common.FSNCallAddress
-	sendArgs.Data = &argsData
-	return s.buildTransaction(ctx, sendArgs)
+	return FSNCallArgsToSendTxArgs(&args, common.MakeMultiSwapFunc, funcData)
 }
 
-// RecallMultiSwap wacom
-func (s *FusionTransactionAPI) RecallMultiSwap(ctx context.Context, args RecallMultiSwapArgs) ( common.Hash, error) {
-	tx, err := s.BuildRecallMultiSwapTx(ctx, args)
-	if err != nil {
-		return common.Hash{}, err
-	}
-	return s.sendTransaction(ctx, args.From, tx)
-}
-
-// BuildRecallMultiSwapTx ss
-func (s *FusionTransactionAPI) BuildRecallMultiSwapTx(ctx context.Context, args RecallMultiSwapArgs) (*types.Transaction, error) {
+func (s *PublicFusionAPI) BuildRecallMultiSwapSendTxArgs(ctx context.Context, args RecallMultiSwapArgs) (*SendTxArgs, error) {
 	state, _, err := s.b.StateAndHeaderByNumber(ctx, rpc.LatestBlockNumber)
 	if state == nil || err != nil {
 		return nil, err
@@ -2041,29 +1215,10 @@ func (s *FusionTransactionAPI) BuildRecallMultiSwapTx(ctx context.Context, args 
 	if err != nil {
 		return nil, err
 	}
-	var param = common.FSNCallParam{Func: common.RecallMultiSwapFunc, Data: funcData}
-	data, err := param.ToBytes()
-	if err != nil {
-		return nil, err
-	}
-	var argsData = hexutil.Bytes(data)
-	sendArgs := args.toSendArgs()
-	sendArgs.To = &common.FSNCallAddress
-	sendArgs.Data = &argsData
-	return s.buildTransaction(ctx, sendArgs)
+	return FSNCallArgsToSendTxArgs(&args, common.RecallMultiSwapFunc, funcData)
 }
 
-// TakeMultiSwap wacom
-func (s *FusionTransactionAPI) TakeMultiSwap(ctx context.Context, args TakeMultiSwapArgs) ( common.Hash, error) {
-	tx, err := s.BuildTakeMultiSwapTx(ctx, args)
-	if err != nil {
-		return common.Hash{}, err
-	}
-	return s.sendTransaction(ctx, args.From, tx)
-}
-
-// BuildTakeSwapTx ss
-func (s *FusionTransactionAPI) BuildTakeMultiSwapTx(ctx context.Context, args TakeMultiSwapArgs) (*types.Transaction, error) {
+func (s *PublicFusionAPI) BuildTakeMultiSwapSendTxArgs(ctx context.Context, args TakeMultiSwapArgs) (*SendTxArgs, error) {
 	state, _, err := s.b.StateAndHeaderByNumber(ctx, rpc.LatestBlockNumber)
 	if state == nil || err != nil {
 		return nil, err
@@ -2105,18 +1260,549 @@ func (s *FusionTransactionAPI) BuildTakeMultiSwapTx(ctx context.Context, args Ta
 			}
 		}
 	}
+
 	funcData, err := args.toData()
 	if err != nil {
 		return nil, err
 	}
-	var param = common.FSNCallParam{Func: common.TakeMultiSwapFunc, Data: funcData}
-	data, err := param.ToBytes()
+	return FSNCallArgsToSendTxArgs(&args, common.TakeMultiSwapFunc, funcData)
+}
+
+//--------------------------------------------- PrivateFusionAPI -------------------------------------
+
+// PrivateFusionAPI ss
+type PrivateFusionAPI struct {
+	PublicFusionAPI
+	nonceLock *AddrLocker
+	papi      *PrivateAccountAPI
+}
+
+// store privateFusionAPI
+var privateFusionAPI = &PrivateFusionAPI{}
+
+func AutoBuyTicket(account common.Address, passwd string) {
+	fbase := FusionBaseArgs{From: account}
+	args := BuyTicketArgs{FusionBaseArgs: fbase}
+
+	for {
+		<-common.AutoBuyTicketChan
+	COMSUMEALL:
+		for {
+			select {
+			case <-common.AutoBuyTicketChan:
+			default:
+				break COMSUMEALL
+			}
+		}
+		privateFusionAPI.BuyTicket(nil, args, passwd)
+	}
+}
+
+// NewPrivateFusionAPI ss
+func NewPrivateFusionAPI(b Backend, nonceLock *AddrLocker, papi *PrivateAccountAPI) *PrivateFusionAPI {
+	privateFusionAPI = &PrivateFusionAPI{
+		PublicFusionAPI: *NewPublicFusionAPI(b),
+		nonceLock:       nonceLock,
+		papi:            papi,
+	}
+	return privateFusionAPI
+}
+
+// GenNotation ss
+func (s *PrivateFusionAPI) GenNotation(ctx context.Context, args FusionBaseArgs, passwd string) (common.Hash, error) {
+	sendArgs, err := s.BuildGenNotationSendTxArgs(ctx, args)
+	if err != nil {
+		return common.Hash{}, err
+	}
+	return s.papi.SendTransaction(ctx, *sendArgs, passwd)
+}
+
+// GenAsset ss
+func (s *PrivateFusionAPI) GenAsset(ctx context.Context, args GenAssetArgs, passwd string) (common.Hash, error) {
+	sendArgs, err := s.BuildGenAssetSendTxArgs(ctx, args)
+	if err != nil {
+		return common.Hash{}, err
+	}
+	return s.papi.SendTransaction(ctx, *sendArgs, passwd)
+}
+
+// SendAsset ss
+func (s *PrivateFusionAPI) SendAsset(ctx context.Context, args SendAssetArgs, passwd string) (common.Hash, error) {
+	sendArgs, err := s.BuildSendAssetSendTxArgs(ctx, args)
+	if err != nil {
+		return common.Hash{}, err
+	}
+	return s.papi.SendTransaction(ctx, *sendArgs, passwd)
+}
+
+// AssetToTimeLock ss
+func (s *PrivateFusionAPI) AssetToTimeLock(ctx context.Context, args TimeLockArgs, passwd string) (common.Hash, error) {
+	sendArgs, err := s.BuildAssetToTimeLockSendTxArgs(ctx, args)
+	if err != nil {
+		return common.Hash{}, err
+	}
+	return s.papi.SendTransaction(ctx, *sendArgs, passwd)
+}
+
+// TimeLockToTimeLock ss
+func (s *PrivateFusionAPI) TimeLockToTimeLock(ctx context.Context, args TimeLockArgs, passwd string) (common.Hash, error) {
+	sendArgs, err := s.BuildTimeLockToTimeLockSendTxArgs(ctx, args)
+	if err != nil {
+		return common.Hash{}, err
+	}
+	return s.papi.SendTransaction(ctx, *sendArgs, passwd)
+}
+
+// TimeLockToAsset ss
+func (s *PrivateFusionAPI) TimeLockToAsset(ctx context.Context, args TimeLockArgs, passwd string) (common.Hash, error) {
+	sendArgs, err := s.BuildTimeLockToAssetSendTxArgs(ctx, args)
+	if err != nil {
+		return common.Hash{}, err
+	}
+	return s.papi.SendTransaction(ctx, *sendArgs, passwd)
+}
+
+/** on our public gateways too many buyTickets are past through
+this cache of purchase on block will stop multiple purchase
+attempt on a block (which state_transistion also flags).
+the goals is to limit the number of buytickets being processed
+if it is know that they will fail anyway
+*/
+func doesTicketPurchaseExistsForBlock(blockNbr int64, from common.Address) bool {
+	buyTicketOnBlockMapMutex.Lock()
+	defer buyTicketOnBlockMapMutex.Unlock()
+	if lastBlockOfBuyTickets == 0 || lastBlockOfBuyTickets != blockNbr {
+		lastBlockOfBuyTickets = blockNbr
+		buyTicketOnBlockMap = make(map[common.Address]bool)
+	}
+	_, found := buyTicketOnBlockMap[from]
+	return found
+}
+
+// only record on purchase ticket successfully
+func addTicketPurchaseForBlock(from common.Address) {
+	buyTicketOnBlockMapMutex.Lock()
+	defer buyTicketOnBlockMapMutex.Unlock()
+	buyTicketOnBlockMap[from] = true
+}
+
+// BuyTicket ss
+func (s *PrivateFusionAPI) BuyTicket(ctx context.Context, args BuyTicketArgs, passwd string) (common.Hash, error) {
+	sendArgs, err := s.BuildBuyTicketSendTxArgs(ctx, args)
+	if err != nil {
+		return common.Hash{}, err
+	}
+	hash, err := s.papi.SendTransaction(ctx, *sendArgs, passwd)
+	if err != nil {
+		return common.Hash{}, err
+	}
+	addTicketPurchaseForBlock(args.From)
+	return hash, err
+}
+
+// IncAsset ss
+func (s *PrivateFusionAPI) IncAsset(ctx context.Context, args AssetValueChangeExArgs, passwd string) (common.Hash, error) {
+	args.IsInc = true
+	sendArgs, err := s.BuildAssetValueChangeSendTxArgs(ctx, args)
+	if err != nil {
+		return common.Hash{}, err
+	}
+	return s.papi.SendTransaction(ctx, *sendArgs, passwd)
+}
+
+// DecAsset ss
+func (s *PrivateFusionAPI) DecAsset(ctx context.Context, args AssetValueChangeExArgs, passwd string) (common.Hash, error) {
+	args.IsInc = false
+	sendArgs, err := s.BuildAssetValueChangeSendTxArgs(ctx, args)
+	if err != nil {
+		return common.Hash{}, err
+	}
+	return s.papi.SendTransaction(ctx, *sendArgs, passwd)
+}
+
+// MakeSwap ss
+func (s *PrivateFusionAPI) MakeSwap(ctx context.Context, args MakeSwapArgs, passwd string) (common.Hash, error) {
+	sendArgs, err := s.BuildMakeSwapSendTxArgs(ctx, args)
+	if err != nil {
+		return common.Hash{}, err
+	}
+	return s.papi.SendTransaction(ctx, *sendArgs, passwd)
+}
+
+// RecallSwap ss
+func (s *PrivateFusionAPI) RecallSwap(ctx context.Context, args RecallSwapArgs, passwd string) (common.Hash, error) {
+	sendArgs, err := s.BuildRecallSwapSendTxArgs(ctx, args)
+	if err != nil {
+		return common.Hash{}, err
+	}
+	return s.papi.SendTransaction(ctx, *sendArgs, passwd)
+}
+
+// TakeSwap ss
+func (s *PrivateFusionAPI) TakeSwap(ctx context.Context, args TakeSwapArgs, passwd string) (common.Hash, error) {
+	sendArgs, err := s.BuildTakeSwapSendTxArgs(ctx, args)
+	if err != nil {
+		return common.Hash{}, err
+	}
+	return s.papi.SendTransaction(ctx, *sendArgs, passwd)
+}
+
+// MakeMultiSwap ss
+func (s *PrivateFusionAPI) MakeMultiSwap(ctx context.Context, args MakeMultiSwapArgs, passwd string) (common.Hash, error) {
+	sendArgs, err := s.BuildMakeMultiSwapSendTxArgs(ctx, args)
+	if err != nil {
+		return common.Hash{}, err
+	}
+	return s.papi.SendTransaction(ctx, *sendArgs, passwd)
+}
+
+// RecallMultiSwap ss
+func (s *PrivateFusionAPI) RecallMultiSwap(ctx context.Context, args RecallMultiSwapArgs, passwd string) (common.Hash, error) {
+	sendArgs, err := s.BuildRecallMultiSwapSendTxArgs(ctx, args)
+	if err != nil {
+		return common.Hash{}, err
+	}
+	return s.papi.SendTransaction(ctx, *sendArgs, passwd)
+}
+
+// TakeMultiSwap ss
+func (s *PrivateFusionAPI) TakeMultiSwap(ctx context.Context, args TakeMultiSwapArgs, passwd string) (common.Hash, error) {
+	sendArgs, err := s.BuildTakeMultiSwapSendTxArgs(ctx, args)
+	if err != nil {
+		return common.Hash{}, err
+	}
+	return s.papi.SendTransaction(ctx, *sendArgs, passwd)
+}
+
+//--------------------------------------------- FusionTransactionAPI -------------------------------------
+
+// FusionTransactionAPI ss
+type FusionTransactionAPI struct {
+	PublicFusionAPI
+	nonceLock *AddrLocker
+	txapi     *PublicTransactionPoolAPI
+}
+
+// NewFusionTransactionAPI ss
+func NewFusionTransactionAPI(b Backend, nonceLock *AddrLocker, txapi *PublicTransactionPoolAPI) *FusionTransactionAPI {
+	return &FusionTransactionAPI{
+		PublicFusionAPI: *NewPublicFusionAPI(b),
+		nonceLock:       nonceLock,
+		txapi:           txapi,
+	}
+}
+
+func (s *FusionTransactionAPI) buildTransaction(ctx context.Context, args SendTxArgs) (*types.Transaction, error) {
+	if args.Nonce == nil {
+		s.nonceLock.LockAddr(args.From)
+		defer s.nonceLock.UnlockAddr(args.From)
+	}
+	if err := args.setDefaults(ctx, s.b); err != nil {
+		return nil, err
+	}
+	tx := args.toTransaction()
+	return tx, nil
+}
+
+func (s *FusionTransactionAPI) sendTransaction(ctx context.Context, from common.Address, tx *types.Transaction) (common.Hash, error) {
+	account := accounts.Account{Address: from}
+	wallet, err := s.b.AccountManager().Find(account)
+	if err != nil {
+		return common.Hash{}, err
+	}
+	var chainID *big.Int
+	if config := s.b.ChainConfig(); config.IsEIP155(s.b.CurrentBlock().Number()) {
+		chainID = config.ChainID
+	}
+	signed, err := wallet.SignTx(account, tx, chainID)
+	if err != nil {
+		return common.Hash{}, err
+	}
+	return s.SendRawTransaction(ctx, signed)
+}
+
+// SendRawTransaction wacom
+func (s *FusionTransactionAPI) SendRawTransaction(ctx context.Context, tx *types.Transaction) (common.Hash, error) {
+	encodedTx, err := rlp.EncodeToBytes(tx)
+	if err != nil {
+		return common.Hash{}, err
+	}
+	return s.txapi.SendRawTransaction(ctx, encodedTx)
+}
+
+// BuildGenNotationTx ss
+func (s *FusionTransactionAPI) BuildGenNotationTx(ctx context.Context, args FusionBaseArgs) (*types.Transaction, error) {
+	sendArgs, err := s.BuildGenNotationSendTxArgs(ctx, args)
 	if err != nil {
 		return nil, err
 	}
-	var argsData = hexutil.Bytes(data)
-	sendArgs := args.toSendArgs()
-	sendArgs.To = &common.FSNCallAddress
-	sendArgs.Data = &argsData
-	return s.buildTransaction(ctx, sendArgs)
+	return s.buildTransaction(ctx, *sendArgs)
+}
+
+// GenNotation ss
+func (s *FusionTransactionAPI) GenNotation(ctx context.Context, args FusionBaseArgs) (common.Hash, error) {
+	tx, err := s.BuildGenNotationTx(ctx, args)
+	if err != nil {
+		return common.Hash{}, err
+	}
+	return s.sendTransaction(ctx, args.From, tx)
+}
+
+// BuildGenAssetTx ss
+func (s *FusionTransactionAPI) BuildGenAssetTx(ctx context.Context, args GenAssetArgs) (*types.Transaction, error) {
+	sendArgs, err := s.BuildGenAssetSendTxArgs(ctx, args)
+	if err != nil {
+		return nil, err
+	}
+	return s.buildTransaction(ctx, *sendArgs)
+}
+
+// GenAsset ss
+func (s *FusionTransactionAPI) GenAsset(ctx context.Context, args GenAssetArgs) (common.Hash, error) {
+	tx, err := s.BuildGenAssetTx(ctx, args)
+	if err != nil {
+		return common.Hash{}, err
+	}
+	return s.sendTransaction(ctx, args.From, tx)
+}
+
+// BuildSendAssetTx ss
+func (s *FusionTransactionAPI) BuildSendAssetTx(ctx context.Context, args SendAssetArgs) (*types.Transaction, error) {
+	sendArgs, err := s.BuildSendAssetSendTxArgs(ctx, args)
+	if err != nil {
+		return nil, err
+	}
+	return s.buildTransaction(ctx, *sendArgs)
+}
+
+// SendAsset ss
+func (s *FusionTransactionAPI) SendAsset(ctx context.Context, args SendAssetArgs) (common.Hash, error) {
+	tx, err := s.BuildSendAssetTx(ctx, args)
+	if err != nil {
+		return common.Hash{}, err
+	}
+	return s.sendTransaction(ctx, args.From, tx)
+}
+
+// BuildAssetToTimeLockTx ss
+func (s *FusionTransactionAPI) BuildAssetToTimeLockTx(ctx context.Context, args TimeLockArgs) (*types.Transaction, error) {
+	sendArgs, err := s.BuildAssetToTimeLockSendTxArgs(ctx, args)
+	if err != nil {
+		return nil, err
+	}
+	return s.buildTransaction(ctx, *sendArgs)
+}
+
+// AssetToTimeLock ss
+func (s *FusionTransactionAPI) AssetToTimeLock(ctx context.Context, args TimeLockArgs) (common.Hash, error) {
+	tx, err := s.BuildAssetToTimeLockTx(ctx, args)
+	if err != nil {
+		return common.Hash{}, err
+	}
+	return s.sendTransaction(ctx, args.From, tx)
+}
+
+// BuildTimeLockToTimeLockTx ss
+func (s *FusionTransactionAPI) BuildTimeLockToTimeLockTx(ctx context.Context, args TimeLockArgs) (*types.Transaction, error) {
+	sendArgs, err := s.BuildTimeLockToTimeLockSendTxArgs(ctx, args)
+	if err != nil {
+		return nil, err
+	}
+	return s.buildTransaction(ctx, *sendArgs)
+}
+
+// TimeLockToTimeLock ss
+func (s *FusionTransactionAPI) TimeLockToTimeLock(ctx context.Context, args TimeLockArgs) (common.Hash, error) {
+	tx, err := s.BuildTimeLockToTimeLockTx(ctx, args)
+	if err != nil {
+		return common.Hash{}, err
+	}
+	return s.sendTransaction(ctx, args.From, tx)
+}
+
+// BuildTimeLockToAssetTx ss
+func (s *FusionTransactionAPI) BuildTimeLockToAssetTx(ctx context.Context, args TimeLockArgs) (*types.Transaction, error) {
+	sendArgs, err := s.BuildTimeLockToAssetSendTxArgs(ctx, args)
+	if err != nil {
+		return nil, err
+	}
+	return s.buildTransaction(ctx, *sendArgs)
+}
+
+// TimeLockToAsset ss
+func (s *FusionTransactionAPI) TimeLockToAsset(ctx context.Context, args TimeLockArgs) (common.Hash, error) {
+	tx, err := s.BuildTimeLockToAssetTx(ctx, args)
+	if err != nil {
+		return common.Hash{}, err
+	}
+	return s.sendTransaction(ctx, args.From, tx)
+}
+
+// BuildBuyTicketTx ss
+func (s *FusionTransactionAPI) BuildBuyTicketTx(ctx context.Context, args BuyTicketArgs) (*types.Transaction, error) {
+	sendArgs, err := s.BuildBuyTicketSendTxArgs(ctx, args)
+	if err != nil {
+		return nil, err
+	}
+	return s.buildTransaction(ctx, *sendArgs)
+}
+
+// BuyTicket ss
+func (s *FusionTransactionAPI) BuyTicket(ctx context.Context, args BuyTicketArgs) (common.Hash, error) {
+	tx, err := s.BuildBuyTicketTx(ctx, args)
+	if err != nil {
+		return common.Hash{}, err
+	}
+	hash, err := s.sendTransaction(ctx, args.From, tx)
+	if err != nil {
+		return common.Hash{}, err
+	}
+	addTicketPurchaseForBlock(args.From)
+	return hash, err
+}
+
+// BuildIncAssetTx ss
+func (s *FusionTransactionAPI) BuildIncAssetTx(ctx context.Context, args AssetValueChangeExArgs) (*types.Transaction, error) {
+	args.IsInc = true
+	sendArgs, err := s.BuildAssetValueChangeSendTxArgs(ctx, args)
+	if err != nil {
+		return nil, err
+	}
+	return s.buildTransaction(ctx, *sendArgs)
+}
+
+// IncAsset ss
+func (s *FusionTransactionAPI) IncAsset(ctx context.Context, args AssetValueChangeExArgs) (common.Hash, error) {
+	tx, err := s.BuildIncAssetTx(ctx, args)
+	if err != nil {
+		return common.Hash{}, err
+	}
+	return s.sendTransaction(ctx, args.From, tx)
+}
+
+// BuildDecAssetTx ss
+func (s *FusionTransactionAPI) BuildDecAssetTx(ctx context.Context, args AssetValueChangeExArgs) (*types.Transaction, error) {
+	args.IsInc = false
+	sendArgs, err := s.BuildAssetValueChangeSendTxArgs(ctx, args)
+	if err != nil {
+		return nil, err
+	}
+	return s.buildTransaction(ctx, *sendArgs)
+}
+
+// DecAsset ss
+func (s *FusionTransactionAPI) DecAsset(ctx context.Context, args AssetValueChangeExArgs) (common.Hash, error) {
+	tx, err := s.BuildDecAssetTx(ctx, args)
+	if err != nil {
+		return common.Hash{}, err
+	}
+	return s.sendTransaction(ctx, args.From, tx)
+}
+
+// BuildMakeSwapTx ss
+func (s *FusionTransactionAPI) BuildMakeSwapTx(ctx context.Context, args MakeSwapArgs) (*types.Transaction, error) {
+	sendArgs, err := s.BuildMakeSwapSendTxArgs(ctx, args)
+	if err != nil {
+		return nil, err
+	}
+	return s.buildTransaction(ctx, *sendArgs)
+}
+
+// MakeSwap ss
+func (s *FusionTransactionAPI) MakeSwap(ctx context.Context, args MakeSwapArgs) (common.Hash, error) {
+	tx, err := s.BuildMakeSwapTx(ctx, args)
+	if err != nil {
+		return common.Hash{}, err
+	}
+	return s.sendTransaction(ctx, args.From, tx)
+}
+
+// BuildRecallSwapTx ss
+func (s *FusionTransactionAPI) BuildRecallSwapTx(ctx context.Context, args RecallSwapArgs) (*types.Transaction, error) {
+	sendArgs, err := s.BuildRecallSwapSendTxArgs(ctx, args)
+	if err != nil {
+		return nil, err
+	}
+	return s.buildTransaction(ctx, *sendArgs)
+}
+
+// RecallSwap ss
+func (s *FusionTransactionAPI) RecallSwap(ctx context.Context, args RecallSwapArgs) (common.Hash, error) {
+	tx, err := s.BuildRecallSwapTx(ctx, args)
+	if err != nil {
+		return common.Hash{}, err
+	}
+	return s.sendTransaction(ctx, args.From, tx)
+}
+
+// BuildTakeSwapTx ss
+func (s *FusionTransactionAPI) BuildTakeSwapTx(ctx context.Context, args TakeSwapArgs) (*types.Transaction, error) {
+	sendArgs, err := s.BuildTakeSwapSendTxArgs(ctx, args)
+	if err != nil {
+		return nil, err
+	}
+	return s.buildTransaction(ctx, *sendArgs)
+}
+
+// TakeSwap ss
+func (s *FusionTransactionAPI) TakeSwap(ctx context.Context, args TakeSwapArgs) (common.Hash, error) {
+	tx, err := s.BuildTakeSwapTx(ctx, args)
+	if err != nil {
+		return common.Hash{}, err
+	}
+	return s.sendTransaction(ctx, args.From, tx)
+}
+
+// MakeMultiSwap wacom
+func (s *FusionTransactionAPI) MakeMultiSwap(ctx context.Context, args MakeMultiSwapArgs) (common.Hash, error) {
+	tx, err := s.BuildMakeMultiSwapTx(ctx, args)
+	if err != nil {
+		return common.Hash{}, err
+	}
+	return s.sendTransaction(ctx, args.From, tx)
+}
+
+// BuildMakeMultiSwapTx ss
+func (s *FusionTransactionAPI) BuildMakeMultiSwapTx(ctx context.Context, args MakeMultiSwapArgs) (*types.Transaction, error) {
+	sendArgs, err := s.BuildMakeMultiSwapSendTxArgs(ctx, args)
+	if err != nil {
+		return nil, err
+	}
+	return s.buildTransaction(ctx, *sendArgs)
+}
+
+// RecallMultiSwap wacom
+func (s *FusionTransactionAPI) RecallMultiSwap(ctx context.Context, args RecallMultiSwapArgs) (common.Hash, error) {
+	tx, err := s.BuildRecallMultiSwapTx(ctx, args)
+	if err != nil {
+		return common.Hash{}, err
+	}
+	return s.sendTransaction(ctx, args.From, tx)
+}
+
+// BuildRecallMultiSwapTx ss
+func (s *FusionTransactionAPI) BuildRecallMultiSwapTx(ctx context.Context, args RecallMultiSwapArgs) (*types.Transaction, error) {
+	sendArgs, err := s.BuildRecallMultiSwapSendTxArgs(ctx, args)
+	if err != nil {
+		return nil, err
+	}
+	return s.buildTransaction(ctx, *sendArgs)
+}
+
+// TakeMultiSwap wacom
+func (s *FusionTransactionAPI) TakeMultiSwap(ctx context.Context, args TakeMultiSwapArgs) (common.Hash, error) {
+	tx, err := s.BuildTakeMultiSwapTx(ctx, args)
+	if err != nil {
+		return common.Hash{}, err
+	}
+	return s.sendTransaction(ctx, args.From, tx)
+}
+
+// BuildTakeSwapTx ss
+func (s *FusionTransactionAPI) BuildTakeMultiSwapTx(ctx context.Context, args TakeMultiSwapArgs) (*types.Transaction, error) {
+	sendArgs, err := s.BuildTakeMultiSwapSendTxArgs(ctx, args)
+	if err != nil {
+		return nil, err
+	}
+	return s.buildTransaction(ctx, *sendArgs)
 }

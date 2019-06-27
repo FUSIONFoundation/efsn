@@ -244,7 +244,9 @@ func (w *worker) pending() (*types.Block, *state.StateDB) {
 	w.snapshotMu.RLock()
 	defer w.snapshotMu.RUnlock()
 	if w.snapshotState == nil {
-		return nil, nil
+		block := w.chain.CurrentBlock()
+		state, _ := w.chain.StateAt(block.Root(), block.MixDigest())
+		return block, state
 	}
 	return w.snapshotBlock, w.snapshotState.Copy()
 }

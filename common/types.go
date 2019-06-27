@@ -860,6 +860,9 @@ func (p *SendAssetParam) Check(blockNumber *big.Int) error {
 	if p.To == (Address{}) {
 		return fmt.Errorf("receiver address must be set and not zero address")
 	}
+	if p.AssetID == (Hash{}) {
+		return fmt.Errorf("empty asset ID, 'asset' must be specified instead of AssetID.")
+	}
 	return nil
 }
 
@@ -972,15 +975,11 @@ func (p *TakeSwapParam) Check(blockNumber *big.Int, swap *Swap, timestamp uint64
 
 // Check wacom
 func (p *MakeMultiSwapParam) Check(blockNumber *big.Int, timestamp uint64) error {
-	if p.MinFromAmount == nil {
+	if p.MinFromAmount == nil || len(p.MinFromAmount) == 0 {
 		return fmt.Errorf("MinFromAmount must be specifed")
 	}
-	if p.MinToAmount == nil {
+	if p.MinToAmount == nil || len(p.MinToAmount) == 0 {
 		return fmt.Errorf("MinToAmount must be specifed")
-	}
-	ln := len(p.MinFromAmount)
-	if ln == 0 {
-		return fmt.Errorf("MinFromAmount must be specified")
 	}
 	if p.SwapSize == nil || p.SwapSize.Cmp(Big0) <= 0 {
 		return fmt.Errorf("SwapSize must be ge 1")
@@ -997,6 +996,7 @@ func (p *MakeMultiSwapParam) Check(blockNumber *big.Int, timestamp uint64) error
 		return fmt.Errorf("MinToAmount ToEndTime and ToStartTime array length must be same size")
 	}
 
+	ln := len(p.MinFromAmount)
 	for i := 0; i < ln; i++ {
 		if p.MinFromAmount[i] == nil || p.MinFromAmount[i].Cmp(Big0) <= 0 {
 			return fmt.Errorf("MinFromAmounts must be ge 1")
@@ -1004,6 +1004,12 @@ func (p *MakeMultiSwapParam) Check(blockNumber *big.Int, timestamp uint64) error
 		total := new(big.Int).Mul(p.MinFromAmount[i], p.SwapSize)
 		if total.Cmp(Big0) <= 0 {
 			return fmt.Errorf("size * MinFromAmount too large")
+		}
+		if p.FromStartTime[i] > p.FromEndTime[i] {
+			return fmt.Errorf("MakeMultiSwap FromStartTime > FromEndTime")
+		}
+		if p.FromEndTime[i] <= timestamp {
+			return fmt.Errorf("MakeMultiSwap FromEndTime <= latest blockTime")
 		}
 	}
 
@@ -1016,31 +1022,16 @@ func (p *MakeMultiSwapParam) Check(blockNumber *big.Int, timestamp uint64) error
 		if toTotal.Cmp(Big0) <= 0 {
 			return fmt.Errorf("size * MinToAmount too large")
 		}
-	}
-
-	if len(p.Description) > 1024 {
-		return fmt.Errorf("MakeSwap description length is greater than 1024 chars")
-	}
-
-	if p.FromStartTime == nil || p.FromEndTime == nil ||
-		len(p.FromStartTime) != len(p.FromEndTime) {
-		return fmt.Errorf("start and end time must be specified and must be same length")
-	}
-
-	ln = len(p.FromStartTime)
-	for i := 0; i < ln; i++ {
-		if p.FromStartTime[i] > p.FromEndTime[i] {
-			return fmt.Errorf("MakeMultiSwap FromStartTime > FromEndTime")
-		}
 		if p.ToStartTime[i] > p.ToEndTime[i] {
 			return fmt.Errorf("MakeMultiSwap ToStartTime > ToEndTime")
-		}
-		if p.FromEndTime[i] <= timestamp {
-			return fmt.Errorf("MakeMultiSwap FromEndTime <= latest blockTime")
 		}
 		if p.ToEndTime[i] <= timestamp {
 			return fmt.Errorf("MakeMultiSwap ToEndTime <= latest blockTime")
 		}
+	}
+
+	if len(p.Description) > 1024 {
+		return fmt.Errorf("MakeSwap description length is greater than 1024 chars")
 	}
 	return nil
 }

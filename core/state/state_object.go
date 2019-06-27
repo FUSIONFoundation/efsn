@@ -568,7 +568,9 @@ func (self *stateObject) CodeHash() []byte {
 func (self *stateObject) CopyBalances() map[common.Hash]string {
 	retBalances := make(map[common.Hash]string)
 	for i, v := range self.data.BalancesHash {
-		retBalances[v] = self.data.BalancesVal[i].String()
+		if self.data.BalancesVal[i].Sign() != 0 {
+			retBalances[v] = self.data.BalancesVal[i].String()
+		}
 	}
 	return retBalances
 }
@@ -581,7 +583,9 @@ func (self *stateObject) Balance(assetID common.Hash) *big.Int {
 func (self *stateObject) CopyTimeLockBalances() map[common.Hash]*common.TimeLock {
 	retBalances := make(map[common.Hash]*common.TimeLock)
 	for i, v := range self.data.TimeLockBalancesHash {
-		retBalances[v] = self.data.TimeLockBalancesVal[i]
+		if !self.data.TimeLockBalancesVal[i].IsEmpty() {
+			retBalances[v] = self.data.TimeLockBalancesVal[i]
+		}
 	}
 	return retBalances
 }

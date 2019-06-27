@@ -313,6 +313,24 @@ func (l *txList) Filter(costLimit *big.Int, gasLimit uint64) (types.Transactions
 	return removed, invalids
 }
 
+func (l *txList) FilterInvalid(filter func(*types.Transaction) bool) (types.Transactions, types.Transactions) {
+	removed := l.txs.Filter(filter)
+
+	// If the list was strict, filter anything above the lowest nonce
+	var invalids types.Transactions
+
+	if l.strict && len(removed) > 0 {
+		lowest := uint64(math.MaxUint64)
+		for _, tx := range removed {
+			if nonce := tx.Nonce(); lowest > nonce {
+				lowest = nonce
+			}
+		}
+		invalids = l.txs.Filter(func(tx *types.Transaction) bool { return tx.Nonce() > lowest })
+	}
+	return removed, invalids
+}
+
 // Cap places a hard limit on the number of items, returning all transactions
 // exceeding that limit.
 func (l *txList) Cap(threshold int) types.Transactions {

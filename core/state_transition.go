@@ -595,14 +595,16 @@ func (st *StateTransition) handleFsnCall(param *common.FSNCallParam) error {
 			start := makeSwapParam.FromStartTime
 			end := makeSwapParam.FromEndTime
 			useAsset = start == common.TimeLockNow && end == common.TimeLockForever
-			needValue = common.NewTimeLock(&common.TimeLockItem{
-				StartTime: common.MaxUint64(start, timestamp),
-				EndTime:   end,
-				Value:     total,
-			})
-			if err := needValue.IsValid(); err != nil {
-				st.addLog(common.MakeSwapFunc, makeSwapParam, common.NewKeyValue("Error", err.Error()))
-				return fmt.Errorf(err.Error())
+			if useAsset == false {
+				needValue = common.NewTimeLock(&common.TimeLockItem{
+					StartTime: common.MaxUint64(start, timestamp),
+					EndTime:   end,
+					Value:     total,
+				})
+				if err := needValue.IsValid(); err != nil {
+					st.addLog(common.MakeSwapFunc, makeSwapParam, common.NewKeyValue("Error", err.Error()))
+					return fmt.Errorf(err.Error())
+				}
 			}
 		}
 		swap := common.Swap{
@@ -766,16 +768,20 @@ func (st *StateTransition) handleFsnCall(param *common.FSNCallParam) error {
 		var fromNeedValue *common.TimeLock
 		var toNeedValue *common.TimeLock
 
-		fromNeedValue = common.NewTimeLock(&common.TimeLockItem{
-			StartTime: common.MaxUint64(fromStart, timestamp),
-			EndTime:   fromEnd,
-			Value:     fromTotal,
-		})
-		toNeedValue = common.NewTimeLock(&common.TimeLockItem{
-			StartTime: common.MaxUint64(toStart, timestamp),
-			EndTime:   toEnd,
-			Value:     toTotal,
-		})
+		if fromUseAsset == false {
+			fromNeedValue = common.NewTimeLock(&common.TimeLockItem{
+				StartTime: common.MaxUint64(fromStart, timestamp),
+				EndTime:   fromEnd,
+				Value:     fromTotal,
+			})
+		}
+		if toUseAsset == false {
+			toNeedValue = common.NewTimeLock(&common.TimeLockItem{
+				StartTime: common.MaxUint64(toStart, timestamp),
+				EndTime:   toEnd,
+				Value:     toTotal,
+			})
+		}
 
 		if toUseAsset == true {
 			if st.state.GetBalance(swap.ToAssetID, st.msg.From()).Cmp(toTotal) < 0 {
@@ -973,14 +979,16 @@ func (st *StateTransition) handleFsnCall(param *common.FSNCallParam) error {
 			start := makeSwapParam.FromStartTime[i]
 			end := makeSwapParam.FromEndTime[i]
 			useAsset[i] = start == common.TimeLockNow && end == common.TimeLockForever
-			needValue[i] = common.NewTimeLock(&common.TimeLockItem{
-				StartTime: common.MaxUint64(start, timestamp),
-				EndTime:   end,
-				Value:     total[i],
-			})
-			if err := needValue[i].IsValid(); err != nil {
-				st.addLog(common.MakeMultiSwapFunc, makeSwapParam, common.NewKeyValue("Error", err.Error()))
-				return fmt.Errorf(err.Error())
+			if useAsset[i] == false {
+				needValue[i] = common.NewTimeLock(&common.TimeLockItem{
+					StartTime: common.MaxUint64(start, timestamp),
+					EndTime:   end,
+					Value:     total[i],
+				})
+				if err := needValue[i].IsValid(); err != nil {
+					st.addLog(common.MakeMultiSwapFunc, makeSwapParam, common.NewKeyValue("Error", err.Error()))
+					return fmt.Errorf(err.Error())
+				}
 			}
 
 		}
@@ -1114,11 +1122,13 @@ func (st *StateTransition) handleFsnCall(param *common.FSNCallParam) error {
 			fromEnd[i] = swap.FromEndTime[i]
 			fromUseAsset[i] = fromStart[i] == common.TimeLockNow && fromEnd[i] == common.TimeLockForever
 
-			fromNeedValue[i] = common.NewTimeLock(&common.TimeLockItem{
-				StartTime: common.MaxUint64(fromStart[i], timestamp),
-				EndTime:   fromEnd[i],
-				Value:     fromTotal[i],
-			})
+			if fromUseAsset[i] == false {
+				fromNeedValue[i] = common.NewTimeLock(&common.TimeLockItem{
+					StartTime: common.MaxUint64(fromStart[i], timestamp),
+					EndTime:   fromEnd[i],
+					Value:     fromTotal[i],
+				})
+			}
 		}
 
 		lnTo := len(swap.ToAssetID)
@@ -1144,11 +1154,13 @@ func (st *StateTransition) handleFsnCall(param *common.FSNCallParam) error {
 			toStart[i] = swap.ToStartTime[i]
 			toEnd[i] = swap.ToEndTime[i]
 			toUseAsset[i] = toStart[i] == common.TimeLockNow && toEnd[i] == common.TimeLockForever
-			toNeedValue[i] = common.NewTimeLock(&common.TimeLockItem{
-				StartTime: common.MaxUint64(toStart[i], timestamp),
-				EndTime:   toEnd[i],
-				Value:     toTotal[i],
-			})
+			if toUseAsset[i] == false {
+				toNeedValue[i] = common.NewTimeLock(&common.TimeLockItem{
+					StartTime: common.MaxUint64(toStart[i], timestamp),
+					EndTime:   toEnd[i],
+					Value:     toTotal[i],
+				})
+			}
 		}
 
 		// check to account balances

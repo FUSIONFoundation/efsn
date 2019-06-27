@@ -1131,6 +1131,15 @@ func (pool *TxPool) demoteUnexecutables() {
 			pool.all.Remove(hash)
 			pool.priced.Removed()
 		}
+		// Drop all FsnCall transactions that are invalid
+		filter := func(tx *types.Transaction) bool { return pool.validateFsnCallTx(tx) != nil }
+		removes, adjusts := list.FilterInvalid(filter)
+		for _, tx := range removes {
+			hash := tx.Hash()
+			log.Trace("Removed invalid pending transaction", "hash", hash)
+			pool.all.Remove(hash)
+			pool.priced.Removed()
+		}
 		// Drop all transactions that are too costly (low balance or out of gas), and queue any invalids back for later
 		drops, invalids := list.Filter(pool.currentState.GetBalance(common.SystemAssetID, addr), pool.currentMaxGas)
 		for _, tx := range drops {
@@ -1144,6 +1153,15 @@ func (pool *TxPool) demoteUnexecutables() {
 			hash := tx.Hash()
 			log.Trace("Demoting pending transaction", "hash", hash)
 			pool.enqueueTx(hash, tx)
+		}
+		if adjusts.Len() > 0 {
+			adjusts = types.TxDifference(adjusts, drops)
+			adjusts = types.TxDifference(adjusts, invalids)
+			for _, tx := range adjusts {
+				hash := tx.Hash()
+				log.Trace("Demoting pending transaction", "hash", hash)
+				pool.enqueueTx(hash, tx)
+			}
 		}
 		// If there's a gap in front, alert (should never happen) and postpone all transactions
 		if list.Len() > 0 && list.txs.Get(nonce) == nil {
@@ -1495,14 +1513,6 @@ func (pool *TxPool) validateFsnCallTx(tx *types.Transaction) error {
 			start := makeSwapParam.FromStartTime
 			end := makeSwapParam.FromEndTime
 			useAsset := start == common.TimeLockNow && end == common.TimeLockForever
-			needValue := common.NewTimeLock(&common.TimeLockItem{
-				StartTime: common.MaxUint64(start, timestamp),
-				EndTime:   end,
-				Value:     total,
-			})
-			if err := needValue.IsValid(); err != nil {
-				return err
-			}
 
 			if useAsset == true {
 				if makeSwapParam.FromAssetID == common.SystemAssetID {
@@ -1511,6 +1521,14 @@ func (pool *TxPool) validateFsnCallTx(tx *types.Transaction) error {
 					return fmt.Errorf("not enough from asset")
 				}
 			} else {
+				needValue := common.NewTimeLock(&common.TimeLockItem{
+					StartTime: common.MaxUint64(start, timestamp),
+					EndTime:   end,
+					Value:     total,
+				})
+				if err := needValue.IsValid(); err != nil {
+					return err
+				}
 				available := state.GetTimeLockBalance(makeSwapParam.FromAssetID, from)
 				if available.Cmp(needValue) < 0 {
 					if param.Func == common.MakeSwapFunc {
@@ -1618,13 +1636,6 @@ func (pool *TxPool) validateFsnCallTx(tx *types.Transaction) error {
 			return err
 		}
 
-		ln := len(swap.FromAssetID)
-		for i := 0; i < ln; i++ {
-			if swap.FromAssetID[i] == common.OwnerUSANAssetID {
-				return fmt.Errorf("Cannot multiswap USANs")
-			}
-		}
-
 	case common.MakeMultiSwapFunc:
 		makeSwapParam := common.MakeMultiSwapParam{}
 		rlp.DecodeBytes(param.Data, &makeSwapParam)
@@ -1674,15 +1685,16 @@ func (pool *TxPool) validateFsnCallTx(tx *types.Transaction) error {
 			start := makeSwapParam.FromStartTime[i]
 			end := makeSwapParam.FromEndTime[i]
 			useAsset[i] = start == common.TimeLockNow && end == common.TimeLockForever
-			needValue[i] = common.NewTimeLock(&common.TimeLockItem{
-				StartTime: common.MaxUint64(start, timestamp),
-				EndTime:   end,
-				Value:     total[i],
-			})
-			if err := needValue[i].IsValid(); err != nil {
-				return err
+			if useAsset[i] == false {
+				needValue[i] = common.NewTimeLock(&common.TimeLockItem{
+					StartTime: common.MaxUint64(start, timestamp),
+					EndTime:   end,
+					Value:     total[i],
+				})
+				if err := needValue[i].IsValid(); err != nil {
+					return err
+				}
 			}
-
 		}
 
 		ln = len(makeSwapParam.FromAssetID)
@@ -1756,11 +1768,13 @@ func (pool *TxPool) validateFsnCallTx(tx *types.Transaction) error {
 			toStart[i] = swap.ToStartTime[i]
 			toEnd[i] = swap.ToEndTime[i]
 			toUseAsset[i] = toStart[i] == common.TimeLockNow && toEnd[i] == common.TimeLockForever
-			toNeedValue[i] = common.NewTimeLock(&common.TimeLockItem{
-				StartTime: common.MaxUint64(toStart[i], timestamp),
-				EndTime:   toEnd[i],
-				Value:     toTotal[i],
-			})
+			if toUseAsset[i] == false {
+				toNeedValue[i] = common.NewTimeLock(&common.TimeLockItem{
+					StartTime: common.MaxUint64(toStart[i], timestamp),
+					EndTime:   toEnd[i],
+					Value:     toTotal[i],
+				})
+			}
 		}
 
 		// check to account balances
