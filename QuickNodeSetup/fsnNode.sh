@@ -78,19 +78,19 @@ createFilesForMiner(){
 
     nodetype=
     echo 'Please select node type: '
-    options=("minerandlocalgateway2" "efsn2" "gateway2")
+    options=("minerandlocalgateway" "efsn" "gateway")
     select opt in "${options[@]}"
     do
         case $opt in
-            "minerandlocalgateway2")
+            "minerandlocalgateway")
                 nodetype=$opt
                 break
                 ;;
-            "efsn2")
+            "efsn")
                 nodetype=$opt
                 break
                 ;;
-            "gateway2")
+            "gateway")
                 nodetype=$opt
                 break
                 ;;
@@ -106,7 +106,7 @@ createFilesForMiner(){
 	echo "✓ Installed docker.io"
 	# echo "✓ Saved wallet address"
 
-    if [ "$nodetype" = "minerandlocalgateway2" ] || [ "$nodetype" = "efsn2" ]; then
+    if [ "$nodetype" = "minerandlocalgateway" ] || [ "$nodetype" = "efsn" ]; then
 
         echo Paste exact content of your keystore.json
         read keystorejson
@@ -151,7 +151,7 @@ createFilesForMiner(){
     echo -e "{\"nodeName\":\""$nodename"\", \"autobt\":\""$autobuy"\", \"nodeType\":\""$nodetype"\"}"  >> "$CWD_DIR/fusion-node/node.json"
 
     # double check user public address
-    if [ "$nodetype" = "minerandlocalgateway2" ] || [ "$nodetype" = "efsn2" ]; then
+    if [ "$nodetype" = "minerandlocalgateway" ] || [ "$nodetype" = "efsn" ]; then
         askWalletQuestion
     fi
 
@@ -172,19 +172,19 @@ removeDockerImages(){
     sudo docker stop fusion > /dev/null
     sudo docker rm fusion > /dev/null
 
-    if [[ "$(sudo docker images -q fusionnetwork/efsn2 2> /dev/null)" != "" ]]; then
-        echo "Image fusionnetwork/efsn2 removed"
-        sudo docker rmi fusionnetwork/efsn2 >/dev/null
+    if [[ "$(sudo docker images -q fusionnetwork/efsn 2> /dev/null)" != "" ]]; then
+        echo "Image fusionnetwork/efsn removed"
+        sudo docker rmi fusionnetwork/efsn >/dev/null
     fi
 
-    if [[ "$(sudo docker images -q fusionnetwork/minerandlocalgateway2 2> /dev/null)" != "" ]]; then
-        echo "Image fusionnetwork/minerandlocalgateway2 removed"
-        sudo docker rmi fusionnetwork/minerandlocalgateway2 >/dev/null
+    if [[ "$(sudo docker images -q fusionnetwork/minerandlocalgateway 2> /dev/null)" != "" ]]; then
+        echo "Image fusionnetwork/minerandlocalgateway removed"
+        sudo docker rmi fusionnetwork/minerandlocalgateway >/dev/null
     fi
 
-    if [[ "$(sudo docker images -q fusionnetwork/gateway2 2> /dev/null)" != "" ]]; then
-        echo "Image fusionnetwork/gateway2 removed"
-        sudo docker rmi fusionnetwork/gateway2 >/dev/null
+    if [[ "$(sudo docker images -q fusionnetwork/gateway 2> /dev/null)" != "" ]]; then
+        echo "Image fusionnetwork/gateway removed"
+        sudo docker rmi fusionnetwork/gateway >/dev/null
     fi
 }
 
@@ -205,38 +205,38 @@ createDockerContainer(){
 
     ethstats=""
     if [ ${#nodename} -gt 0 ]; then 
-        ethstats=" --ethstats $nodename:FusionPSN2v4@node.fusionnetwork.io"
+        ethstats=" --ethstats $nodename:fsnMainnet@node.fusionnetwork.io"
     else
         ethstats=""
     fi
 
-    if [ "$nodetype" == "minerandlocalgateway2" ]; then
-        sudo docker pull fusionnetwork/minerandlocalgateway2:latest
+    if [ "$nodetype" == "minerandlocalgateway" ]; then
+        sudo docker pull fusionnetwork/minerandlocalgateway:latest
 
         sudo docker create --name fusion -it --restart unless-stopped \
 	    -p 127.0.0.1:9000:9000 -p 127.0.0.1:9001:9001 -p 40408:40408 \
             -v "$CWD_DIR/fusion-node":/fusion-node \
-            fusionnetwork/minerandlocalgateway2 \
+            fusionnetwork/minerandlocalgateway \
             -u "$walletaddress" \
             -e "$nodename" "$autobt"
 
-    elif [ "$nodetype" == "gateway2" ]; then
-        sudo docker pull fusionnetwork/gateway2:latest
+    elif [ "$nodetype" == "gateway" ]; then
+        sudo docker pull fusionnetwork/gateway:latest
 
         sudo docker create --name fusion -it --restart unless-stopped \
             -p 40408:40408/tcp -p 40408:40408/udp -p 127.0.0.1:9000:9000 -p 127.0.0.1:9001:9001/tcp \
             -v "$CWD_DIR/fusion-node":/fusion-node \
-            fusionnetwork/gateway2 \
+            fusionnetwork/gateway \
             $ethstats
 
-    elif [ "$nodetype" == "efsn2" ]; then
+    elif [ "$nodetype" == "efsn" ]; then
     	
-        sudo docker pull fusionnetwork/efsn2:latest
+        sudo docker pull fusionnetwork/efsn:latest
 
         sudo docker create --name fusion -it --restart unless-stopped \
             -p 40408:40408/tcp -p 40408:40408/udp -p 127.0.0.1:9001:9001/tcp \
             -v "$CWD_DIR/fusion-node":/fusion-node \
-            fusionnetwork/efsn2 \
+            fusionnetwork/efsn \
             -u "$walletaddress" \
             -e "$nodename" "$autobt"
     else
