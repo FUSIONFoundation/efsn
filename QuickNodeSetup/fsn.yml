@@ -1,0 +1,200 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'AWS CloudFormation to launch Fusion AMI'
+Parameters:
+  KeyName:
+    Description: Name of an existing EC2 KeyPair to enable SSH access to the instance
+    Type: AWS::EC2::KeyPair::KeyName
+    ConstraintDescription: Must be the name of an existing EC2 KeyPair.
+  InstanceType:
+    Description: WebServer EC2 instance type
+    Type: String
+    Default: t2.medium
+    AllowedValues:
+    - t2.medium
+    ConstraintDescription: must be a valid EC2 instance type.
+  SSHLocation:
+    Description: The IP address range that can be used to SSH to the EC2 instances.
+    Type: String
+    MinLength: '9'
+    MaxLength: '18'
+    Default: 0.0.0.0/0
+    AllowedPattern: "(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})/(\\d{1,2})"
+    ConstraintDescription: must be a valid IP CIDR range of the form x.x.x.x/x.
+Mappings:
+  AWSInstanceType2Arch:
+    t2.medium:
+      Arch: HVM64
+  AWSInstanceType2NATArch:
+    t2.medium:
+      Arch: NATHVM64
+  AWSRegionArch2AMI:
+    us-east-1:
+      PV64: NOT_SUPPORTED
+      HVM64: ami-024a64a6685d05041
+      HVMG2: NOT_SUPPORTED
+    us-east-2:
+      PV64: NOT_SUPPORTED
+      HVM64: ami-0c55b159cbfafe1f0
+      HVMG2: NOT_SUPPORTED
+    us-west-1:
+      PV64: NOT_SUPPORTED
+      HVM64: ami-06397100adf427136
+      HVMG2: NOT_SUPPORTED
+    us-west-2:
+      PV64: NOT_SUPPORTED
+      HVM64: ami-005bdb005fb00e791
+      HVMG2: NOT_SUPPORTED
+    ap-east-1:
+      PV64: NOT_SUPPORTED
+      HVM64: NOT_SUPPORTED
+      HVMG2: NOT_SUPPORTED
+    ap-south-1:
+      PV64: NOT_SUPPORTED
+      HVM64: ami-06832d84cd1dbb448
+      HVMG2: NOT_SUPPORTED
+    ap-northeast-2:
+      PV64: NOT_SUPPORTED
+      HVM64: ami-02c9728b733d27242
+      HVMG2: NOT_SUPPORTED
+    ap-southeast-1:
+      PV64: NOT_SUPPORTED
+      HVM64: ami-0dad20bd1b9c8c004
+      HVMG2: NOT_SUPPORTED
+    ap-southeast-2:
+      PV64: NOT_SUPPORTED
+      HVM64: ami-0b76c3b150c6b1423
+      HVMG2: NOT_SUPPORTED
+    ap-northeast-1:
+      PV64: NOT_SUPPORTED
+      HVM64: ami-09c81ecf1c2b2ef70
+      HVMG2: NOT_SUPPORTED
+    ca-central-1:
+      PV64: NOT_SUPPORTED
+      HVM64: ami-01b60a3259250381b
+      HVMG2: NOT_SUPPORTED
+    cn-north-1:
+      PV64: NOT_SUPPORTED
+      HVM64: NOT_SUPPORTED
+      HVMG2: NOT_SUPPORTED
+    cn-northwest-1:
+      PV64: NOT_SUPPORTED
+      HVM64: NOT_SUPPORTED
+      HVMG2: NOT_SUPPORTED
+    eu-central-1:
+      PV64: NOT_SUPPORTED
+      HVM64: ami-090f10efc254eaf55
+      HVMG2: NOT_SUPPORTED
+    eu-west-1:
+      PV64: NOT_SUPPORTED
+      HVM64: ami-08d658f84a6d84a80
+      HVMG2: NOT_SUPPORTED
+    eu-west-2:
+      PV64: NOT_SUPPORTED
+      HVM64: ami-07dc734dc14746eab
+      HVMG2: NOT_SUPPORTED
+    eu-west-3:
+      PV64: NOT_SUPPORTED
+      HVM64: ami-03bca18cb3dc173c9
+      HVMG2: NOT_SUPPORTED
+    eu-north-1:
+      PV64: NOT_SUPPORTED
+      HVM64: ami-5e9c1520
+      HVMG2: NOT_SUPPORTED
+    sa-east-1:
+      PV64: NOT_SUPPORTED
+      HVM64: ami-09f4cd7c0b533b081
+      HVMG2: NOT_SUPPORTED
+Resources:
+  FusionEC2Instance:
+    Type: AWS::EC2::Instance
+    Properties:
+      InstanceType:
+        Ref: InstanceType
+      SecurityGroupIds:
+      - Ref: FusionSecurityGroup
+      KeyName:
+        Ref: KeyName
+      ImageId:
+        Fn::FindInMap:
+        - AWSRegionArch2AMI
+        - Ref: AWS::Region
+        - Fn::FindInMap:
+          - AWSInstanceType2Arch
+          - Ref: InstanceType
+          - Arch
+      BlockDeviceMappings:
+          - DeviceName: "/dev/sdh"
+            Ebs:
+              VolumeType: "gp2"
+              DeleteOnTermination: "true"
+              VolumeSize: "300"
+      UserData:
+        "Fn::Base64":
+          !Sub |
+            Content-Type: multipart/mixed; boundary="==BOUNDARY=="
+            MIME-Version: 1.0
+            --==BOUNDARY==
+            Content-Type: text/x-shellscript; charset="us-ascii"
+            #!/bin/bash
+            # Set any ECS agent configuration options
+            mkdir -p /fusion-nodes/keystore
+            # echo "password val" >> /fusion-nodes/password.txt
+            # echo "keystore val" >> /fusion-nodes/keystore/UTC.txt
+            cd /fusion-nodes
+            curl -O https://raw.githubusercontent.com/FUSIONFoundation/efsn/master/QuickNodeSetup/fsnNode.sh
+            sudo chmod +x fsnNode.sh
+            ln -s /fusion-nodes/fsnNode.sh /usr/local/bin/fsnNode.sh
+            --==BOUNDARY==--
+
+  FusionSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security group for Fusion Node
+      SecurityGroupIngress:
+      # - IpProtocol: tcp
+      #   FromPort: 9000
+      #   ToPort: 9001
+      #   CidrIp:
+      #     Ref: SSHLocation
+      # - IpProtocol: udp
+      #   FromPort: 9000
+      #   ToPort: 9001
+      #   CidrIp:
+      #     Ref: SSHLocation
+      - IpProtocol: tcp
+        FromPort: 40408
+        ToPort: 40408
+        CidrIp: 0.0.0.0/0
+      - IpProtocol: udp
+        FromPort: 40408
+        ToPort: 40408
+        CidrIp: 0.0.0.0/0
+      - IpProtocol: tcp
+        FromPort: 22
+        ToPort: 22
+        CidrIp:
+          Ref: SSHLocation
+
+Outputs:
+  InstanceId:
+    Description: InstanceId of the Fusion node instance
+    Value:
+      Ref: FusionEC2Instance
+  AZ:
+    Description: Availability Zone of the Fusion node instance
+    Value:
+      Fn::GetAtt:
+      - FusionEC2Instance
+      - AvailabilityZone
+  PublicDNS:
+    Description: Public DNSName of the Fusion node instance
+    Value:
+      Fn::GetAtt:
+      - FusionEC2Instance
+      - PublicDnsName
+  PublicIP:
+    Description: Public IP address of the Fusion node instance
+    Value:
+      Fn::GetAtt:
+      - FusionEC2Instance
+      - PublicIp
