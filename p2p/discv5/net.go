@@ -830,7 +830,7 @@ const (
 
 	// Packet type events.
 	// These correspond to packet types in the UDP protocol.
-	pingPacket = iota + 50
+	pingPacket = iota + 40
 	pongPacket
 	findnodePacket
 	neighborsPacket
@@ -842,7 +842,7 @@ const (
 	// Non-packet events.
 	// Event values in this category are allocated outside
 	// the packet type range (packet types are encoded as a single byte).
-	pongTimeout nodeEvent = iota + 106
+	pongTimeout nodeEvent = iota + 60
 	pingTimeout
 	neighboursTimeout
 )

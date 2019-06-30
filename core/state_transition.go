@@ -820,11 +820,14 @@ func (st *StateTransition) handleFsnCall(param *common.FSNCallParam) error {
 			}
 		}
 
+		swapDeleted := "false"
+
 		if swap.SwapSize.Cmp(takeSwapParam.Size) == 0 {
 			if err := st.state.RemoveSwap(swap.ID); err != nil {
 				st.addLog(common.TakeSwapFunc, takeSwapParam, common.NewKeyValue("Error", "System Error"))
 				return err
 			}
+			swapDeleted = "true"
 		} else {
 			swap.SwapSize = swap.SwapSize.Sub(swap.SwapSize, takeSwapParam.Size)
 			if err := st.state.UpdateSwap(swap); err != nil {
@@ -867,7 +870,7 @@ func (st *StateTransition) handleFsnCall(param *common.FSNCallParam) error {
 				// st.state.SubTimeLockBalance(swap.Owner, swap.FromAssetID, fromNeedValue)
 			}
 		}
-		st.addLog(common.TakeSwapFunc, takeSwapParam, common.NewKeyValue("SwapID", swap.ID))
+		st.addLog(common.TakeSwapFunc, takeSwapParam, common.NewKeyValue("SwapID", swap.ID), common.NewKeyValue("Deleted", swapDeleted))
 		return nil
 	case common.RecallMultiSwapFunc:
 		outputCommandInfo("RecallMultiSwapFunc", "from", st.msg.From())

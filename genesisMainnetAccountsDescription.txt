@@ -5,7 +5,6 @@
     TOTAL  100720 FSN to be deducted from 57344000 =  57243280
 
     Foundation will start with 57243280 FSN
-
                                 
 FusionMainnetTokens  0x8e6bDa71f3f0F49dDD29969De79aFCFac4457379 57243280 00000000000000000 0x2f59bc6d43683a40400000    // web3.toHex( web3.toWei( "57243280", "ether") )
 
@@ -21,7 +20,7 @@ Miner7  0xc4a9441afb052cb454240136cce71fb09316ea94    10000 00000000000000000000
 Miner8  0xfa37b7c3f21060458361ed5322be5af3740bce3c    10000 00000000000000000000 (0x21e19e0c9bab2400000)    //  web3.toHex( web3.toWei( "10000", "ether") )
 
 
--- THE USAN GENERATOR IS CREDIT WITH 110 000 TO GENERATE FOUNDATION USANs
+-- THE USAN GENERATOR IS CREDITED WITH 20720 TO GENERATE FOUNDATION USANs
 USAN GENERATOR   0x0Ac469cf34C4d65515E4eF27eAF0F71F15C5A2fd 20720 000000000000000000 0x4633bc36cbc2dc00000 web3.toHex( web3.toWei( "20720", "ether") )
         012345678912345678
 
@@ -29,7 +28,4 @@ USAN GENERATOR   0x0Ac469cf34C4d65515E4eF27eAF0F71F15C5A2fd 20720 00000000000000
  10360.0000000000000000000   * 2 just in case of error during run
  20720.0000000000000000000   Total for usan generator
 
-The foundation will need to move 100720 Ethereum FSN (ERC-20) to the reserve account of the foundation
-
-during devinternal genesis.json for generator will have an extra zero to increase balance to send supply to others
-day of launch this will be removed
+The foundation will need to move 100720 Ethereum FSN (ERC-20) to the SwapIn reserve account of the foundation on June 30th, launch of mainnet
