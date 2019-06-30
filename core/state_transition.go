@@ -1243,11 +1243,14 @@ func (st *StateTransition) handleFsnCall(param *common.FSNCallParam) error {
 			return deductErr
 		}
 
+		swapDeleted := "false"
+
 		if swap.SwapSize.Cmp(takeSwapParam.Size) == 0 {
 			if err := st.state.RemoveMultiSwap(swap.ID); err != nil {
 				st.addLog(common.TakeMultiSwapFunc, takeSwapParam, common.NewKeyValue("Error", "System Error"))
 				return err
 			}
+			swapDeleted = "true"
 		} else {
 			swap.SwapSize = swap.SwapSize.Sub(swap.SwapSize, takeSwapParam.Size)
 			if err := st.state.UpdateMultiSwap(swap); err != nil {
@@ -1285,7 +1288,7 @@ func (st *StateTransition) handleFsnCall(param *common.FSNCallParam) error {
 				// st.state.SubTimeLockBalance(swap.Owner, swap.FromAssetID, fromNeedValue)
 			}
 		}
-		st.addLog(common.TakeMultiSwapFunc, takeSwapParam, common.NewKeyValue("SwapID", swap.ID))
+		st.addLog(common.TakeMultiSwapFunc, takeSwapParam, common.NewKeyValue("SwapID", swap.ID), common.NewKeyValue("Deleted", swapDeleted))
 		return nil
 	}
 	return fmt.Errorf("Unsupported")
