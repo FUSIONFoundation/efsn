@@ -4,7 +4,7 @@
 CWD_DIR="/home/$USER"
 
 pause(){
-  read -p "Press [Enter] key to continue..." fackEnterKey
+  read -s -p "Press [Enter] key to continue..." fackEnterKey
 }
 
 askToContinue(){
@@ -354,6 +354,39 @@ viewNode(){
     pause
 }
 
+change_autobt(){
+	local autobt="$(getCfgValue 'autobt')"
+	[[ $autobt = "true" ]] && local state="enabled" || local state="disabled"
+	echo
+	echo "Ticket auto-buy is currently $state"
+        question="Do you want to change this? Doing so will restart the node. [Y/n] ";
+
+        askToContinue "$question"
+        continueYesNo=$?
+        if [ "$continueYesNo" -eq "1" ]; then
+		[[ $autobt = "true" ]] && autobt="false" || autobt="true"
+		cfg_files="$CWD_DIR/fusion-node/node.json"
+		cat <<< "$(jq ".autobt = \"$autobt\"" < ${cfg_files[0]})" > ${cfg_files[0]}
+		echo "Please wait, restarting the node..."
+		sudo docker restart fusion
+		echo "Done."
+		pause
+        fi
+}
+
+configNode(){
+	clear
+	echo "1. Enable/disable ticket auto-buy"
+	echo "2. Exit"
+	local choice
+	read -n1 -p "Enter choice [1-2] " choice
+	case $choice in
+		1) change_autobt ;;
+		2) show_menus ;;
+		*) echo -e "${RED}Invalid choice.${STD}"
+	esac
+}
+
 show_menus() {
 	clear
 	echo "---------------------"
@@ -364,19 +397,21 @@ show_menus() {
 	echo "3. Start node"
 	echo "4. Stop node"
 	echo "5. View node (only when started)"
-	echo "6. Exit"
+	echo "6. Configure node"
+	echo "7. Exit"
 }
 
 read_options(){
 	local choice
-	read -p "Enter choice [ 1 - 6] " choice
+	read -n1 -p "Enter choice [1-7] " choice
 	case $choice in
 		1) installNode ;;
 		2) updateNode ;;
 		3) startNode ;;
 		4) stopNode ;;
 		5) viewNode ;;
-		6) exit 0;;
+		6) configNode ;;
+		7) exit 0 ;;
 		*) echo -e "${RED}Invalid choice.${STD}"
 	esac
 }
