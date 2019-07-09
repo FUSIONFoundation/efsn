@@ -1,0 +1,13 @@
+[Unit]
+Description=Fusion Node
+Requires=docker.service
+After=docker.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/docker start fusion
+ExecStop=/usr/bin/docker stop fusion
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target
