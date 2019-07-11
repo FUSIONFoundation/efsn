@@ -430,6 +430,20 @@ func NewPublicFusionAPI(b Backend) *PublicFusionAPI {
 	}
 }
 
+func (s *PublicFusionAPI) IsAutoBuyTicket() bool {
+	return common.AutoBuyTicket
+}
+
+func (s *PublicFusionAPI) StartAutoBuyTicket() bool {
+	common.AutoBuyTicket = true
+	return common.AutoBuyTicket
+}
+
+func (s *PublicFusionAPI) StopAutoBuyTicket() bool {
+	common.AutoBuyTicket = false
+	return !common.AutoBuyTicket
+}
+
 // GetBalance wacom
 func (s *PublicFusionAPI) GetBalance(ctx context.Context, assetID common.Hash, address common.Address, blockNr rpc.BlockNumber) (string, error) {
 	state, _, err := s.b.StateAndHeaderByNumber(ctx, blockNr)

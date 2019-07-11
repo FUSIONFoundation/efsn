@@ -685,6 +685,24 @@ web3._extend({
 	property: 'fsn',
 	methods: [
 		new web3._extend.Method({
+			name: 'isAutoBuyTicket',
+			call: 'fsn_isAutoBuyTicket',
+			params: 0,
+			inputFormatter: [null]
+		}),
+		new web3._extend.Method({
+			name: 'startAutoBuyTicket',
+			call: 'fsn_startAutoBuyTicket',
+			params: 0,
+			inputFormatter: [null]
+		}),
+		new web3._extend.Method({
+			name: 'stopAutoBuyTicket',
+			call: 'fsn_stopAutoBuyTicket',
+			params: 0,
+			inputFormatter: [null]
+		}),
+		new web3._extend.Method({
 			name: 'getSnapshot',
 			call: 'fsn_getSnapshot',
 			params: 1,
