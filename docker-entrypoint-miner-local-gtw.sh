@@ -5,31 +5,33 @@ DATA_DIR=$NODES_ROOT/data
 KEYSTORE_DIR=$DATA_DIR/keystore
 unlock=
 ethstats=
-autobt=false
+autobt="false"
+mining="true"
 
-display_usage() { 
-    echo "Commands for Fusion efsn:" 
-    echo -e "\n-e value    Reporting name of a ethstats service" 
-    echo -e "\n-u value    Account to unlock" 
-    echo -e "\n-a          Auto buy tickets" 
-    } 
+display_usage() {
+    echo "Commands for Fusion efsn:"
+    echo -e "-e value    Reporting name of a ethstats service"
+    echo -e "-u value    Account to unlock"
+    echo -e "-a          Auto buy tickets"
+    }
 
 while [ "$1" != "" ]; do
     case $1 in
         -u | --unlock )         shift
                                 unlock=$1
                                 ;;
-        -e | --ethstats )           shift
+        -e | --ethstats )       shift
                                 ethstats=$1
                                 ;;
-        -a | --autobt )         autobt=true
+        -a | --autobt )         autobt="true"
+                                ;;
+        --disable-mining )      mining="false"
                                 ;;
         * )                     display_usage
                                 exit 1
     esac
     shift
 done
-
 
 # create data folder if does not exit
 if [ ! -d "$DATA_DIR" ]; then
@@ -42,17 +44,17 @@ if [ ! -d "$KEYSTORE_DIR" ]; then
 fi
 
 # copy keystore file
-cp $NODES_ROOT/UTC* $KEYSTORE_DIR/
+cp $NODES_ROOT/UTC* $KEYSTORE_DIR/ 2>/dev/null
 
 # format command option
-cmd_options="--datadir $DATA_DIR --password /fusion-node/password.txt --mine"
+cmd_options="--datadir $DATA_DIR --password /fusion-node/password.txt"
 
 # cmd_options_local_gtw=' --identity 1 --rpc --ws --rpcaddr 127.0.0.1 --rpccorsdomain 127.0.0.1 --wsapi "eth,net,fsn,fsntx" --rpcapi "eth,net,fsn,fsntx" --wsaddr 127.0.0.1 --wsport 9001 --rpcport 9000'
 cmd_options_local_gtw=' --rpc --ws --rpcaddr 0.0.0.0 --rpccorsdomain 0.0.0.0  --wsapi="eth,net,fsn,fsntx" --rpcapi="eth,net,fsn,fsntx" --wsaddr 0.0.0.0 --wsport 9001 --wsorigins=* --rpcport 9000'
 
 if [ "$ethstats" ]; then
     ethstats=" --ethstats $ethstats:fsnMainnet@node.fusionnetwork.io"
-    cmd_options=$cmd_options$ethstats 
+    cmd_options=$cmd_options$ethstats
 fi
 
 if [ "$unlock" ]; then
@@ -74,18 +76,23 @@ if [ "$unlock" ]; then
     # if [ "$utc_json_address" = "$unlock" ]; then
     #     echo "$unlock is 'valid'"
     # fi
-    
+
     # echo "unlock set to: $unlock"
     unlock=" --unlock $unlock"
-    cmd_options=$cmd_options$unlock 
+    cmd_options=$cmd_options$unlock
 fi
-    
-if [ "$autobt" = true ]; then
+
+if [ "$autobt" = "true" ]; then
     autobt=" --autobt"
-    cmd_options=$cmd_options$autobt 
+    cmd_options=$cmd_options$autobt
 fi
 
-echo "flags: $cmd_options$cmd_options_local_gtw"
+if [ "$mining" = "true" ]; then
+    mining=" --mine"
+    cmd_options=$cmd_options$mining
+fi
 
-# efsn  --unlock $unlock --ethstats 
+echo "efsn flags: $cmd_options$cmd_options_local_gtw"
+
+# efsn  --unlock $unlock --ethstats
 eval "efsn $cmd_options$cmd_options_local_gtw"
