@@ -261,7 +261,7 @@ initializeConfig() {
         sudo systemctl -q enable fusion
         echo "${txtgrn}✓${txtrst} Enabled node auto-start"
     else
-        sudo sudo systemctl -q disable fusion 2>/dev/null
+        sudo systemctl -q disable fusion 2>/dev/null
         echo "${txtred}✓${txtrst} Disabled node auto-start"
     fi
 
@@ -292,8 +292,7 @@ initializeConfig() {
 
 removeDockerImages() {
     # only try to stop the container if it's running
-    local running=$(sudo docker inspect -f "{{.State.Running}}" fusion)
-    [ "$running" = "true" ] && stopNode
+    [ "$(sudo docker inspect -f "{{.State.Running}}" fusion 2>/dev/null)" = "true" ] && stopNode
     # remove container and all images no matter what
     echo
     echo "${txtylw}Removing old container and images${txtrst}"
@@ -597,11 +596,13 @@ change_autostart() {
     if [ $? -eq 0 ]; then
         echo
         echo "<<< Changing auto-start setting >>>"
-        if [ "$state" = "disabled" ]; then
+        # if auto-start wasn't enabled during installation, state will be empty here
+        if [ "$state" != "enabled" ]; then
             # download systemd service unit definition if it doesn't exist yet
             [ -f /etc/systemd/system/fusion.service ] || sudo curl -fsSL \
                 https://raw.githubusercontent.com/FUSIONFoundation/efsn/master/QuickNodeSetup/fusion.service \
                 -o /etc/systemd/system/fusion.service
+            # reload systemd service unit definitions
             sudo systemctl daemon-reload
             # enable the systemd service unit
             sudo systemctl -q enable fusion
@@ -699,7 +700,6 @@ read_options(){
     esac
 }
 
-# make sure we're not running into avoidable problems during setup
 clear
 echo
 echo "-----------------------"
@@ -707,12 +707,14 @@ echo "| FUSION Node Manager |"
 echo "-----------------------"
 echo
 echo "${txtylw}Initializing script, please wait...${txtrst}"
+# make sure we're not running into avoidable problems during setup
 sanityChecks
 clear
 
 # ignoring some signals to keep the script running
 trap '' SIGINT SIGQUIT SIGTSTP
 while true; do
+    # showing only the install option on initial launch
     if [ ! -f "$BASE_DIR/fusion-node/node.json" ]; then
         show_menus_init
         read_options_init
