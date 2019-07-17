@@ -24,6 +24,23 @@ distroChecks() {
 sanityChecks() {
     distroChecks
 
+    # checking the effective user id, where 0 is root
+    if [ $EUID -ne 0 ]; then
+        # validate user, no point in moving on as non-root user without sudo access
+        if ! sudo -v 2>/dev/null; then
+            echo "${txtred}You are neither logged in as user root, nor do you have sudo access.${txtrst}"
+            echo "Please run the setup script again as user root or configure sudo access."
+            exit 1
+        fi
+        # make sure that the script isn't run as root and non-root user alternately
+        if sudo [ -f "/home/root/fusion-node/node.json" ]; then
+            echo "${txtred}The setup script was originally run with root privileges.${txtrst}"
+            echo "Please run it again as user root or by invoking sudo:"
+            echo "sudo bash -c \"\$(curl -fsSL https://raw.githubusercontent.com/FUSIONFoundation/efsn/master/QuickNodeSetup/fsnNode.sh)\""
+            exit 1
+        fi
+    fi
+
     # using locate without prior update is a perf vs reliability tradeoff
     # we don't want to wait until the whole fs is indexed or even use find
     if [ $(sudo locate -r .*/efsn/chaindata$ -c) -gt 1 ]; then
@@ -43,17 +60,7 @@ sanityChecks() {
         fi
     fi
 
-    # checking the effective user id, where 0 is root
-    # this is meant to be as non-breaking as possible
-    if [ $EUID -ne 0 ]; then
-        if sudo [ -f "/home/root/fusion-node/node.json" ]; then
-            echo "${txtred}The setup script was originally run with root privileges.${txtrst}"
-            echo "Please run it again as user root or by invoking sudo:"
-            echo "sudo bash -c \"\$(curl -fsSL https://raw.githubusercontent.com/FUSIONFoundation/efsn/master/QuickNodeSetup/fsnNode.sh)\""
-            exit 1
-        fi
-    fi
-
+    # this also covers the case where the setup script was originally run as non-root user
     if [ -n "$(sudo locate -r .*/efsn/chaindata$ | grep -v $BASE_DIR)" ]; then
         echo "${txtred}Found chaindata directory outside of $BASE_DIR.${txtrst}"
         echo "Please clean up the system manually first."
