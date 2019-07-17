@@ -49,7 +49,7 @@ sanityChecks() {
         if sudo [ -f "/home/root/fusion-node/node.json" ]; then
             echo "${txtred}The setup script was originally run with root privileges.${txtrst}"
             echo "Please run it again as user root or by invoking sudo:"
-            echo "sudo bash -c \"$(curl -fsSL https://raw.githubusercontent.com/FUSIONFoundation/efsn/master/QuickNodeSetup/fsnNode.sh)\""
+            echo "sudo bash -c \"\$(curl -fsSL https://raw.githubusercontent.com/FUSIONFoundation/efsn/master/QuickNodeSetup/fsnNode.sh)\""
             exit 1
         fi
     fi
