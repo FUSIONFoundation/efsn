@@ -86,7 +86,7 @@ sanityChecks() {
 
 pauseScript() {
     local fackEnterKey
-    read -s -p "${txtylw}Press [Enter] key to continue...${txtrst}" fackEnterKey
+    read -s -p "${txtylw}Press [Enter] to continue...${txtrst}" fackEnterKey
 }
 
 askToContinue() {
@@ -101,11 +101,11 @@ askToContinue() {
     done
 }
 
-# install recent Docker version; currently unused
 installDocker() {
+    # install recent Docker version; function currently unused
     echo
     echo "${txtylw}Adding Docker repository${txtrst}"
-    curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
+    curl -fsSL "https://download.docker.com/linux/ubuntu/gpg" | sudo apt-key add -
     sudo add-apt-repository -u -y "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
     echo "${txtgrn}✓${txtrst} Added Docker repository"
 
@@ -126,7 +126,7 @@ installDeps() {
     echo "${txtylw}Installing dependencies${txtrst}"
     sudo apt-get install -q -y apt-transport-https ca-certificates curl docker.io gnupg-agent \
         jq software-properties-common | grep -v "is already the newest version"
-    # install recent Docker version if not installed yet; currently unused
+    # install recent Docker version if distribution package not installed yet; currently unused
 #    dpkg -s docker.io | grep -q -E "Status.+installed" || installDocker
     echo "${txtgrn}✓${txtrst} Installed dependencies"
 }
@@ -224,7 +224,7 @@ updateKeystoreFile() {
             #echo $keystorejson | xargs > "$BASE_DIR/fusion-node/data/keystore/UTC.json"
             # this should be a pretty robust solution
             mkdir -p "$BASE_DIR/fusion-node/data/keystore/"
-            printf "%s" "$keystorejson" > "$BASE_DIR/fusion-node/data/keystore/UTC.json"
+            printf '%s' "$keystorejson" > "$BASE_DIR/fusion-node/data/keystore/UTC.json"
 
             echo
             local address="$(getCfgValue 'address')"
@@ -251,14 +251,35 @@ updateKeystorePass() {
             break
         fi
     done
-    printf "%s" "$keystorepass" > "$BASE_DIR/fusion-node/password.txt"
+    printf '%s' "$keystorepass" > "$BASE_DIR/fusion-node/password.txt"
+}
+
+warnRetreat() {
+    local nodetype="$(getCfgValue 'nodeType')"
+    if [ "$nodetype" = "minerandlocalgateway" -o "$nodetype" = "efsn" ]; then
+        # check if the configured address is mining and has active tickets
+        local address="$(getCfgValue 'address')"
+        local mining="$(getCfgValue 'mining')"
+        # talking to the RPC socket directly without invoking efsn is the fastest possible way to access the API locally
+        # nc has to be called with sudo because the socket is owned by the container running with root privileges
+        local tickets=$(printf '{"jsonrpc":"2.0","method":"fsn_totalNumberOfTicketsByAddress","params":["%s","latest"],"id":1}' "$address" \
+            | sudo nc -N -U "$BASE_DIR/fusion-node/data/efsn.ipc" | jq -r '.result')
+        # tickets override for testing purposes
+        #tickets=12345
+        if [ "$mining" != "false" -a $tickets -gt 0 ]; then
+            echo
+            echo "${txtylw}Your node is currently configured for mining and has $tickets active tickets.${txtrst}"
+            echo "If you stop the node for too long, your tickets might get retreated."
+            echo
+            local question="${txtylw}Are you sure you want to continue?${txtrst} [Y/n] "
+            askToContinue "$question"
+            [ $? -eq 0 ] || return 1
+        fi
+    fi
 }
 
 initConfig() {
     local question
-
-    # start with a clean state on installation
-    sudo rm -rf "$BASE_DIR/fusion-node/"
 
     echo
     echo "${txtylw}Please select the node type to install:${txtrst}"
@@ -281,12 +302,14 @@ initConfig() {
     echo "${txtgrn}✓${txtrst} Selected node type $nodetype"
 
     echo
-    question="${txtylw}Do you want to install a testnet node?${txtrst} [Y/n] "
+    question="${txtylw}Do you want to install a mainnet node?${txtrst} [Y/n] "
     local testnet="false"
     askToContinue "$question"
     if [ $? -eq 0 ]; then
+        echo "${txtgrn}✓${txtrst} Installing mainnet node"
+    else
         echo
-        question="${txtylw}Are you really sure you want to install a testnet node?${txtrst} [Y/n] "
+        question="${txtylw}Are you sure you want to install a testnet node?${txtrst} [Y/n] "
         askToContinue "$question"
         if [ $? -eq 0 ]; then
             testnet="true"
@@ -294,11 +317,12 @@ initConfig() {
         else
             echo "${txtgrn}✓${txtrst} Installing mainnet node"
         fi
-    else
-        echo "${txtgrn}✓${txtrst} Installing mainnet node"
     fi
 
-    if [ "$nodetype" = "minerandlocalgateway" ] || [ "$nodetype" = "efsn" ]; then
+    # purging existing node data as late as possible
+    sudo rm -rf "$BASE_DIR/fusion-node/"
+
+    if [ "$nodetype" = "minerandlocalgateway" -o "$nodetype" = "efsn" ]; then
         updateKeystoreFile
         echo "${txtgrn}✓${txtrst} Saved keystore file"
 
@@ -332,12 +356,13 @@ initConfig() {
     question="${txtylw}Do you want your node to auto-start at boot to prevent downtimes?${txtrst} [Y/n] "
     askToContinue "$question"
     if [ $? -eq 0 ]; then
-        sudo curl -fsSL https://raw.githubusercontent.com/FUSIONFoundation/efsn/master/QuickNodeSetup/fusion.service \
-            -o /etc/systemd/system/fusion.service
+        sudo curl -fsSL "https://raw.githubusercontent.com/FUSIONFoundation/efsn/master/QuickNodeSetup/fusion.service" \
+            -o "/etc/systemd/system/fusion.service"
         sudo systemctl daemon-reload
         sudo systemctl -q enable fusion
         echo "${txtgrn}✓${txtrst} Enabled node auto-start"
     else
+        # suppress warning about nonexisting service unit on fresh install
         sudo systemctl -q disable fusion 2>/dev/null
         echo "${txtred}✓${txtrst} Disabled node auto-start"
     fi
@@ -367,26 +392,26 @@ initConfig() {
     echo "${txtgrn}✓${txtrst} Wrote node configuration file"
 }
 
-removeDockerImages() {
+removeContainer() {
     # only try to stop the container if it's running
     [ "$(sudo docker inspect -f "{{.State.Running}}" fusion 2>/dev/null)" = "true" ] && stopNode
-    # remove container and all images no matter what
+    # remove container and base images no matter what
     echo
-    echo "${txtylw}Removing old container and images${txtrst}"
+    echo "${txtylw}Removing container and base images${txtrst}"
     sudo docker rm fusion >/dev/null 2>&1
     sudo docker rmi fusionnetwork/minerandlocalgateway fusionnetwork/efsn \
         fusionnetwork/gateway >/dev/null 2>&1
-    echo "${txtgrn}✓${txtrst} Removed old container and images"
+    echo "${txtgrn}✓${txtrst} Removed container and base images"
 }
 
-createDockerContainer() {
+createContainer() {
     # read configuration files
     echo
     echo "${txtylw}Reading node configuration${txtrst}"
     local nodetype="$(getCfgValue 'nodeType')"
     local testnet="$(getCfgValue 'testnet')"
     local nodename="$(getCfgValue 'nodeName')"
-    if [ "$nodetype" = "minerandlocalgateway" ] || [ "$nodetype" = "efsn" ]; then
+    if [ "$nodetype" = "minerandlocalgateway" -o "$nodetype" = "efsn" ]; then
         local autobuy="$(getCfgValue 'autobt')"
         local mining="$(getCfgValue 'mining')"
         local address="$(getCfgValue 'address')"
@@ -466,15 +491,15 @@ createDockerContainer() {
 
 startNode() {
     echo
-    echo "${txtylw}Starting node${txtrst}"
+    echo "${txtylw}Starting the node${txtrst}"
     sudo docker start fusion >/dev/null
     if [ $? -eq 0 ]; then
         echo "${txtgrn}✓${txtrst} Node started"
         echo
-        echo "-----------------------------------------------------"
-        echo "| Please use the \"View node\" function from the main |"
-        echo "|  menu to verify that the node is really running!  |"
-        echo "-----------------------------------------------------"
+        echo "---------------------------------------------------------------"
+        echo "| Please use the \"Show node logs\" function from the main menu |"
+        echo "|  to verify that the node is really running without errors!  |"
+        echo "---------------------------------------------------------------"
     else
         echo "${txtred}Node failed to start${txtrst}"
     fi
@@ -482,7 +507,8 @@ startNode() {
 
 stopNode() {
     echo
-    echo "${txtylw}Stopping node${txtrst}"
+    echo "${txtylw}Stopping the node${txtrst}"
+    echo "This might take a moment, please wait..."
     sudo docker stop fusion >/dev/null
     if [ $? -eq 0 ]; then
         echo "${txtgrn}✓${txtrst} Node stopped"
@@ -500,15 +526,15 @@ installNode() {
 
     if [ -d "$BASE_DIR/fusion-node" ]; then
         echo
-        echo "You already seem to have a node installed in $BASE_DIR/fusion-node."
+        echo "${txtylw}You already seem to have a node installed in $BASE_DIR/fusion-node.${txtrst}"
         echo "It will be stopped and its configuration and chaindata will be purged."
         echo "This means it has to sync from scratch again, which could take a while."
         echo
         local question="${txtylw}Are you sure you want to continue?${txtrst} [Y/n] "
         askToContinue "$question"
         if [ $? -eq 1 ]; then
-            echo "${txtred}✓${txtrst} Cancelled installation"
-            return
+            echo "${txtred}✓${txtrst} Installation cancelled"
+            return 1
         fi
     fi
 
@@ -516,8 +542,8 @@ installNode() {
     echo "<<< Installing node >>>"
     installDeps
     initConfig
-    removeDockerImages
-    createDockerContainer
+    removeContainer
+    createContainer
     startNode
     echo
     echo "<<< ${txtgrn}✓${txtrst} Installed node >>>"
@@ -525,11 +551,45 @@ installNode() {
     pauseScript
 }
 
+deinstallNode() {
+    clear
+    echo
+    echo "-----------------------"
+    echo "| Node Deinstallation |"
+    echo "-----------------------"
+
+    if [ -d "$BASE_DIR/fusion-node" ]; then
+        echo
+        echo "You already seem to have a node installed in $BASE_DIR/fusion-node."
+        echo "It will be stopped and its configuration and chaindata will be purged."
+        echo
+        local question="${txtylw}Are you sure you want to continue?${txtrst} [Y/n] "
+        askToContinue "$question"
+        if [ $? -eq 1 ]; then
+            echo "${txtred}✓${txtrst} Deinstallation cancelled"
+            return 1
+        fi
+    fi
+
+    echo
+    echo "<<< Deinstalling node >>>"
+    sudo rm -rf "$BASE_DIR/fusion-node/"
+    removeContainer
+    sudo systemctl -q stop fusion
+    sudo systemctl -q disable fusion
+    sudo systemctl daemon-reload
+    sudo rm -f "/etc/systemd/system/fusion.service"
+    echo
+    echo "<<< ${txtgrn}✓${txtrst} Deinstalled node >>>"
+    echo
+    pauseScript
+}
+
 updateNode() {
     echo
     echo "<<< Updating node >>>"
-    removeDockerImages
-    createDockerContainer
+    removeContainer
+    createContainer
     startNode
     echo
     echo "<<< ${txtgrn}✓${txtrst} Updated node >>>"
@@ -546,7 +606,7 @@ updateNodeScreen() {
     pauseScript
 }
 
-viewNode() {
+showNodeLogs() {
     clear
     echo
     echo "-------------------"
@@ -578,7 +638,7 @@ viewNode() {
 
 change_autobuy() {
     local nodetype="$(getCfgValue 'nodeType')"
-    if [ "$nodetype" = "minerandlocalgateway" ] || [ "$nodetype" = "efsn" ]; then
+    if [ "$nodetype" = "minerandlocalgateway" -o "$nodetype" = "efsn" ]; then
         local autobuy="$(getCfgValue 'autobt')"
         local state
         # just making the output a bit nicer
@@ -609,7 +669,7 @@ change_autobuy() {
 
 change_mining() {
     local nodetype="$(getCfgValue 'nodeType')"
-    if [ "$nodetype" = "minerandlocalgateway" ] || [ "$nodetype" = "efsn" ]; then
+    if [ "$nodetype" = "minerandlocalgateway" -o "$nodetype" = "efsn" ]; then
         local mining="$(getCfgValue 'mining')"
         local state
         # just making the output a bit nicer
@@ -641,7 +701,7 @@ change_mining() {
 
 change_wallet() {
     local nodetype="$(getCfgValue 'nodeType')"
-    if [ "$nodetype" = "minerandlocalgateway" ] || [ "$nodetype" = "efsn" ]; then
+    if [ "$nodetype" = "minerandlocalgateway" -o "$nodetype" = "efsn" ]; then
         local address="$(getCfgValue 'address')"
         echo
         echo "The current staking wallet address is ${txtgrn}$address${txtrst}"
@@ -684,9 +744,10 @@ change_autostart() {
         # if auto-start wasn't enabled during installation, state will be empty here
         if [ "$state" != "enabled" ]; then
             # download systemd service unit definition if it doesn't exist yet
-            [ -f /etc/systemd/system/fusion.service ] || sudo curl -fsSL \
-                https://raw.githubusercontent.com/FUSIONFoundation/efsn/master/QuickNodeSetup/fusion.service \
-                -o /etc/systemd/system/fusion.service
+            if [ ! -f /etc/systemd/system/fusion.service ]; then
+                sudo curl -fsSL "https://raw.githubusercontent.com/FUSIONFoundation/efsn/master/QuickNodeSetup/fusion.service" \
+                    -o "/etc/systemd/system/fusion.service"
+            fi
             # reload systemd service unit definitions
             sudo systemctl daemon-reload
             # enable the systemd service unit
@@ -722,8 +783,8 @@ configureNode() {
         read -n1 -r -s -p "Select option [1-5] " input
         case $input in
             1) echo; change_autobuy ;;
-            2) echo; change_mining ;;
-            3) echo; change_wallet ;;
+            2) echo; warnRetreat && change_mining ;;
+            3) echo; warnRetreat && change_wallet ;;
             4) echo; change_autostart ;;
             5) break ;;
             *) echo -e "\n${txtred}Invalid input${txtrst}"; sleep 1 ;;
@@ -762,25 +823,27 @@ show_menus() {
     echo
     echo "${txtylw}1. Install node and dependencies"
     echo "2. Update node to current version"
-    echo "3. Start node"
-    echo "4. Stop node"
-    echo "5. View node"
-    echo "6. Configure node"
-    echo "7. Exit to shell${txtrst}"
+    echo "3. Start the node"
+    echo "4. Stop the node"
+    echo "5. Deinstall node"
+    echo "6. Show node logs"
+    echo "7. Configure node"
+    echo "8. Exit to shell${txtrst}"
     echo
 }
 
 read_options(){
     local input
-    read -n1 -r -s -p "Select option [1-7] " input
+    read -n1 -r -s -p "Select option [1-8] " input
     case $input in
-        1) installNode ;;
+        1) echo; warnRetreat && installNode ;;
         2) updateNodeScreen ;;
         3) echo; startNode; echo; pauseScript ;;
-        4) echo; stopNode; echo; pauseScript ;;
-        5) viewNode ;;
-        6) configureNode ;;
-        7) echo -e "\n${txtylw}Bye...${txtrst}"; exit 0 ;;
+        4) echo; warnRetreat && stopNode && echo && pauseScript ;;
+        5) echo; warnRetreat && deinstallNode ;;
+        6) showNodeLogs ;;
+        7) configureNode ;;
+        8) echo -e "\n${txtylw}Bye...${txtrst}"; exit 0 ;;
         *) echo -e "\n${txtred}Invalid input${txtrst}"; sleep 1 ;;
     esac
 }
