@@ -534,6 +534,10 @@ func (dt *DaTong) getAllTickets(chain consensus.ChainReader, header *types.Heade
 			return err
 		}
 
+		if _, hasError := maps["Error"]; hasError {
+			return nil
+		}
+
 		idstr, idok := maps["TicketID"].(string)
 		ownerstr, ownerok := maps["TicketOwner"].(string)
 		datastr, dataok := maps["Base"].(string)
