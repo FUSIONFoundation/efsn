@@ -108,6 +108,7 @@ installDocker() {
     curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
     sudo add-apt-repository -u -y "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
     echo "${txtgrn}✓${txtrst} Added Docker repository"
+
     echo
     echo "${txtylw}Installing Docker${txtrst}"
     sudo apt-get install -q -y docker-ce
@@ -120,6 +121,7 @@ installDeps() {
     echo "This might take a moment, please wait..."
     sudo apt-get -qq update
     echo "${txtgrn}✓${txtrst} Updated package lists"
+
     echo
     echo "${txtylw}Installing dependencies${txtrst}"
     sudo apt-get install -q -y apt-transport-https ca-certificates curl docker.io gnupg-agent \
@@ -131,34 +133,83 @@ installDeps() {
 
 getCfgValue() {
     # read configuration values from the respective JSON files
-    local arg=$1
-    local keystore_files
-    local cfg_files
+    local cfg_arg="$1"
     local cfg_val
-    if [ "$arg" = "address" ]; then
-        keystore_files="$BASE_DIR/fusion-node/data/keystore/UTC.json"
-        cfg_val="0x$(cat < ${keystore_files[0]} | jq -r '.address')"
-    elif [ "$arg" = "nodeType" ]; then
-        cfg_files="$BASE_DIR/fusion-node/node.json"
-        cfg_val="$(cat < ${cfg_files[0]} | jq -r '.nodeType')"
-    elif [ "$arg" = "autobt" ]; then
-        cfg_files="$BASE_DIR/fusion-node/node.json"
-        cfg_val="$(cat < ${cfg_files[0]} | jq -r '.autobt')"
-    elif [ "$arg" = "mining" ]; then
-        cfg_files="$BASE_DIR/fusion-node/node.json"
-        cfg_val="$(cat < ${cfg_files[0]} | jq -r '.mining')"
-    elif [ "$arg" = "nodeName" ]; then
-        cfg_files="$BASE_DIR/fusion-node/node.json"
-        cfg_val="$(cat < ${cfg_files[0]} | jq -r '.nodeName')"
+
+    if [ $# -ne 1 ]; then
+        echo "${txtred}Incorrect number of arguments ($#)${txtrst}"
+        return 1
     fi
+
+    local keystore_file="$BASE_DIR/fusion-node/data/keystore/UTC.json"
+    local cfg_file="$BASE_DIR/fusion-node/node.json"
+
+    # extra spacing for readability
+    if [ "$cfg_arg" = "address" ]; then
+        cfg_val="0x$(jq -r '.address' $keystore_file)"
+
+    elif [ "$cfg_arg" = "nodeType" ]; then
+        cfg_val="$(jq -r '.nodeType' $cfg_file)"
+
+    elif [ "$cfg_arg" = "testnet" ]; then
+        cfg_val="$(jq -r '.testnet' $cfg_file)"
+
+    elif [ "$cfg_arg" = "autobt" ]; then
+        cfg_val="$(jq -r '.autobt' $cfg_file)"
+
+    elif [ "$cfg_arg" = "mining" ]; then
+        cfg_val="$(jq -r '.mining' $cfg_file)"
+
+    elif [ "$cfg_arg" = "nodeName" ]; then
+        cfg_val="$(jq -r '.nodeName' $cfg_file)"
+
+    else
+        echo "${txtred}Unknown argument ($cfg_arg)${txtrst}"
+        return 1
+    fi
+
     echo "$cfg_val"
+}
+
+putCfgValue() {
+    # write configuration values to the respective JSON files
+    local cfg_arg="$1"
+    local cfg_val="$2"
+
+    if [ $# -ne 2 ]; then
+        echo "${txtred}Incorrect number of arguments ($#)${txtrst}"
+        return 1
+    fi
+
+    local cfg_file="$BASE_DIR/fusion-node/node.json"
+
+    # extra spacing for readability
+    if [ "$cfg_arg" = "nodeType" ]; then
+        cat <<< "$(jq --arg nodeType "$nodeType" '.nodeType = $nodeType' < $cfg_file)" > "$cfg_file"
+
+    elif [ "$cfg_arg" = "testnet" ]; then
+        cat <<< "$(jq --arg testnet "$testnet" '.testnet = $testnet' < $cfg_file)" > "$cfg_file"
+
+    elif [ "$cfg_arg" = "autobt" ]; then
+        cat <<< "$(jq --arg autobt "$autobt" '.autobt = $autobt' < $cfg_file)" > "$cfg_file"
+
+    elif [ "$cfg_arg" = "mining" ]; then
+        cat <<< "$(jq --arg mining "$mining" '.mining = $mining' < $cfg_file)" > "$cfg_file"
+
+    elif [ "$cfg_arg" = "nodeName" ]; then
+        cat <<< "$(jq --arg nodeName "$nodeName" '.nodeName = $nodeName' < $cfg_file)" > "$cfg_file"
+
+    else
+        echo "${txtred}Unknown argument ($cfg_arg)${txtrst}"
+        return 1
+    fi
 }
 
 updateKeystoreFile() {
     echo
     echo "${txtylw}Open your keystore file (its name usually starts with UTC--) in any"
     echo "plaintext editor (like notepad) and copy and paste its full contents"
-    echo "here; it should contain a lot of cryptic text surrounded by \"{...}\".${txtrst} "
+    echo "here; it should contain a lot of cryptic text surrounded by \"{...}\".${txtrst}"
     local keystorejson
     while true; do
         read -p "Paste keystore contents: " keystorejson
@@ -190,7 +241,7 @@ updateKeystoreFile() {
 
 updateKeystorePass() {
     echo
-    echo "${txtylw}Please enter or paste the password that unlocks the keystore file.${txtrst} "
+    echo "${txtylw}Please enter or paste the password that unlocks the keystore file.${txtrst}"
     local keystorepass
     while true; do
         read -p "Enter keystore password: " keystorepass
@@ -203,7 +254,9 @@ updateKeystorePass() {
     printf "%s" "$keystorepass" > "$BASE_DIR/fusion-node/password.txt"
 }
 
-initializeConfig() {
+initConfig() {
+    local question
+
     # start with a clean state on installation
     sudo rm -rf "$BASE_DIR/fusion-node/"
 
@@ -216,7 +269,7 @@ initializeConfig() {
     local nodetype
     local input
     while true; do
-        read -n1 -r -s -p "Choose option [1-3] " input
+        read -n1 -r -s -p "Select option [1-3] " input
         case $input in
             1) nodetype="minerandlocalgateway"; break ;;
             2) nodetype="efsn"; break ;;
@@ -224,11 +277,28 @@ initializeConfig() {
             *) echo -e "\n${txtred}Invalid input${txtrst}" ;;
         esac
     done
+    echo
+    echo "${txtgrn}✓${txtrst} Selected node type $nodetype"
 
-    local question
+    echo
+    question="${txtylw}Do you want to install a testnet node?${txtrst} [Y/n] "
+    local testnet="false"
+    askToContinue "$question"
+    if [ $? -eq 0 ]; then
+        echo
+        question="${txtylw}Are you really sure you want to install a testnet node?${txtrst} [Y/n] "
+        askToContinue "$question"
+        if [ $? -eq 0 ]; then
+            testnet="true"
+            echo "${txtgrn}✓${txtrst} Installing testnet node"
+        else
+            echo "${txtgrn}✓${txtrst} Installing mainnet node"
+        fi
+    else
+        echo "${txtgrn}✓${txtrst} Installing mainnet node"
+    fi
 
     if [ "$nodetype" = "minerandlocalgateway" ] || [ "$nodetype" = "efsn" ]; then
-        echo
         updateKeystoreFile
         echo "${txtgrn}✓${txtrst} Saved keystore file"
 
@@ -273,7 +343,7 @@ initializeConfig() {
     fi
 
     echo
-    echo "${txtylw}What name do you want the node to have on node.fusionnetwork.io? No spaces or special characters, three characters minimum.${txtrst} "
+    echo "${txtylw}What name do you want the node to have on node.fusionnetwork.io? No spaces or special characters, three characters minimum.${txtrst}"
     local nodename
     while true; do
         read -p "Enter node name: " nodename
@@ -292,8 +362,8 @@ initializeConfig() {
     echo
     echo "${txtylw}Writing node configuration file${txtrst}"
     mkdir -p "$BASE_DIR/fusion-node/"
-    jq -n --arg nodeType "$nodetype" --arg autobt "$autobuy" --arg mining "$mining" --arg nodeName "$nodename" \
-        '{"nodeType": $nodeType, "autobt": $autobt, "mining": $mining, "nodeName": $nodeName}' > "$BASE_DIR/fusion-node/node.json"
+    jq -n --arg nodeType "$nodetype" --arg testnet "$testnet" --arg autobt "$autobuy" --arg mining "$mining" --arg nodeName "$nodename" \
+        '{"nodeType": $nodeType, "testnet": $testnet, "autobt": $autobt, "mining": $mining, "nodeName": $nodeName}' > "$BASE_DIR/fusion-node/node.json"
     echo "${txtgrn}✓${txtrst} Wrote node configuration file"
 }
 
@@ -313,21 +383,30 @@ createDockerContainer() {
     # read configuration files
     echo
     echo "${txtylw}Reading node configuration${txtrst}"
+    local nodetype="$(getCfgValue 'nodeType')"
+    local testnet="$(getCfgValue 'testnet')"
+    local nodename="$(getCfgValue 'nodeName')"
     if [ "$nodetype" = "minerandlocalgateway" ] || [ "$nodetype" = "efsn" ]; then
+        local autobuy="$(getCfgValue 'autobt')"
+        local mining="$(getCfgValue 'mining')"
         local address="$(getCfgValue 'address')"
     fi
-    local nodetype="$(getCfgValue 'nodeType')"
-    local autobt="$(getCfgValue 'autobt')"
-    local mining="$(getCfgValue 'mining')"
-    local nodename="$(getCfgValue 'nodeName')"
     echo "${txtgrn}✓${txtrst} Read node configuration"
 
-    if [ "$autobt" = "true" ]; then
+    if [ "$testnet" = "true" ]; then
+        # add testnet suffix to image
+        imgsfx="2"
+    else
+        # don't add testnet suffix to image
+        imgsfx=""
+    fi
+
+    if [ "$autobuy" = "true" ]; then
         # turn autobuy on
-        autobt="--autobt"
+        autobuy="--autobt"
     else
         # turn autobuy off
-        autobt=""
+        autobuy=""
     fi
 
     # make sure mining remains enabled for old configs
@@ -347,16 +426,16 @@ createDockerContainer() {
         sudo docker create --name fusion -t --restart unless-stopped \
             -p 127.0.0.1:9000:9000 -p 127.0.0.1:9001:9001 -p 40408:40408 -p 40408:40408/udp \
             -v "$BASE_DIR/fusion-node":/fusion-node \
-            fusionnetwork/minerandlocalgateway \
-            -u "$address" "$autobt" "$mining" \
+            fusionnetwork/minerandlocalgateway$imgsfx \
+            -u "$address" "$autobuy" "$mining" \
             -e "$nodename"
 
     elif [ "$nodetype" = "efsn" ]; then
         sudo docker create --name fusion -t --restart unless-stopped \
             -p 40408:40408 -p 40408:40408/udp \
             -v "$BASE_DIR/fusion-node":/fusion-node \
-            fusionnetwork/efsn \
-            -u "$address" "$autobt" "$mining" \
+            fusionnetwork/efsn$imgsfx \
+            -u "$address" "$autobuy" "$mining" \
             -e "$nodename"
 
     elif [ "$nodetype" = "gateway" ]; then
@@ -374,7 +453,7 @@ createDockerContainer() {
         sudo docker create --name fusion -t --restart unless-stopped \
             -p 127.0.0.1:9000:9000 -p 127.0.0.1:9001:9001 -p 40408:40408 -p 40408:40408/udp \
             -v "$BASE_DIR/fusion-node":/fusion-node \
-            fusionnetwork/gateway \
+            fusionnetwork/gateway$imgsfx \
             $ethstats
 
     else
@@ -436,7 +515,7 @@ installNode() {
     echo
     echo "<<< Installing node >>>"
     installDeps
-    initializeConfig
+    initConfig
     removeDockerImages
     createDockerContainer
     startNode
@@ -506,15 +585,14 @@ change_autobuy() {
         [ "$autobuy" = "true" ] && state="${txtgrn}enabled${txtrst}" || state="${txtred}disabled${txtrst}"
         echo
         echo "Ticket auto-buy is currently $state"
+        # we can't just use the API here as an unexpected node restart would cause problems
         local question="${txtylw}Do you want to change this setting? Doing so will enforce a node update and restart!${txtrst} [Y/n] "
         askToContinue "$question"
         if [ $? -eq 0 ]; then
             echo
             echo "<<< Changing auto-buy setting >>>"
             [ "$autobuy" = "true" ] && autobuy="false" || autobuy="true"
-            local cfg_files="$BASE_DIR/fusion-node/node.json"
-            # rewrite node.json with the updated configuration
-            cat <<< "$(jq ".autobt = \"$autobuy\"" < ${cfg_files[0]})" > ${cfg_files[0]}
+            putCfgValue 'autobt' "$autobuy"
             updateNode
             echo
             echo "<<< ${txtgrn}✓${txtrst} Changed auto-buy setting >>>"
@@ -538,6 +616,7 @@ change_mining() {
         [ "$mining" != "false" ] && state="${txtgrn}enabled${txtrst}" || state="${txtred}disabled${txtrst}"
         echo
         echo "Mining of new blocks is currently $state"
+        # we can't just use the API here as an unexpected node restart would cause problems
         local question="${txtylw}Do you want to change this setting? Doing so will enforce a node update and restart!${txtrst} [Y/n] "
         askToContinue "$question"
         if [ $? -eq 0 ]; then
@@ -545,9 +624,7 @@ change_mining() {
             echo "<<< Changing mining setting >>>"
             # make sure mining remains enabled for old configs
             [ "$mining" != "false" ] && mining="false" || mining="true"
-            local cfg_files="$BASE_DIR/fusion-node/node.json"
-            # rewrite node.json with the updated configuration
-            cat <<< "$(jq ".mining = \"$mining\"" < ${cfg_files[0]})" > ${cfg_files[0]}
+            putCfgValue 'mining' "$mining"
             updateNode
             echo
             echo "<<< ${txtgrn}✓${txtrst} Changed mining setting >>>"
@@ -568,6 +645,7 @@ change_wallet() {
         local address="$(getCfgValue 'address')"
         echo
         echo "The current staking wallet address is ${txtgrn}$address${txtrst}"
+        # we can't just use the API here as an unexpected node restart would cause problems
         local question="${txtylw}Do you want to change this setting? Doing so will enforce a node update and restart!${txtrst} [Y/n] "
         askToContinue "$question"
         if [ $? -eq 0 ]; then
@@ -641,7 +719,7 @@ configureNode() {
         echo "5. Return to main menu${txtrst}"
         echo
         local input
-        read -n1 -r -s -p "Choose option [1-5] " input
+        read -n1 -r -s -p "Select option [1-5] " input
         case $input in
             1) echo; change_autobuy ;;
             2) echo; change_mining ;;
@@ -667,7 +745,7 @@ show_menus_init() {
 
 read_options_init(){
     local input
-    read -n1 -r -s -p "Choose option [1-2] " input
+    read -n1 -r -s -p "Select option [1-2] " input
     case $input in
         1) installNode ;;
         2) echo -e "\n${txtylw}Bye...${txtrst}"; exit 0 ;;
@@ -694,7 +772,7 @@ show_menus() {
 
 read_options(){
     local input
-    read -n1 -r -s -p "Choose option [1-7] " input
+    read -n1 -r -s -p "Select option [1-7] " input
     case $input in
         1) installNode ;;
         2) updateNodeScreen ;;
