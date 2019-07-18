@@ -219,13 +219,12 @@ func getParent(chain consensus.ChainReader, header *types.Header, parents []*typ
 // the consensus rules of the given engine.
 func (dt *DaTong) verifySeal(chain consensus.ChainReader, header *types.Header, parent *types.Header) error {
 	// verify ticket
-	snap, err := newSnapshotWithData(getSnapDataByHeader(header))
+	snap, err := NewSnapshotFromHeader(header)
 	if err != nil {
 		return err
 	}
-	ticketID := snap.GetVoteTicket()
 	// verify ticket: list squence, ID , ticket Info, difficulty
-	diff, tk, listSq, _, errv := dt.calcBlockDifficulty(chain, header, parent)
+	diff, tk, listSq, retreat, errv := dt.calcBlockDifficulty(chain, header, parent)
 	if errv != nil {
 		return errv
 	}
@@ -234,8 +233,19 @@ func (dt *DaTong) verifySeal(chain consensus.ChainReader, header *types.Header, 
 		return errors.New("Coinbase is not the voted ticket owner")
 	}
 	// check ticket ID
-	if tk.ID != ticketID {
-		return fmt.Errorf("verifySeal ticketID mismatch, have %v, want %v", ticketID.String(), tk.ID.String())
+	if tk.ID != snap.Selected {
+		return fmt.Errorf("verifySeal ticketID mismatch, have %v, want %v", snap.Selected.String(), tk.ID.String())
+	}
+	if common.IsHeaderSnapCheckingEnabled(header.Number) {
+		// check retreat tickets
+		if len(retreat) != len(snap.Retreat) {
+			return fmt.Errorf("verifySeal retreat tickets count mismatch")
+		}
+		for i := 0; i < len(retreat); i++ {
+			if retreat[i].ID != snap.Retreat[i] {
+				return fmt.Errorf("verifySeal retreat tickets mismatch")
+			}
+		}
 	}
 	// check ticket info
 	errt := dt.checkTicketInfo(header, tk)
@@ -385,20 +395,28 @@ func (dt *DaTong) Finalize(chain consensus.ChainReader, header *types.Header, st
 	if err != nil {
 		return nil, errors.New("UpdateTickets failed: " + err.Error())
 	}
-	if isInMining {
-		header.MixDigest = hash
-	} else if header.MixDigest != hash {
-		return nil, fmt.Errorf("MixDigest mismatch, have:%v, want:%v", header.MixDigest, hash)
-	}
 
 	snap.SetTicketNumber(int(headerState.TotalNumberOfTickets()))
 	snapBytes := snap.Bytes()
-	header.Extra = header.Extra[:extraVanity]
-	header.Extra = append(header.Extra, snapBytes...)
-	header.Extra = append(header.Extra, make([]byte, extraSeal)...)
+
+	if isInMining {
+		header.MixDigest = hash
+		header.Extra = header.Extra[:extraVanity]
+		header.Extra = append(header.Extra, snapBytes...)
+		header.Extra = append(header.Extra, make([]byte, extraSeal)...)
+	} else {
+		if header.MixDigest != hash {
+			return nil, fmt.Errorf("MixDigest mismatch, have:%v, want:%v", header.MixDigest, hash)
+		}
+		if common.IsHeaderSnapCheckingEnabled(header.Number) {
+			if !bytes.Equal(getSnapData(header.Extra), snapBytes) {
+				return nil, fmt.Errorf("snapBytes in Extra mismatch")
+			}
+		}
+	}
+
 	headerState.AddBalance(header.Coinbase, common.SystemAssetID, calcRewards(header.Number))
 	header.Root = headerState.IntermediateRoot(chain.Config().IsEIP158(header.Number))
-
 	return types.NewBlock(header, txs, nil, receipts), nil
 }
 
