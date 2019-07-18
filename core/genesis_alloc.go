@@ -16,6 +16,15 @@
 
 package core
 
+const devnetAllocDataJson = `{
+       "0x3a1b3b81ed061581558a81f11d63e03129347437": {"balance": "100000000000000000000000000"},
+       "0x0963a18ea497b7724340fdfe4ff6e060d3f9e388": {"balance": "100000000000000000000000000"},
+       "0x5ee5c548a649594feb24882c3deb456d36a78801": {"balance": "100000000000000000000000000"},
+       "0x0122bf3930c1201a21133937ad5c83eb4ded1b08": {"balance": "100000000000000000000000000"},
+       "0x37a200388caa75edcc53a2bd329f7e9563c6acb6": {"balance": "100000000000000000000000000"},
+       "0x07f35aba9555a532c0edc2bd6350c891b6f2c8d0": {"balance": "100000000000000000000000000"}
+}`
+
 // Constants containing the genesis allocation of built-in genesis blocks.
 // Their content is an RLP-encoded list of (address, balance) tuples.
 // Use mkalloc.go to create/update them.

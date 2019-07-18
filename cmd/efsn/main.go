@@ -31,6 +31,7 @@ import (
 	"github.com/FusionFoundation/efsn/accounts"
 	"github.com/FusionFoundation/efsn/accounts/keystore"
 	"github.com/FusionFoundation/efsn/cmd/utils"
+	"github.com/FusionFoundation/efsn/common"
 	"github.com/FusionFoundation/efsn/console"
 	"github.com/FusionFoundation/efsn/eth"
 	"github.com/FusionFoundation/efsn/ethclient"
@@ -122,6 +123,7 @@ var (
 		utils.DeveloperPeriodFlag,
 		utils.TestnetFlag,
 		utils.RinkebyFlag,
+		utils.DevnetFlag,
 		utils.VMEnableDebugFlag,
 		utils.NetworkIdFlag,
 		utils.RPCCORSDomainFlag,
@@ -277,6 +279,11 @@ func geth(ctx *cli.Context) error {
 // miner.
 func startNode(ctx *cli.Context, stack *node.Node) {
 	debug.Memsize.Add("node", stack)
+
+	// add more log and checking in devnet
+	if ctx.GlobalBool(utils.DevnetFlag.Name) {
+		common.DebugMode = true
+	}
 
 	// Start up the node itself
 	utils.StartNode(stack)

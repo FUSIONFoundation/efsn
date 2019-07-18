@@ -140,6 +140,10 @@ var (
 		Name:  "rinkeby",
 		Usage: "Rinkeby network: pre-configured proof-of-authority test network",
 	}
+	DevnetFlag = cli.BoolFlag{
+		Name:  "devnet",
+		Usage: "Develop network: pre-configured proof-of-stake test network",
+	}
 	DeveloperFlag = cli.BoolFlag{
 		Name:  "dev",
 		Usage: "Ephemeral proof-of-authority network with a pre-funded developer account, mining enabled",
@@ -641,6 +645,9 @@ func MakeDataDir(ctx *cli.Context) string {
 		if ctx.GlobalBool(RinkebyFlag.Name) {
 			return filepath.Join(path, "rinkeby")
 		}
+		if ctx.GlobalBool(DevnetFlag.Name) {
+			return filepath.Join(path, "devnet")
+		}
 		return path
 	}
 	Fatalf("Cannot determine default data directory, please set manually (--datadir)")
@@ -695,6 +702,8 @@ func setBootstrapNodes(ctx *cli.Context, cfg *p2p.Config) {
 		urls = params.TestnetBootnodes
 	case ctx.GlobalBool(RinkebyFlag.Name):
 		urls = params.RinkebyBootnodes
+	case ctx.GlobalBool(DevnetFlag.Name):
+		urls = params.DevnetBootnodes
 	case cfg.BootstrapNodes != nil:
 		return // already set, don't apply defaults.
 	}
@@ -989,6 +998,8 @@ func SetNodeConfig(ctx *cli.Context, cfg *node.Config) {
 		cfg.DataDir = filepath.Join(node.DefaultDataDir(), "testnet")
 	case ctx.GlobalBool(RinkebyFlag.Name):
 		cfg.DataDir = filepath.Join(node.DefaultDataDir(), "rinkeby")
+	case ctx.GlobalBool(DevnetFlag.Name):
+		cfg.DataDir = filepath.Join(node.DefaultDataDir(), "devnet")
 	}
 
 	if ctx.GlobalIsSet(KeyStoreDirFlag.Name) {
@@ -1129,7 +1140,7 @@ func SetShhConfig(ctx *cli.Context, stack *node.Node, cfg *whisper.Config) {
 // SetEthConfig applies eth-related command line flags to the config.
 func SetEthConfig(ctx *cli.Context, stack *node.Node, cfg *eth.Config) {
 	// Avoid conflicting network flags
-	checkExclusive(ctx, DeveloperFlag, TestnetFlag, RinkebyFlag)
+	checkExclusive(ctx, DeveloperFlag, TestnetFlag, RinkebyFlag, DevnetFlag)
 	checkExclusive(ctx, LightServFlag, SyncModeFlag, "light")
 
 	ks := stack.AccountManager().Backends(keystore.KeyStoreType)[0].(*keystore.KeyStore)
@@ -1232,6 +1243,11 @@ func SetEthConfig(ctx *cli.Context, stack *node.Node, cfg *eth.Config) {
 			cfg.NetworkId = params.RinkebyChainConfig.ChainID.Uint64()
 		}
 		cfg.Genesis = core.DefaultRinkebyGenesisBlock()
+	case ctx.GlobalBool(DevnetFlag.Name):
+		if !ctx.GlobalIsSet(NetworkIdFlag.Name) {
+			cfg.NetworkId = params.DevnetChainConfig.ChainID.Uint64()
+		}
+		cfg.Genesis = core.DefaultDevnetGenesisBlock()
 	case ctx.GlobalBool(DeveloperFlag.Name):
 		if !ctx.GlobalIsSet(NetworkIdFlag.Name) {
 			cfg.NetworkId = params.AllCliqueProtocolChanges.ChainID.Uint64()
@@ -1373,6 +1389,8 @@ func MakeGenesis(ctx *cli.Context) *core.Genesis {
 		genesis = core.DefaultTestnetGenesisBlock()
 	case ctx.GlobalBool(RinkebyFlag.Name):
 		genesis = core.DefaultRinkebyGenesisBlock()
+	case ctx.GlobalBool(DevnetFlag.Name):
+		genesis = core.DefaultDevnetGenesisBlock()
 	case ctx.GlobalBool(DeveloperFlag.Name):
 		Fatalf("Developer chains are ephemeral")
 	}
