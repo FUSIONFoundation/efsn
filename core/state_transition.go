@@ -1110,12 +1110,12 @@ func (st *StateTransition) handleFsnCall(param *common.FSNCallParam) error {
 
 		swap, err := st.state.GetMultiSwap(takeSwapParam.SwapID)
 		if err != nil {
-			st.addLog(common.TakeSwapFunc, takeSwapParam, common.NewKeyValue("Error", "swap not found"))
+			st.addLog(common.TakeMultiSwapFunc, takeSwapParam, common.NewKeyValue("Error", "swap not found"))
 			return fmt.Errorf("Swap not found")
 		}
 
 		if err := takeSwapParam.Check(height, &swap, timestamp); err != nil {
-			st.addLog(common.TakeSwapFunc, takeSwapParam, common.NewKeyValue("Error", err.Error()))
+			st.addLog(common.TakeMultiSwapFunc, takeSwapParam, common.NewKeyValue("Error", err.Error()))
 			return err
 		}
 
