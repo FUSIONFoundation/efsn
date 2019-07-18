@@ -326,6 +326,7 @@ func (dt *DaTong) Finalize(chain consensus.ChainReader, header *types.Header, st
 	}
 
 	snap := newSnapshot()
+	isInMining := header.MixDigest == (common.Hash{})
 
 	//update tickets
 	headerState := statedb
@@ -367,8 +368,8 @@ func (dt *DaTong) Finalize(chain consensus.ChainReader, header *types.Header, st
 
 	//delete tickets before coinbase if selected miner did not Seal
 	for i, t := range retreat {
-		if i >= maxNumberOfDeletedTickets {
-			break
+		if common.DebugMode && !isInMining && i == 0 {
+			log.Info("retreat ticket", "nonce", header.Nonce.Uint64(), "id", retreat[0].ID.String(), "owner", retreat[0].Owner, "blockHeight", header.Number, "ticketHeight", retreat[0].Height)
 		}
 		deleteTicket(t, ticketRetreat, !(t.IsInGenesis() || i == 0))
 	}
@@ -377,7 +378,7 @@ func (dt *DaTong) Finalize(chain consensus.ChainReader, header *types.Header, st
 	if err != nil {
 		return nil, errors.New("UpdateTickets failed: " + err.Error())
 	}
-	if header.MixDigest == (common.Hash{}) {
+	if isInMining {
 		header.MixDigest = hash
 	} else if header.MixDigest != hash {
 		return nil, fmt.Errorf("MixDigest mismatch, have:%v, want:%v", header.MixDigest, hash)
@@ -641,6 +642,9 @@ func getSnapDataByHeader(header *types.Header) []byte {
 
 func getSnapData(data []byte) []byte {
 	extraSuffix := len(data) - extraSeal
+	if extraSuffix < extraVanity {
+		return []byte{}
+	}
 	return data[extraVanity:extraSuffix]
 }
 
@@ -751,20 +755,22 @@ func (dt *DaTong) calcBlockDifficulty(chain consensus.ChainReader, header *types
 	}
 	close(ch)
 	sort.Sort(list)
-	for _, t := range list {
+	selectedTime := uint64(0)
+	for i, t := range list {
 		owner := t.tk.Owner
 		if owner == header.Coinbase {
 			selected = t.tk
 			break
 		} else {
-			retreat = append(retreat, t.tk) // one miner one selected ticket
+			selectedTime++
+			if i < maxNumberOfDeletedTickets {
+				retreat = append(retreat, t.tk) // one miner one selected ticket
+			}
 		}
 	}
 	if selected == nil {
 		return nil, nil, 0, nil, errors.New("myself tickets not selected in maxBlockTime")
 	}
-
-	selectedTime := uint64(len(retreat))
 
 	// cacl difficulty
 	difficulty := new(big.Int).SetUint64(ticketsTotalAmount - selectedTime)
