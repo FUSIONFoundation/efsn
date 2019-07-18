@@ -235,3 +235,7 @@ func (b *EthAPIBackend) ServiceFilter(ctx context.Context, session *bloombits.Ma
 func (b *EthAPIBackend) IsMining() bool {
 	return b.eth.IsMining()
 }
+
+func (b *EthAPIBackend) Coinbase() (common.Address, error) {
+	return b.eth.Etherbase()
+}

@@ -430,6 +430,11 @@ func NewPublicFusionAPI(b Backend) *PublicFusionAPI {
 	}
 }
 
+// IsAutoBuyTicket wacom
+func (s *PublicFusionAPI) IsAutoBuyTicket(ctx context.Context) bool {
+	return common.AutoBuyTicket
+}
+
 // GetBalance wacom
 func (s *PublicFusionAPI) GetBalance(ctx context.Context, assetID common.Hash, address common.Address, blockNr rpc.BlockNumber) (string, error) {
 	state, _, err := s.b.StateAndHeaderByNumber(ctx, blockNr)
@@ -1277,35 +1282,13 @@ type PrivateFusionAPI struct {
 	papi      *PrivateAccountAPI
 }
 
-// store privateFusionAPI
-var privateFusionAPI = &PrivateFusionAPI{}
-
-func AutoBuyTicket(account common.Address, passwd string) {
-	fbase := FusionBaseArgs{From: account}
-	args := BuyTicketArgs{FusionBaseArgs: fbase}
-
-	for {
-		<-common.AutoBuyTicketChan
-	COMSUMEALL:
-		for {
-			select {
-			case <-common.AutoBuyTicketChan:
-			default:
-				break COMSUMEALL
-			}
-		}
-		privateFusionAPI.BuyTicket(nil, args, passwd)
-	}
-}
-
 // NewPrivateFusionAPI ss
 func NewPrivateFusionAPI(b Backend, nonceLock *AddrLocker, papi *PrivateAccountAPI) *PrivateFusionAPI {
-	privateFusionAPI = &PrivateFusionAPI{
+	return &PrivateFusionAPI{
 		PublicFusionAPI: *NewPublicFusionAPI(b),
 		nonceLock:       nonceLock,
 		papi:            papi,
 	}
-	return privateFusionAPI
 }
 
 // GenNotation ss
@@ -1483,13 +1466,61 @@ type FusionTransactionAPI struct {
 	txapi     *PublicTransactionPoolAPI
 }
 
+var fusionTransactionAPI *FusionTransactionAPI
+
 // NewFusionTransactionAPI ss
 func NewFusionTransactionAPI(b Backend, nonceLock *AddrLocker, txapi *PublicTransactionPoolAPI) *FusionTransactionAPI {
-	return &FusionTransactionAPI{
+	fusionTransactionAPI = &FusionTransactionAPI{
 		PublicFusionAPI: *NewPublicFusionAPI(b),
 		nonceLock:       nonceLock,
 		txapi:           txapi,
 	}
+	return fusionTransactionAPI
+}
+
+// auto buy ticket
+func AutoBuyTicket(enable bool) {
+	if enable {
+		_, err := fusionTransactionAPI.b.Coinbase()
+		if err != nil {
+			log.Warn("AutoBuyTicket not enabled as no coinbase account exist")
+			enable = false
+		}
+	}
+	common.AutoBuyTicket = enable
+
+	for {
+		<-common.AutoBuyTicketChan
+	COMSUMEALL:
+		for {
+			select {
+			case <-common.AutoBuyTicketChan:
+			default:
+				break COMSUMEALL
+			}
+		}
+
+		coinbase, err := fusionTransactionAPI.b.Coinbase()
+		if err == nil {
+			fbase := FusionBaseArgs{From: coinbase}
+			args := BuyTicketArgs{FusionBaseArgs: fbase}
+			fusionTransactionAPI.BuyTicket(context.TODO(), args)
+		}
+	}
+}
+
+// StartAutoBuyTicket ss
+func (s *FusionTransactionAPI) StartAutoBuyTicket() error {
+	if _, err := fusionTransactionAPI.b.Coinbase(); err != nil {
+		return fmt.Errorf("StartAutoBuyTicket Error: coinbase not exist")
+	}
+	common.AutoBuyTicket = true
+	return nil
+}
+
+// StopAutoBuyTicket ss
+func (s *FusionTransactionAPI) StopAutoBuyTicket() {
+	common.AutoBuyTicket = false
 }
 
 func (s *FusionTransactionAPI) buildTransaction(ctx context.Context, args SendTxArgs) (*types.Transaction, error) {
