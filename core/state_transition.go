@@ -742,6 +742,13 @@ func (st *StateTransition) handleFsnCall(param *common.FSNCallParam) error {
 			return err
 		}
 
+		if common.IsPrivateSwapCheckingEnabled(height) {
+			if err := common.CheckSwapTargets(swap.Targes, st.msg.From()); err != nil {
+				st.addLog(common.TakeSwapFunc, takeSwapParam, common.NewKeyValue("Error", err.Error()))
+				return err
+			}
+		}
+
 		var usanSwap bool
 		if swap.FromAssetID == common.OwnerUSANAssetID {
 			notation := st.state.GetNotation(swap.Owner)
@@ -1110,6 +1117,13 @@ func (st *StateTransition) handleFsnCall(param *common.FSNCallParam) error {
 		if err := takeSwapParam.Check(height, &swap, timestamp); err != nil {
 			st.addLog(common.TakeSwapFunc, takeSwapParam, common.NewKeyValue("Error", err.Error()))
 			return err
+		}
+
+		if common.IsPrivateSwapCheckingEnabled(height) {
+			if err := common.CheckSwapTargets(swap.Targes, st.msg.From()); err != nil {
+				st.addLog(common.TakeMultiSwapFunc, takeSwapParam, common.NewKeyValue("Error", err.Error()))
+				return err
+			}
 		}
 
 		lnFrom := len(swap.FromAssetID)
