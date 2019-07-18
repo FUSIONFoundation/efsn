@@ -813,6 +813,18 @@ func (s *MultiSwap) DeepCopy() MultiSwap {
 	}
 }
 
+func CheckSwapTargets(targets []Address, addr Address) error {
+	if len(targets) == 0 {
+		return nil
+	}
+	for _, target := range targets {
+		if addr == target {
+			return nil
+		}
+	}
+	return fmt.Errorf("swap taker does not match the specified targets")
+}
+
 // KeyValue wacom
 type KeyValue struct {
 	Key   string

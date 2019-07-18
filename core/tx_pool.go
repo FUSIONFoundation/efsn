@@ -1576,6 +1576,10 @@ func (pool *TxPool) validateFsnCallTx(tx *types.Transaction) error {
 			return err
 		}
 
+		if err := common.CheckSwapTargets(swap.Targes, from); err != nil {
+			return err
+		}
+
 		if swap.FromAssetID == common.OwnerUSANAssetID {
 			notation := state.GetNotation(swap.Owner)
 			if notation == 0 || notation != swap.Notation {
@@ -1741,6 +1745,10 @@ func (pool *TxPool) validateFsnCallTx(tx *types.Transaction) error {
 		}
 
 		if err := takeSwapParam.Check(height, &swap, timestamp); err != nil {
+			return err
+		}
+
+		if err := common.CheckSwapTargets(swap.Targes, from); err != nil {
 			return err
 		}
 
