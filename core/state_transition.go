@@ -26,6 +26,8 @@ import (
 	"time"
 
 	"github.com/FusionFoundation/efsn/common"
+	"github.com/FusionFoundation/efsn/common/hexutil"
+	"github.com/FusionFoundation/efsn/consensus/datong"
 	"github.com/FusionFoundation/efsn/core/types"
 	"github.com/FusionFoundation/efsn/core/vm"
 	"github.com/FusionFoundation/efsn/crypto"
@@ -1303,6 +1305,23 @@ func (st *StateTransition) handleFsnCall(param *common.FSNCallParam) error {
 			}
 		}
 		st.addLog(common.TakeMultiSwapFunc, takeSwapParam, common.NewKeyValue("SwapID", swap.ID), common.NewKeyValue("Deleted", swapDeleted))
+		return nil
+	case common.ReportIllegalFunc:
+		if !common.IsMultipleMiningCheckingEnabled(height) {
+			return fmt.Errorf("report not enabled")
+		}
+		report := param.Data
+		header1, header2, err := datong.CheckAddingReport(st.state, report, height)
+		if err != nil {
+			return err
+		}
+		if err := st.state.AddReport(report); err != nil {
+			return err
+		}
+		delTickets := datong.ProcessReport(header1, header2, st.msg.From(), st.state, height, timestamp)
+		enc, _ := rlp.EncodeToBytes(delTickets)
+		str := hexutil.Encode(enc)
+		st.addLog(common.ReportIllegalFunc, "", common.NewKeyValue("DeleteTickets", str))
 		return nil
 	}
 	return fmt.Errorf("Unsupported")

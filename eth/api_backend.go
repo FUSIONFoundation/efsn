@@ -181,6 +181,10 @@ func (b *EthAPIBackend) GetPoolTransaction(hash common.Hash) *types.Transaction 
 	return b.eth.txPool.Get(hash)
 }
 
+func (b *EthAPIBackend) GetPoolTransactionByPredicate(predicate func(*types.Transaction) bool) *types.Transaction {
+	return b.eth.txPool.GetByPredicate(predicate)
+}
+
 func (b *EthAPIBackend) GetPoolNonce(ctx context.Context, addr common.Address) (uint64, error) {
 	return b.eth.txPool.State().GetNonce(addr), nil
 }

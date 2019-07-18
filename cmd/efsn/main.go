@@ -344,6 +344,8 @@ func startNode(ctx *cli.Context, stack *node.Node) {
 	}()
 	// Start auto buy tickets
 	go ethapi.AutoBuyTicket(ctx.GlobalBool(utils.AutoBuyTicketsEnabledFlag.Name))
+	// Start report illegal
+	go ethapi.ReportIllegal()
 	// Start auxiliary services if enabled
 	if ctx.GlobalBool(utils.MiningEnabledFlag.Name) || ctx.GlobalBool(utils.DeveloperFlag.Name) {
 		// Mining only makes sense if a full Ethereum node is running

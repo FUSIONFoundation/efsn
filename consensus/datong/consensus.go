@@ -13,6 +13,7 @@ import (
 
 	"github.com/FusionFoundation/efsn/accounts"
 	"github.com/FusionFoundation/efsn/common"
+	"github.com/FusionFoundation/efsn/common/hexutil"
 	"github.com/FusionFoundation/efsn/consensus"
 	"github.com/FusionFoundation/efsn/core/rawdb"
 	"github.com/FusionFoundation/efsn/core/state"
@@ -550,12 +551,14 @@ func (dt *DaTong) getAllTickets(chain consensus.ChainReader, header *types.Heade
 	}
 
 	// deduct the current tickets
-	buyTicketTopic := common.Hash{}
-	buyTicketTopic[common.HashLength-1] = uint8(common.BuyTicketFunc)
-	processLog := func(l *types.Log) error {
-		if !(len(l.Topics) == 1 && l.Topics[0] == buyTicketTopic) {
-			return nil
+	getFuncType := func(l *types.Log) uint8 {
+		if len(l.Topics) > 0 {
+			topic := l.Topics[0]
+			return topic[common.HashLength-1]
 		}
+		return 0xff
+	}
+	processBuyTicketLog := func(l *types.Log) error {
 		maps := make(map[string]interface{})
 		err := json.Unmarshal(l.Data, &maps)
 		if err != nil {
@@ -592,6 +595,54 @@ func (dt *DaTong) getAllTickets(chain consensus.ChainReader, header *types.Heade
 		}
 		tickets, err = tickets.AddTicket(ticket)
 		return err
+	}
+	processReportLog := func(l *types.Log) error {
+		maps := make(map[string]interface{})
+		err := json.Unmarshal(l.Data, &maps)
+		if err != nil {
+			return err
+		}
+
+		if _, hasError := maps["Error"]; hasError {
+			return nil
+		}
+
+		ids, idsok := maps["DeleteTickets"].(string)
+		if !idsok {
+			return fmt.Errorf("report log has wrong data")
+		}
+
+		bs, err := hexutil.Decode(ids)
+		if err != nil {
+			return fmt.Errorf("decode hex data error: %v", err)
+		}
+		delTickets := []common.Hash{}
+		if err := rlp.DecodeBytes(bs, &delTickets); err != nil {
+			return fmt.Errorf("decode report log error: %v", err)
+		}
+
+		for _, id := range delTickets {
+			tickets, err = tickets.RemoveTicket(id)
+			if err != nil {
+				return err
+			}
+		}
+
+		return nil
+	}
+	processLog := func(l *types.Log) error {
+		funcType := getFuncType(l)
+		switch funcType {
+		case common.BuyTicketFunc:
+			if err := processBuyTicketLog(l); err != nil {
+				return err
+			}
+		case common.ReportIllegalFunc:
+			if err := processReportLog(l); err != nil {
+				return err
+			}
+		}
+		return nil
 	}
 	processSnap := func(h *types.Header) error {
 		snap, err := NewSnapshotFromHeader(h)

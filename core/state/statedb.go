@@ -1320,6 +1320,26 @@ func (db *StateDB) RemoveMultiSwap(id common.Hash) error {
 	return nil
 }
 
+/** ReportIllegal
+ */
+
+// GetReport wacom
+func (db *StateDB) IsReportExist(report []byte) bool {
+	hash := crypto.Keccak256Hash(report)
+	data := db.GetStructData(common.ReportKeyAddress, hash.Bytes())
+	return len(data) > 0
+}
+
+// AddReport wacom
+func (db *StateDB) AddReport(report []byte) error {
+	if db.IsReportExist(report) {
+		return fmt.Errorf("AddReport error: report exists")
+	}
+	hash := crypto.Keccak256Hash(report)
+	db.SetStructData(common.ReportKeyAddress, hash.Bytes(), report)
+	return nil
+}
+
 // GetStructData wacom
 func (db *StateDB) GetStructData(addr common.Address, key []byte) []byte {
 	if key == nil {

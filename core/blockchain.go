@@ -877,6 +877,17 @@ func (bc *BlockChain) InsertReceiptChain(blockChain types.Blocks, receiptChain [
 	return 0, nil
 }
 
+func (bc *BlockChain) CheckAndReportMultipleMining(block *types.Block) {
+	savedBlock := bc.GetBlockByNumber(block.NumberU64())
+	if savedBlock != nil &&
+		savedBlock.Hash() != block.Hash() &&
+		savedBlock.ParentHash() == block.ParentHash() &&
+		savedBlock.Coinbase() == block.Coinbase() {
+		log.Info("multiple block mined", "number", block.NumberU64(), "order", block.Nonce(), "miner", block.Coinbase(), "parentHash", block.ParentHash().String(), "hash1", savedBlock.Hash().String(), "hash2", block.Hash().String())
+		datong.ReportIllegal(savedBlock.RawHeader(), block.RawHeader())
+	}
+}
+
 var lastWrite uint64
 
 // WriteBlockWithoutState writes only the block and its metadata to the database,
@@ -890,6 +901,8 @@ func (bc *BlockChain) WriteBlockWithoutState(block *types.Block, td *big.Int) (e
 		return err
 	}
 	rawdb.WriteBlock(bc.db, block)
+
+	bc.CheckAndReportMultipleMining(block)
 
 	return nil
 }
@@ -1012,6 +1025,8 @@ func (bc *BlockChain) WriteBlockWithState(block *types.Block, receipts []*types.
 	if err := batch.Write(); err != nil {
 		return NonStatTy, err
 	}
+
+	bc.CheckAndReportMultipleMining(block)
 
 	// Set new head.
 	if status == CanonStatTy {
@@ -1384,10 +1399,7 @@ func (bc *BlockChain) reorg(oldBlock, newBlock *types.Block) error {
 			logFn = log.Info
 		}
 		logFn("Chain split detected", "number", commonBlock.Number(), "hash", commonBlock.Hash(),
-			"drop", len(oldChain), "dropfrom", oldChain[0].Hash(), "add", len(newChain), "addfrom", newChain[0].Hash())
-		if oldChain[0].Coinbase() == newChain[0].Coinbase() {
-			logFn("multiple block mined", "number", oldChain[0].Number(), "order", oldChain[0].Nonce(), "miner", oldChain[0].Coinbase())
-		}
+			"drop", len(oldChain), "dropfrom", oldChain[0].Hash(), "droporder", oldChain[0].Nonce(), "add", len(newChain), "addfrom", newChain[0].Hash(), "addorder", newChain[0].Nonce())
 	} else {
 		log.Error("Impossible reorg, please file an issue", "oldnum", oldBlock.Number(), "oldhash", oldBlock.Hash(), "newnum", newBlock.Number(), "newhash", newBlock.Hash())
 	}

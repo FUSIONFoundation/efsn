@@ -17,6 +17,7 @@
 package core
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"math"
@@ -27,6 +28,7 @@ import (
 
 	"github.com/FusionFoundation/efsn/common"
 	"github.com/FusionFoundation/efsn/common/prque"
+	"github.com/FusionFoundation/efsn/consensus/datong"
 	"github.com/FusionFoundation/efsn/core/state"
 	"github.com/FusionFoundation/efsn/core/types"
 	"github.com/FusionFoundation/efsn/event"
@@ -897,6 +899,10 @@ func (pool *TxPool) Get(hash common.Hash) *types.Transaction {
 	return pool.all.Get(hash)
 }
 
+func (pool *TxPool) GetByPredicate(predicate func(*types.Transaction) bool) *types.Transaction {
+	return pool.all.GetByPredicate(predicate)
+}
+
 // removeTx removes a single transaction from the queue, moving all subsequent
 // transactions back to the future queue.
 func (pool *TxPool) removeTx(hash common.Hash, outofbound bool) {
@@ -1283,6 +1289,18 @@ func (t *txLookup) Get(hash common.Hash) *types.Transaction {
 	defer t.lock.RUnlock()
 
 	return t.all[hash]
+}
+
+func (t *txLookup) GetByPredicate(predicate func(*types.Transaction) bool) *types.Transaction {
+	t.lock.RLock()
+	defer t.lock.RUnlock()
+
+	for _, tx := range t.all {
+		if predicate(tx) {
+			return tx
+		}
+	}
+	return nil
 }
 
 // Count returns the current number of items in the lookup.
@@ -1819,6 +1837,22 @@ func (pool *TxPool) validateFsnCallTx(tx *types.Transaction) error {
 				}
 				timeLockBalance.Sub(timeLockBalance, toNeedValue[i])
 			}
+		}
+
+	case common.ReportIllegalFunc:
+		if _, _, err := datong.CheckAddingReport(state, param.Data, nil); err != nil {
+			return err
+		}
+		oldtx := pool.GetByPredicate(func(trx *types.Transaction) bool {
+			if trx == tx {
+				return false
+			}
+			p := common.FSNCallParam{}
+			rlp.DecodeBytes(trx.Data(), &p)
+			return param.Func == common.ReportIllegalFunc && bytes.Equal(p.Data, param.Data)
+		})
+		if oldtx != nil {
+			return fmt.Errorf("already reported in pool")
 		}
 	}
 	// check gas, fee and value

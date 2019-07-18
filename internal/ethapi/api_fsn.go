@@ -1,6 +1,7 @@
 package ethapi
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"math/big"
@@ -1521,6 +1522,40 @@ func (s *FusionTransactionAPI) StartAutoBuyTicket() error {
 // StopAutoBuyTicket ss
 func (s *FusionTransactionAPI) StopAutoBuyTicket() {
 	common.AutoBuyTicket = false
+}
+
+// report illegal
+func ReportIllegal() {
+	for {
+		select {
+		case content := <-common.ReportIllegalChan:
+			coinbase, err := fusionTransactionAPI.b.Coinbase()
+			if err == nil {
+				args := FusionBaseArgs{From: coinbase}
+				fusionTransactionAPI.ReportIllegal(context.TODO(), args, content)
+			}
+		}
+	}
+}
+
+func (s *FusionTransactionAPI) ReportIllegal(ctx context.Context, args FusionBaseArgs, content []byte) (common.Hash, error) {
+	oldtx := s.b.GetPoolTransactionByPredicate(func(tx *types.Transaction) bool {
+		param := common.FSNCallParam{}
+		rlp.DecodeBytes(tx.Data(), &param)
+		return param.Func == common.ReportIllegalFunc && bytes.Equal(param.Data, content)
+	})
+	if oldtx != nil {
+		return common.Hash{}, fmt.Errorf("ReportIllegal: already reported in txpool")
+	}
+	sendArgs, err := FSNCallArgsToSendTxArgs(&args, common.ReportIllegalFunc, content)
+	if err != nil {
+		return common.Hash{}, err
+	}
+	tx, err := s.buildTransaction(ctx, *sendArgs)
+	if err != nil {
+		return common.Hash{}, err
+	}
+	return s.sendTransaction(ctx, args.From, tx)
 }
 
 func (s *FusionTransactionAPI) buildTransaction(ctx context.Context, args SendTxArgs) (*types.Transaction, error) {

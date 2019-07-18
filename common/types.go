@@ -369,29 +369,26 @@ var SwapKeyAddress = HexToAddress("0xfffffffffffffffffffffffffffffffffffffffa")
 // MultiSwapKeyAddress wacom
 var MultiSwapKeyAddress = HexToAddress("0xfffffffffffffffffffffffffffffffffffffff9")
 
+// ReportIllegalAddress wacom
+var ReportKeyAddress = HexToAddress("0xfffffffffffffffffffffffffffffffffffffff8")
+
 func (addr Address) IsSpecialKeyAddress() bool {
 	return addr == TicketKeyAddress ||
 		addr == NotationKeyAddress ||
 		addr == AssetKeyAddress ||
 		addr == SwapKeyAddress ||
-		addr == MultiSwapKeyAddress
+		addr == MultiSwapKeyAddress ||
+		addr == ReportKeyAddress
 }
 
 var (
-	// NotationKey wacom
-	NotationKey = []byte{0x01}
-	// AssetKey wacom
-	AssetKey = []byte{0x02}
-	// TicketKey wacom
-	TicketKey = []byte{0x03}
-	// SwapKey wacom
-	SwapKey = []byte{0x06} // 4 was the old
 	// AutoBuyTicket wacom
 	AutoBuyTicket = false
 	// AutoBuyTicketChan wacom
 	AutoBuyTicketChan = make(chan int, 10)
-	// MultiSwapKey wacom
-	MultiSwapKey = []byte{0x07}
+
+	// ReportIllegal wacom
+	ReportIllegalChan = make(chan []byte)
 )
 
 // FSNCallFunc wacom
@@ -430,6 +427,8 @@ const (
 	RecallMultiSwapFunc
 	// TakeMultiSwapFunc wacom
 	TakeMultiSwapFunc
+	// ReportIllegalFunc wacom
+	ReportIllegalFunc
 )
 
 func IsFsnCall(to *Address) bool {

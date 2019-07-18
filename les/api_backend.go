@@ -127,6 +127,10 @@ func (b *LesApiBackend) GetPoolTransaction(txHash common.Hash) *types.Transactio
 	return b.eth.txPool.GetTransaction(txHash)
 }
 
+func (b *LesApiBackend) GetPoolTransactionByPredicate(predicate func(*types.Transaction) bool) *types.Transaction {
+	return b.eth.txPool.GetTransactionByPredicate(predicate)
+}
+
 func (b *LesApiBackend) GetPoolNonce(ctx context.Context, addr common.Address) (uint64, error) {
 	return b.eth.txPool.GetNonce(ctx, addr)
 }
