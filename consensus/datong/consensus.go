@@ -47,6 +47,8 @@ var (
 	errInvalidUncleHash = errors.New("non empty uncle hash")
 
 	errUnauthorized = errors.New("unauthorized")
+
+	ErrNoTicket = errors.New("Miner doesn't have ticket")
 )
 
 // SignerFn is a signer callback function to request a hash to be signed by a
@@ -727,7 +729,7 @@ func (dt *DaTong) calcBlockDifficulty(chain consensus.ChainReader, header *types
 		}
 	}
 	if !haveTicket {
-		return nil, nil, 0, nil, fmt.Errorf("Miner doesn't have ticket at block height %v", parent.Number)
+		return nil, nil, 0, nil, ErrNoTicket
 	}
 	ticketsTotalAmount, numberOfticketOwners := parentTickets.NumberOfTicketsAndOwners()
 
