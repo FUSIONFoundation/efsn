@@ -99,6 +99,20 @@ func (dt *DaTong) Author(header *types.Header) (common.Address, error) {
 	return header.Coinbase, nil
 }
 
+func VerifySignature(header *types.Header) error {
+	signature := header.Extra[len(header.Extra)-extraSeal:]
+	pubkey, err := crypto.Ecrecover(sigHash(header).Bytes(), signature)
+	if err != nil {
+		return err
+	}
+	var signer common.Address
+	copy(signer[:], crypto.Keccak256(pubkey[1:])[12:])
+	if header.Coinbase != signer {
+		return errors.New("Coinbase is not the signer")
+	}
+	return nil
+}
+
 // VerifyHeader checks whether a header conforms to the consensus rules of the
 // stock Ethereum ethash engine.
 func (dt *DaTong) verifyHeader(chain consensus.ChainReader, header *types.Header, seal bool, parents []*types.Header) error {
@@ -133,15 +147,8 @@ func (dt *DaTong) verifyHeader(chain consensus.ChainReader, header *types.Header
 
 	}
 	// verify signature
-	signature := header.Extra[len(header.Extra)-extraSeal:]
-	pubkey, err := crypto.Ecrecover(sigHash(header).Bytes(), signature)
-	if err != nil {
+	if err := VerifySignature(header); err != nil {
 		return err
-	}
-	var signer common.Address
-	copy(signer[:], crypto.Keccak256(pubkey[1:])[12:])
-	if header.Coinbase != signer {
-		return errors.New("Coinbase is not the signer")
 	}
 	// check block time
 	if err = dt.checkBlockTime(chain, header, parent); err != nil {
