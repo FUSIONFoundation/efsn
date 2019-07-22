@@ -45,8 +45,6 @@ var (
 
 	errMissingSignature = errors.New("extra-data 65 byte suffix signature missing")
 
-	errInvalidUncleHash = errors.New("non empty uncle hash")
-
 	errUnauthorized = errors.New("unauthorized")
 
 	ErrNoTicket = errors.New("Miner doesn't have ticket")
@@ -61,8 +59,6 @@ var (
 	extraSeal           = 65
 	MinBlockTime int64  = 7   // 7 seconds
 	maxBlockTime uint64 = 600 // 10 minutes
-
-	emptyUncleHash = types.CalcUncleHash(nil)
 )
 
 // DaTong wacom
@@ -130,9 +126,6 @@ func (dt *DaTong) verifyHeader(chain consensus.ChainReader, header *types.Header
 	if len(header.Extra) < extraVanity+extraSeal {
 		return errMissingSignature
 	}
-	if header.UncleHash != emptyUncleHash {
-		return errInvalidUncleHash
-	}
 	if header.Time.Cmp(big.NewInt(time.Now().Unix())) > 0 {
 		return consensus.ErrFutureBlock
 	}
@@ -140,6 +133,14 @@ func (dt *DaTong) verifyHeader(chain consensus.ChainReader, header *types.Header
 	parent, err := getParent(chain, header, parents)
 	if err != nil {
 		return err
+	}
+	// verify pos hash
+	if common.GetPoSHashVersion(header.Number) < 2 {
+		if header.UncleHash != types.EmptyUncleHash {
+			return fmt.Errorf("non empty uncle hash")
+		}
+	} else if header.UncleHash != posHash(parent) {
+		return fmt.Errorf("PoS hash mismatch: have %x, want %x", header.UncleHash, posHash(parent))
 	}
 	// verify header time
 	if header.Time.Int64()-parent.Time.Int64() < MinBlockTime {
@@ -279,6 +280,11 @@ func (dt *DaTong) Prepare(chain consensus.ChainReader, header *types.Header) err
 	}
 	header.Extra = header.Extra[:extraVanity]
 	header.Extra = append(header.Extra, make([]byte, extraSeal)...)
+	if common.GetPoSHashVersion(header.Number) < 2 {
+		header.UncleHash = types.EmptyUncleHash
+	} else {
+		header.UncleHash = posHash(parent)
+	}
 	difficulty, _, order, _, err := dt.calcBlockDifficulty(chain, header, parent)
 	if err != nil {
 		return err
@@ -740,23 +746,37 @@ func calcRewards(height *big.Int) *big.Int {
 // get rid of header.Extra[0:extraVanity] of user custom data
 func posHash(header *types.Header) (hash common.Hash) {
 	hasher := sha3.NewKeccak256()
-	rlp.Encode(hasher, []interface{}{
-		header.ParentHash,
-		header.UncleHash,
-		header.Coinbase,
-		header.Root,
-		header.TxHash,
-		header.ReceiptHash,
-		header.Bloom,
-		header.Difficulty,
-		header.Number,
-		header.GasLimit,
-		header.GasUsed,
-		header.Time,
-		header.Extra[extraVanity : len(header.Extra)-extraSeal],
-		header.MixDigest,
-		header.Nonce,
-	})
+	switch common.GetPoSHashVersion(header.Number) {
+	case 1:
+		rlp.Encode(hasher, []interface{}{
+			header.ParentHash,
+			header.UncleHash,
+			header.Coinbase,
+			header.Root,
+			header.TxHash,
+			header.ReceiptHash,
+			header.Bloom,
+			header.Difficulty,
+			header.Number,
+			header.GasLimit,
+			header.GasUsed,
+			header.Time,
+			header.Extra[extraVanity : len(header.Extra)-extraSeal],
+			header.MixDigest,
+			header.Nonce,
+		})
+	case 2:
+		rlp.Encode(hasher, []interface{}{
+			header.UncleHash,
+			header.Coinbase,
+			header.Difficulty,
+			header.Number,
+			(header.Time.Uint64() >> 5) << 5,
+			header.Extra[extraVanity : len(header.Extra)-extraSeal],
+			header.MixDigest,
+			header.Nonce,
+		})
+	}
 	hasher.Sum(hash[:0])
 	return hash
 }

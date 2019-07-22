@@ -276,6 +276,7 @@ func (g *Genesis) ToBlock(db ethdb.Database) *types.Block {
 		Nonce:      types.EncodeNonce(g.Nonce),
 		Time:       timestamp,
 		ParentHash: g.ParentHash,
+		UncleHash:  types.EmptyUncleHash,
 		Extra:      g.ExtraData,
 		GasLimit:   g.GasLimit,
 		GasUsed:    g.GasUsed,
