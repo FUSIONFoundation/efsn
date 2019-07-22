@@ -204,3 +204,7 @@ func (b *LesApiBackend) ServiceFilter(ctx context.Context, session *bloombits.Ma
 func (b *LesApiBackend) IsMining() bool {
 	return true
 }
+
+func (b *LesApiBackend) Coinbase() (common.Address, error) {
+	return common.Address{}, nil
+}

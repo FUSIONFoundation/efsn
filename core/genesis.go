@@ -382,6 +382,24 @@ func DefaultRinkebyGenesisBlock() *Genesis {
 	}
 }
 
+// DefaultDevnetGenesisBlock returns the Develop network genesis block.
+func DefaultDevnetGenesisBlock() *Genesis {
+	return &Genesis{
+		Config:     params.DevnetChainConfig,
+		Nonce:      1,
+		ExtraData:  hexutil.MustDecode("0x00000000000000000000000000000000000000000000000000000000000000000000000100000001000000000101040000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"),
+		GasLimit:   4700000,
+		Difficulty: big.NewInt(1),
+		Timestamp:  1561852800, // June 30 2019
+		TicketCreateInfo: &TicketsCreate{
+			Owner: common.HexToAddress("0x0122bf3930c1201a21133937ad5c83eb4ded1b08"),
+			Time:  1561852800, // June 30 2019
+			Count: 5,
+		},
+		Alloc: jsonPrealloc(devnetAllocDataJson),
+	}
+}
+
 // DeveloperGenesisBlock returns the 'efsn --dev' genesis block. Note, this must
 // be seeded with the
 func DeveloperGenesisBlock(period uint64, faucet common.Address) *Genesis {
@@ -417,6 +435,14 @@ func decodePrealloc(data string) GenesisAlloc {
 	ga := make(GenesisAlloc, len(p))
 	for _, account := range p {
 		ga[common.BigToAddress(account.Addr)] = GenesisAccount{Balance: account.Balance}
+	}
+	return ga
+}
+
+func jsonPrealloc(data string) GenesisAlloc {
+	var ga GenesisAlloc
+	if err := json.Unmarshal([]byte(data), &ga); err != nil {
+		panic(err)
 	}
 	return ga
 }

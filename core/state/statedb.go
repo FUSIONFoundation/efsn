@@ -985,26 +985,6 @@ func (db *StateDB) calcNotationDisplay(notation uint64) uint64 {
 	return (notation*100 + check)
 }
 
-// // GenNotation wacom
-// func (db *StateDB) GenNotation(addr common.Address) error {
-// 	stateObject := db.GetOrNewStateObject(addr)
-// 	if stateObject != nil {
-// 		if n := db.GetNotation(addr); n != 0 {
-// 			return fmt.Errorf("Account %s has a notation:%d", addr.String(), n)
-// 		}
-// 		notations, err := db.AllNotation()
-// 		if err != nil {
-// 			log.Error("GenNotation: Unable to decode bytes in AllNotation")
-// 			return err
-// 		}
-// 		notations = append(notations, addr)
-// 		stateObject.SetNotation(uint64(len(notations)))
-// 		db.notations = notations
-// 		return db.updateNotations()
-// 	}
-// 	return nil
-// }
-
 // AllAssets wacom
 func (db *StateDB) AllAssets() (map[common.Hash]common.Asset, error) {
 	return nil, fmt.Errorf("All assets has been depreciated, use api.fusionnetwork.io")
@@ -1338,27 +1318,6 @@ func (db *StateDB) RemoveMultiSwap(id common.Hash) error {
 	}
 	db.SetStructData(common.MultiSwapKeyAddress, id.Bytes(), data)
 	return nil
-}
-
-type assetsStruct struct {
-	HASH  common.Hash
-	ASSET common.Asset
-}
-
-type sortableAssetLURSlice []assetsStruct
-
-func (s sortableAssetLURSlice) Len() int {
-	return len(s)
-}
-
-func (s sortableAssetLURSlice) Less(i, j int) bool {
-	a, _ := new(big.Int).SetString(s[i].HASH.Hex(), 0)
-	b, _ := new(big.Int).SetString(s[j].HASH.Hex(), 0)
-	return a.Cmp(b) < 0
-}
-
-func (s sortableAssetLURSlice) Swap(i, j int) {
-	s[i], s[j] = s[j], s[i]
 }
 
 // GetStructData wacom

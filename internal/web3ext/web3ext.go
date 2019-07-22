@@ -1177,6 +1177,21 @@ web3._extend({
 				null
 			]
 		}),
+		new web3._extend.Method({
+			name: 'isAutoBuyTicket',
+			call: 'fsn_isAutoBuyTicket',
+			params: 0
+		}),
+		new web3._extend.Method({
+			name: 'startAutoBuyTicket',
+			call: 'fsntx_startAutoBuyTicket',
+			params: 0
+		}),
+		new web3._extend.Method({
+			name: 'stopAutoBuyTicket',
+			call: 'fsntx_stopAutoBuyTicket',
+			params: 0
+		}),
 		]
 	});
 `

@@ -1,6 +1,6 @@
 package common
 
-const (
+var (
 	DebugMode = false
 )
 

@@ -28,7 +28,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/elastic/gosigar"
 	"github.com/FusionFoundation/efsn/accounts"
 	"github.com/FusionFoundation/efsn/accounts/keystore"
 	"github.com/FusionFoundation/efsn/cmd/utils"
@@ -41,6 +40,7 @@ import (
 	"github.com/FusionFoundation/efsn/log"
 	"github.com/FusionFoundation/efsn/metrics"
 	"github.com/FusionFoundation/efsn/node"
+	"github.com/elastic/gosigar"
 	"gopkg.in/urfave/cli.v1"
 )
 
@@ -123,6 +123,7 @@ var (
 		utils.DeveloperPeriodFlag,
 		utils.TestnetFlag,
 		utils.RinkebyFlag,
+		utils.DevnetFlag,
 		utils.VMEnableDebugFlag,
 		utils.NetworkIdFlag,
 		utils.RPCCORSDomainFlag,
@@ -279,6 +280,11 @@ func geth(ctx *cli.Context) error {
 func startNode(ctx *cli.Context, stack *node.Node) {
 	debug.Memsize.Add("node", stack)
 
+	// add more log and checking in devnet
+	if ctx.GlobalBool(utils.DevnetFlag.Name) {
+		common.DebugMode = true
+	}
+
 	// Start up the node itself
 	utils.StartNode(stack)
 
@@ -333,16 +339,8 @@ func startNode(ctx *cli.Context, stack *node.Node) {
 			}
 		}
 	}()
-	// Start auto buy tickets if enabled
-	if ctx.GlobalBool(utils.AutoBuyTicketsEnabledFlag.Name) {
-		// use first account
-		if unlocks != nil && passwords != nil {
-			common.AutoBuyTicket = true
-			go ethapi.AutoBuyTicket(common.HexToAddress(unlocks[0]), passwords[0])
-		}else{
-			log.Warn("Failed to AutoBuyTicket", "by args", utils.AutoBuyTicketsEnabledFlag.Name)
-		}
-	}
+	// Start auto buy tickets
+	go ethapi.AutoBuyTicket(ctx.GlobalBool(utils.AutoBuyTicketsEnabledFlag.Name))
 	// Start auxiliary services if enabled
 	if ctx.GlobalBool(utils.MiningEnabledFlag.Name) || ctx.GlobalBool(utils.DeveloperFlag.Name) {
 		// Mining only makes sense if a full Ethereum node is running

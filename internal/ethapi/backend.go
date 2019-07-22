@@ -71,6 +71,7 @@ type Backend interface {
 	CurrentBlock() *types.Block
 
 	IsMining() bool
+	Coinbase() (common.Address, error)
 }
 
 func GetAPIs(apiBackend Backend) []rpc.API {
