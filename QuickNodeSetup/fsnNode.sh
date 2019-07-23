@@ -11,18 +11,27 @@ BASE_DIR="/home/$USER"
 distroChecks() {
     # check for distribution and corresponding version (release)
     if [ "$(lsb_release -si)" = "Ubuntu" ]; then
-        if [ $(lsb_release -sr | sed -E 's/([0-9]+).*/\1/') -lt 16 ]; then
-            echo "${txtred}Unsupported legacy Ubuntu release${txtrst}"
+        if [ $(lsb_release -sr | sed -E 's/([0-9]+).*/\1/') -lt 18 ]; then
+            echo "${txtred}Unsupported Ubuntu release${txtrst}"
+            echo "Currently supported: Ubuntu 18.04 or newer"
             exit 1
         fi
     else
         echo "${txtred}Unsupported distribution${txtrst}"
+        echo "Currently supported: Ubuntu 18.04 or newer"
         exit 1
     fi
 }
 
 sanityChecks() {
     distroChecks
+
+    if [ -z "$BASH" ]; then
+        echo "${txtred}The setup script has to be run in the bash shell.${txtrst}"
+            echo "Please run it again in bash:"
+            echo "bash -c \"\$(curl -fsSL https://raw.githubusercontent.com/FUSIONFoundation/efsn/master/QuickNodeSetup/fsnNode.sh)\""
+        exit 1
+    fi
 
     # checking the effective user id, where 0 is root
     if [ $EUID -ne 0 ]; then
@@ -78,9 +87,9 @@ sanityChecks() {
         fi
     fi
 
-    # make sure jq is installed if node.json already exists
+    # silently make sure jq is installed if node.json already exists
     if [ -f "$BASE_DIR/fusion-node/node.json" ]; then
-        dpkg -s jq 2>/dev/null | grep -q -E "Status.+installed" || apt-get install jq
+        dpkg -s jq 2>/dev/null | grep -q -E "Status.+installed" || apt-get install -qq jq
     fi
 }
 
@@ -855,9 +864,9 @@ echo "| FUSION Node Manager |"
 echo "-----------------------"
 echo
 echo "${txtylw}Initializing script, please wait...${txtrst}"
+echo
 # make sure we're not running into avoidable problems during setup
 sanityChecks
-clear
 
 # ignoring some signals to keep the script running
 trap '' SIGINT SIGQUIT SIGTSTP
