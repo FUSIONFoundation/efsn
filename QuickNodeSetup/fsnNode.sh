@@ -580,6 +580,22 @@ installNode() {
         fi
     fi
 
+    local spacefree=$(df -B 1024k --output=avail $BASE_DIR | egrep -o '[0-9]+')
+    local spaceoccup=$(sudo du -B 1024k --summarize $BASE_DIR | awk '{print $1}')
+    local spaceavail=$(expr $spacefree + $spaceoccup)
+    if [ $spaceavail -lt 25000 ]; then
+        echo
+        echo "${txtylw}You seem to have less than 25GB of free storage available for chaindata in $BASE_DIR.${txtrst}"
+        echo "If the node runs out of disk space, it will stop syncing and your tickets might get retreated."
+        echo
+        local question="${txtylw}Are you sure you want to continue?${txtrst} [Y/n] "
+        askToContinue "$question"
+        if [ $? -eq 1 ]; then
+            echo "${txtred}✓${txtrst} Installation cancelled"
+            return 1
+        fi
+    fi
+
     echo
     echo "<<< Installing node >>>"
     installDeps
