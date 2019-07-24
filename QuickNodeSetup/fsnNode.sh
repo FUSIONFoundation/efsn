@@ -100,11 +100,21 @@ sanityChecks() {
 }
 
 checkUpdate() {
+    local nodetype="$(getCfgValue 'nodeType')"
+    local testnet="$(getCfgValue 'testnet')"
+
+    if [ "$testnet" = "true" ]; then
+        # add testnet suffix to image
+        imgsfx="2"
+    else
+        # don't add testnet suffix to image
+        imgsfx=""
+    fi
+
     # get the container creation date as unix epoch for easy comparison
     local dateCreated=$(date -d "$(docker inspect -f "{{.Created}}" fusion 2>/dev/null)" '+%s')
-    # get node type and query the registry for when it was last updated
-    local nodetype="$(getCfgValue 'nodeType')"
-    local dateUpdated="$(curl -fsL "https://registry.hub.docker.com/v2/repositories/fusionnetwork/$nodetype" | jq -r '.last_updated')"
+    # query the Docker Hub registry for when the image was last updated
+    local dateUpdated="$(curl -fsL "https://registry.hub.docker.com/v2/repositories/fusionnetwork/$nodetype$imgsfx" | jq -r '.last_updated')"
     # make sure that no update is triggered if the registry returns no data
     [ -z "$dateUpdated" ] && dateUpdated=0 || dateUpdated=$(date -d "$dateUpdated" '+%s')
     # if the container is older than dateUpdated return 0, otherwise return 1
