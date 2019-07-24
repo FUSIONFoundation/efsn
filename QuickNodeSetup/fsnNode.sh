@@ -1,12 +1,18 @@
 #!/bin/bash
 # FUSION Foundation
 
+# set to 1 to enable debug mode
+DEBUG=0
+
+# historically grown, changing this would break stuff
+BASE_DIR="/home/$USER"
+
 txtred=$(tput setaf 1)    # Red
 txtgrn=$(tput setaf 2)    # Green
 txtylw=$(tput setaf 3)    # Yellow
 txtrst=$(tput sgr0)       # Text reset
 
-BASE_DIR="/home/$USER"
+[ $DEBUG -eq 1 ] && set -x
 
 distroChecks() {
     # check for distribution and corresponding version (release)
@@ -93,6 +99,18 @@ sanityChecks() {
     fi
 }
 
+checkUpdate() {
+    # get the container creation date as unix epoch for easy comparison
+    local dateCreated=$(date -d "$(docker inspect -f "{{.Created}}" fusion 2>/dev/null)" '+%s')
+    # get node type and query the registry for when it was last updated
+    local nodetype="$(getCfgValue 'nodeType')"
+    local dateUpdated="$(curl -fsL "https://registry.hub.docker.com/v2/repositories/fusionnetwork/$nodetype" | jq -r '.last_updated')"
+    # make sure that no update is triggered if the registry returns no data
+    [ -z "$dateUpdated" ] && dateUpdated=0 || dateUpdated=$(date -d "$dateUpdated" '+%s')
+    # if the container is older than dateUpdated return 0, otherwise return 1
+    [ $dateCreated -lt $dateUpdated ] && return 0 || return 1
+}
+
 pauseScript() {
     local fackEnterKey
     read -s -p "${txtylw}Press [Enter] to continue...${txtrst}" fackEnterKey
@@ -112,6 +130,8 @@ askToContinue() {
 
 installDocker() {
     # install recent Docker version; function currently unused
+    # this has some additional requirements for the key import
+    sudo apt-get install -q -y apt-transport-https gnupg-agent software-properties-common | grep -v "is already the newest version"
     echo
     echo "${txtylw}Adding Docker repository${txtrst}"
     curl -fsSL "https://download.docker.com/linux/ubuntu/gpg" | sudo apt-key add -
@@ -133,10 +153,9 @@ installDeps() {
 
     echo
     echo "${txtylw}Installing dependencies${txtrst}"
-    sudo apt-get install -q -y apt-transport-https ca-certificates curl docker.io gnupg-agent \
-        jq software-properties-common | grep -v "is already the newest version"
-    # install recent Docker version if distribution package not installed yet; currently unused
-#    dpkg -s docker.io | grep -q -E "Status.+installed" || installDocker
+    sudo apt-get install -q -y ca-certificates curl docker.io jq | grep -v "is already the newest version"
+    # install recent Docker version if distribution package not installed
+#   dpkg -s docker.io | grep -q -E "Status.+installed" || installDocker
     echo "${txtgrn}✓${txtrst} Installed dependencies"
 }
 
@@ -410,6 +429,8 @@ removeContainer() {
     sudo docker rm fusion >/dev/null 2>&1
     sudo docker rmi fusionnetwork/minerandlocalgateway fusionnetwork/efsn \
         fusionnetwork/gateway >/dev/null 2>&1
+    sudo docker rmi fusionnetwork/minerandlocalgateway2 fusionnetwork/efsn2 \
+        fusionnetwork/gateway2 >/dev/null 2>&1
     echo "${txtgrn}✓${txtrst} Removed container and base images"
 }
 
@@ -495,6 +516,8 @@ createContainer() {
         exit 1
     fi
 
+    # reset global update variable
+    hasUpdate=1
     echo "${txtgrn}✓${txtrst} Created node container"
 }
 
@@ -527,7 +550,7 @@ stopNode() {
 }
 
 installNode() {
-    clear
+    [ $DEBUG -ne 1 ] && clear
     echo
     echo "---------------------"
     echo "| Node Installation |"
@@ -561,7 +584,7 @@ installNode() {
 }
 
 deinstallNode() {
-    clear
+    [ $DEBUG -ne 1 ] && clear
     echo
     echo "-----------------------"
     echo "| Node Deinstallation |"
@@ -605,7 +628,7 @@ updateNode() {
 }
 
 updateNodeScreen() {
-    clear
+    [ $DEBUG -ne 1 ] && clear
     echo
     echo "---------------"
     echo "| Node Update |"
@@ -616,7 +639,7 @@ updateNodeScreen() {
 }
 
 showNodeLogs() {
-    clear
+    [ $DEBUG -ne 1 ] && clear
     echo
     echo "-------------------"
     echo "| Node Log Viewer |"
@@ -776,7 +799,7 @@ change_autostart() {
 
 configureNode() {
     while true; do
-        clear
+        [ $DEBUG -ne 1 ] && clear
         echo
         echo "----------------------"
         echo "| Node Configuration |"
@@ -802,7 +825,7 @@ configureNode() {
 }
 
 show_menus_init() {
-    clear
+    [ $DEBUG -ne 1 ] && clear
     echo
     echo "-----------------------"
     echo "| FUSION Node Manager |"
@@ -824,11 +847,17 @@ read_options_init(){
 }
 
 show_menus() {
-    clear
+    [ $DEBUG -ne 1 ] && clear
     echo
     echo "-----------------------"
     echo "| FUSION Node Manager |"
     echo "-----------------------"
+
+    if [ $hasUpdate -eq 0 ]; then
+        echo
+        echo "${txtgrn}An update is available, please update your node!${txtrst}"
+    fi
+
     echo
     echo "${txtylw}1. Install node and dependencies"
     echo "2. Update node to current version"
@@ -857,7 +886,7 @@ read_options(){
     esac
 }
 
-clear
+[ $DEBUG -ne 1 ] && clear
 echo
 echo "-----------------------"
 echo "| FUSION Node Manager |"
@@ -867,6 +896,9 @@ echo "${txtylw}Initializing script, please wait...${txtrst}"
 echo
 # make sure we're not running into avoidable problems during setup
 sanityChecks
+# check for updates, save state in global variable
+checkUpdate
+hasUpdate=$?
 
 # ignoring some signals to keep the script running
 trap '' SIGINT SIGQUIT SIGTSTP
