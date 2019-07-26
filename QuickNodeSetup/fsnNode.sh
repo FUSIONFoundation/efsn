@@ -1,7 +1,11 @@
 #!/bin/bash
 # FUSION Foundation
-
+FSN_SCRIPT_VERSION='1.0.0.102'
 CWD_DIR="/home/$USER"
+MD5_UTC_FILE=
+MD5_PWD_FILE=
+MD5_JSON_FILE=
+nodename=
 
 pause(){
   read -s -p "Press [Enter] key to continue..." fackEnterKey
@@ -61,8 +65,7 @@ getCfgValue(){
     echo "$cfg_val";
 }
 
-createFilesForMiner(){
-
+resetAllDataFiles(){
 	clear
 	echo "✓ Updated packages"
 	echo "✓ Installed docker.io"
@@ -76,6 +79,43 @@ createFilesForMiner(){
 	sudo chmod 775 "$CWD_DIR/fusion-node/password.txt"
 	touch "$CWD_DIR/fusion-node/nodename.txt"
 
+}
+
+checkMD5(){
+
+    local fileName="$CWD_DIR/fusion-node/data/keystore/UTC.json"
+    if [ -f "$fileName" ]; then
+        MD5_UTC_FILE=`md5sum ${fileName} | awk '{ print $1 }'`
+    fi
+
+    fileName="$CWD_DIR/fusion-node/password.txt"
+    if [ -f "$fileName" ]; then
+        MD5_PWD_FILE=`md5sum ${fileName} | awk '{ print $1 }'`
+    fi
+
+    fileName="$CWD_DIR/fusion-node/node.json"
+    if [ -f "$fileName" ]; then
+        MD5_JSON_FILE=`md5sum ${fileName} | awk '{ print $1 }'`
+    fi
+
+}
+
+
+createFilesForMiner(){
+    
+    checkMD5
+    
+    local cfgFilesUpdated=0
+
+    if [ ! -z "$MD5_UTC_FILE" ]; then
+        nodename="$(getCfgValue 'nodeName')"
+    fi
+
+    if [ "$1" -eq "1" ]; then
+        echo "Deleting old configuration and chain data!"
+        resetAllDataFiles
+        pause
+    fi
     nodetype=
     echo 'Please select node type: '
     options=("minerandlocalgateway" "efsn" "gateway")
@@ -106,20 +146,41 @@ createFilesForMiner(){
 	echo "✓ Installed docker.io"
 	# echo "✓ Saved wallet address"
 
+    local askToModify=1
+    local updateSettings=1
     if [ "$nodetype" = "minerandlocalgateway" ] || [ "$nodetype" = "efsn" ]; then
 
-        echo Paste exact content of your keystore.json
-        read keystorejson
-        echo $keystorejson >> "$CWD_DIR/fusion-node/data/keystore/UTC.json"
-        clear
+        if [ -z "$MD5_UTC_FILE" ] && [ -z "$MD5_PWD_FILE" ]; then
+            askToModify=0
+        else
+            if [ "$MD5_UTC_FILE" == "$MD5_PWD_FILE" ]; then
+                askToModify=0
+            fi
+        fi
 
-        echo "✓ Updated packages"
-        echo "✓ Installed docker.io"
-        # echo "✓ Saved wallet address"
-        echo "✓ Saved keystore"
-        echo What is the password of this keystore?
-        read password
-        echo $password >> "$CWD_DIR/fusion-node/password.txt"
+        if [ "$askToModify" -eq "1" ]; then
+            # echo "MD5_UTC_FILE: $MD5_UTC_FILE"
+            # echo "MD5_PWD_FILE: $MD5_PWD_FILE"
+            question="Would you like to update the keystore and password file? [Y/n] ";
+            askToContinue "$question"
+            updateSettings=$?
+        fi
+
+        if [ "$updateSettings" -eq "1" ]; then
+            echo "Paste exact content of your keystore.json"
+            read keystorejson
+            echo $keystorejson > "$CWD_DIR/fusion-node/data/keystore/UTC.json"
+            clear
+
+            echo "✓ Updated packages"
+            echo "✓ Installed docker.io"
+            # echo "✓ Saved wallet address"
+            echo "✓ Saved keystore"
+            echo "What is the password of this keystore?"
+            read password
+            echo $password > "$CWD_DIR/fusion-node/password.txt"
+        fi
+
         clear
         
         echo "✓ Updated packages"
@@ -145,10 +206,23 @@ createFilesForMiner(){
         echo "✓ Purchase ticket flag set"
     fi
 
-	echo "What name do you want the node to have on node.fusionnetwork.io (No spaces or special characters)" ?
-    read nodename
+    if [ -z "$MD5_JSON_FILE" ]; then
+        askToModify=0
+    else
+        askToModify=1
+    fi
+    if [ "$askToModify" -eq "1" ]; then
+        question="Would you like to update node name[$nodename]? [Y/n] ";
+        askToContinue "$question"
+        updateSettings=$?
+    fi
 
-    echo -e "{\"nodeName\":\""$nodename"\", \"autobt\":\""$autobuy"\", \"nodeType\":\""$nodetype"\"}"  >> "$CWD_DIR/fusion-node/node.json"
+    if [ "$updateSettings" -eq "1" ]; then
+        echo "What name do you want the node to have on node.fusionnetwork.io (No spaces or special characters)" ?
+        read nodename
+    fi
+
+    echo -e "{\"nodeName\":\""$nodename"\", \"autobt\":\""$autobuy"\", \"nodeType\":\""$nodetype"\"}"  > "$CWD_DIR/fusion-node/node.json"
 
     # double check user public address
     if [ "$nodetype" = "minerandlocalgateway" ] || [ "$nodetype" = "efsn" ]; then
@@ -278,7 +352,8 @@ installNode(){
 
     installDocker
 
-    createFilesForMiner
+    local resetFiles=1
+    createFilesForMiner $resetFiles
 
     # clear previously installed fusionnetwork docker images
     removeDockerImages
@@ -354,44 +429,57 @@ viewNode(){
     pause
 }
 
-change_autobt(){
-	local autobt="$(getCfgValue 'autobt')"
-	[[ $autobt = "true" ]] && local state="enabled" || local state="disabled"
-	echo
-	echo "Ticket auto-buy is currently $state"
-        question="Do you want to change this? Doing so will restart the node. [Y/n] ";
-
-        askToContinue "$question"
-        continueYesNo=$?
-        if [ "$continueYesNo" -eq "1" ]; then
-		[[ $autobt = "true" ]] && autobt="false" || autobt="true"
-		cfg_files="$CWD_DIR/fusion-node/node.json"
-		cat <<< "$(jq ".autobt = \"$autobt\"" < ${cfg_files[0]})" > ${cfg_files[0]}
-		echo "Please wait, restarting the node..."
-		sudo docker restart fusion
-		echo "Done."
-		pause
-        fi
-}
 
 configNode(){
-	clear
-	echo "1. Enable/disable ticket auto-buy"
-	echo "2. Exit"
-	local choice
-	read -n1 -p "Enter choice [1-2] " choice
-	case $choice in
-		1) change_autobt ;;
-		2) show_menus ;;
-		*) echo -e "${RED}Invalid choice.${STD}"
-	esac
+    
+    local resetFiles=0
+    local updating=0
+    createFilesForMiner $resetFiles
+
+    local org_md5_utc_val=$MD5_UTC_FILE
+    local org_md5_pwd_val=$MD5_PWD_FILE
+    local org_md5_json_val=$MD5_JSON_FILE
+
+    checkMD5
+
+    # check if settings were updated
+    if [ "$org_md5_utc_val" != "$MD5_UTC_FILE" ]; then
+        updating=1
+    fi
+    if [ "$org_md5_pwd_val" != "$MD5_PWD_FILE" ]; then
+        updating=1
+    fi
+
+    if [ "$org_md5_json_val" != "$MD5_JSON_FILE" ]; then
+        updating=1
+    fi
+
+
+    if [ "$updating" -eq "1" ]; then
+        updating=1
+    fi
+
+    # echo "org_md5_utc_val=$org_md5_utc_val, MD5_UTC_FILE=$MD5_UTC_FILE"
+    # echo "org_md5_pwd_val=$org_md5_pwd_val, MD5_PWD_FILE=$MD5_PWD_FILE"
+    # echo "org_md5_json_val=$org_md5_json_val, MD5_JSON_FILE=$MD5_JSON_FILE"
+    if [ "$updating" -eq "1" ]; then
+        # restart if config was updated
+        removeDockerImages
+        clear
+        createDockerContainer
+        startNode
+    else
+        echo "Using original node configuration!"
+        pause
+    fi
+
 }
 
 show_menus() {
 	clear
-	echo "---------------------"
-	echo " FUSION Node Manager"
-	echo "---------------------"
+	echo "----------------------------"
+	echo " FUSION Node Manager v$FSN_SCRIPT_VERSION"
+	echo "----------------------------"
 	echo "1. Install all prerequisites and node"
 	echo "2. Update node"
 	echo "3. Start node"
