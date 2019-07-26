@@ -1,6 +1,6 @@
 #!/bin/bash
 # FUSION Foundation
-FSN_SCRIPT_VERSION='1.0.0.102'
+FSN_SCRIPT_VERSION='1.0.0.104'
 CWD_DIR="/home/$USER"
 MD5_UTC_FILE=
 MD5_PWD_FILE=
@@ -106,9 +106,10 @@ createFilesForMiner(){
     checkMD5
     
     local cfgFilesUpdated=0
-
+    local oldNodeType=
     if [ ! -z "$MD5_UTC_FILE" ]; then
         nodename="$(getCfgValue 'nodeName')"
+        oldNodeType="[$(getCfgValue 'nodeType')]"
     fi
 
     if [ "$1" -eq "1" ]; then
@@ -117,7 +118,8 @@ createFilesForMiner(){
         pause
     fi
     nodetype=
-    echo 'Please select node type: '
+    echo ""
+    echo "Please select node type $oldNodeType: "
     options=("minerandlocalgateway" "efsn" "gateway")
     select opt in "${options[@]}"
     do
