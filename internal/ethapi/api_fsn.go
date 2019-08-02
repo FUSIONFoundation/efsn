@@ -484,6 +484,26 @@ func (s *PublicFusionAPI) GetAllTimeLockBalances(ctx context.Context, address co
 	return b, state.Error()
 }
 
+// GetRawTimeLockBalance wacom
+func (s *PublicFusionAPI) GetRawTimeLockBalance(ctx context.Context, assetID common.Hash, address common.Address, blockNr rpc.BlockNumber) (*common.TimeLock, error) {
+	state, _, err := s.b.StateAndHeaderByNumber(ctx, blockNr)
+	if state == nil || err != nil {
+		return new(common.TimeLock), err
+	}
+	b := state.GetTimeLockBalance(assetID, address)
+	return b, state.Error()
+}
+
+// GetAllRawTimeLockBalances wacom
+func (s *PublicFusionAPI) GetAllRawTimeLockBalances(ctx context.Context, address common.Address, blockNr rpc.BlockNumber) (map[common.Hash]*common.TimeLock, error) {
+	state, _, err := s.b.StateAndHeaderByNumber(ctx, blockNr)
+	if state == nil || err != nil {
+		return make(map[common.Hash]*common.TimeLock), err
+	}
+	b := state.GetAllTimeLockBalances(address)
+	return b, state.Error()
+}
+
 // GetNotation wacom
 func (s *PublicFusionAPI) GetNotation(ctx context.Context, address common.Address, blockNr rpc.BlockNumber) (uint64, error) {
 	state, _, err := s.b.StateAndHeaderByNumber(ctx, blockNr)

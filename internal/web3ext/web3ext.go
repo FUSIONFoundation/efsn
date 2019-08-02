@@ -734,6 +734,25 @@ web3._extend({
 			]
 		}),
 		new web3._extend.Method({
+			name: 'getRawTimeLockBalance',
+			call: 'fsn_getRawTimeLockBalance',
+			params: 3,
+			inputFormatter: [
+				null,
+				web3._extend.formatters.inputAddressFormatter,
+				web3._extend.formatters.inputDefaultBlockNumberFormatter
+			]
+		}),
+		new web3._extend.Method({
+			name: 'getAllRawTimeLockBalances',
+			call: 'fsn_getAllRawTimeLockBalances',
+			params: 2,
+			inputFormatter: [
+				web3._extend.formatters.inputAddressFormatter,
+				web3._extend.formatters.inputDefaultBlockNumberFormatter
+			]
+		}),
+		new web3._extend.Method({
 			name: 'getNotation',
 			call: 'fsn_getNotation',
 			params: 2,
