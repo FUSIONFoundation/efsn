@@ -526,16 +526,11 @@ func (w *worker) resultLoop() {
 				continue
 			}
 			if !w.chain.CacheDisabled() && block.NumberU64() < fastBlockNumber {
-				if common.DebugMode {
-					log.Info("full block is lower than fast block",
-						"full", block.NumberU64(), "fast", fastBlockNumber)
-				}
+				common.DebugInfo("full block is lower than fast block", "full", block.NumberU64(), "fast", fastBlockNumber)
 				continue
 			}
 			if w.unconfirmed.Has(block.ParentHash()) {
-				if common.DebugMode {
-					log.Info("ignore duplicate result", "number", block.NumberU64(), "parent", block.ParentHash())
-				}
+				common.DebugInfo("ignore duplicate result", "number", block.NumberU64(), "parent", block.ParentHash())
 				continue
 			}
 
@@ -639,9 +634,7 @@ func (w *worker) commitTransaction(tx *types.Transaction, coinbase common.Addres
 	receipt, _, err := core.ApplyTransaction(w.config, w.chain, &coinbase, w.current.gasPool, w.current.state, w.current.header, tx, &w.current.header.GasUsed, vm.Config{})
 	if err != nil {
 		w.current.state.RevertToSnapshot(snap)
-		if common.DebugMode {
-			log.Info("ApplyTransaction failed in mining", "err", err)
-		}
+		common.DebugInfo("ApplyTransaction failed in mining", "err", err)
 		return nil, err
 	}
 	w.current.txs = append(w.current.txs, tx)
@@ -807,9 +800,7 @@ func (w *worker) commitNewWork(interrupt *int32, noempty bool, timestamp int64) 
 	if err := w.engine.Prepare(w.chain, header); err != nil {
 		switch err {
 		case datong.ErrNoTicket:
-			if common.DebugMode {
-				log.Info("Miner doesn't have ticket", "number", parent.Number())
-			}
+			common.DebugInfo("Miner doesn't have ticket", "number", parent.Number())
 		default:
 			log.Error("Failed to prepare header for mining", "err", err)
 		}

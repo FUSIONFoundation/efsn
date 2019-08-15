@@ -340,9 +340,9 @@ func (dt *DaTong) Finalize(chain consensus.ChainReader, header *types.Header, st
 	retreat := header.GetRetreatTickets()
 	if selected == nil {
 		log.Warn("Finalize shouldn't calc difficulty, as it's done in VerifyHeader or Prepare")
-		if common.DebugMode {
+		common.DebugCall(func() {
 			panic("Finalize shouldn't calc difficulty, as it's done in VerifyHeader or Prepare")
-		}
+		})
 		_, selected, _, retreat, err = dt.calcBlockDifficulty(chain, header, parent)
 		if err != nil {
 			return nil, err
@@ -392,8 +392,8 @@ func (dt *DaTong) Finalize(chain consensus.ChainReader, header *types.Header, st
 
 	//delete tickets before coinbase if selected miner did not Seal
 	for i, t := range retreat {
-		if common.DebugMode && !isInMining && i == 0 {
-			log.Info("retreat ticket", "nonce", header.Nonce.Uint64(), "id", retreat[0].ID.String(), "owner", retreat[0].Owner, "blockHeight", header.Number, "ticketHeight", retreat[0].Height)
+		if !isInMining && i == 0 {
+			common.DebugInfo("retreat ticket", "nonce", header.Nonce.Uint64(), "id", retreat[0].ID.String(), "owner", retreat[0].Owner, "blockHeight", header.Number, "ticketHeight", retreat[0].Height)
 		}
 		deleteTicket(t, ticketRetreat, !(t.IsInGenesis() || i == 0))
 	}
@@ -550,11 +550,9 @@ func (dt *DaTong) getAllTickets(chain consensus.ChainReader, header *types.Heade
 		parents = append(parents, parent)
 	}
 	log.Info("getAllTickets find tickets from past state", "current", header.Number, "past", parent.Number)
-	if common.DebugMode {
-		defer func(bstart time.Time) {
-			log.Info("getAllTickets from past state spend time", "duration", common.PrettyDuration(time.Since(bstart)))
-		}(time.Now())
-	}
+	defer func(bstart time.Time) {
+		common.DebugInfo("getAllTickets from past state spend time", "duration", common.PrettyDuration(time.Since(bstart)))
+	}(time.Now())
 
 	// deduct the current tickets
 	getFuncType := func(l *types.Log) uint8 {

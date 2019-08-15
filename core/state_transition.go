@@ -238,9 +238,8 @@ func (st *StateTransition) TransitionDb() (ret []byte, usedGas uint64, failed bo
 				if isInMining {
 					// don't pack tx if handle FsnCall meet error
 					return nil, 0, false, errc
-				} else if common.DebugMode {
-					log.Info("handleFsnCall error", "number", st.evm.Context.BlockNumber, "Func", fsnCallParam.Func, "err", errc)
 				}
+				common.DebugInfo("handleFsnCall error", "number", st.evm.Context.BlockNumber, "Func", fsnCallParam.Func, "err", errc)
 			}
 		}
 
@@ -1091,9 +1090,7 @@ func (st *StateTransition) handleFsnCall(param *common.FSNCallParam) error {
 		}
 
 		if deductErr != nil {
-			if common.DebugMode {
-				log.Info("MakeMultiSwapFunc deduct error, why check balance before have no effect?")
-			}
+			common.DebugInfo("MakeMultiSwapFunc deduct error, why check balance before have no effect?")
 			st.addLog(common.MakeMultiSwapFunc, makeSwapParam, common.NewKeyValue("Error", deductErr.Error()))
 			return deductErr
 		}
@@ -1252,9 +1249,7 @@ func (st *StateTransition) handleFsnCall(param *common.FSNCallParam) error {
 		}
 
 		if deductErr != nil {
-			if common.DebugMode {
-				log.Info("TakeMultiSwapFunc deduct error, why check balance before have no effect?")
-			}
+			common.DebugInfo("TakeMultiSwapFunc deduct error, why check balance before have no effect?")
 			st.addLog(common.TakeMultiSwapFunc, takeSwapParam, common.NewKeyValue("Error", deductErr.Error()))
 			return deductErr
 		}
