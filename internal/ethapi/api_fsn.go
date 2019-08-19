@@ -814,6 +814,38 @@ func (s *PublicFusionAPI) AllSwapsByAddress(ctx context.Context, address common.
 	return nil, fmt.Errorf("AllSwapsByAddress has been depreciated please use api.fusionnetwork.io")
 }
 
+type Summary struct {
+	TotalMiners  uint64 `json:"totalMiners"`
+	TotalTickets uint64 `json:"totalTickets"`
+}
+type StakeInfo struct {
+	StakeInfo map[common.Address]uint64 `json:"stakeInfo"`
+	Summary   Summary                   `json:"summary"`
+}
+
+// GetMinerInfo wacom
+func (s *PublicFusionAPI) GetStakeInfo(ctx context.Context, blockNr rpc.BlockNumber) (StakeInfo, error) {
+	stakeInfo := StakeInfo{
+		StakeInfo: make(map[common.Address]uint64),
+	}
+	state, _, err := s.b.StateAndHeaderByNumber(ctx, blockNr)
+	if state == nil || err != nil {
+		return stakeInfo, fmt.Errorf("Only node using `archive' mode can get history states. error: %v", err)
+	}
+	tickets, err := state.AllTickets()
+	if err == nil {
+		err = state.Error()
+	}
+	if err != nil {
+		return stakeInfo, fmt.Errorf("Unable to retrieve all tickets. error: %v", err)
+	}
+	stakeInfo.Summary.TotalTickets, stakeInfo.Summary.TotalMiners = tickets.NumberOfTicketsAndOwners()
+	for _, v := range tickets {
+		stakeInfo.StakeInfo[v.Owner] = uint64(len(v.Tickets))
+	}
+	return stakeInfo, nil
+}
+
 //--------------------------------------------- PublicFusionAPI buile send tx args-------------------------------------
 type FSNCallArgs interface {
 	toSendArgs() SendTxArgs

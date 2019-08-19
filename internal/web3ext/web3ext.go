@@ -1060,6 +1060,14 @@ web3._extend({
 				web3._extend.formatters.inputDefaultBlockNumberFormatter
 			]
 		}),
+		new web3._extend.Method({
+			name: 'getStakeInfo',
+			call: 'fsn_getStakeInfo',
+			params: 1,
+			inputFormatter: [
+				web3._extend.formatters.inputDefaultBlockNumberFormatter
+			]
+		}),
 	],
 	properties:[
 		new web3._extend.Property({
