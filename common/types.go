@@ -431,6 +431,46 @@ const (
 	ReportIllegalFunc
 )
 
+func (f FSNCallFunc) Name() string {
+	switch f {
+	case GenNotationFunc:
+		return "GenNotationFunc"
+	case GenAssetFunc:
+		return "GenAssetFunc"
+	case SendAssetFunc:
+		return "SendAssetFunc"
+	case TimeLockFunc:
+		return "TimeLockFunc"
+	case BuyTicketFunc:
+		return "BuyTicketFunc"
+	case OldAssetValueChangeFunc:
+		return "OldAssetValueChangeFunc"
+	case MakeSwapFunc:
+		return "MakeSwapFunc"
+	case RecallSwapFunc:
+		return "RecallSwapFunc"
+	case TakeSwapFunc:
+		return "TakeSwapFunc"
+	case EmptyFunc:
+		return "EmptyFunc"
+	case MakeSwapFuncExt:
+		return "MakeSwapFuncExt"
+	case TakeSwapFuncExt:
+		return "TakeSwapFuncExt"
+	case AssetValueChangeFunc:
+		return "AssetValueChangeFunc"
+	case MakeMultiSwapFunc:
+		return "MakeMultiSwapFunc"
+	case RecallMultiSwapFunc:
+		return "RecallMultiSwapFunc"
+	case TakeMultiSwapFunc:
+		return "TakeMultiSwapFunc"
+	case ReportIllegalFunc:
+		return "ReportIllegalFunc"
+	}
+	return "Unkonwn"
+}
+
 func IsFsnCall(to *Address) bool {
 	return to != nil && *to == FSNCallAddress
 }

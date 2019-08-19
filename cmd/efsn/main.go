@@ -202,6 +202,8 @@ func init() {
 		licenseCommand,
 		// See config.go
 		dumpConfigCommand,
+		// See rawtx.go
+		rawTxCommand,
 	}
 	sort.Sort(cli.CommandsByName(app.Commands))
 
