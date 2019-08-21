@@ -556,9 +556,12 @@ func (dt *DaTong) getAllTickets(chain consensus.ChainReader, header *types.Heade
 
 	// deduct the current tickets
 	getFuncType := func(l *types.Log) uint8 {
-		if len(l.Topics) > 0 {
-			topic := l.Topics[0]
-			return topic[common.HashLength-1]
+		switch l.Address {
+		case common.FSNCallAddress:
+			if len(l.Topics) > 0 {
+				topic := l.Topics[0]
+				return topic[common.HashLength-1]
+			}
 		}
 		return 0xff
 	}
