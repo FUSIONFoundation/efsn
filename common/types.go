@@ -528,12 +528,6 @@ type GenAssetParam struct {
 	Description string
 }
 
-// TransferNotationParam wacom
-type TransferNotationParam struct {
-	Notation  uint64
-	ToAddress Address
-}
-
 // BuyTicketParam wacom
 type BuyTicketParam struct {
 	Start uint64
@@ -627,11 +621,6 @@ func (p *FSNCallParam) ToBytes() ([]byte, error) {
 
 // ToBytes wacom
 func (p *GenAssetParam) ToBytes() ([]byte, error) {
-	return rlp.EncodeToBytes(p)
-}
-
-// ToBytes wacom
-func (p *TransferNotationParam) ToBytes() ([]byte, error) {
 	return rlp.EncodeToBytes(p)
 }
 
