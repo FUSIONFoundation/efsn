@@ -30,8 +30,6 @@ distroChecks() {
 }
 
 sanityChecks() {
-    distroChecks
-
     if [ -z "$BASH" ]; then
         echo "${txtred}The setup script has to be run in the bash shell.${txtrst}"
             echo "Please run it again in bash:"
@@ -580,6 +578,7 @@ installNode() {
         fi
     fi
 
+    mkdir -p "$BASE_DIR/"
     local spacefree=$(df -B 1024k --output=avail $BASE_DIR | egrep -o '[0-9]+')
     local spaceoccup=$(sudo du -B 1024k --summarize $BASE_DIR | awk '{print $1}')
     local spaceavail=$(expr $spacefree + $spaceoccup)
@@ -921,10 +920,14 @@ echo
 echo "${txtylw}Initializing script, please wait...${txtrst}"
 echo
 # make sure we're not running into avoidable problems during setup
+distroChecks
 sanityChecks
-# check for updates, save state in global variable
-checkUpdate
-hasUpdate=$?
+# check for updates if node.json already exists, save state in global variable
+hasUpdate=1
+if [ -f "$BASE_DIR/fusion-node/node.json" ]; then
+    checkUpdate
+    hasUpdate=$?
+fi
 
 # ignoring some signals to keep the script running
 trap '' SIGINT SIGQUIT SIGTSTP
