@@ -529,7 +529,7 @@ func (z *TimeLock) ToDisplay() *TimeLock {
 		}
 	}
 	t.Items = res
-	sort.Sort(t)
+	sort.Stable(t)
 	return t
 }
 
