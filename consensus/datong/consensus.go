@@ -135,7 +135,7 @@ func (dt *DaTong) verifyHeader(chain consensus.ChainReader, header *types.Header
 		return err
 	}
 	// verify pos hash
-	if common.GetPoSHashVersion(header.Number) < 2 {
+	if common.GetPoSHashVersion(header.Number) < common.PosV2 {
 		if header.UncleHash != types.EmptyUncleHash {
 			return fmt.Errorf("non empty uncle hash")
 		}
@@ -280,7 +280,7 @@ func (dt *DaTong) Prepare(chain consensus.ChainReader, header *types.Header) err
 	}
 	header.Extra = header.Extra[:extraVanity]
 	header.Extra = append(header.Extra, make([]byte, extraSeal)...)
-	if common.GetPoSHashVersion(header.Number) < 2 {
+	if common.GetPoSHashVersion(header.Number) < common.PosV2 {
 		header.UncleHash = types.EmptyUncleHash
 	} else {
 		header.UncleHash = posHash(parent)
@@ -748,7 +748,7 @@ func calcRewards(height *big.Int) *big.Int {
 func posHash(header *types.Header) (hash common.Hash) {
 	hasher := sha3.NewKeccak256()
 	switch common.GetPoSHashVersion(header.Number) {
-	case 1:
+	case common.PosV1:
 		rlp.Encode(hasher, []interface{}{
 			header.ParentHash,
 			header.UncleHash,
@@ -766,7 +766,7 @@ func posHash(header *types.Header) (hash common.Hash) {
 			header.MixDigest,
 			header.Nonce,
 		})
-	case 2:
+	case common.PosV2:
 		rlp.Encode(hasher, []interface{}{
 			header.UncleHash,
 			header.Coinbase,

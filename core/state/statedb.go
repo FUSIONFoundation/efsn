@@ -955,8 +955,7 @@ func (db *StateDB) TransferNotation(notation uint64, from common.Address, to com
 	if stateObjectTo == nil {
 		return fmt.Errorf("Unable to get to address")
 	}
-	displayNotation := notation
-	address, err := db.GetAddressByNotation(displayNotation)
+	address, err := db.GetAddressByNotation(notation)
 	if err != nil {
 		return err
 	}
@@ -970,7 +969,7 @@ func (db *StateDB) TransferNotation(notation uint64, from common.Address, to com
 		// user should transfer an old notation or can burn it like this
 		db.setNotationToAddressLookup(oldNotationTo, common.Address{})
 	}
-	db.setNotationToAddressLookup(displayNotation, to)
+	db.setNotationToAddressLookup(notation, to)
 	stateObjectTo.SetNotation(notation)
 	stateObjectFrom.SetNotation(0)
 	return nil
