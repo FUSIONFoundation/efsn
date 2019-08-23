@@ -3,6 +3,7 @@ package ethapi
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"math/big"
 	"sync"
@@ -544,7 +545,7 @@ func (s *PublicFusionAPI) GetAsset(ctx context.Context, assetID common.Hash, blo
 	}
 
 	// treat assetID as tx hash, deduct asset id from the tx
-	if id := s.getIDByTxHash(assetID); id != (common.Hash{}) {
+	if id := s.getIDByTxHash(ctx, assetID, "AssetID"); id != (common.Hash{}) {
 		if asset, err := state.GetAsset(id); err == nil {
 			return &asset, nil
 		}
@@ -750,19 +751,37 @@ func (s *PublicFusionAPI) AllInfoByAddress(ctx context.Context, address common.A
 	}, nil
 }
 
-func (s *PublicFusionAPI) getIDByTxHash(hash common.Hash) common.Hash {
+func (s *PublicFusionAPI) getIDByTxHash(ctx context.Context, hash common.Hash, logKey string) common.Hash {
 	var id common.Hash
-	tx, _, _, _ := rawdb.ReadTransaction(s.b.ChainDb(), hash)
+	tx, blockHash, _, index := rawdb.ReadTransaction(s.b.ChainDb(), hash)
 	if tx == nil {
-		tx = s.b.GetPoolTransaction(hash)
+		return id
 	}
-	if tx != nil {
-		var signer types.Signer = types.FrontierSigner{}
-		if tx.Protected() {
-			signer = types.NewEIP155Signer(tx.ChainId())
-		}
-		if msg, err := tx.AsMessage(signer); err == nil {
-			id = msg.AsTransaction().Hash()
+	// get from receipt's log
+	receipts, err := s.b.GetReceipts(ctx, blockHash)
+	if err == nil && len(receipts) > int(index) {
+		receipt := receipts[index]
+
+		for _, log := range receipt.Logs {
+			if log.Address != common.FSNCallAddress {
+				continue
+			}
+			maps := make(map[string]interface{})
+			err := json.Unmarshal(log.Data, &maps)
+			if err != nil {
+				continue
+			}
+
+			if _, hasError := maps["Error"]; hasError {
+				continue
+			}
+
+			idstr, idok := maps[logKey].(string)
+			if idok {
+				id = common.HexToHash(idstr)
+				return id
+			}
+
 		}
 	}
 	return id
@@ -778,7 +797,7 @@ func (s *PublicFusionAPI) GetSwap(ctx context.Context, swapID common.Hash, block
 		return &swap, nil
 	}
 	// treat swapId as tx hash, deduct swap id from the tx
-	if id := s.getIDByTxHash(swapID); id != (common.Hash{}) {
+	if id := s.getIDByTxHash(ctx, swapID, "SwapID"); id != (common.Hash{}) {
 		if swap, err := state.GetSwap(id); err == nil {
 			return &swap, nil
 		}
@@ -796,7 +815,7 @@ func (s *PublicFusionAPI) GetMultiSwap(ctx context.Context, swapID common.Hash, 
 		return &swap, nil
 	}
 	// treat swapId as tx hash, deduct swap id from the tx
-	if id := s.getIDByTxHash(swapID); id != (common.Hash{}) {
+	if id := s.getIDByTxHash(ctx, swapID, "SwapID"); id != (common.Hash{}) {
 		if swap, err := state.GetMultiSwap(id); err == nil {
 			return &swap, nil
 		}
