@@ -23,401 +23,6 @@ var lastBlockOfBuyTickets = int64(0)
 var buyTicketOnBlockMap map[common.Address]bool
 var buyTicketOnBlockMapMutex sync.Mutex
 
-// FusionBaseArgs wacom
-type FusionBaseArgs struct {
-	From     common.Address  `json:"from"`
-	Gas      *hexutil.Uint64 `json:"gas"`
-	GasPrice *hexutil.Big    `json:"gasPrice"`
-	Nonce    *hexutil.Uint64 `json:"nonce"`
-}
-
-// GenAssetArgs wacom
-type GenAssetArgs struct {
-	FusionBaseArgs
-	Name        string       `json:"name"`
-	Symbol      string       `json:"symbol"`
-	Decimals    uint8        `json:"decimals"`
-	Total       *hexutil.Big `json:"total"`
-	CanChange   bool         `json:"canChange"`
-	Description string       `json:"description"`
-}
-
-// SendAssetArgs wacom
-type SendAssetArgs struct {
-	FusionBaseArgs
-	AssetID common.Hash    `json:"asset"`
-	To      common.Address `json:"to"`
-	Value   *hexutil.Big   `json:"value"`
-}
-
-// TimeLockArgs wacom
-type TimeLockArgs struct {
-	SendAssetArgs
-	StartTime *hexutil.Uint64 `json:"start"`
-	EndTime   *hexutil.Uint64 `json:"end"`
-}
-
-// BuyTicketArgs wacom
-type BuyTicketArgs struct {
-	FusionBaseArgs
-	Start *hexutil.Uint64 `json:"start"`
-	End   *hexutil.Uint64 `json:"end"`
-}
-
-type AssetValueChangeExArgs struct {
-	FusionBaseArgs
-	AssetID     common.Hash    `json:"asset"`
-	To          common.Address `json:"to"`
-	Value       *hexutil.Big   `json:"value"`
-	IsInc       bool           `json:"isInc"`
-	TransacData string         `json:"transacData"`
-}
-
-// MakeSwapArgs wacom
-type MakeSwapArgs struct {
-	FusionBaseArgs
-	FromAssetID   common.Hash
-	FromStartTime *hexutil.Uint64
-	FromEndTime   *hexutil.Uint64
-	MinFromAmount *hexutil.Big
-	ToAssetID     common.Hash
-	ToStartTime   *hexutil.Uint64
-	ToEndTime     *hexutil.Uint64
-	MinToAmount   *hexutil.Big
-	SwapSize      *big.Int
-	Targes        []common.Address
-	Time          *big.Int
-	Description   string
-}
-
-// RecallSwapArgs wacom
-type RecallSwapArgs struct {
-	FusionBaseArgs
-	SwapID common.Hash
-}
-
-// TakeSwapArgs wacom
-type TakeSwapArgs struct {
-	FusionBaseArgs
-	SwapID common.Hash
-	Size   *big.Int
-}
-
-// MakeMultiSwapArgs wacom
-type MakeMultiSwapArgs struct {
-	FusionBaseArgs
-	FromAssetID   []common.Hash
-	FromStartTime []*hexutil.Uint64
-	FromEndTime   []*hexutil.Uint64
-	MinFromAmount []*hexutil.Big
-	ToAssetID     []common.Hash
-	ToStartTime   []*hexutil.Uint64
-	ToEndTime     []*hexutil.Uint64
-	MinToAmount   []*hexutil.Big
-	SwapSize      *big.Int
-	Targes        []common.Address
-	Time          *big.Int
-	Description   string
-}
-
-// RecallMultiSwapArgs wacom
-type RecallMultiSwapArgs struct {
-	FusionBaseArgs
-	SwapID common.Hash
-}
-
-// TakeSwapArgs wacom
-type TakeMultiSwapArgs struct {
-	FusionBaseArgs
-	SwapID common.Hash
-	Size   *big.Int
-}
-
-func (args *FusionBaseArgs) toSendArgs() SendTxArgs {
-	return SendTxArgs{
-		From:     args.From,
-		Gas:      args.Gas,
-		GasPrice: args.GasPrice,
-		Nonce:    args.Nonce,
-	}
-}
-
-func (args *SendAssetArgs) toParam() *common.SendAssetParam {
-	return &common.SendAssetParam{
-		AssetID: args.AssetID,
-		To:      args.To,
-		Value:   args.Value.ToInt(),
-	}
-}
-
-func (args *SendAssetArgs) toData() ([]byte, error) {
-	return args.toParam().ToBytes()
-}
-
-func (args *TimeLockArgs) toParam(typ common.TimeLockType) *common.TimeLockParam {
-	return &common.TimeLockParam{
-		Type:      typ,
-		AssetID:   args.AssetID,
-		To:        args.To,
-		StartTime: uint64(*args.StartTime),
-		EndTime:   uint64(*args.EndTime),
-		Value:     args.Value.ToInt(),
-	}
-}
-
-func (args *TimeLockArgs) toData(typ common.TimeLockType) ([]byte, error) {
-	return args.toParam(typ).ToBytes()
-}
-
-func (args *GenAssetArgs) toParam() *common.GenAssetParam {
-	return &common.GenAssetParam{
-		Name:        args.Name,
-		Symbol:      args.Symbol,
-		Decimals:    args.Decimals,
-		Total:       args.Total.ToInt(),
-		CanChange:   args.CanChange,
-		Description: args.Description,
-	}
-}
-
-func (args *GenAssetArgs) toData() ([]byte, error) {
-	return args.toParam().ToBytes()
-}
-
-func (args *BuyTicketArgs) toParam() *common.BuyTicketParam {
-	return &common.BuyTicketParam{
-		Start: uint64(*args.Start),
-		End:   uint64(*args.End),
-	}
-}
-
-func (args *BuyTicketArgs) toData() ([]byte, error) {
-	return args.toParam().ToBytes()
-}
-
-func (args *BuyTicketArgs) init(defStart uint64) {
-
-	if args.Start == nil {
-		args.Start = new(hexutil.Uint64)
-		*(*uint64)(args.Start) = defStart
-	}
-
-	if args.End == nil {
-		args.End = new(hexutil.Uint64)
-		*(*uint64)(args.End) = uint64(*args.Start) + 30*24*3600
-	}
-}
-
-func (args *AssetValueChangeExArgs) toParam() *common.AssetValueChangeExParam {
-	return &common.AssetValueChangeExParam{
-		AssetID:     args.AssetID,
-		To:          args.To,
-		Value:       args.Value.ToInt(),
-		IsInc:       args.IsInc,
-		TransacData: args.TransacData,
-	}
-}
-
-func (args *AssetValueChangeExArgs) toData() ([]byte, error) {
-	return args.toParam().ToBytes()
-}
-
-func (args *MakeSwapArgs) init() {
-
-	if args.FromStartTime == nil {
-		args.FromStartTime = new(hexutil.Uint64)
-		*(*uint64)(args.FromStartTime) = common.TimeLockNow
-	}
-
-	if args.FromEndTime == nil {
-		args.FromEndTime = new(hexutil.Uint64)
-		*(*uint64)(args.FromEndTime) = common.TimeLockForever
-	}
-
-	if args.ToStartTime == nil {
-		args.ToStartTime = new(hexutil.Uint64)
-		*(*uint64)(args.ToStartTime) = common.TimeLockNow
-	}
-
-	if args.ToEndTime == nil {
-		args.ToEndTime = new(hexutil.Uint64)
-		*(*uint64)(args.ToEndTime) = common.TimeLockForever
-	}
-}
-
-func (args *MakeSwapArgs) toParam(time *big.Int) *common.MakeSwapParam {
-	return &common.MakeSwapParam{
-		FromAssetID:   args.FromAssetID,
-		FromStartTime: uint64(*args.FromStartTime),
-		FromEndTime:   uint64(*args.FromEndTime),
-		MinFromAmount: args.MinFromAmount.ToInt(),
-		ToAssetID:     args.ToAssetID,
-		ToStartTime:   uint64(*args.ToStartTime),
-		ToEndTime:     uint64(*args.ToEndTime),
-		MinToAmount:   args.MinToAmount.ToInt(),
-		SwapSize:      args.SwapSize,
-		Targes:        args.Targes,
-		Time:          time,
-		Description:   args.Description,
-	}
-}
-
-func (args *MakeSwapArgs) toData(time *big.Int) ([]byte, error) {
-	return args.toParam(time).ToBytes()
-}
-
-func (args *RecallSwapArgs) toParam() *common.RecallSwapParam {
-	return &common.RecallSwapParam{
-		SwapID: args.SwapID,
-	}
-}
-
-func (args *RecallSwapArgs) toData() ([]byte, error) {
-	return args.toParam().ToBytes()
-}
-
-func (args *TakeSwapArgs) toParam() *common.TakeSwapParam {
-	return &common.TakeSwapParam{
-		SwapID: args.SwapID,
-		Size:   args.Size,
-	}
-}
-
-func (args *TakeSwapArgs) toData() ([]byte, error) {
-	return args.toParam().ToBytes()
-}
-
-func (args *MakeMultiSwapArgs) init() {
-
-	ln := len(args.MinFromAmount)
-
-	l := len(args.FromStartTime)
-	if l < ln {
-		temp := make([]*hexutil.Uint64, ln)
-		copy(temp[:l], args.FromStartTime)
-		for i := l; i < ln; i++ {
-			temp[i] = new(hexutil.Uint64)
-			*(*uint64)(temp[i]) = common.TimeLockNow
-		}
-		args.FromStartTime = temp
-	}
-
-	l = len(args.FromEndTime)
-	if l < ln {
-		temp := make([]*hexutil.Uint64, ln)
-		copy(temp[:l], args.FromEndTime)
-		for i := l; i < ln; i++ {
-			temp[i] = new(hexutil.Uint64)
-			*(*uint64)(temp[i]) = common.TimeLockForever
-		}
-		args.FromEndTime = temp
-	}
-
-	ln = len(args.MinToAmount)
-
-	l = len(args.ToStartTime)
-	if l < ln {
-		temp := make([]*hexutil.Uint64, ln)
-		copy(temp[:l], args.ToStartTime)
-		for i := l; i < ln; i++ {
-			temp[i] = new(hexutil.Uint64)
-			*(*uint64)(temp[i]) = common.TimeLockNow
-		}
-		args.ToStartTime = temp
-	}
-
-	l = len(args.ToEndTime)
-	if l < ln {
-		temp := make([]*hexutil.Uint64, ln)
-		copy(temp[:l], args.ToEndTime)
-		for i := l; i < ln; i++ {
-			temp[i] = new(hexutil.Uint64)
-			*(*uint64)(temp[i]) = common.TimeLockForever
-		}
-		args.ToEndTime = temp
-	}
-}
-
-func (args *MakeMultiSwapArgs) toParam(time *big.Int) *common.MakeMultiSwapParam {
-
-	fromStartTime := make([]uint64, len(args.FromStartTime))
-	for i := 0; i < len(args.FromStartTime); i++ {
-		fromStartTime[i] = uint64(*args.FromStartTime[i])
-	}
-	fromEndTime := make([]uint64, len(args.FromEndTime))
-	for i := 0; i < len(args.FromEndTime); i++ {
-		fromEndTime[i] = uint64(*args.FromEndTime[i])
-	}
-	minFromAmount := make([]*big.Int, len(args.MinFromAmount))
-	for i := 0; i < len(args.MinFromAmount); i++ {
-		minFromAmount[i] = args.MinFromAmount[i].ToInt()
-	}
-	toStartTime := make([]uint64, len(args.ToStartTime))
-	for i := 0; i < len(args.ToStartTime); i++ {
-		toStartTime[i] = uint64(*args.ToStartTime[i])
-	}
-	toEndTime := make([]uint64, len(args.ToEndTime))
-	for i := 0; i < len(args.ToEndTime); i++ {
-		toEndTime[i] = uint64(*args.ToEndTime[i])
-	}
-	minToAmount := make([]*big.Int, len(args.MinToAmount))
-	for i := 0; i < len(args.MinToAmount); i++ {
-		minToAmount[i] = args.MinToAmount[i].ToInt()
-	}
-	return &common.MakeMultiSwapParam{
-		FromAssetID:   args.FromAssetID,
-		FromStartTime: fromStartTime,
-		FromEndTime:   fromEndTime,
-		MinFromAmount: minFromAmount,
-		ToAssetID:     args.ToAssetID,
-		ToStartTime:   toStartTime,
-		ToEndTime:     toEndTime,
-		MinToAmount:   minToAmount,
-		SwapSize:      args.SwapSize,
-		Targes:        args.Targes,
-		Time:          time,
-		Description:   args.Description,
-	}
-}
-
-func (args *MakeMultiSwapArgs) toData(time *big.Int) ([]byte, error) {
-	return args.toParam(time).ToBytes()
-}
-
-func (args *RecallMultiSwapArgs) toParam() *common.RecallMultiSwapParam {
-	return &common.RecallMultiSwapParam{
-		SwapID: args.SwapID,
-	}
-}
-
-func (args *RecallMultiSwapArgs) toData() ([]byte, error) {
-	return args.toParam().ToBytes()
-}
-
-func (args *TakeMultiSwapArgs) toParam() *common.TakeMultiSwapParam {
-	return &common.TakeMultiSwapParam{
-		SwapID: args.SwapID,
-		Size:   args.Size,
-	}
-}
-
-func (args *TakeMultiSwapArgs) toData() ([]byte, error) {
-	return args.toParam().ToBytes()
-}
-
-func (args *TimeLockArgs) init() {
-
-	if args.StartTime == nil {
-		args.StartTime = new(hexutil.Uint64)
-		*(*uint64)(args.StartTime) = common.TimeLockNow
-	}
-
-	if args.EndTime == nil {
-		args.EndTime = new(hexutil.Uint64)
-		*(*uint64)(args.EndTime) = common.TimeLockForever
-	}
-}
-
 //--------------------------------------------- PublicFusionAPI -------------------------------------
 
 // PublicFusionAPI ss
@@ -866,24 +471,27 @@ func (s *PublicFusionAPI) GetStakeInfo(ctx context.Context, blockNr rpc.BlockNum
 }
 
 //--------------------------------------------- PublicFusionAPI buile send tx args-------------------------------------
-type FSNCallArgs interface {
-	toSendArgs() SendTxArgs
-}
-
-func FSNCallArgsToSendTxArgs(args FSNCallArgs, funcType common.FSNCallFunc, funcData []byte) (*SendTxArgs, error) {
+func FSNCallArgsToSendTxArgs(args common.FSNBaseArgsInterface, funcType common.FSNCallFunc, funcData []byte) (*SendTxArgs, error) {
 	var param = common.FSNCallParam{Func: funcType, Data: funcData}
 	data, err := param.ToBytes()
 	if err != nil {
 		return nil, err
 	}
 	var argsData = hexutil.Bytes(data)
-	sendArgs := args.toSendArgs()
-	sendArgs.To = &common.FSNCallAddress
-	sendArgs.Data = &argsData
-	return &sendArgs, nil
+	baseArgs := args.BaseArgs()
+	return &SendTxArgs{
+		From:     baseArgs.From,
+		To:       &common.FSNCallAddress,
+		Gas:      baseArgs.Gas,
+		GasPrice: baseArgs.GasPrice,
+		Value:    (*hexutil.Big)(big.NewInt(0)),
+		Nonce:    baseArgs.Nonce,
+		Data:     &argsData,
+		Input:    nil,
+	}, nil
 }
 
-func (s *PublicFusionAPI) BuildGenNotationSendTxArgs(ctx context.Context, args FusionBaseArgs) (*SendTxArgs, error) {
+func (s *PublicFusionAPI) BuildGenNotationSendTxArgs(ctx context.Context, args common.FusionBaseArgs) (*SendTxArgs, error) {
 	state, _, err := s.b.StateAndHeaderByNumber(ctx, rpc.LatestBlockNumber)
 	if state == nil || err != nil {
 		return nil, err
@@ -896,24 +504,24 @@ func (s *PublicFusionAPI) BuildGenNotationSendTxArgs(ctx context.Context, args F
 	return FSNCallArgsToSendTxArgs(&args, common.GenNotationFunc, nil)
 }
 
-func (s *PublicFusionAPI) BuildGenAssetSendTxArgs(ctx context.Context, args GenAssetArgs) (*SendTxArgs, error) {
-	if err := args.toParam().Check(common.BigMaxUint64); err != nil {
+func (s *PublicFusionAPI) BuildGenAssetSendTxArgs(ctx context.Context, args common.GenAssetArgs) (*SendTxArgs, error) {
+	if err := args.ToParam().Check(common.BigMaxUint64); err != nil {
 		return nil, err
 	}
 
-	funcData, err := args.toData()
+	funcData, err := args.ToData()
 	if err != nil {
 		return nil, err
 	}
 	return FSNCallArgsToSendTxArgs(&args, common.GenAssetFunc, funcData)
 }
 
-func (s *PublicFusionAPI) BuildSendAssetSendTxArgs(ctx context.Context, args SendAssetArgs) (*SendTxArgs, error) {
+func (s *PublicFusionAPI) BuildSendAssetSendTxArgs(ctx context.Context, args common.SendAssetArgs) (*SendTxArgs, error) {
 	state, _, err := s.b.StateAndHeaderByNumber(ctx, rpc.LatestBlockNumber)
 	if state == nil || err != nil {
 		return nil, err
 	}
-	if err := args.toParam().Check(common.BigMaxUint64); err != nil {
+	if err := args.ToParam().Check(common.BigMaxUint64); err != nil {
 		return nil, err
 	}
 
@@ -921,20 +529,20 @@ func (s *PublicFusionAPI) BuildSendAssetSendTxArgs(ctx context.Context, args Sen
 		return nil, fmt.Errorf("not enough asset")
 	}
 
-	funcData, err := args.toData()
+	funcData, err := args.ToData()
 	if err != nil {
 		return nil, err
 	}
 	return FSNCallArgsToSendTxArgs(&args, common.SendAssetFunc, funcData)
 }
 
-func (s *PublicFusionAPI) BuildAssetToTimeLockSendTxArgs(ctx context.Context, args TimeLockArgs) (*SendTxArgs, error) {
+func (s *PublicFusionAPI) BuildAssetToTimeLockSendTxArgs(ctx context.Context, args common.TimeLockArgs) (*SendTxArgs, error) {
 	state, header, err := s.b.StateAndHeaderByNumber(ctx, rpc.LatestBlockNumber)
 	if state == nil || err != nil {
 		return nil, err
 	}
-	args.init()
-	if err := args.toParam(common.AssetToTimeLock).Check(common.BigMaxUint64, header.Time.Uint64()); err != nil {
+	args.Init()
+	if err := args.ToParam(common.AssetToTimeLock).Check(common.BigMaxUint64, header.Time.Uint64()); err != nil {
 		return nil, err
 	}
 	needValue := common.NewTimeLock(&common.TimeLockItem{
@@ -949,20 +557,20 @@ func (s *PublicFusionAPI) BuildAssetToTimeLockSendTxArgs(ctx context.Context, ar
 		return nil, fmt.Errorf("not enough asset")
 	}
 
-	funcData, err := args.toData(common.AssetToTimeLock)
+	funcData, err := args.ToData(common.AssetToTimeLock)
 	if err != nil {
 		return nil, err
 	}
 	return FSNCallArgsToSendTxArgs(&args, common.TimeLockFunc, funcData)
 }
 
-func (s *PublicFusionAPI) BuildTimeLockToTimeLockSendTxArgs(ctx context.Context, args TimeLockArgs) (*SendTxArgs, error) {
+func (s *PublicFusionAPI) BuildTimeLockToTimeLockSendTxArgs(ctx context.Context, args common.TimeLockArgs) (*SendTxArgs, error) {
 	state, header, err := s.b.StateAndHeaderByNumber(ctx, rpc.LatestBlockNumber)
 	if state == nil || err != nil {
 		return nil, err
 	}
-	args.init()
-	if err := args.toParam(common.TimeLockToTimeLock).Check(common.BigMaxUint64, header.Time.Uint64()); err != nil {
+	args.Init()
+	if err := args.ToParam(common.TimeLockToTimeLock).Check(common.BigMaxUint64, header.Time.Uint64()); err != nil {
 		return nil, err
 	}
 	needValue := common.NewTimeLock(&common.TimeLockItem{
@@ -978,22 +586,22 @@ func (s *PublicFusionAPI) BuildTimeLockToTimeLockSendTxArgs(ctx context.Context,
 		return nil, fmt.Errorf("not enough time lock balance")
 	}
 
-	funcData, err := args.toData(common.TimeLockToTimeLock)
+	funcData, err := args.ToData(common.TimeLockToTimeLock)
 	if err != nil {
 		return nil, err
 	}
 	return FSNCallArgsToSendTxArgs(&args, common.TimeLockFunc, funcData)
 }
 
-func (s *PublicFusionAPI) BuildTimeLockToAssetSendTxArgs(ctx context.Context, args TimeLockArgs) (*SendTxArgs, error) {
+func (s *PublicFusionAPI) BuildTimeLockToAssetSendTxArgs(ctx context.Context, args common.TimeLockArgs) (*SendTxArgs, error) {
 	state, header, err := s.b.StateAndHeaderByNumber(ctx, rpc.LatestBlockNumber)
 	if state == nil || err != nil {
 		return nil, err
 	}
-	args.init()
+	args.Init()
 	*(*uint64)(args.StartTime) = header.Time.Uint64()
 	*(*uint64)(args.EndTime) = common.TimeLockForever
-	if err := args.toParam(common.TimeLockToAsset).Check(common.BigMaxUint64, header.Time.Uint64()); err != nil {
+	if err := args.ToParam(common.TimeLockToAsset).Check(common.BigMaxUint64, header.Time.Uint64()); err != nil {
 		return nil, err
 	}
 	needValue := common.NewTimeLock(&common.TimeLockItem{
@@ -1008,14 +616,14 @@ func (s *PublicFusionAPI) BuildTimeLockToAssetSendTxArgs(ctx context.Context, ar
 		return nil, fmt.Errorf("not enough time lock balance")
 	}
 
-	funcData, err := args.toData(common.TimeLockToAsset)
+	funcData, err := args.ToData(common.TimeLockToAsset)
 	if err != nil {
 		return nil, err
 	}
 	return FSNCallArgsToSendTxArgs(&args, common.TimeLockFunc, funcData)
 }
 
-func (s *PublicFusionAPI) BuildBuyTicketSendTxArgs(ctx context.Context, args BuyTicketArgs) (*SendTxArgs, error) {
+func (s *PublicFusionAPI) BuildBuyTicketSendTxArgs(ctx context.Context, args common.BuyTicketArgs) (*SendTxArgs, error) {
 	state, header, err := s.b.StateAndHeaderByNumber(ctx, rpc.LatestBlockNumber)
 	if state == nil || err != nil {
 		return nil, err
@@ -1025,9 +633,9 @@ func (s *PublicFusionAPI) BuildBuyTicketSendTxArgs(ctx context.Context, args Buy
 		return nil, fmt.Errorf("Purchase of BuyTicket for this block already submitted")
 	}
 
-	args.init(header.Time.Uint64())
+	args.Init(header.Time.Uint64())
 	now := uint64(time.Now().Unix())
-	if err := args.toParam().Check(common.BigMaxUint64, now, 600); err != nil {
+	if err := args.ToParam().Check(common.BigMaxUint64, now, 600); err != nil {
 		return nil, err
 	}
 
@@ -1049,20 +657,20 @@ func (s *PublicFusionAPI) BuildBuyTicketSendTxArgs(ctx context.Context, args Buy
 		}
 	}
 
-	funcData, err := args.toData()
+	funcData, err := args.ToData()
 	if err != nil {
 		return nil, err
 	}
 	return FSNCallArgsToSendTxArgs(&args, common.BuyTicketFunc, funcData)
 }
 
-func (s *PublicFusionAPI) BuildAssetValueChangeSendTxArgs(ctx context.Context, args AssetValueChangeExArgs) (*SendTxArgs, error) {
+func (s *PublicFusionAPI) BuildAssetValueChangeSendTxArgs(ctx context.Context, args common.AssetValueChangeExArgs) (*SendTxArgs, error) {
 	state, _, err := s.b.StateAndHeaderByNumber(ctx, rpc.LatestBlockNumber)
 	if state == nil || err != nil {
 		return nil, err
 	}
 
-	if err := args.toParam().Check(common.BigMaxUint64); err != nil {
+	if err := args.ToParam().Check(common.BigMaxUint64); err != nil {
 		return nil, err
 	}
 
@@ -1091,22 +699,22 @@ func (s *PublicFusionAPI) BuildAssetValueChangeSendTxArgs(ctx context.Context, a
 		}
 	}
 
-	funcData, err := args.toData()
+	funcData, err := args.ToData()
 	if err != nil {
 		return nil, err
 	}
 	return FSNCallArgsToSendTxArgs(&args, common.AssetValueChangeFunc, funcData)
 }
 
-func (s *PublicFusionAPI) BuildMakeSwapSendTxArgs(ctx context.Context, args MakeSwapArgs) (*SendTxArgs, error) {
+func (s *PublicFusionAPI) BuildMakeSwapSendTxArgs(ctx context.Context, args common.MakeSwapArgs) (*SendTxArgs, error) {
 	state, header, err := s.b.StateAndHeaderByNumber(ctx, rpc.LatestBlockNumber)
 	if state == nil || err != nil {
 		return nil, err
 	}
 
-	args.init()
+	args.Init()
 	now := uint64(time.Now().Unix())
-	if err := args.toParam(header.Time).Check(common.BigMaxUint64, now); err != nil {
+	if err := args.ToParam(header.Time).Check(common.BigMaxUint64, now); err != nil {
 		return nil, err
 	}
 
@@ -1139,14 +747,14 @@ func (s *PublicFusionAPI) BuildMakeSwapSendTxArgs(ctx context.Context, args Make
 		}
 	}
 
-	funcData, err := args.toData(header.Time)
+	funcData, err := args.ToData(header.Time)
 	if err != nil {
 		return nil, err
 	}
 	return FSNCallArgsToSendTxArgs(&args, common.MakeSwapFuncExt, funcData)
 }
 
-func (s *PublicFusionAPI) BuildRecallSwapSendTxArgs(ctx context.Context, args RecallSwapArgs) (*SendTxArgs, error) {
+func (s *PublicFusionAPI) BuildRecallSwapSendTxArgs(ctx context.Context, args common.RecallSwapArgs) (*SendTxArgs, error) {
 	state, _, err := s.b.StateAndHeaderByNumber(ctx, rpc.LatestBlockNumber)
 	if state == nil || err != nil {
 		return nil, err
@@ -1158,7 +766,7 @@ func (s *PublicFusionAPI) BuildRecallSwapSendTxArgs(ctx context.Context, args Re
 		return nil, err
 	}
 
-	if err := args.toParam().Check(common.BigMaxUint64, &swap); err != nil {
+	if err := args.ToParam().Check(common.BigMaxUint64, &swap); err != nil {
 		return nil, err
 	}
 
@@ -1166,14 +774,14 @@ func (s *PublicFusionAPI) BuildRecallSwapSendTxArgs(ctx context.Context, args Re
 		return nil, fmt.Errorf("Must be swap onwer can recall")
 	}
 
-	funcData, err := args.toData()
+	funcData, err := args.ToData()
 	if err != nil {
 		return nil, err
 	}
 	return FSNCallArgsToSendTxArgs(&args, common.RecallSwapFunc, funcData)
 }
 
-func (s *PublicFusionAPI) BuildTakeSwapSendTxArgs(ctx context.Context, args TakeSwapArgs) (*SendTxArgs, error) {
+func (s *PublicFusionAPI) BuildTakeSwapSendTxArgs(ctx context.Context, args common.TakeSwapArgs) (*SendTxArgs, error) {
 	state, _, err := s.b.StateAndHeaderByNumber(ctx, rpc.LatestBlockNumber)
 	if state == nil || err != nil {
 		return nil, err
@@ -1185,7 +793,7 @@ func (s *PublicFusionAPI) BuildTakeSwapSendTxArgs(ctx context.Context, args Take
 	}
 
 	now := uint64(time.Now().Unix())
-	if err := args.toParam().Check(common.BigMaxUint64, &swap, now); err != nil {
+	if err := args.ToParam().Check(common.BigMaxUint64, &swap, now); err != nil {
 		return nil, err
 	}
 
@@ -1213,22 +821,22 @@ func (s *PublicFusionAPI) BuildTakeSwapSendTxArgs(ctx context.Context, args Take
 		}
 	}
 
-	funcData, err := args.toData()
+	funcData, err := args.ToData()
 	if err != nil {
 		return nil, err
 	}
 	return FSNCallArgsToSendTxArgs(&args, common.TakeSwapFuncExt, funcData)
 }
 
-func (s *PublicFusionAPI) BuildMakeMultiSwapSendTxArgs(ctx context.Context, args MakeMultiSwapArgs) (*SendTxArgs, error) {
+func (s *PublicFusionAPI) BuildMakeMultiSwapSendTxArgs(ctx context.Context, args common.MakeMultiSwapArgs) (*SendTxArgs, error) {
 	state, header, err := s.b.StateAndHeaderByNumber(ctx, rpc.LatestBlockNumber)
 	if state == nil || err != nil {
 		return nil, err
 	}
 
-	args.init()
+	args.Init()
 	now := uint64(time.Now().Unix())
-	if err := args.toParam(header.Time).Check(common.BigMaxUint64, now); err != nil {
+	if err := args.ToParam(header.Time).Check(common.BigMaxUint64, now); err != nil {
 		return nil, err
 	}
 
@@ -1261,14 +869,14 @@ func (s *PublicFusionAPI) BuildMakeMultiSwapSendTxArgs(ctx context.Context, args
 		}
 	}
 
-	funcData, err := args.toData(header.Time)
+	funcData, err := args.ToData(header.Time)
 	if err != nil {
 		return nil, err
 	}
 	return FSNCallArgsToSendTxArgs(&args, common.MakeMultiSwapFunc, funcData)
 }
 
-func (s *PublicFusionAPI) BuildRecallMultiSwapSendTxArgs(ctx context.Context, args RecallMultiSwapArgs) (*SendTxArgs, error) {
+func (s *PublicFusionAPI) BuildRecallMultiSwapSendTxArgs(ctx context.Context, args common.RecallMultiSwapArgs) (*SendTxArgs, error) {
 	state, _, err := s.b.StateAndHeaderByNumber(ctx, rpc.LatestBlockNumber)
 	if state == nil || err != nil {
 		return nil, err
@@ -1280,7 +888,7 @@ func (s *PublicFusionAPI) BuildRecallMultiSwapSendTxArgs(ctx context.Context, ar
 		return nil, err
 	}
 
-	if err := args.toParam().Check(common.BigMaxUint64, &swap); err != nil {
+	if err := args.ToParam().Check(common.BigMaxUint64, &swap); err != nil {
 		return nil, err
 	}
 
@@ -1288,14 +896,14 @@ func (s *PublicFusionAPI) BuildRecallMultiSwapSendTxArgs(ctx context.Context, ar
 		return nil, fmt.Errorf("Must be swap onwer can recall")
 	}
 
-	funcData, err := args.toData()
+	funcData, err := args.ToData()
 	if err != nil {
 		return nil, err
 	}
 	return FSNCallArgsToSendTxArgs(&args, common.RecallMultiSwapFunc, funcData)
 }
 
-func (s *PublicFusionAPI) BuildTakeMultiSwapSendTxArgs(ctx context.Context, args TakeMultiSwapArgs) (*SendTxArgs, error) {
+func (s *PublicFusionAPI) BuildTakeMultiSwapSendTxArgs(ctx context.Context, args common.TakeMultiSwapArgs) (*SendTxArgs, error) {
 	state, _, err := s.b.StateAndHeaderByNumber(ctx, rpc.LatestBlockNumber)
 	if state == nil || err != nil {
 		return nil, err
@@ -1307,7 +915,7 @@ func (s *PublicFusionAPI) BuildTakeMultiSwapSendTxArgs(ctx context.Context, args
 	}
 
 	now := uint64(time.Now().Unix())
-	if err := args.toParam().Check(common.BigMaxUint64, &swap, now); err != nil {
+	if err := args.ToParam().Check(common.BigMaxUint64, &swap, now); err != nil {
 		return nil, err
 	}
 
@@ -1338,7 +946,7 @@ func (s *PublicFusionAPI) BuildTakeMultiSwapSendTxArgs(ctx context.Context, args
 		}
 	}
 
-	funcData, err := args.toData()
+	funcData, err := args.ToData()
 	if err != nil {
 		return nil, err
 	}
@@ -1364,7 +972,7 @@ func NewPrivateFusionAPI(b Backend, nonceLock *AddrLocker, papi *PrivateAccountA
 }
 
 // GenNotation ss
-func (s *PrivateFusionAPI) GenNotation(ctx context.Context, args FusionBaseArgs, passwd string) (common.Hash, error) {
+func (s *PrivateFusionAPI) GenNotation(ctx context.Context, args common.FusionBaseArgs, passwd string) (common.Hash, error) {
 	sendArgs, err := s.BuildGenNotationSendTxArgs(ctx, args)
 	if err != nil {
 		return common.Hash{}, err
@@ -1373,7 +981,7 @@ func (s *PrivateFusionAPI) GenNotation(ctx context.Context, args FusionBaseArgs,
 }
 
 // GenAsset ss
-func (s *PrivateFusionAPI) GenAsset(ctx context.Context, args GenAssetArgs, passwd string) (common.Hash, error) {
+func (s *PrivateFusionAPI) GenAsset(ctx context.Context, args common.GenAssetArgs, passwd string) (common.Hash, error) {
 	sendArgs, err := s.BuildGenAssetSendTxArgs(ctx, args)
 	if err != nil {
 		return common.Hash{}, err
@@ -1382,7 +990,7 @@ func (s *PrivateFusionAPI) GenAsset(ctx context.Context, args GenAssetArgs, pass
 }
 
 // SendAsset ss
-func (s *PrivateFusionAPI) SendAsset(ctx context.Context, args SendAssetArgs, passwd string) (common.Hash, error) {
+func (s *PrivateFusionAPI) SendAsset(ctx context.Context, args common.SendAssetArgs, passwd string) (common.Hash, error) {
 	sendArgs, err := s.BuildSendAssetSendTxArgs(ctx, args)
 	if err != nil {
 		return common.Hash{}, err
@@ -1391,7 +999,7 @@ func (s *PrivateFusionAPI) SendAsset(ctx context.Context, args SendAssetArgs, pa
 }
 
 // AssetToTimeLock ss
-func (s *PrivateFusionAPI) AssetToTimeLock(ctx context.Context, args TimeLockArgs, passwd string) (common.Hash, error) {
+func (s *PrivateFusionAPI) AssetToTimeLock(ctx context.Context, args common.TimeLockArgs, passwd string) (common.Hash, error) {
 	sendArgs, err := s.BuildAssetToTimeLockSendTxArgs(ctx, args)
 	if err != nil {
 		return common.Hash{}, err
@@ -1400,7 +1008,7 @@ func (s *PrivateFusionAPI) AssetToTimeLock(ctx context.Context, args TimeLockArg
 }
 
 // TimeLockToTimeLock ss
-func (s *PrivateFusionAPI) TimeLockToTimeLock(ctx context.Context, args TimeLockArgs, passwd string) (common.Hash, error) {
+func (s *PrivateFusionAPI) TimeLockToTimeLock(ctx context.Context, args common.TimeLockArgs, passwd string) (common.Hash, error) {
 	sendArgs, err := s.BuildTimeLockToTimeLockSendTxArgs(ctx, args)
 	if err != nil {
 		return common.Hash{}, err
@@ -1409,7 +1017,7 @@ func (s *PrivateFusionAPI) TimeLockToTimeLock(ctx context.Context, args TimeLock
 }
 
 // TimeLockToAsset ss
-func (s *PrivateFusionAPI) TimeLockToAsset(ctx context.Context, args TimeLockArgs, passwd string) (common.Hash, error) {
+func (s *PrivateFusionAPI) TimeLockToAsset(ctx context.Context, args common.TimeLockArgs, passwd string) (common.Hash, error) {
 	sendArgs, err := s.BuildTimeLockToAssetSendTxArgs(ctx, args)
 	if err != nil {
 		return common.Hash{}, err
@@ -1442,7 +1050,7 @@ func addTicketPurchaseForBlock(from common.Address) {
 }
 
 // BuyTicket ss
-func (s *PrivateFusionAPI) BuyTicket(ctx context.Context, args BuyTicketArgs, passwd string) (common.Hash, error) {
+func (s *PrivateFusionAPI) BuyTicket(ctx context.Context, args common.BuyTicketArgs, passwd string) (common.Hash, error) {
 	sendArgs, err := s.BuildBuyTicketSendTxArgs(ctx, args)
 	if err != nil {
 		return common.Hash{}, err
@@ -1456,7 +1064,7 @@ func (s *PrivateFusionAPI) BuyTicket(ctx context.Context, args BuyTicketArgs, pa
 }
 
 // IncAsset ss
-func (s *PrivateFusionAPI) IncAsset(ctx context.Context, args AssetValueChangeExArgs, passwd string) (common.Hash, error) {
+func (s *PrivateFusionAPI) IncAsset(ctx context.Context, args common.AssetValueChangeExArgs, passwd string) (common.Hash, error) {
 	args.IsInc = true
 	sendArgs, err := s.BuildAssetValueChangeSendTxArgs(ctx, args)
 	if err != nil {
@@ -1466,7 +1074,7 @@ func (s *PrivateFusionAPI) IncAsset(ctx context.Context, args AssetValueChangeEx
 }
 
 // DecAsset ss
-func (s *PrivateFusionAPI) DecAsset(ctx context.Context, args AssetValueChangeExArgs, passwd string) (common.Hash, error) {
+func (s *PrivateFusionAPI) DecAsset(ctx context.Context, args common.AssetValueChangeExArgs, passwd string) (common.Hash, error) {
 	args.IsInc = false
 	sendArgs, err := s.BuildAssetValueChangeSendTxArgs(ctx, args)
 	if err != nil {
@@ -1476,7 +1084,7 @@ func (s *PrivateFusionAPI) DecAsset(ctx context.Context, args AssetValueChangeEx
 }
 
 // MakeSwap ss
-func (s *PrivateFusionAPI) MakeSwap(ctx context.Context, args MakeSwapArgs, passwd string) (common.Hash, error) {
+func (s *PrivateFusionAPI) MakeSwap(ctx context.Context, args common.MakeSwapArgs, passwd string) (common.Hash, error) {
 	sendArgs, err := s.BuildMakeSwapSendTxArgs(ctx, args)
 	if err != nil {
 		return common.Hash{}, err
@@ -1485,7 +1093,7 @@ func (s *PrivateFusionAPI) MakeSwap(ctx context.Context, args MakeSwapArgs, pass
 }
 
 // RecallSwap ss
-func (s *PrivateFusionAPI) RecallSwap(ctx context.Context, args RecallSwapArgs, passwd string) (common.Hash, error) {
+func (s *PrivateFusionAPI) RecallSwap(ctx context.Context, args common.RecallSwapArgs, passwd string) (common.Hash, error) {
 	sendArgs, err := s.BuildRecallSwapSendTxArgs(ctx, args)
 	if err != nil {
 		return common.Hash{}, err
@@ -1494,7 +1102,7 @@ func (s *PrivateFusionAPI) RecallSwap(ctx context.Context, args RecallSwapArgs, 
 }
 
 // TakeSwap ss
-func (s *PrivateFusionAPI) TakeSwap(ctx context.Context, args TakeSwapArgs, passwd string) (common.Hash, error) {
+func (s *PrivateFusionAPI) TakeSwap(ctx context.Context, args common.TakeSwapArgs, passwd string) (common.Hash, error) {
 	sendArgs, err := s.BuildTakeSwapSendTxArgs(ctx, args)
 	if err != nil {
 		return common.Hash{}, err
@@ -1503,7 +1111,7 @@ func (s *PrivateFusionAPI) TakeSwap(ctx context.Context, args TakeSwapArgs, pass
 }
 
 // MakeMultiSwap ss
-func (s *PrivateFusionAPI) MakeMultiSwap(ctx context.Context, args MakeMultiSwapArgs, passwd string) (common.Hash, error) {
+func (s *PrivateFusionAPI) MakeMultiSwap(ctx context.Context, args common.MakeMultiSwapArgs, passwd string) (common.Hash, error) {
 	sendArgs, err := s.BuildMakeMultiSwapSendTxArgs(ctx, args)
 	if err != nil {
 		return common.Hash{}, err
@@ -1512,7 +1120,7 @@ func (s *PrivateFusionAPI) MakeMultiSwap(ctx context.Context, args MakeMultiSwap
 }
 
 // RecallMultiSwap ss
-func (s *PrivateFusionAPI) RecallMultiSwap(ctx context.Context, args RecallMultiSwapArgs, passwd string) (common.Hash, error) {
+func (s *PrivateFusionAPI) RecallMultiSwap(ctx context.Context, args common.RecallMultiSwapArgs, passwd string) (common.Hash, error) {
 	sendArgs, err := s.BuildRecallMultiSwapSendTxArgs(ctx, args)
 	if err != nil {
 		return common.Hash{}, err
@@ -1521,7 +1129,7 @@ func (s *PrivateFusionAPI) RecallMultiSwap(ctx context.Context, args RecallMulti
 }
 
 // TakeMultiSwap ss
-func (s *PrivateFusionAPI) TakeMultiSwap(ctx context.Context, args TakeMultiSwapArgs, passwd string) (common.Hash, error) {
+func (s *PrivateFusionAPI) TakeMultiSwap(ctx context.Context, args common.TakeMultiSwapArgs, passwd string) (common.Hash, error) {
 	sendArgs, err := s.BuildTakeMultiSwapSendTxArgs(ctx, args)
 	if err != nil {
 		return common.Hash{}, err
@@ -1574,8 +1182,8 @@ func AutoBuyTicket(enable bool) {
 
 		coinbase, err := fusionTransactionAPI.b.Coinbase()
 		if err == nil {
-			fbase := FusionBaseArgs{From: coinbase}
-			args := BuyTicketArgs{FusionBaseArgs: fbase}
+			fbase := common.FusionBaseArgs{From: coinbase}
+			args := common.BuyTicketArgs{FusionBaseArgs: fbase}
 			fusionTransactionAPI.BuyTicket(context.TODO(), args)
 		}
 	}
@@ -1602,14 +1210,14 @@ func ReportIllegal() {
 		case content := <-common.ReportIllegalChan:
 			coinbase, err := fusionTransactionAPI.b.Coinbase()
 			if err == nil {
-				args := FusionBaseArgs{From: coinbase}
+				args := common.FusionBaseArgs{From: coinbase}
 				fusionTransactionAPI.ReportIllegal(context.TODO(), args, content)
 			}
 		}
 	}
 }
 
-func (s *FusionTransactionAPI) ReportIllegal(ctx context.Context, args FusionBaseArgs, content []byte) (common.Hash, error) {
+func (s *FusionTransactionAPI) ReportIllegal(ctx context.Context, args common.FusionBaseArgs, content []byte) (common.Hash, error) {
 	oldtx := s.b.GetPoolTransactionByPredicate(func(tx *types.Transaction) bool {
 		param := common.FSNCallParam{}
 		rlp.DecodeBytes(tx.Data(), &param)
@@ -1668,7 +1276,7 @@ func (s *FusionTransactionAPI) SendRawTransaction(ctx context.Context, tx *types
 }
 
 // BuildGenNotationTx ss
-func (s *FusionTransactionAPI) BuildGenNotationTx(ctx context.Context, args FusionBaseArgs) (*types.Transaction, error) {
+func (s *FusionTransactionAPI) BuildGenNotationTx(ctx context.Context, args common.FusionBaseArgs) (*types.Transaction, error) {
 	sendArgs, err := s.BuildGenNotationSendTxArgs(ctx, args)
 	if err != nil {
 		return nil, err
@@ -1677,7 +1285,7 @@ func (s *FusionTransactionAPI) BuildGenNotationTx(ctx context.Context, args Fusi
 }
 
 // GenNotation ss
-func (s *FusionTransactionAPI) GenNotation(ctx context.Context, args FusionBaseArgs) (common.Hash, error) {
+func (s *FusionTransactionAPI) GenNotation(ctx context.Context, args common.FusionBaseArgs) (common.Hash, error) {
 	tx, err := s.BuildGenNotationTx(ctx, args)
 	if err != nil {
 		return common.Hash{}, err
@@ -1686,7 +1294,7 @@ func (s *FusionTransactionAPI) GenNotation(ctx context.Context, args FusionBaseA
 }
 
 // BuildGenAssetTx ss
-func (s *FusionTransactionAPI) BuildGenAssetTx(ctx context.Context, args GenAssetArgs) (*types.Transaction, error) {
+func (s *FusionTransactionAPI) BuildGenAssetTx(ctx context.Context, args common.GenAssetArgs) (*types.Transaction, error) {
 	sendArgs, err := s.BuildGenAssetSendTxArgs(ctx, args)
 	if err != nil {
 		return nil, err
@@ -1695,7 +1303,7 @@ func (s *FusionTransactionAPI) BuildGenAssetTx(ctx context.Context, args GenAsse
 }
 
 // GenAsset ss
-func (s *FusionTransactionAPI) GenAsset(ctx context.Context, args GenAssetArgs) (common.Hash, error) {
+func (s *FusionTransactionAPI) GenAsset(ctx context.Context, args common.GenAssetArgs) (common.Hash, error) {
 	tx, err := s.BuildGenAssetTx(ctx, args)
 	if err != nil {
 		return common.Hash{}, err
@@ -1704,7 +1312,7 @@ func (s *FusionTransactionAPI) GenAsset(ctx context.Context, args GenAssetArgs) 
 }
 
 // BuildSendAssetTx ss
-func (s *FusionTransactionAPI) BuildSendAssetTx(ctx context.Context, args SendAssetArgs) (*types.Transaction, error) {
+func (s *FusionTransactionAPI) BuildSendAssetTx(ctx context.Context, args common.SendAssetArgs) (*types.Transaction, error) {
 	sendArgs, err := s.BuildSendAssetSendTxArgs(ctx, args)
 	if err != nil {
 		return nil, err
@@ -1713,7 +1321,7 @@ func (s *FusionTransactionAPI) BuildSendAssetTx(ctx context.Context, args SendAs
 }
 
 // SendAsset ss
-func (s *FusionTransactionAPI) SendAsset(ctx context.Context, args SendAssetArgs) (common.Hash, error) {
+func (s *FusionTransactionAPI) SendAsset(ctx context.Context, args common.SendAssetArgs) (common.Hash, error) {
 	tx, err := s.BuildSendAssetTx(ctx, args)
 	if err != nil {
 		return common.Hash{}, err
@@ -1722,7 +1330,7 @@ func (s *FusionTransactionAPI) SendAsset(ctx context.Context, args SendAssetArgs
 }
 
 // BuildAssetToTimeLockTx ss
-func (s *FusionTransactionAPI) BuildAssetToTimeLockTx(ctx context.Context, args TimeLockArgs) (*types.Transaction, error) {
+func (s *FusionTransactionAPI) BuildAssetToTimeLockTx(ctx context.Context, args common.TimeLockArgs) (*types.Transaction, error) {
 	sendArgs, err := s.BuildAssetToTimeLockSendTxArgs(ctx, args)
 	if err != nil {
 		return nil, err
@@ -1731,7 +1339,7 @@ func (s *FusionTransactionAPI) BuildAssetToTimeLockTx(ctx context.Context, args 
 }
 
 // AssetToTimeLock ss
-func (s *FusionTransactionAPI) AssetToTimeLock(ctx context.Context, args TimeLockArgs) (common.Hash, error) {
+func (s *FusionTransactionAPI) AssetToTimeLock(ctx context.Context, args common.TimeLockArgs) (common.Hash, error) {
 	tx, err := s.BuildAssetToTimeLockTx(ctx, args)
 	if err != nil {
 		return common.Hash{}, err
@@ -1740,7 +1348,7 @@ func (s *FusionTransactionAPI) AssetToTimeLock(ctx context.Context, args TimeLoc
 }
 
 // BuildTimeLockToTimeLockTx ss
-func (s *FusionTransactionAPI) BuildTimeLockToTimeLockTx(ctx context.Context, args TimeLockArgs) (*types.Transaction, error) {
+func (s *FusionTransactionAPI) BuildTimeLockToTimeLockTx(ctx context.Context, args common.TimeLockArgs) (*types.Transaction, error) {
 	sendArgs, err := s.BuildTimeLockToTimeLockSendTxArgs(ctx, args)
 	if err != nil {
 		return nil, err
@@ -1749,7 +1357,7 @@ func (s *FusionTransactionAPI) BuildTimeLockToTimeLockTx(ctx context.Context, ar
 }
 
 // TimeLockToTimeLock ss
-func (s *FusionTransactionAPI) TimeLockToTimeLock(ctx context.Context, args TimeLockArgs) (common.Hash, error) {
+func (s *FusionTransactionAPI) TimeLockToTimeLock(ctx context.Context, args common.TimeLockArgs) (common.Hash, error) {
 	tx, err := s.BuildTimeLockToTimeLockTx(ctx, args)
 	if err != nil {
 		return common.Hash{}, err
@@ -1758,7 +1366,7 @@ func (s *FusionTransactionAPI) TimeLockToTimeLock(ctx context.Context, args Time
 }
 
 // BuildTimeLockToAssetTx ss
-func (s *FusionTransactionAPI) BuildTimeLockToAssetTx(ctx context.Context, args TimeLockArgs) (*types.Transaction, error) {
+func (s *FusionTransactionAPI) BuildTimeLockToAssetTx(ctx context.Context, args common.TimeLockArgs) (*types.Transaction, error) {
 	sendArgs, err := s.BuildTimeLockToAssetSendTxArgs(ctx, args)
 	if err != nil {
 		return nil, err
@@ -1767,7 +1375,7 @@ func (s *FusionTransactionAPI) BuildTimeLockToAssetTx(ctx context.Context, args 
 }
 
 // TimeLockToAsset ss
-func (s *FusionTransactionAPI) TimeLockToAsset(ctx context.Context, args TimeLockArgs) (common.Hash, error) {
+func (s *FusionTransactionAPI) TimeLockToAsset(ctx context.Context, args common.TimeLockArgs) (common.Hash, error) {
 	tx, err := s.BuildTimeLockToAssetTx(ctx, args)
 	if err != nil {
 		return common.Hash{}, err
@@ -1776,7 +1384,7 @@ func (s *FusionTransactionAPI) TimeLockToAsset(ctx context.Context, args TimeLoc
 }
 
 // BuildBuyTicketTx ss
-func (s *FusionTransactionAPI) BuildBuyTicketTx(ctx context.Context, args BuyTicketArgs) (*types.Transaction, error) {
+func (s *FusionTransactionAPI) BuildBuyTicketTx(ctx context.Context, args common.BuyTicketArgs) (*types.Transaction, error) {
 	sendArgs, err := s.BuildBuyTicketSendTxArgs(ctx, args)
 	if err != nil {
 		return nil, err
@@ -1785,7 +1393,7 @@ func (s *FusionTransactionAPI) BuildBuyTicketTx(ctx context.Context, args BuyTic
 }
 
 // BuyTicket ss
-func (s *FusionTransactionAPI) BuyTicket(ctx context.Context, args BuyTicketArgs) (common.Hash, error) {
+func (s *FusionTransactionAPI) BuyTicket(ctx context.Context, args common.BuyTicketArgs) (common.Hash, error) {
 	tx, err := s.BuildBuyTicketTx(ctx, args)
 	if err != nil {
 		return common.Hash{}, err
@@ -1799,7 +1407,7 @@ func (s *FusionTransactionAPI) BuyTicket(ctx context.Context, args BuyTicketArgs
 }
 
 // BuildIncAssetTx ss
-func (s *FusionTransactionAPI) BuildIncAssetTx(ctx context.Context, args AssetValueChangeExArgs) (*types.Transaction, error) {
+func (s *FusionTransactionAPI) BuildIncAssetTx(ctx context.Context, args common.AssetValueChangeExArgs) (*types.Transaction, error) {
 	args.IsInc = true
 	sendArgs, err := s.BuildAssetValueChangeSendTxArgs(ctx, args)
 	if err != nil {
@@ -1809,7 +1417,7 @@ func (s *FusionTransactionAPI) BuildIncAssetTx(ctx context.Context, args AssetVa
 }
 
 // IncAsset ss
-func (s *FusionTransactionAPI) IncAsset(ctx context.Context, args AssetValueChangeExArgs) (common.Hash, error) {
+func (s *FusionTransactionAPI) IncAsset(ctx context.Context, args common.AssetValueChangeExArgs) (common.Hash, error) {
 	tx, err := s.BuildIncAssetTx(ctx, args)
 	if err != nil {
 		return common.Hash{}, err
@@ -1818,7 +1426,7 @@ func (s *FusionTransactionAPI) IncAsset(ctx context.Context, args AssetValueChan
 }
 
 // BuildDecAssetTx ss
-func (s *FusionTransactionAPI) BuildDecAssetTx(ctx context.Context, args AssetValueChangeExArgs) (*types.Transaction, error) {
+func (s *FusionTransactionAPI) BuildDecAssetTx(ctx context.Context, args common.AssetValueChangeExArgs) (*types.Transaction, error) {
 	args.IsInc = false
 	sendArgs, err := s.BuildAssetValueChangeSendTxArgs(ctx, args)
 	if err != nil {
@@ -1828,7 +1436,7 @@ func (s *FusionTransactionAPI) BuildDecAssetTx(ctx context.Context, args AssetVa
 }
 
 // DecAsset ss
-func (s *FusionTransactionAPI) DecAsset(ctx context.Context, args AssetValueChangeExArgs) (common.Hash, error) {
+func (s *FusionTransactionAPI) DecAsset(ctx context.Context, args common.AssetValueChangeExArgs) (common.Hash, error) {
 	tx, err := s.BuildDecAssetTx(ctx, args)
 	if err != nil {
 		return common.Hash{}, err
@@ -1837,7 +1445,7 @@ func (s *FusionTransactionAPI) DecAsset(ctx context.Context, args AssetValueChan
 }
 
 // BuildMakeSwapTx ss
-func (s *FusionTransactionAPI) BuildMakeSwapTx(ctx context.Context, args MakeSwapArgs) (*types.Transaction, error) {
+func (s *FusionTransactionAPI) BuildMakeSwapTx(ctx context.Context, args common.MakeSwapArgs) (*types.Transaction, error) {
 	sendArgs, err := s.BuildMakeSwapSendTxArgs(ctx, args)
 	if err != nil {
 		return nil, err
@@ -1846,7 +1454,7 @@ func (s *FusionTransactionAPI) BuildMakeSwapTx(ctx context.Context, args MakeSwa
 }
 
 // MakeSwap ss
-func (s *FusionTransactionAPI) MakeSwap(ctx context.Context, args MakeSwapArgs) (common.Hash, error) {
+func (s *FusionTransactionAPI) MakeSwap(ctx context.Context, args common.MakeSwapArgs) (common.Hash, error) {
 	tx, err := s.BuildMakeSwapTx(ctx, args)
 	if err != nil {
 		return common.Hash{}, err
@@ -1855,7 +1463,7 @@ func (s *FusionTransactionAPI) MakeSwap(ctx context.Context, args MakeSwapArgs) 
 }
 
 // BuildRecallSwapTx ss
-func (s *FusionTransactionAPI) BuildRecallSwapTx(ctx context.Context, args RecallSwapArgs) (*types.Transaction, error) {
+func (s *FusionTransactionAPI) BuildRecallSwapTx(ctx context.Context, args common.RecallSwapArgs) (*types.Transaction, error) {
 	sendArgs, err := s.BuildRecallSwapSendTxArgs(ctx, args)
 	if err != nil {
 		return nil, err
@@ -1864,7 +1472,7 @@ func (s *FusionTransactionAPI) BuildRecallSwapTx(ctx context.Context, args Recal
 }
 
 // RecallSwap ss
-func (s *FusionTransactionAPI) RecallSwap(ctx context.Context, args RecallSwapArgs) (common.Hash, error) {
+func (s *FusionTransactionAPI) RecallSwap(ctx context.Context, args common.RecallSwapArgs) (common.Hash, error) {
 	tx, err := s.BuildRecallSwapTx(ctx, args)
 	if err != nil {
 		return common.Hash{}, err
@@ -1873,7 +1481,7 @@ func (s *FusionTransactionAPI) RecallSwap(ctx context.Context, args RecallSwapAr
 }
 
 // BuildTakeSwapTx ss
-func (s *FusionTransactionAPI) BuildTakeSwapTx(ctx context.Context, args TakeSwapArgs) (*types.Transaction, error) {
+func (s *FusionTransactionAPI) BuildTakeSwapTx(ctx context.Context, args common.TakeSwapArgs) (*types.Transaction, error) {
 	sendArgs, err := s.BuildTakeSwapSendTxArgs(ctx, args)
 	if err != nil {
 		return nil, err
@@ -1882,7 +1490,7 @@ func (s *FusionTransactionAPI) BuildTakeSwapTx(ctx context.Context, args TakeSwa
 }
 
 // TakeSwap ss
-func (s *FusionTransactionAPI) TakeSwap(ctx context.Context, args TakeSwapArgs) (common.Hash, error) {
+func (s *FusionTransactionAPI) TakeSwap(ctx context.Context, args common.TakeSwapArgs) (common.Hash, error) {
 	tx, err := s.BuildTakeSwapTx(ctx, args)
 	if err != nil {
 		return common.Hash{}, err
@@ -1891,7 +1499,7 @@ func (s *FusionTransactionAPI) TakeSwap(ctx context.Context, args TakeSwapArgs) 
 }
 
 // MakeMultiSwap wacom
-func (s *FusionTransactionAPI) MakeMultiSwap(ctx context.Context, args MakeMultiSwapArgs) (common.Hash, error) {
+func (s *FusionTransactionAPI) MakeMultiSwap(ctx context.Context, args common.MakeMultiSwapArgs) (common.Hash, error) {
 	tx, err := s.BuildMakeMultiSwapTx(ctx, args)
 	if err != nil {
 		return common.Hash{}, err
@@ -1900,7 +1508,7 @@ func (s *FusionTransactionAPI) MakeMultiSwap(ctx context.Context, args MakeMulti
 }
 
 // BuildMakeMultiSwapTx ss
-func (s *FusionTransactionAPI) BuildMakeMultiSwapTx(ctx context.Context, args MakeMultiSwapArgs) (*types.Transaction, error) {
+func (s *FusionTransactionAPI) BuildMakeMultiSwapTx(ctx context.Context, args common.MakeMultiSwapArgs) (*types.Transaction, error) {
 	sendArgs, err := s.BuildMakeMultiSwapSendTxArgs(ctx, args)
 	if err != nil {
 		return nil, err
@@ -1909,7 +1517,7 @@ func (s *FusionTransactionAPI) BuildMakeMultiSwapTx(ctx context.Context, args Ma
 }
 
 // RecallMultiSwap wacom
-func (s *FusionTransactionAPI) RecallMultiSwap(ctx context.Context, args RecallMultiSwapArgs) (common.Hash, error) {
+func (s *FusionTransactionAPI) RecallMultiSwap(ctx context.Context, args common.RecallMultiSwapArgs) (common.Hash, error) {
 	tx, err := s.BuildRecallMultiSwapTx(ctx, args)
 	if err != nil {
 		return common.Hash{}, err
@@ -1918,7 +1526,7 @@ func (s *FusionTransactionAPI) RecallMultiSwap(ctx context.Context, args RecallM
 }
 
 // BuildRecallMultiSwapTx ss
-func (s *FusionTransactionAPI) BuildRecallMultiSwapTx(ctx context.Context, args RecallMultiSwapArgs) (*types.Transaction, error) {
+func (s *FusionTransactionAPI) BuildRecallMultiSwapTx(ctx context.Context, args common.RecallMultiSwapArgs) (*types.Transaction, error) {
 	sendArgs, err := s.BuildRecallMultiSwapSendTxArgs(ctx, args)
 	if err != nil {
 		return nil, err
@@ -1927,7 +1535,7 @@ func (s *FusionTransactionAPI) BuildRecallMultiSwapTx(ctx context.Context, args 
 }
 
 // TakeMultiSwap wacom
-func (s *FusionTransactionAPI) TakeMultiSwap(ctx context.Context, args TakeMultiSwapArgs) (common.Hash, error) {
+func (s *FusionTransactionAPI) TakeMultiSwap(ctx context.Context, args common.TakeMultiSwapArgs) (common.Hash, error) {
 	tx, err := s.BuildTakeMultiSwapTx(ctx, args)
 	if err != nil {
 		return common.Hash{}, err
@@ -1936,7 +1544,7 @@ func (s *FusionTransactionAPI) TakeMultiSwap(ctx context.Context, args TakeMulti
 }
 
 // BuildTakeSwapTx ss
-func (s *FusionTransactionAPI) BuildTakeMultiSwapTx(ctx context.Context, args TakeMultiSwapArgs) (*types.Transaction, error) {
+func (s *FusionTransactionAPI) BuildTakeMultiSwapTx(ctx context.Context, args common.TakeMultiSwapArgs) (*types.Transaction, error) {
 	sendArgs, err := s.BuildTakeMultiSwapSendTxArgs(ctx, args)
 	if err != nil {
 		return nil, err
