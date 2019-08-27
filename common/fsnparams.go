@@ -233,7 +233,7 @@ func (p *BuyTicketParam) Check(blockNumber *big.Int, timestamp uint64, adjust in
 	start, end := p.Start, p.End
 	// check lifetime too short ticket
 	if end <= start || end < start+30*24*3600 {
-		return fmt.Errorf("BuyTicket end must be lower than start + 1 month")
+		return fmt.Errorf("BuyTicket end must be greater than start + 1 month")
 	}
 	if timestamp != 0 {
 		// check future ticket
@@ -241,7 +241,7 @@ func (p *BuyTicketParam) Check(blockNumber *big.Int, timestamp uint64, adjust in
 			return fmt.Errorf("BuyTicket start must be lower than latest block time + 3 hour")
 		}
 		// check expired soon ticket
-		if end < timestamp+uint64(7*24*3600+adjust) {
+		if end < uint64(int64(timestamp)+7*24*3600+adjust) {
 			return fmt.Errorf("BuyTicket end must be greater than latest block time + 1 week")
 		}
 	}
