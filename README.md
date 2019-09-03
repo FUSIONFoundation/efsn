@@ -172,7 +172,7 @@ This tool is optional; if you leave it out you can always attach to an already r
 
 ### Programmatically interfacing with FUSION
 
-As a developer, sooner rather than later you'll want to start interacting with efsn and the FUSION network via your own programs and not manually through the console. To aid this, efsn has built-in support for JSON-RPC based APIs ([standard APIs](https://github.com/ethereum/wiki/wiki/JSON-RPC) and [FUSION specific APIs](https://fusionapi.readthedocs.io/en/latest/)). These can be exposed via HTTP, WebSockets and IPC (unix sockets on unix based platforms).
+As a developer, sooner rather than later you'll want to start interacting with efsn and the FUSION network via your own programs and not manually through the console. To aid this, efsn has built-in support for JSON-RPC based APIs ([standard APIs](https://github.com/ethereum/wiki/wiki/JSON-RPC) and [FUSION RPC APIs](https://github.com/FUSIONFoundation/efsn/wiki/FSN-RPC-API)). These can be exposed via HTTP, WebSockets and IPC (unix sockets on unix based platforms).
 
 The IPC interface is enabled by default and exposes all APIs supported by efsn, whereas the HTTP and WS interfaces need to be manually enabled and only expose a subset of the APIs due to security reasons. These can be turned on/off and configured as you'd expect.
 
