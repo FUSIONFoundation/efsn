@@ -13,6 +13,7 @@ import (
 	"github.com/FusionFoundation/efsn/common"
 	"github.com/FusionFoundation/efsn/common/hexutil"
 	"github.com/FusionFoundation/efsn/core/rawdb"
+	"github.com/FusionFoundation/efsn/core/state"
 	"github.com/FusionFoundation/efsn/core/types"
 	"github.com/FusionFoundation/efsn/log"
 	"github.com/FusionFoundation/efsn/rlp"
@@ -516,9 +517,28 @@ func (s *PublicFusionAPI) BuildGenAssetSendTxArgs(ctx context.Context, args comm
 	return FSNCallArgsToSendTxArgs(&args, common.GenAssetFunc, funcData)
 }
 
+func CheckAndSetToAddress(args *common.SendAssetArgs, state *state.StateDB) error {
+	if args.ToUSAN == 0 {
+		return nil
+	}
+	address, err := state.GetAddressByNotation(args.ToUSAN)
+	if err != nil {
+		return err
+	}
+	if args.To == (common.Address{}) {
+		args.To = address
+	} else if args.To != address {
+		return fmt.Errorf("'to' and 'toUSAN' conflicts")
+	}
+	return nil
+}
+
 func (s *PublicFusionAPI) BuildSendAssetSendTxArgs(ctx context.Context, args common.SendAssetArgs) (*SendTxArgs, error) {
 	state, _, err := s.b.StateAndHeaderByNumber(ctx, rpc.LatestBlockNumber)
 	if state == nil || err != nil {
+		return nil, err
+	}
+	if err = CheckAndSetToAddress(&args, state); err != nil {
 		return nil, err
 	}
 	if err := args.ToParam().Check(common.BigMaxUint64); err != nil {
@@ -539,6 +559,9 @@ func (s *PublicFusionAPI) BuildSendAssetSendTxArgs(ctx context.Context, args com
 func (s *PublicFusionAPI) BuildAssetToTimeLockSendTxArgs(ctx context.Context, args common.TimeLockArgs) (*SendTxArgs, error) {
 	state, header, err := s.b.StateAndHeaderByNumber(ctx, rpc.LatestBlockNumber)
 	if state == nil || err != nil {
+		return nil, err
+	}
+	if err = CheckAndSetToAddress(&args.SendAssetArgs, state); err != nil {
 		return nil, err
 	}
 	args.Init()
@@ -569,6 +592,9 @@ func (s *PublicFusionAPI) BuildTimeLockToTimeLockSendTxArgs(ctx context.Context,
 	if state == nil || err != nil {
 		return nil, err
 	}
+	if err = CheckAndSetToAddress(&args.SendAssetArgs, state); err != nil {
+		return nil, err
+	}
 	args.Init()
 	if err := args.ToParam(common.TimeLockToTimeLock).Check(common.BigMaxUint64, header.Time.Uint64()); err != nil {
 		return nil, err
@@ -596,6 +622,9 @@ func (s *PublicFusionAPI) BuildTimeLockToTimeLockSendTxArgs(ctx context.Context,
 func (s *PublicFusionAPI) BuildTimeLockToAssetSendTxArgs(ctx context.Context, args common.TimeLockArgs) (*SendTxArgs, error) {
 	state, header, err := s.b.StateAndHeaderByNumber(ctx, rpc.LatestBlockNumber)
 	if state == nil || err != nil {
+		return nil, err
+	}
+	if err = CheckAndSetToAddress(&args.SendAssetArgs, state); err != nil {
 		return nil, err
 	}
 	args.Init()

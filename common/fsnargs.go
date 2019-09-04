@@ -38,6 +38,7 @@ type SendAssetArgs struct {
 	FusionBaseArgs
 	AssetID Hash         `json:"asset"`
 	To      Address      `json:"to"`
+	ToUSAN  uint64       `json:"toUSAN"`
 	Value   *hexutil.Big `json:"value"`
 }
 
