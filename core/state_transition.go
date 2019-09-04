@@ -1317,6 +1317,7 @@ func (st *StateTransition) handleFsnCall(param *common.FSNCallParam) error {
 		enc, _ := rlp.EncodeToBytes(delTickets)
 		str := hexutil.Encode(enc)
 		st.addLog(common.ReportIllegalFunc, "", common.NewKeyValue("DeleteTickets", str))
+		common.DebugInfo("ReportIllegal", "reporter", st.msg.From(), "double-miner", header1.Coinbase, "current-block-height", height, "double-mining-height", header1.Number, "DeleteTickets", delTickets)
 		return nil
 	}
 	return fmt.Errorf("Unsupported")

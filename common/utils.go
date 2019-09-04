@@ -20,8 +20,30 @@ func encode(v interface{}) interface{} {
 		return nil
 	}
 	switch v.(type) {
+	case string:
+		return v
 	case []byte:
 		return hex.EncodeToString(v.([]byte))
+	case Address:
+		return v.(Address).String()
+	case Hash:
+		return v.(Hash).String()
+	case []string:
+		return fmt.Sprintf("%v", v.([]string))
+	case []Address:
+		str := "[ "
+		for _, item := range v.([]Address) {
+			str += item.String() + " "
+		}
+		str += "]"
+		return str
+	case []Hash:
+		str := "[ "
+		for _, item := range v.([]Hash) {
+			str += item.String() + " "
+		}
+		str += "]"
+		return str
 	}
 	vv := reflect.ValueOf(v)
 	if method, ok := vv.Type().MethodByName("String"); ok {
