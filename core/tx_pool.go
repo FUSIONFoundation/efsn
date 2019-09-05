@@ -982,6 +982,17 @@ func (pool *TxPool) promoteExecutables(accounts []common.Address) {
 			pool.priced.Removed()
 			queuedNofundsCounter.Inc(1)
 		}
+		// Drop all FsnCall transactions that are invalid
+		filter := func(tx *types.Transaction) bool {
+			return pool.validateFsnCallTx(tx) != nil
+		}
+		removes, _ := list.FilterInvalid(filter)
+		for _, tx := range removes {
+			hash := tx.Hash()
+			log.Trace("Removed invalid pending transaction", "hash", hash)
+			pool.all.Remove(hash)
+			pool.priced.Removed()
+		}
 		// Gather all executable transactions and promote them
 		for _, tx := range list.Ready(pool.pendingState.GetNonce(addr)) {
 			hash := tx.Hash()
@@ -1138,7 +1149,9 @@ func (pool *TxPool) demoteUnexecutables() {
 			pool.priced.Removed()
 		}
 		// Drop all FsnCall transactions that are invalid
-		filter := func(tx *types.Transaction) bool { return pool.validateFsnCallTx(tx) != nil }
+		filter := func(tx *types.Transaction) bool {
+			return pool.validateFsnCallTx(tx) != nil
+		}
 		removes, adjusts := list.FilterInvalid(filter)
 		for _, tx := range removes {
 			hash := tx.Hash()
@@ -1446,12 +1459,12 @@ func (pool *TxPool) validateFsnCallTx(tx *types.Transaction) error {
 		found := false
 		var oldTxHash common.Hash
 		pool.all.Range(func(hash common.Hash, tx1 *types.Transaction) bool {
-			if tx1.IsBuyTicketTx() {
+			if tx1 != tx && tx1.IsBuyTicketTx() {
 				sender, _ := types.Sender(pool.signer, tx1)
 				if from == sender {
 					if tx.Nonce() < tx1.Nonce() {
 						oldTxHash = hash
-					} else {
+					} else if tx.Nonce() > tx1.Nonce() {
 						found = true
 					}
 					return false
