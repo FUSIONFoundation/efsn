@@ -131,7 +131,7 @@ func (cts *CachedTicketSlice) Add(hash common.Hash, tickets common.TicketsDataSl
 	}
 }
 
-func (cts CachedTicketSlice) Get(hash common.Hash) common.TicketsDataSlice {
+func (cts *CachedTicketSlice) Get(hash common.Hash) common.TicketsDataSlice {
 	if hash == (common.Hash{}) {
 		return common.TicketsDataSlice{}
 	}

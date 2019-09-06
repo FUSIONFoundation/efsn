@@ -536,7 +536,7 @@ func (dt *DaTong) getAllTickets(chain consensus.ChainReader, header *types.Heade
 	parents := []*types.Header{parent}
 	for {
 		if parent = chain.GetHeader(parent.ParentHash, parent.Number.Uint64()-1); parent == nil {
-			return nil, fmt.Errorf("Can not find parent", "number", parent.Number.Uint64()-1, "hash", parent.ParentHash)
+			return nil, fmt.Errorf("Can not find parent, number=%v, hash=%v", parent.Number.Uint64()-1, parent.ParentHash.String())
 		}
 		statedb, err = state.New(parent.Root, parent.MixDigest, dt.stateCache)
 		if err == nil {
