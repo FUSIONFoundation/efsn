@@ -106,7 +106,7 @@ func (b *SimulatedBackend) rollback() {
 	statedb, _ := b.blockchain.State()
 
 	b.pendingBlock = blocks[0]
-	b.pendingState, _ = state.New(b.pendingBlock.Root(), statedb.Database())
+	b.pendingState, _ = state.New(b.pendingBlock.Root(), b.pendingBlock.MixDigest(), statedb.Database())
 }
 
 // CodeAt returns the code associated with a certain account in the blockchain.
@@ -130,7 +130,7 @@ func (b *SimulatedBackend) BalanceAt(ctx context.Context, contract common.Addres
 		return nil, errBlockNumberUnsupported
 	}
 	statedb, _ := b.blockchain.State()
-	return statedb.GetBalance(contract), nil
+	return statedb.GetBalance(common.SystemAssetID, contract), nil
 }
 
 // NonceAt returns the nonce of a certain account in the blockchain.
@@ -278,7 +278,7 @@ func (b *SimulatedBackend) callContract(ctx context.Context, call ethereum.CallM
 	}
 	// Set infinite balance to the fake caller account.
 	from := statedb.GetOrNewStateObject(call.From)
-	from.SetBalance(math.MaxBig256)
+	from.SetBalance(common.SystemAssetID, math.MaxBig256)
 	// Execute the call.
 	msg := callmsg{call}
 
@@ -315,7 +315,7 @@ func (b *SimulatedBackend) SendTransaction(ctx context.Context, tx *types.Transa
 	statedb, _ := b.blockchain.State()
 
 	b.pendingBlock = blocks[0]
-	b.pendingState, _ = state.New(b.pendingBlock.Root(), statedb.Database())
+	b.pendingState, _ = state.New(b.pendingBlock.Root(), b.pendingBlock.MixDigest(), statedb.Database())
 	return nil
 }
 
@@ -400,7 +400,7 @@ func (b *SimulatedBackend) AdjustTime(adjustment time.Duration) error {
 	statedb, _ := b.blockchain.State()
 
 	b.pendingBlock = blocks[0]
-	b.pendingState, _ = state.New(b.pendingBlock.Root(), statedb.Database())
+	b.pendingState, _ = state.New(b.pendingBlock.Root(), b.pendingBlock.MixDigest(), statedb.Database())
 
 	return nil
 }
@@ -418,6 +418,10 @@ func (m callmsg) GasPrice() *big.Int   { return m.CallMsg.GasPrice }
 func (m callmsg) Gas() uint64          { return m.CallMsg.Gas }
 func (m callmsg) Value() *big.Int      { return m.CallMsg.Value }
 func (m callmsg) Data() []byte         { return m.CallMsg.Data }
+
+func (m callmsg) AsTransaction() *types.Transaction {
+	return nil
+}
 
 // filterBackend implements filters.Backend to support filtering for logs without
 // taking bloom-bits acceleration structures into account.
