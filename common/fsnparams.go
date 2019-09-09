@@ -293,6 +293,10 @@ func (p *MakeSwapParam) Check(blockNumber *big.Int, timestamp uint64) error {
 		return fmt.Errorf("MakeSwap ToEndTime <= latest blockTime")
 	}
 
+	if p.ToAssetID == OwnerUSANAssetID {
+		return fmt.Errorf("USAN's cannot be swapped")
+	}
+
 	return nil
 }
 
@@ -378,6 +382,17 @@ func (p *MakeMultiSwapParam) Check(blockNumber *big.Int, timestamp uint64) error
 
 	if len(p.Description) > 1024 {
 		return fmt.Errorf("MakeSwap description length is greater than 1024 chars")
+	}
+
+	for _, toAssetID := range p.ToAssetID {
+		if toAssetID == OwnerUSANAssetID {
+			return fmt.Errorf("USAN's cannot be multi swapped")
+		}
+	}
+	for _, fromAssetID := range p.FromAssetID {
+		if fromAssetID == OwnerUSANAssetID {
+			return fmt.Errorf("USAN's cannot be multi swapped")
+		}
 	}
 	return nil
 }

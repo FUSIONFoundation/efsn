@@ -1526,10 +1526,6 @@ func (pool *TxPool) validateFsnCallTx(tx *types.Transaction) error {
 			return err
 		}
 
-		if makeSwapParam.ToAssetID == common.OwnerUSANAssetID {
-			return fmt.Errorf("USAN's cannot be swapped")
-		}
-
 		if _, err := state.GetAsset(makeSwapParam.ToAssetID); err != nil {
 			return fmt.Errorf("ToAssetID asset %v not found", makeSwapParam.ToAssetID.String())
 		}
@@ -1686,10 +1682,6 @@ func (pool *TxPool) validateFsnCallTx(tx *types.Transaction) error {
 		}
 
 		for _, toAssetID := range makeSwapParam.ToAssetID {
-			if toAssetID == common.OwnerUSANAssetID {
-				return fmt.Errorf("USAN's cannot be multi swapped")
-			}
-
 			if _, err := state.GetAsset(toAssetID); err != nil {
 				return fmt.Errorf("ToAssetID asset %v not found", toAssetID.String())
 			}
@@ -1705,10 +1697,6 @@ func (pool *TxPool) validateFsnCallTx(tx *types.Transaction) error {
 		accountTimeLockBalances := make(map[common.Hash]*common.TimeLock)
 
 		for i := 0; i < ln; i++ {
-			if makeSwapParam.FromAssetID[i] == common.OwnerUSANAssetID {
-				return fmt.Errorf("USAN's cannot be multi swapped")
-			}
-
 			if _, exist := accountBalances[makeSwapParam.FromAssetID[i]]; !exist {
 				balance := state.GetBalance(makeSwapParam.FromAssetID[i], from)
 				timelock := state.GetTimeLockBalance(makeSwapParam.FromAssetID[i], from)
@@ -1867,6 +1855,9 @@ func (pool *TxPool) validateFsnCallTx(tx *types.Transaction) error {
 		if oldtx != nil {
 			return fmt.Errorf("already reported in pool")
 		}
+
+	default:
+		return fmt.Errorf("Unsupported FsnCall func '%v'", param.Func.Name())
 	}
 	// check gas, fee and value
 	mgval := new(big.Int).Mul(new(big.Int).SetUint64(tx.Gas()), tx.GasPrice())

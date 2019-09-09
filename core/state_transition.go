@@ -567,12 +567,6 @@ func (st *StateTransition) handleFsnCall(param *common.FSNCallParam) error {
 		var total *big.Int
 		var needValue *common.TimeLock
 
-		if makeSwapParam.ToAssetID == common.OwnerUSANAssetID {
-			err := fmt.Errorf("USAN's cannot be swapped")
-			st.addLog(common.MakeSwapFunc, makeSwapParam, common.NewKeyValue("Error", err.Error()))
-			return err
-		}
-
 		if _, err := st.state.GetAsset(makeSwapParam.ToAssetID); err != nil {
 			err := fmt.Errorf("ToAssetID's asset not found")
 			st.addLog(common.MakeSwapFunc, makeSwapParam, common.NewKeyValue("Error", err.Error()))
@@ -949,12 +943,6 @@ func (st *StateTransition) handleFsnCall(param *common.FSNCallParam) error {
 		}
 
 		for _, toAssetID := range makeSwapParam.ToAssetID {
-			if toAssetID == common.OwnerUSANAssetID {
-				err := fmt.Errorf("USAN's cannot be multi swapped")
-				st.addLog(common.MakeMultiSwapFunc, makeSwapParam, common.NewKeyValue("Error", err.Error()))
-				return err
-			}
-
 			if _, err := st.state.GetAsset(toAssetID); err != nil {
 				err := fmt.Errorf("ToAssetID's asset not found")
 				st.addLog(common.MakeMultiSwapFunc, makeSwapParam, common.NewKeyValue("Error", err.Error()))
@@ -972,13 +960,6 @@ func (st *StateTransition) handleFsnCall(param *common.FSNCallParam) error {
 		accountTimeLockBalances := make(map[common.Hash]*common.TimeLock)
 
 		for i := 0; i < ln; i++ {
-
-			if makeSwapParam.FromAssetID[i] == common.OwnerUSANAssetID {
-				err := fmt.Errorf("USAN's cannot be multi swapped")
-				st.addLog(common.MakeMultiSwapFunc, makeSwapParam, common.NewKeyValue("Error", err.Error()))
-				return err
-			}
-
 			if _, exist := accountBalances[makeSwapParam.FromAssetID[i]]; !exist {
 				balance := st.state.GetBalance(makeSwapParam.FromAssetID[i], st.msg.From())
 				timelock := st.state.GetTimeLockBalance(makeSwapParam.FromAssetID[i], st.msg.From())
