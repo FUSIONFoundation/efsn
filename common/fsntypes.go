@@ -183,19 +183,6 @@ type Asset struct {
 	Description string
 }
 
-func (u *Asset) DeepCopy() Asset {
-	total := *u.Total
-	return Asset{
-		ID:        u.ID,
-		Owner:     u.Owner,
-		Name:      u.Name,
-		Symbol:    u.Symbol,
-		Decimals:  u.Decimals,
-		Total:     &total,
-		CanChange: u.CanChange,
-	}
-}
-
 func (u *Asset) MarshalJSON() ([]byte, error) {
 	return json.Marshal(&struct {
 		ID          Hash
@@ -247,33 +234,6 @@ type Swap struct {
 	Notation      uint64
 }
 
-// DeepCopy wacom
-func (s *Swap) DeepCopy() Swap {
-	minFromAmount := *s.MinFromAmount
-	minToAmount := *s.MinToAmount
-	swapSize := *s.SwapSize
-	swapTime := *s.Time
-	targets := make([]Address, len(s.Targes))
-	copy(targets, s.Targes)
-
-	return Swap{
-		ID:            s.ID,
-		Owner:         s.Owner,
-		FromAssetID:   s.FromAssetID,
-		FromStartTime: s.FromStartTime,
-		FromEndTime:   s.FromEndTime,
-		MinFromAmount: &minFromAmount,
-		ToAssetID:     s.ToAssetID,
-		ToStartTime:   s.ToStartTime,
-		ToEndTime:     s.ToEndTime,
-		MinToAmount:   &minToAmount,
-		SwapSize:      &swapSize,
-		Targes:        targets,
-		Time:          &swapTime,
-		Description:   s.Description,
-	}
-}
-
 // MultiSwap wacom
 type MultiSwap struct {
 	ID            Hash
@@ -291,39 +251,6 @@ type MultiSwap struct {
 	Time          *big.Int // Provides information for TIME
 	Description   string
 	Notation      uint64
-}
-
-// DeepCopy wacom
-func (s *MultiSwap) DeepCopy() MultiSwap {
-	minFromAmount := make([]*big.Int, len(s.MinFromAmount))
-	for k, v := range s.MinFromAmount {
-		minFromAmount[k] = new(big.Int).SetBytes(v.Bytes())
-	}
-	minToAmount := make([]*big.Int, len(s.MinToAmount))
-	for k, v := range s.MinToAmount {
-		minToAmount[k] = new(big.Int).SetBytes(v.Bytes())
-	}
-	swapSize := *s.SwapSize
-	swapTime := *s.Time
-	targets := make([]Address, len(s.Targes))
-	copy(targets, s.Targes)
-
-	return MultiSwap{
-		ID:            s.ID,
-		Owner:         s.Owner,
-		FromAssetID:   s.FromAssetID,
-		FromStartTime: s.FromStartTime,
-		FromEndTime:   s.FromEndTime,
-		MinFromAmount: minFromAmount,
-		ToAssetID:     s.ToAssetID,
-		ToStartTime:   s.ToStartTime,
-		ToEndTime:     s.ToEndTime,
-		MinToAmount:   minToAmount,
-		SwapSize:      &swapSize,
-		Targes:        targets,
-		Time:          &swapTime,
-		Description:   s.Description,
-	}
 }
 
 func CheckSwapTargets(targets []Address, addr Address) error {
