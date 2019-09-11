@@ -1213,6 +1213,12 @@ func AutoBuyTicket(enable bool) {
 			}
 		}
 
+		// prevent auto buy ticket in syncing
+		if !fusionTransactionAPI.b.IsMining() {
+			common.DebugInfo("ignore AutoBuyTicket as isMining is false")
+			continue
+		}
+
 		coinbase, err := fusionTransactionAPI.b.Coinbase()
 		if err == nil {
 			fbase := common.FusionBaseArgs{From: coinbase}
