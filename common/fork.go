@@ -12,12 +12,12 @@ var (
 
 // mainnet fork heights
 var MAINNET_FORKS = []uint64{
-	math.MaxUint64, // fork 1
+	739500, // fork 1
 }
 
 // testnet fork heights
 var TESTNET_FORKS = []uint64{
-	math.MaxUint64, // fork 1
+	534500, // fork 1
 }
 
 const (
