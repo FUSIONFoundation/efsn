@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"math/big"
+	"sort"
 	"sync"
 	"time"
 
@@ -443,15 +444,31 @@ type Summary struct {
 	TotalMiners  uint64 `json:"totalMiners"`
 	TotalTickets uint64 `json:"totalTickets"`
 }
-type StakeInfo struct {
-	StakeInfo map[common.Address]uint64 `json:"stakeInfo"`
-	Summary   Summary                   `json:"summary"`
+type Stake struct {
+	Owner   common.Address `json:"owner"`
+	Tickets uint64         `json:"tickets"`
+}
+type StakeSlice []Stake
+
+func (s StakeSlice) Len() int {
+	return len(s)
+}
+func (s StakeSlice) Swap(i, j int) {
+	s[i], s[j] = s[j], s[i]
+}
+func (s StakeSlice) Less(i, j int) bool {
+	return s[i].Tickets > s[j].Tickets
 }
 
-// GetMinerInfo wacom
+type StakeInfo struct {
+	StakeInfo StakeSlice `json:"stakeInfo"`
+	Summary   Summary    `json:"summary"`
+}
+
+// GetStakeInfo wacom
 func (s *PublicFusionAPI) GetStakeInfo(ctx context.Context, blockNr rpc.BlockNumber) (StakeInfo, error) {
 	stakeInfo := StakeInfo{
-		StakeInfo: make(map[common.Address]uint64),
+		StakeInfo: make(StakeSlice, 0),
 	}
 	state, _, err := s.b.StateAndHeaderByNumber(ctx, blockNr)
 	if state == nil || err != nil {
@@ -466,8 +483,9 @@ func (s *PublicFusionAPI) GetStakeInfo(ctx context.Context, blockNr rpc.BlockNum
 	}
 	stakeInfo.Summary.TotalTickets, stakeInfo.Summary.TotalMiners = tickets.NumberOfTicketsAndOwners()
 	for _, v := range tickets {
-		stakeInfo.StakeInfo[v.Owner] = uint64(len(v.Tickets))
+		stakeInfo.StakeInfo = append(stakeInfo.StakeInfo, Stake{v.Owner, uint64(len(v.Tickets))})
 	}
+	sort.Stable(stakeInfo.StakeInfo)
 	return stakeInfo, nil
 }
 
