@@ -423,11 +423,37 @@ updateNode(){
 
 viewNode(){
 
-	echo "Attaching to Node container"
-	sudo docker attach fusion
-    if [ $? -ne 0 ]; then
-    	echo "Failed to attach!"
-    fi
+    #echo "Attaching to Node container"
+    #sudo docker attach fusion
+    #if [ $? -ne 0 ]; then
+    #    echo "Failed to attach!"
+    #fi
+    #pause
+
+    echo
+    echo "-------------------"
+    echo "| Node Log Viewer |"
+    echo "-------------------"
+    echo
+    echo "Press Ctrl + C to quit!"
+    echo
+    pause
+    echo
+    echo
+    # entering a subshell here so killing the logger doesn't exit the main script
+    (
+        # restoring SIGINT so Ctrl + C works
+        trap - SIGINT
+        # we don't have to attach because we don't need interactive access
+        sudo docker logs fusion --tail=25 -f
+        if [ $? -ne 0 ]; then
+            echo "Failed to show node log"
+        fi
+        # ignoring SIGINT again
+        trap '' SIGINT
+    )
+    echo
+    echo
     pause
 }
 
@@ -512,3 +538,5 @@ do
 	show_menus
 	read_options
 done
+
+#/* vim: set ts=4 sts=4 sw=4 et : */
