@@ -1771,14 +1771,13 @@ func (pool *TxPool) validateFsnCallTx(tx *types.Transaction) error {
 			return err
 		}
 
-		lnFrom := len(swap.FromAssetID)
 		lnTo := len(swap.ToAssetID)
 
 		toUseAsset := make([]bool, lnTo)
 		toTotal := make([]*big.Int, lnTo)
 		toStart := make([]uint64, lnTo)
 		toEnd := make([]uint64, lnTo)
-		toNeedValue := make([]*common.TimeLock, lnFrom)
+		toNeedValue := make([]*common.TimeLock, lnTo)
 
 		accountBalances := make(map[common.Hash]*big.Int)
 		accountTimeLockBalances := make(map[common.Hash]*common.TimeLock)
