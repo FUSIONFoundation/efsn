@@ -27,22 +27,32 @@ var (
 Process raw transaction.`,
 		Subcommands: []cli.Command{
 			{
-				Name:      "decode",
-				Usage:     "Decode transaction from raw hex data",
+				Name:      "decodeRawTx",
+				Usage:     "Decode transaction from rawtx hex data",
 				Action:    utils.MigrateFlags(decodeRawTx),
 				Flags:     []cli.Flag{},
-				ArgsUsage: "<hexstr>",
+				ArgsUsage: "<hexstr> [decodeinput]",
 				Description: `
-rawtx decode <hexstr>`,
+rawtx decodeRawTx <hexstr> [decodeinput]
+decodeinput defaults to true, you can specify false to ignore it.`,
 			},
 			{
-				Name:      "decodeInput",
-				Usage:     "Decode param from tx's input hex data",
+				Name:      "decodeTxInput",
+				Usage:     "Decode fsn call param from tx input hex data",
 				Action:    utils.MigrateFlags(decodeTxInput),
 				Flags:     []cli.Flag{},
 				ArgsUsage: "<hexstr>",
 				Description: `
-rawtx decodeInput <hexstr>`,
+rawtx decodeTxInput <hexstr>`,
+			},
+			{
+				Name:      "decodeLogData",
+				Usage:     "Decode log data from tx receipt log hex data",
+				Action:    utils.MigrateFlags(decodeLogData),
+				Flags:     []cli.Flag{},
+				ArgsUsage: "<hexstr>",
+				Description: `
+rawtx decodeLogData <hexstr>`,
 			},
 			{
 				Name:      "sendAsset",
@@ -102,10 +112,30 @@ rawtx buyTicket <start> <end>`,
 	}
 )
 
-func printTx(tx *types.Transaction) error {
-	bs, err := tx.MarshalJSON()
-	if err != nil {
-		return fmt.Errorf("json marshal err %v", err)
+func printTx(tx *types.Transaction, decodeInput bool) error {
+	var bs []byte
+	var err error
+	if decodeInput {
+		fsnTxInput, err := datong.DecodeTxInput(tx.Data())
+		if err != nil {
+			return fmt.Errorf("decode FSNCallParam err %v", err)
+		}
+		txExt := &struct {
+			Tx         *types.Transaction `json:"tx"`
+			FsnTxInput interface{}        `json:"fsnTxInput,omitempty"`
+		}{
+			Tx:         tx,
+			FsnTxInput: fsnTxInput,
+		}
+		bs, err = json.Marshal(txExt)
+		if err != nil {
+			return fmt.Errorf("json marshal err %v", err)
+		}
+	} else {
+		bs, err = tx.MarshalJSON()
+		if err != nil {
+			return fmt.Errorf("json marshal err %v", err)
+		}
 	}
 	fmt.Println(string(bs))
 	return nil
@@ -128,8 +158,12 @@ func printRawTx(tx *types.Transaction) error {
 
 func decodeRawTx(ctx *cli.Context) error {
 	args := ctx.Args()
-	if len(args) != 1 {
+	if len(args) < 1 || len(args) > 2 {
 		return fmt.Errorf("wrong number of arguments")
+	}
+	decodeInput := true
+	if len(args) > 1 && args[1] == "false" {
+		decodeInput = false
 	}
 	data, err := hexutil.Decode(args.First())
 	if err != nil {
@@ -140,26 +174,7 @@ func decodeRawTx(ctx *cli.Context) error {
 	if err != nil {
 		return fmt.Errorf("decode rawTx err %v", err)
 	}
-	return printTx(&tx)
-}
-
-func decodeFsnCallParam(fsnCall *common.FSNCallParam, funcParam interface{}) error {
-	err := rlp.DecodeBytes(fsnCall.Data, funcParam)
-	if err != nil {
-		return fmt.Errorf("decode FSNCallParam err %v", err)
-	}
-	bs, err := json.Marshal(&struct {
-		FuncType  string
-		FuncParam interface{}
-	}{
-		FuncType:  fsnCall.Func.Name(),
-		FuncParam: funcParam,
-	})
-	if err != nil {
-		return fmt.Errorf("json marshal err %v", err)
-	}
-	fmt.Println(string(bs))
-	return nil
+	return printTx(&tx, decodeInput)
 }
 
 func decodeTxInput(ctx *cli.Context) error {
@@ -171,64 +186,36 @@ func decodeTxInput(ctx *cli.Context) error {
 	if err != nil {
 		return fmt.Errorf("wrong arguments %v", err)
 	}
-	var fsnCall common.FSNCallParam
-	rlp.DecodeBytes(data, &fsnCall)
+	res, err := datong.DecodeTxInput(data)
 	if err != nil {
 		return fmt.Errorf("decode FSNCallParam err %v", err)
 	}
-
-	switch fsnCall.Func {
-	case common.GenNotationFunc:
-		return decodeFsnCallParam(&fsnCall, &GenNotationParam{})
-	case common.GenAssetFunc:
-		return decodeFsnCallParam(&fsnCall, &common.GenAssetParam{})
-	case common.SendAssetFunc:
-		return decodeFsnCallParam(&fsnCall, &common.SendAssetParam{})
-	case common.TimeLockFunc:
-		return decodeFsnCallParam(&fsnCall, &common.TimeLockParam{})
-	case common.BuyTicketFunc:
-		return decodeFsnCallParam(&fsnCall, &common.BuyTicketParam{})
-	case common.AssetValueChangeFunc:
-		return decodeFsnCallParam(&fsnCall, &common.AssetValueChangeExParam{})
-	case common.EmptyFunc:
-	case common.MakeSwapFunc, common.MakeSwapFuncExt:
-		return decodeFsnCallParam(&fsnCall, &common.MakeSwapParam{})
-	case common.RecallSwapFunc:
-		return decodeFsnCallParam(&fsnCall, &common.RecallSwapParam{})
-	case common.TakeSwapFunc, common.TakeSwapFuncExt:
-		return decodeFsnCallParam(&fsnCall, &common.TakeSwapParam{})
-	case common.RecallMultiSwapFunc:
-		return decodeFsnCallParam(&fsnCall, &common.RecallMultiSwapParam{})
-	case common.MakeMultiSwapFunc:
-		return decodeFsnCallParam(&fsnCall, &common.MakeMultiSwapParam{})
-	case common.TakeMultiSwapFunc:
-		return decodeFsnCallParam(&fsnCall, &common.TakeMultiSwapParam{})
-	case common.ReportIllegalFunc:
-		h1, h2, err := datong.DecodeReport(fsnCall.Data)
-		if err != nil {
-			return fmt.Errorf("DecodeReport err %v", err)
-		}
-		reportContent := &struct {
-			Header1 *types.Header
-			Header2 *types.Header
-		}{
-			Header1: h1,
-			Header2: h2,
-		}
-		bs, err := json.Marshal(&struct {
-			FuncType  string
-			FuncParam interface{}
-		}{
-			FuncType:  fsnCall.Func.Name(),
-			FuncParam: reportContent,
-		})
-		if err != nil {
-			return fmt.Errorf("json marshal err %v", err)
-		}
-		fmt.Println(string(bs))
-	default:
-		return fmt.Errorf("Unknown FuncType %v", fsnCall.Func)
+	bs, err := json.Marshal(res)
+	if err != nil {
+		return fmt.Errorf("json marshal err %v", err)
 	}
+	fmt.Println(string(bs))
+	return nil
+}
+
+func decodeLogData(ctx *cli.Context) error {
+	args := ctx.Args()
+	if len(args) != 1 {
+		return fmt.Errorf("wrong number of arguments")
+	}
+	data, err := hexutil.Decode(args.First())
+	if err != nil {
+		return fmt.Errorf("wrong arguments %v", err)
+	}
+	res, err := datong.DecodeLogData(data)
+	if err != nil {
+		return fmt.Errorf("decode log data err %v", err)
+	}
+	bs, err := json.Marshal(res)
+	if err != nil {
+		return fmt.Errorf("json marshal err %v", err)
+	}
+	fmt.Println(string(bs))
 	return nil
 }
 
@@ -378,14 +365,8 @@ func createTimeLockToAssetRawTx(ctx *cli.Context) error {
 	return printRawTx(tx)
 }
 
-type GenNotationParam struct{}
-
-func (p *GenNotationParam) ToBytes() ([]byte, error) {
-	return nil, nil
-}
-
 func createGenNotationRawTx(ctx *cli.Context) error {
-	tx, err := toRawTx(common.GenNotationFunc, &GenNotationParam{})
+	tx, err := toRawTx(common.GenNotationFunc, &common.EmptyParam{})
 	if err != nil {
 		return err
 	}

@@ -971,3 +971,23 @@ func (dt *DaTong) checkBlockTime(chain consensus.ChainReader, header *types.Head
 func (dt *DaTong) SetStateCache(stateCache state.Database) {
 	dt.stateCache = stateCache
 }
+
+func DecodeLogData(data []byte) (interface{}, error) {
+	maps := make(map[string]interface{})
+	if err := json.Unmarshal(data, &maps); err != nil {
+		return nil, fmt.Errorf("json unmarshal err: %v", err)
+	}
+	if datastr, dataok := maps["Base"].(string); dataok {
+		data, err := base64.StdEncoding.DecodeString(datastr)
+		if err != nil {
+			return nil, fmt.Errorf("base64 decode err: %v", err)
+		}
+		buyTicketParam := common.BuyTicketParam{}
+		if err = rlp.DecodeBytes(data, &buyTicketParam); err == nil {
+			delete(maps, "Base")
+			maps["StartTime"] = buyTicketParam.Start
+			maps["ExpireTime"] = buyTicketParam.End
+		}
+	}
+	return maps, nil
+}

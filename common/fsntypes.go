@@ -95,6 +95,8 @@ const (
 	TakeMultiSwapFunc
 	// ReportIllegalFunc wacom
 	ReportIllegalFunc
+	// UnknownFunc
+	UnknownFunc = 0xff
 )
 
 func (f FSNCallFunc) Name() string {

@@ -206,3 +206,31 @@ func punishTimeLock(state vm.StateDB, miner common.Address, value *big.Int, heig
 		state.SetTimeLockBalance(miner, common.SystemAssetID, timelockBalance)
 	}
 }
+
+func DecodeTxInput(input []byte) (interface{}, error) {
+	res, err := common.DecodeTxInput(input)
+	if err == nil {
+		return res, err
+	}
+	fsnCall, ok := res.(common.FSNCallParam)
+	if !ok {
+		return res, err
+	}
+	switch fsnCall.Func {
+	case common.ReportIllegalFunc:
+		h1, h2, err := DecodeReport(fsnCall.Data)
+		if err != nil {
+			return nil, fmt.Errorf("DecodeReport err %v", err)
+		}
+		reportContent := &struct {
+			Header1 *types.Header
+			Header2 *types.Header
+		}{
+			Header1: h1,
+			Header2: h2,
+		}
+		fsnCall.Data = nil
+		return common.DecodeFsnCallParam(&fsnCall, reportContent)
+	}
+	return nil, fmt.Errorf("Unknown FuncType %v", fsnCall.Func)
+}

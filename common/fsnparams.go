@@ -171,6 +171,68 @@ func (p *TakeMultiSwapParam) ToBytes() ([]byte, error) {
 	return rlp.EncodeToBytes(p)
 }
 
+type EmptyParam struct{}
+
+func (p *EmptyParam) ToBytes() ([]byte, error) {
+	return nil, nil
+}
+
+func DecodeFsnCallParam(fsnCall *FSNCallParam, funcParam interface{}) (interface{}, error) {
+	if len(fsnCall.Data) != 0 {
+		err := rlp.DecodeBytes(fsnCall.Data, funcParam)
+		if err != nil {
+			return nil, fmt.Errorf("decode FSNCallParam err %v", err)
+		}
+	}
+	decodedParam := &struct {
+		FuncType  string
+		FuncParam interface{}
+	}{
+		FuncType:  fsnCall.Func.Name(),
+		FuncParam: funcParam,
+	}
+	return decodedParam, nil
+}
+
+func DecodeTxInput(input []byte) (interface{}, error) {
+	var fsnCall FSNCallParam
+	err := rlp.DecodeBytes(input, &fsnCall)
+	if err != nil {
+		return nil, fmt.Errorf("decode to FSNCallParam err %v", err)
+	}
+
+	switch fsnCall.Func {
+	case GenNotationFunc:
+		return DecodeFsnCallParam(&fsnCall, &EmptyParam{})
+	case GenAssetFunc:
+		return DecodeFsnCallParam(&fsnCall, &GenAssetParam{})
+	case SendAssetFunc:
+		return DecodeFsnCallParam(&fsnCall, &SendAssetParam{})
+	case TimeLockFunc:
+		return DecodeFsnCallParam(&fsnCall, &TimeLockParam{})
+	case BuyTicketFunc:
+		return DecodeFsnCallParam(&fsnCall, &BuyTicketParam{})
+	case AssetValueChangeFunc:
+		return DecodeFsnCallParam(&fsnCall, &AssetValueChangeExParam{})
+	case EmptyFunc:
+	case MakeSwapFunc, MakeSwapFuncExt:
+		return DecodeFsnCallParam(&fsnCall, &MakeSwapParam{})
+	case RecallSwapFunc:
+		return DecodeFsnCallParam(&fsnCall, &RecallSwapParam{})
+	case TakeSwapFunc, TakeSwapFuncExt:
+		return DecodeFsnCallParam(&fsnCall, &TakeSwapParam{})
+	case RecallMultiSwapFunc:
+		return DecodeFsnCallParam(&fsnCall, &RecallMultiSwapParam{})
+	case MakeMultiSwapFunc:
+		return DecodeFsnCallParam(&fsnCall, &MakeMultiSwapParam{})
+	case TakeMultiSwapFunc:
+		return DecodeFsnCallParam(&fsnCall, &TakeMultiSwapParam{})
+	case ReportIllegalFunc:
+		return fsnCall, fmt.Errorf("ReportIllegal should processed by datong.DecodeTxInput")
+	}
+	return nil, fmt.Errorf("Unknown FuncType %v", fsnCall.Func)
+}
+
 /////////////////// param checking ///////////////////////
 // Check wacom
 func (p *FSNCallParam) Check(blockNumber *big.Int) error {

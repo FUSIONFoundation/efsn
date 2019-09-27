@@ -13,6 +13,7 @@ import (
 	"github.com/FusionFoundation/efsn/accounts"
 	"github.com/FusionFoundation/efsn/common"
 	"github.com/FusionFoundation/efsn/common/hexutil"
+	"github.com/FusionFoundation/efsn/consensus/datong"
 	"github.com/FusionFoundation/efsn/core/rawdb"
 	"github.com/FusionFoundation/efsn/core/state"
 	"github.com/FusionFoundation/efsn/core/types"
@@ -243,6 +244,7 @@ func (s *PublicFusionAPI) AllTicketsByAddress(ctx context.Context, address commo
 
 // TxAndReceipt wacom
 type TxAndReceipt struct {
+	FsnTxInput   interface{}            `json:"fsnTxInput,omitempty"`
 	Tx           *RPCTransaction        `json:"tx"`
 	Receipt      map[string]interface{} `json:"receipt"`
 	ReceiptFound bool                   `json:"receiptFound"`
@@ -252,37 +254,42 @@ type TxAndReceipt struct {
 func (s *PublicFusionAPI) GetTransactionAndReceipt(ctx context.Context, hash common.Hash) (TxAndReceipt, error) {
 	// Try to return an already finalized transaction
 	var orgTx *RPCTransaction
-	if tx, blockHash, blockNumber, index := rawdb.ReadTransaction(s.b.ChainDb(), hash); tx != nil {
+	tx, blockHash, blockNumber, index := rawdb.ReadTransaction(s.b.ChainDb(), hash)
+	if tx != nil {
 		orgTx = newRPCTransaction(tx, blockHash, blockNumber, index)
-	} else if tx := s.b.GetPoolTransaction(hash); tx != nil {
+	} else if poolTx := s.b.GetPoolTransaction(hash); poolTx != nil {
 		// No finalized transaction, try to retrieve it from the pool
-		orgTx = newRPCPendingTransaction(tx)
+		orgTx = newRPCPendingTransaction(poolTx)
 	} else {
 		return TxAndReceipt{}, fmt.Errorf("Tx not found")
 	}
 
-	tx, blockHash, blockNumber, index := rawdb.ReadTransaction(s.b.ChainDb(), hash)
+	var (
+		isFsnCall   = common.IsFsnCall(orgTx.To)
+		fsnLogTopic string
+		fsnLogData  interface{}
+		fsnTxInput  interface{}
+	)
+
+	if isFsnCall {
+		if decoded, err := datong.DecodeTxInput(orgTx.Input); err == nil {
+			fsnTxInput = decoded
+		}
+	}
+
+	txWithoutReceipt := TxAndReceipt{
+		Tx:           orgTx,
+		Receipt:      nil,
+		ReceiptFound: false,
+		FsnTxInput:   fsnTxInput,
+	}
+
 	if tx == nil {
-		return TxAndReceipt{
-			Tx:           orgTx,
-			Receipt:      nil,
-			ReceiptFound: false,
-		}, nil
+		return txWithoutReceipt, nil
 	}
 	receipts, err := s.b.GetReceipts(ctx, blockHash)
-	if err != nil {
-		return TxAndReceipt{
-			Tx:           orgTx,
-			Receipt:      nil,
-			ReceiptFound: false,
-		}, nil
-	}
-	if len(receipts) <= int(index) {
-		return TxAndReceipt{
-			Tx:           orgTx,
-			Receipt:      nil,
-			ReceiptFound: false,
-		}, nil
+	if err != nil || len(receipts) <= int(index) {
+		return txWithoutReceipt, nil
 	}
 	receipt := receipts[index]
 
@@ -291,6 +298,16 @@ func (s *PublicFusionAPI) GetTransactionAndReceipt(ctx context.Context, hash com
 		signer = types.NewEIP155Signer(tx.ChainId())
 	}
 	from, _ := types.Sender(signer, tx)
+
+	if isFsnCall && len(receipt.Logs) > 0 && len(receipt.Logs[0].Topics) > 0 {
+		log := receipt.Logs[0]
+		topic := log.Topics[0]
+		fsnCallFunc := common.FSNCallFunc(topic[common.HashLength-1])
+		fsnLogTopic = fsnCallFunc.Name()
+		if decodedLog, err := datong.DecodeLogData(log.Data); err == nil {
+			fsnLogData = decodedLog
+		}
+	}
 
 	fields := map[string]interface{}{
 		"blockHash":         blockHash,
@@ -304,6 +321,11 @@ func (s *PublicFusionAPI) GetTransactionAndReceipt(ctx context.Context, hash com
 		"contractAddress":   nil,
 		"logs":              receipt.Logs,
 		"logsBloom":         receipt.Bloom,
+	}
+
+	if len(fsnLogTopic) != 0 {
+		fields["fsnLogTopic"] = fsnLogTopic
+		fields["fsnLogData"] = fsnLogData
 	}
 
 	// Assign receipt status or post state.
@@ -323,6 +345,7 @@ func (s *PublicFusionAPI) GetTransactionAndReceipt(ctx context.Context, hash com
 		Tx:           orgTx,
 		Receipt:      fields,
 		ReceiptFound: true,
+		FsnTxInput:   fsnTxInput,
 	}, nil
 }
 
