@@ -110,6 +110,7 @@ func (api *PrivateMinerAPI) Start(threads *int) error {
 // the block creation level.
 func (api *PrivateMinerAPI) Stop() {
 	api.e.StopMining()
+	api.StopAutoBuyTicket()
 }
 
 // SetExtra sets the extra data string that is included when this miner mines a block.
@@ -144,6 +145,23 @@ func (api *PrivateMinerAPI) SetRecommitInterval(interval int) {
 // GetHashrate returns the current hashrate of the miner.
 func (api *PrivateMinerAPI) GetHashrate() uint64 {
 	return api.e.miner.HashRate()
+}
+
+// StartAutoBuyTicket
+func (api *PrivateMinerAPI) StartAutoBuyTicket() error {
+	if !api.e.IsMining() {
+		return fmt.Errorf("StartAutoBuyTicket Error: not mining")
+	}
+	if _, err := api.e.Etherbase(); err != nil {
+		return fmt.Errorf("StartAutoBuyTicket Error: coinbase not exist")
+	}
+	common.AutoBuyTicket = true
+	return nil
+}
+
+// StopAutoBuyTicket
+func (api *PrivateMinerAPI) StopAutoBuyTicket() {
+	common.AutoBuyTicket = false
 }
 
 // PrivateAdminAPI is the collection of Ethereum full node-related APIs

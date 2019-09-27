@@ -1269,20 +1269,6 @@ func AutoBuyTicket(enable bool) {
 	}
 }
 
-// StartAutoBuyTicket ss
-func (s *FusionTransactionAPI) StartAutoBuyTicket() error {
-	if _, err := fusionTransactionAPI.b.Coinbase(); err != nil {
-		return fmt.Errorf("StartAutoBuyTicket Error: coinbase not exist")
-	}
-	common.AutoBuyTicket = true
-	return nil
-}
-
-// StopAutoBuyTicket ss
-func (s *FusionTransactionAPI) StopAutoBuyTicket() {
-	common.AutoBuyTicket = false
-}
-
 // report illegal
 func ReportIllegal() {
 	for {
