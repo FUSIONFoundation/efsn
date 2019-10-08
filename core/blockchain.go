@@ -51,6 +51,8 @@ var (
 	blockInsertTimer = metrics.NewRegisteredTimer("chain/inserts", nil)
 
 	ErrNoGenesis = errors.New("Genesis not found in chain")
+
+	ResyncFromHeight uint64 = 0 // force sync from this height even though has synced
 )
 
 const (
@@ -225,6 +227,14 @@ func (bc *BlockChain) loadLastState() error {
 		// Corrupt or empty database, init from scratch
 		log.Warn("Head block missing, resetting chain", "hash", head)
 		return bc.Reset()
+	}
+	if ResyncFromHeight > 0 && currentBlock.NumberU64() > ResyncFromHeight {
+		resyncBlock := bc.GetBlockByNumber(ResyncFromHeight)
+		if resyncBlock != nil {
+			currentBlock = resyncBlock
+		} else {
+			log.Warn("can not resync from height %v", ResyncFromHeight)
+		}
 	}
 	// Make sure the state associated with the block is available
 	if err := bc.repair(&currentBlock); err != nil {
