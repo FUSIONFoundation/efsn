@@ -285,10 +285,9 @@ func startNode(ctx *cli.Context, stack *node.Node) {
 
 	// add more log and checking in devnet
 	if ctx.GlobalBool(utils.DevnetFlag.Name) {
-		common.DebugMode = true
-		common.UseDevnetRule = true
+		common.InitDevnet()
 	} else if ctx.GlobalBool(utils.TestnetFlag.Name) {
-		common.UseTestnetRule = true
+		common.InitTestnet()
 	}
 
 	// Start up the node itself

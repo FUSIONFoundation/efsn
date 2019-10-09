@@ -29,14 +29,12 @@ func GetForkHeight(n int) uint64 {
 	if UseDevnetRule || n <= 0 {
 		return 0
 	}
+	forkArray := MAINNET_FORKS
 	if UseTestnetRule {
-		if n <= len(TESTNET_FORKS) {
-			return TESTNET_FORKS[n-1]
-		}
-		return math.MaxUint64
+		forkArray = TESTNET_FORKS
 	}
-	if n <= len(MAINNET_FORKS) {
-		return MAINNET_FORKS[n-1]
+	if n <= len(forkArray) {
+		return forkArray[n-1]
 	}
 	return math.MaxUint64
 }
