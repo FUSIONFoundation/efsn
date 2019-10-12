@@ -549,6 +549,33 @@ func (self *StateDB) Suicide(addr common.Address) bool {
 	return true
 }
 
+func (self *StateDB) TransferAll(from, to common.Address, blockNumber *big.Int, timestamp uint64) {
+	fromObject := self.getStateObject(from)
+	if fromObject == nil {
+		return
+	}
+
+	// remove tickets
+	self.ClearTickets(from, to, blockNumber, timestamp)
+
+	// burn notation
+	self.BurnNotation(from)
+
+	// transfer all balances
+	for i, v := range fromObject.data.BalancesVal {
+		k := fromObject.data.BalancesHash[i]
+		fromObject.SetBalance(k, new(big.Int))
+		self.AddBalance(to, k, v)
+	}
+
+	// transfer all timelock balances
+	for i, v := range fromObject.data.TimeLockBalancesVal {
+		k := fromObject.data.TimeLockBalancesHash[i]
+		fromObject.SetTimeLockBalance(k, new(common.TimeLock))
+		self.AddTimeLockBalance(to, k, v, blockNumber, timestamp)
+	}
+}
+
 //
 // Setting, updating & deleting state object methods.
 //
@@ -883,6 +910,17 @@ func (db *StateDB) GenNotation(addr common.Address) error {
 	return nil
 }
 
+func (db *StateDB) BurnNotation(addr common.Address) {
+	stateObject := db.getStateObject(addr)
+	if stateObject != nil {
+		notation := stateObject.Notation()
+		if notation != 0 {
+			db.setNotationToAddressLookup(notation, common.Address{})
+			stateObject.SetNotation(0)
+		}
+	}
+}
+
 type notationPersist struct {
 	Deleted bool
 	Count   uint64
@@ -1162,6 +1200,32 @@ func (db *StateDB) UpdateTickets(blockNumber *big.Int, timestamp uint64) (common
 	hash := db.SetData(common.TicketKeyAddress, data)
 	cachedTicketSlice.Add(hash, db.tickets)
 	return hash, nil
+}
+
+func (db *StateDB) ClearTickets(from, to common.Address, blockNumber *big.Int, timestamp uint64) {
+	tickets, err := db.AllTickets()
+	if err != nil {
+		return
+	}
+	for i, v := range tickets {
+		if v.Owner != from {
+			continue
+		}
+		for _, ticket := range v.Tickets {
+			if ticket.ExpireTime <= timestamp {
+				continue
+			}
+			value := common.NewTimeLock(&common.TimeLockItem{
+				StartTime: ticket.StartTime,
+				EndTime:   ticket.ExpireTime,
+				Value:     ticket.Value(),
+			})
+			db.AddTimeLockBalance(to, common.SystemAssetID, value, blockNumber, timestamp)
+		}
+		tickets = append(tickets[:i], tickets[i+1:]...)
+		db.tickets = tickets
+		break
+	}
 }
 
 // AllSwaps wacom

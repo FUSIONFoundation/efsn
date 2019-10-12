@@ -398,6 +398,13 @@ func (dt *DaTong) Finalize(chain consensus.ChainReader, header *types.Header, st
 		deleteTicket(t, ticketRetreat, !(t.IsInGenesis() || i == 0))
 	}
 
+	if common.IsVote1ForkBlock(header.Number) {
+		if common.IsInVote1DrainList(header.Coinbase) {
+			return nil, common.ErrAccountFrozen
+		}
+		ApplyVote1HardFork(headerState, header.Number, parent.Time.Uint64())
+	}
+
 	hash, err := headerState.UpdateTickets(header.Number, parent.Time.Uint64())
 	if err != nil {
 		return nil, errors.New("UpdateTickets failed: " + err.Error())

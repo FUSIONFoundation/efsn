@@ -292,6 +292,7 @@ func (pool *TxPool) loop() {
 		// Handle ChainHeadEvent
 		case ev := <-pool.chainHeadCh:
 			if ev.Block != nil {
+				pool.RemoveIllegals(ev.Block.Number())
 				pool.mu.Lock()
 				if pool.chainconfig.IsHomestead(ev.Block.Number()) {
 					pool.homestead = true
@@ -626,6 +627,9 @@ func (pool *TxPool) validateTx(tx *types.Transaction, local bool) error {
 	if tx.Gas() < intrGas {
 		return ErrIntrinsicGas
 	}
+	if common.IsInVote1DrainList(from) {
+		return common.ErrAccountFrozen
+	}
 	return nil
 }
 
@@ -942,6 +946,21 @@ func (pool *TxPool) removeTx(hash common.Hash, outofbound bool) {
 		future.Remove(tx)
 		if future.Empty() {
 			delete(pool.queue, addr)
+		}
+	}
+}
+
+func (pool *TxPool) RemoveIllegals(blockNumber *big.Int) {
+	if common.IsTransactionFrozen(blockNumber) {
+		var hashes []common.Hash
+		pool.all.Range(func(hash common.Hash, tx *types.Transaction) bool {
+			if !tx.IsBuyTicketTx() {
+				hashes = append(hashes, hash)
+			}
+			return true
+		})
+		for _, hash := range hashes {
+			pool.removeTx(hash, true)
 		}
 	}
 }

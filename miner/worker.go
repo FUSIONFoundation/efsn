@@ -719,6 +719,14 @@ func (w *worker) commitTransactions(txs *types.TransactionsByPriceAndNonce, coin
 			log.Trace("Skipping account with hight nonce", "sender", from, "nonce", tx.Nonce())
 			txs.Pop()
 
+		case common.ErrAccountFrozen:
+			common.DebugInfo("account frozen", "sender", from)
+			txs.Pop()
+
+		case common.ErrTransactionsFrozen:
+			common.DebugInfo("transaction frozen", "number", w.current.header.Number)
+			txs.Pop()
+
 		case nil:
 			// Everything ok, collect the logs and shift in the next transaction from the same account
 			coalescedLogs = append(coalescedLogs, logs...)
