@@ -512,6 +512,43 @@ func (s *PublicFusionAPI) GetStakeInfo(ctx context.Context, blockNr rpc.BlockNum
 	return stakeInfo, nil
 }
 
+// GetBlockAndReward wacom
+func (s *PublicFusionAPI) GetBlockReward(ctx context.Context, blockNr rpc.BlockNumber) (string, error) {
+	block, err := s.b.BlockByNumber(ctx, blockNr)
+	if err != nil {
+		return "", err
+	}
+	receipts, err := s.b.GetReceipts(ctx, block.Hash())
+	if err != nil {
+		return "", err
+	}
+	// block creation reward
+	reward := datong.CalcRewards(block.Number())
+	gasUses := make(map[common.Hash]uint64)
+	for _, receipt := range receipts {
+		gasUses[receipt.TxHash] = receipt.GasUsed
+	}
+	for _, tx := range block.Transactions() {
+		if gasUsed, ok := gasUses[tx.Hash()]; ok {
+			gasReward := new(big.Int).Mul(tx.GasPrice(), new(big.Int).SetUint64(gasUsed))
+			if gasReward.Sign() > 0 {
+				// transaction gas reward
+				reward.Add(reward, gasReward)
+			}
+		}
+		if common.IsFsnCall(tx.To()) {
+			fsnCallParam := &common.FSNCallParam{}
+			rlp.DecodeBytes(tx.Data(), fsnCallParam)
+			feeReward := common.GetFsnCallFee(tx.To(), fsnCallParam.Func)
+			if feeReward.Sign() > 0 {
+				// transaction fee reward
+				reward.Add(reward, feeReward)
+			}
+		}
+	}
+	return reward.String(), nil
+}
+
 //--------------------------------------------- PublicFusionAPI buile send tx args-------------------------------------
 func FSNCallArgsToSendTxArgs(args common.FSNBaseArgsInterface, funcType common.FSNCallFunc, funcData []byte) (*SendTxArgs, error) {
 	var param = common.FSNCallParam{Func: funcType, Data: funcData}

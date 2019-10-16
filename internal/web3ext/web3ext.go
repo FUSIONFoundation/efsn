@@ -706,6 +706,11 @@ web3._extend({
 			params: 1
 		}),
 		new web3._extend.Method({
+			name: 'getBlockReward',
+			call: 'fsn_getBlockReward',
+			params: 1,
+		}),
+		new web3._extend.Method({
 			name: 'getBalance',
 			call: 'fsn_getBalance',
 			params: 3,

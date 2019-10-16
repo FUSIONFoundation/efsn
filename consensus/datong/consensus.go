@@ -429,7 +429,7 @@ func (dt *DaTong) Finalize(chain consensus.ChainReader, header *types.Header, st
 		}
 	}
 
-	headerState.AddBalance(header.Coinbase, common.SystemAssetID, calcRewards(header.Number))
+	headerState.AddBalance(header.Coinbase, common.SystemAssetID, CalcRewards(header.Number))
 	header.Root = headerState.IntermediateRoot(chain.Config().IsEIP158(header.Number))
 	return types.NewBlock(header, txs, nil, receipts), nil
 }
@@ -738,7 +738,7 @@ func getSnapData(data []byte) []byte {
 	return data[extraVanity:extraSuffix]
 }
 
-func calcRewards(height *big.Int) *big.Int {
+func CalcRewards(height *big.Int) *big.Int {
 	var i int64
 	div2 := big.NewInt(2)
 	// initial reward 2.5
