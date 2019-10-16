@@ -324,10 +324,14 @@ func (w *worker) newWorkLoop(recommit time.Duration) {
 		recommit = time.Duration(int64(next))
 	}
 	// clearPending cleans the stale pending tasks.
-	clearPending := func(number uint64) {
+	clearPending := func(block *types.Block) {
+		number := block.NumberU64()
+		sameMiner := block.Coinbase() == w.coinbase
 		w.pendingMu.Lock()
 		for h, t := range w.pendingTasks {
 			if t.block.NumberU64()+staleThreshold <= number {
+				delete(w.pendingTasks, h)
+			} else if sameMiner && t.block.ParentHash() == block.ParentHash() {
 				delete(w.pendingTasks, h)
 			}
 		}
@@ -337,12 +341,12 @@ func (w *worker) newWorkLoop(recommit time.Duration) {
 	for {
 		select {
 		case <-w.startCh:
-			clearPending(w.chain.CurrentBlock().NumberU64())
+			clearPending(w.chain.CurrentBlock())
 			timestamp = time.Now().Unix()
 			commit(false, commitInterruptNewHead)
 
 		case head := <-w.chainHeadCh:
-			clearPending(head.Block.NumberU64())
+			clearPending(head.Block)
 			timestamp = time.Now().Unix()
 			commit(false, commitInterruptNewHead)
 
@@ -399,12 +403,25 @@ func (w *worker) mainLoop() {
 	defer w.chainHeadSub.Unsubscribe()
 	defer w.chainSideSub.Unsubscribe()
 
+	clearPending := func(block *types.Block) {
+		if block.Coinbase() == w.coinbase {
+			w.pendingMu.Lock()
+			for h, t := range w.pendingTasks {
+				if t.block.ParentHash() == block.ParentHash() {
+					delete(w.pendingTasks, h)
+				}
+			}
+			w.pendingMu.Unlock()
+		}
+	}
+
 	for {
 		select {
 		case req := <-w.newWorkCh:
 			w.commitNewWork(req.interrupt, req.noempty, req.timestamp)
 
-		case <-w.chainSideCh:
+		case ev := <-w.chainSideCh:
+			clearPending(ev.Block)
 
 		case ev := <-w.txsCh:
 			// Apply transactions to the pending state if we're not mining.
@@ -509,16 +526,11 @@ func (w *worker) resultLoop() {
 				continue
 			}
 			if !w.chain.CacheDisabled() && block.NumberU64() < fastBlockNumber {
-				if common.DebugMode {
-					log.Info("full block is lower than fast block",
-						"full", block.NumberU64(), "fast", fastBlockNumber)
-				}
+				common.DebugInfo("full block is lower than fast block", "full", block.NumberU64(), "fast", fastBlockNumber)
 				continue
 			}
 			if w.unconfirmed.Has(block.ParentHash()) {
-				if common.DebugMode {
-					log.Info("ignore duplicate result", "number", block.NumberU64(), "parent", block.ParentHash())
-				}
+				common.DebugInfo("ignore duplicate result", "number", block.NumberU64(), "parent", block.ParentHash())
 				continue
 			}
 
@@ -622,9 +634,7 @@ func (w *worker) commitTransaction(tx *types.Transaction, coinbase common.Addres
 	receipt, _, err := core.ApplyTransaction(w.config, w.chain, &coinbase, w.current.gasPool, w.current.state, w.current.header, tx, &w.current.header.GasUsed, vm.Config{})
 	if err != nil {
 		w.current.state.RevertToSnapshot(snap)
-		if common.DebugMode {
-			log.Info("ApplyTransaction failed in mining", "err", err)
-		}
+		common.DebugInfo("ApplyTransaction failed in mining", "err", err)
 		return nil, err
 	}
 	w.current.txs = append(w.current.txs, tx)
@@ -709,6 +719,14 @@ func (w *worker) commitTransactions(txs *types.TransactionsByPriceAndNonce, coin
 			log.Trace("Skipping account with hight nonce", "sender", from, "nonce", tx.Nonce())
 			txs.Pop()
 
+		case common.ErrAccountFrozen:
+			common.DebugInfo("account frozen", "sender", from)
+			txs.Pop()
+
+		case common.ErrTransactionsFrozen:
+			common.DebugInfo("transaction frozen", "number", w.current.header.Number)
+			txs.Pop()
+
 		case nil:
 			// Everything ok, collect the logs and shift in the next transaction from the same account
 			coalescedLogs = append(coalescedLogs, logs...)
@@ -790,9 +808,7 @@ func (w *worker) commitNewWork(interrupt *int32, noempty bool, timestamp int64) 
 	if err := w.engine.Prepare(w.chain, header); err != nil {
 		switch err {
 		case datong.ErrNoTicket:
-			if common.DebugMode {
-				log.Info("Miner doesn't have ticket", "number", parent.Number)
-			}
+			common.DebugInfo("Miner doesn't have ticket", "number", parent.Number())
 		default:
 			log.Error("Failed to prepare header for mining", "err", err)
 		}

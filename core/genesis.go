@@ -249,6 +249,10 @@ func (g *Genesis) ToBlock(db ethdb.Database) *types.Block {
 	timestamp := new(big.Int).SetUint64(g.Timestamp)
 
 	if g.TicketCreateInfo != nil {
+		expireTime := g.TicketCreateInfo.Time + 30*24*3600
+		if g.Config.ChainID.Cmp(params.DevnetChainConfig.ChainID) == 0 {
+			expireTime = common.TimeLockForever
+		}
 		for x := uint64(0); x < g.TicketCreateInfo.Count; x++ {
 			from := g.TicketCreateInfo.Owner
 			hash := crypto.Keccak256Hash(new(big.Int).SetUint64(x).Bytes())
@@ -259,7 +263,7 @@ func (g *Genesis) ToBlock(db ethdb.Database) *types.Block {
 					ID:         id,
 					Height:     0,
 					StartTime:  g.TicketCreateInfo.Time,
-					ExpireTime: g.TicketCreateInfo.Time + 30*24*3600,
+					ExpireTime: expireTime,
 				},
 			}
 			statedb.AddTicket(ticket)
@@ -276,6 +280,7 @@ func (g *Genesis) ToBlock(db ethdb.Database) *types.Block {
 		Nonce:      types.EncodeNonce(g.Nonce),
 		Time:       timestamp,
 		ParentHash: g.ParentHash,
+		UncleHash:  types.EmptyUncleHash,
 		Extra:      g.ExtraData,
 		GasLimit:   g.GasLimit,
 		GasUsed:    g.GasUsed,

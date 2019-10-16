@@ -320,9 +320,7 @@ func (z *TimeLock) Add(x, y *TimeLock) *TimeLock {
 	}
 
 	z.SetItems(items)
-	if DebugMode == true {
-		z.CheckValid()
-	}
+	DebugCall(func() { z.CheckValid() })
 	return z
 }
 
@@ -347,9 +345,7 @@ func (z *TimeLock) Sub(x, y *TimeLock) *TimeLock {
 		yV = missing
 	}
 	z.SetItems(items)
-	if DebugMode == true {
-		z.CheckValid()
-	}
+	DebugCall(func() { z.CheckValid() })
 	return z
 }
 
@@ -533,7 +529,7 @@ func (z *TimeLock) ToDisplay() *TimeLock {
 		}
 	}
 	t.Items = res
-	sort.Sort(t)
+	sort.Stable(t)
 	return t
 }
 

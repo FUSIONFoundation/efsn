@@ -69,7 +69,7 @@ func (n *BlockNonce) UnmarshalText(input []byte) error {
 // Header represents a block header in the Ethereum blockchain.
 type Header struct {
 	ParentHash  common.Hash    `json:"parentHash"       gencodec:"required"`
-	UncleHash   common.Hash    `json:"sha3Uncles"       gencodec:"required"`
+	UncleHash   common.Hash    `json:"sha3Uncles"       gencodec:"required"` // NOTE: store `posHash` to take part in tickets sorting now
 	Coinbase    common.Address `json:"miner"            gencodec:"required"`
 	Root        common.Hash    `json:"stateRoot"        gencodec:"required"`
 	TxHash      common.Hash    `json:"transactionsRoot" gencodec:"required"`
@@ -81,11 +81,11 @@ type Header struct {
 	GasUsed     uint64         `json:"gasUsed"          gencodec:"required"`
 	Time        *big.Int       `json:"timestamp"        gencodec:"required"`
 	Extra       []byte         `json:"extraData"        gencodec:"required"`
-	MixDigest   common.Hash    `json:"mixHash"          gencodec:"required"`
-	Nonce       BlockNonce     `json:"nonce"            gencodec:"required"`
+	MixDigest   common.Hash    `json:"mixHash"          gencodec:"required"` // NOTE: store `tickets CodeHash` now
+	Nonce       BlockNonce     `json:"nonce"            gencodec:"required"` // NOTE: store `selected ticket's Order number` now
 
-	selectedTicket *common.Ticket
-	retreatTickets common.TicketPtrSlice
+	selectedTicket *common.Ticket        // NOTE: cache result of difficulty calculation
+	retreatTickets common.TicketPtrSlice // NOTE: cache result of difficulty calculation
 }
 
 func (h *Header) GetSelectedTicket() *common.Ticket {
@@ -217,7 +217,7 @@ func NewBlock(header *Header, txs []*Transaction, uncles []*Header, receipts []*
 	}
 
 	if len(uncles) == 0 {
-		b.header.UncleHash = EmptyUncleHash
+		//b.header.UncleHash = EmptyUncleHash
 	} else {
 		b.header.UncleHash = CalcUncleHash(uncles)
 		b.uncles = make([]*Header, len(uncles))

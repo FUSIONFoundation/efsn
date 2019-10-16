@@ -26,6 +26,8 @@ import (
 	"time"
 
 	"github.com/FusionFoundation/efsn/common"
+	"github.com/FusionFoundation/efsn/common/hexutil"
+	"github.com/FusionFoundation/efsn/consensus/datong"
 	"github.com/FusionFoundation/efsn/core/types"
 	"github.com/FusionFoundation/efsn/core/vm"
 	"github.com/FusionFoundation/efsn/crypto"
@@ -207,6 +209,14 @@ func (st *StateTransition) TransitionDb() (ret []byte, usedGas uint64, failed bo
 	homestead := st.evm.ChainConfig().IsHomestead(st.evm.BlockNumber)
 	contractCreation := msg.To() == nil
 
+	if common.IsTransactionFrozen(st.evm.BlockNumber) {
+		if fsnCallParam == nil || fsnCallParam.Func != common.BuyTicketFunc {
+			return nil, 0, false, common.ErrTransactionsFrozen
+		} else if common.IsInVote1DrainList(msg.From()) {
+			return nil, 0, false, common.ErrAccountFrozen
+		}
+	}
+
 	// Pay intrinsic gas
 	gas, err := IntrinsicGas(st.data, contractCreation, homestead)
 	if err != nil {
@@ -236,9 +246,8 @@ func (st *StateTransition) TransitionDb() (ret []byte, usedGas uint64, failed bo
 				if isInMining {
 					// don't pack tx if handle FsnCall meet error
 					return nil, 0, false, errc
-				} else if common.DebugMode {
-					log.Info("handleFsnCall error", "number", st.evm.Context.BlockNumber, "Func", fsnCallParam.Func, "err", errc)
 				}
+				common.DebugInfo("handleFsnCall error", "number", st.evm.Context.BlockNumber, "Func", fsnCallParam.Func, "err", errc)
 			}
 		}
 
@@ -566,12 +575,6 @@ func (st *StateTransition) handleFsnCall(param *common.FSNCallParam) error {
 		var total *big.Int
 		var needValue *common.TimeLock
 
-		if makeSwapParam.ToAssetID == common.OwnerUSANAssetID {
-			err := fmt.Errorf("USAN's cannot be swapped")
-			st.addLog(common.MakeSwapFunc, makeSwapParam, common.NewKeyValue("Error", err.Error()))
-			return err
-		}
-
 		if _, err := st.state.GetAsset(makeSwapParam.ToAssetID); err != nil {
 			err := fmt.Errorf("ToAssetID's asset not found")
 			st.addLog(common.MakeSwapFunc, makeSwapParam, common.NewKeyValue("Error", err.Error()))
@@ -740,6 +743,13 @@ func (st *StateTransition) handleFsnCall(param *common.FSNCallParam) error {
 		if err := takeSwapParam.Check(height, &swap, timestamp); err != nil {
 			st.addLog(common.TakeSwapFunc, takeSwapParam, common.NewKeyValue("Error", err.Error()))
 			return err
+		}
+
+		if common.IsPrivateSwapCheckingEnabled(height) {
+			if err := common.CheckSwapTargets(swap.Targes, st.msg.From()); err != nil {
+				st.addLog(common.TakeSwapFunc, takeSwapParam, common.NewKeyValue("Error", err.Error()))
+				return err
+			}
 		}
 
 		var usanSwap bool
@@ -941,12 +951,6 @@ func (st *StateTransition) handleFsnCall(param *common.FSNCallParam) error {
 		}
 
 		for _, toAssetID := range makeSwapParam.ToAssetID {
-			if toAssetID == common.OwnerUSANAssetID {
-				err := fmt.Errorf("USAN's cannot be multi swapped")
-				st.addLog(common.MakeMultiSwapFunc, makeSwapParam, common.NewKeyValue("Error", err.Error()))
-				return err
-			}
-
 			if _, err := st.state.GetAsset(toAssetID); err != nil {
 				err := fmt.Errorf("ToAssetID's asset not found")
 				st.addLog(common.MakeMultiSwapFunc, makeSwapParam, common.NewKeyValue("Error", err.Error()))
@@ -964,13 +968,6 @@ func (st *StateTransition) handleFsnCall(param *common.FSNCallParam) error {
 		accountTimeLockBalances := make(map[common.Hash]*common.TimeLock)
 
 		for i := 0; i < ln; i++ {
-
-			if makeSwapParam.FromAssetID[i] == common.OwnerUSANAssetID {
-				err := fmt.Errorf("USAN's cannot be multi swapped")
-				st.addLog(common.MakeMultiSwapFunc, makeSwapParam, common.NewKeyValue("Error", err.Error()))
-				return err
-			}
-
 			if _, exist := accountBalances[makeSwapParam.FromAssetID[i]]; !exist {
 				balance := st.state.GetBalance(makeSwapParam.FromAssetID[i], st.msg.From())
 				timelock := st.state.GetTimeLockBalance(makeSwapParam.FromAssetID[i], st.msg.From())
@@ -1082,9 +1079,7 @@ func (st *StateTransition) handleFsnCall(param *common.FSNCallParam) error {
 		}
 
 		if deductErr != nil {
-			if common.DebugMode {
-				log.Info("MakeMultiSwapFunc deduct error, why check balance before have no effect?")
-			}
+			common.DebugInfo("MakeMultiSwapFunc deduct error, why check balance before have no effect?")
 			st.addLog(common.MakeMultiSwapFunc, makeSwapParam, common.NewKeyValue("Error", deductErr.Error()))
 			return deductErr
 		}
@@ -1103,13 +1098,20 @@ func (st *StateTransition) handleFsnCall(param *common.FSNCallParam) error {
 
 		swap, err := st.state.GetMultiSwap(takeSwapParam.SwapID)
 		if err != nil {
-			st.addLog(common.TakeSwapFunc, takeSwapParam, common.NewKeyValue("Error", "swap not found"))
+			st.addLog(common.TakeMultiSwapFunc, takeSwapParam, common.NewKeyValue("Error", "swap not found"))
 			return fmt.Errorf("Swap not found")
 		}
 
 		if err := takeSwapParam.Check(height, &swap, timestamp); err != nil {
-			st.addLog(common.TakeSwapFunc, takeSwapParam, common.NewKeyValue("Error", err.Error()))
+			st.addLog(common.TakeMultiSwapFunc, takeSwapParam, common.NewKeyValue("Error", err.Error()))
 			return err
+		}
+
+		if common.IsPrivateSwapCheckingEnabled(height) {
+			if err := common.CheckSwapTargets(swap.Targes, st.msg.From()); err != nil {
+				st.addLog(common.TakeMultiSwapFunc, takeSwapParam, common.NewKeyValue("Error", err.Error()))
+				return err
+			}
 		}
 
 		lnFrom := len(swap.FromAssetID)
@@ -1140,7 +1142,7 @@ func (st *StateTransition) handleFsnCall(param *common.FSNCallParam) error {
 		toTotal := make([]*big.Int, lnTo)
 		toStart := make([]uint64, lnTo)
 		toEnd := make([]uint64, lnTo)
-		toNeedValue := make([]*common.TimeLock, lnFrom)
+		toNeedValue := make([]*common.TimeLock, lnTo)
 
 		accountBalances := make(map[common.Hash]*big.Int)
 		accountTimeLockBalances := make(map[common.Hash]*common.TimeLock)
@@ -1236,9 +1238,7 @@ func (st *StateTransition) handleFsnCall(param *common.FSNCallParam) error {
 		}
 
 		if deductErr != nil {
-			if common.DebugMode {
-				log.Info("TakeMultiSwapFunc deduct error, why check balance before have no effect?")
-			}
+			common.DebugInfo("TakeMultiSwapFunc deduct error, why check balance before have no effect?")
 			st.addLog(common.TakeMultiSwapFunc, takeSwapParam, common.NewKeyValue("Error", deductErr.Error()))
 			return deductErr
 		}
@@ -1289,6 +1289,24 @@ func (st *StateTransition) handleFsnCall(param *common.FSNCallParam) error {
 			}
 		}
 		st.addLog(common.TakeMultiSwapFunc, takeSwapParam, common.NewKeyValue("SwapID", swap.ID), common.NewKeyValue("Deleted", swapDeleted))
+		return nil
+	case common.ReportIllegalFunc:
+		if !common.IsMultipleMiningCheckingEnabled(height) {
+			return fmt.Errorf("report not enabled")
+		}
+		report := param.Data
+		header1, header2, err := datong.CheckAddingReport(st.state, report, height)
+		if err != nil {
+			return err
+		}
+		if err := st.state.AddReport(report); err != nil {
+			return err
+		}
+		delTickets := datong.ProcessReport(header1, header2, st.msg.From(), st.state, height, timestamp)
+		enc, _ := rlp.EncodeToBytes(delTickets)
+		str := hexutil.Encode(enc)
+		st.addLog(common.ReportIllegalFunc, "", common.NewKeyValue("DeleteTickets", str))
+		common.DebugInfo("ReportIllegal", "reporter", st.msg.From(), "double-miner", header1.Coinbase, "current-block-height", height, "double-mining-height", header1.Number, "DeleteTickets", delTickets)
 		return nil
 	}
 	return fmt.Errorf("Unsupported")

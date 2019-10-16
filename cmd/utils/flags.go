@@ -632,6 +632,12 @@ var (
 		Usage: "External EVM configuration (default = built-in interpreter)",
 		Value: "",
 	}
+	// Extras
+	ResyncFromHeightFlag = cli.Uint64Flag{
+		Name:  "resyncfrom",
+		Usage: "Force resync from specified block height",
+		Value: 0,
+	}
 )
 
 // MakeDataDir retrieves the currently requested data directory, terminating
@@ -1148,6 +1154,10 @@ func SetEthConfig(ctx *cli.Context, stack *node.Node, cfg *eth.Config) {
 	setGPO(ctx, &cfg.GPO)
 	setTxPool(ctx, &cfg.TxPool)
 	setEthash(ctx, cfg)
+
+	if ctx.GlobalIsSet(ResyncFromHeightFlag.Name) {
+		core.ResyncFromHeight = ctx.GlobalUint64(ResyncFromHeightFlag.Name)
+	}
 
 	if ctx.GlobalIsSet(SyncModeFlag.Name) {
 		cfg.SyncMode = *GlobalTextMarshaler(ctx, SyncModeFlag.Name).(*downloader.SyncMode)

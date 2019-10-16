@@ -136,6 +136,7 @@ var (
 		utils.GpoPercentileFlag,
 		utils.EWASMInterpreterFlag,
 		utils.EVMInterpreterFlag,
+		utils.ResyncFromHeightFlag,
 		configFileFlag,
 	}
 
@@ -202,6 +203,8 @@ func init() {
 		licenseCommand,
 		// See config.go
 		dumpConfigCommand,
+		// See rawtx.go
+		rawTxCommand,
 	}
 	sort.Sort(cli.CommandsByName(app.Commands))
 
@@ -282,7 +285,9 @@ func startNode(ctx *cli.Context, stack *node.Node) {
 
 	// add more log and checking in devnet
 	if ctx.GlobalBool(utils.DevnetFlag.Name) {
-		common.DebugMode = true
+		common.InitDevnet()
+	} else if ctx.GlobalBool(utils.TestnetFlag.Name) {
+		common.InitTestnet()
 	}
 
 	// Start up the node itself
@@ -341,6 +346,8 @@ func startNode(ctx *cli.Context, stack *node.Node) {
 	}()
 	// Start auto buy tickets
 	go ethapi.AutoBuyTicket(ctx.GlobalBool(utils.AutoBuyTicketsEnabledFlag.Name))
+	// Start report illegal
+	go ethapi.ReportIllegal()
 	// Start auxiliary services if enabled
 	if ctx.GlobalBool(utils.MiningEnabledFlag.Name) || ctx.GlobalBool(utils.DeveloperFlag.Name) {
 		// Mining only makes sense if a full Ethereum node is running
