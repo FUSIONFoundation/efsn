@@ -15,7 +15,7 @@ display_usage() {
     echo -e "-a          Auto buy tickets"
     }
 
-while [ "$1" != "" ]; do
+while true; do
     case $1 in
         -u | --unlock )         shift
                                 unlock=$1
@@ -30,7 +30,7 @@ while [ "$1" != "" ]; do
         * )                     display_usage
                                 exit 1
     esac
-    shift
+    shift || break
 done
 
 # create data folder if does not exit
