@@ -1,18 +1,32 @@
 #!/bin/bash
 # FUSION Foundation
 
-# set to 1 to enable debug mode
-DEBUG=0
+# no need for a complex versioning scheme, just increment
+SCRIPT_VERSION=10
 
 # historically grown, changing this would break stuff
 BASE_DIR="/home/$USER"
+
+# set to 1 to enable debug mode
+DEBUG_MODE=0
 
 txtred=$(tput setaf 1)    # Red
 txtgrn=$(tput setaf 2)    # Green
 txtylw=$(tput setaf 3)    # Yellow
 txtrst=$(tput sgr0)       # Text reset
 
-[ $DEBUG -eq 1 ] && set -x
+[ $DEBUG_MODE -eq 1 ] && set -x
+
+scriptUpdate() {
+    # get the first 150 bytes and extract the script version
+    remoteVersion="$(curl -fsSL -r 0-150 "https://raw.githubusercontent.com/FUSIONFoundation/efsn/master/QuickNodeSetup/fsnNode.sh" | grep -Po '(?<=SCRIPT_VERSION=)[0-9]+')"
+    # prevent an error if the version number can't be read
+    if [ -n "$remoteVersion" ]; then
+        if [ $SCRIPT_VERSION -lt $remoteVersion ]; then
+            echo "tbd"
+        fi
+    fi
+}
 
 distroChecks() {
     # check for distribution and corresponding version (release)
@@ -103,16 +117,16 @@ checkUpdate() {
 
     if [ "$testnet" = "true" ]; then
         # add testnet suffix to image
-        imgsfx="2"
+        imageprefix="testnet-"
     else
         # don't add testnet suffix to image
-        imgsfx=""
+        imageprefix=""
     fi
 
     # get the container creation date as unix epoch for easy comparison
     local dateCreated=$(date -d "$(docker inspect -f "{{.Created}}" fusion 2>/dev/null)" '+%s')
     # query the Docker Hub registry for when the image was last updated
-    local dateUpdated="$(curl -fsL "https://registry.hub.docker.com/v2/repositories/fusionnetwork/$nodetype$imgsfx" | jq -r '.last_updated')"
+    local dateUpdated="$(curl -fsL "https://registry.hub.docker.com/v2/repositories/fusionnetwork/${imageprefix}$nodetype" | jq -r '.last_updated')"
     # make sure that no update is triggered if the registry returns no data
     [ -z "$dateUpdated" ] && dateUpdated=0 || dateUpdated=$(date -d "$dateUpdated" '+%s')
     # if the container is older than dateUpdated return 0, otherwise return 1
@@ -322,7 +336,6 @@ initConfig() {
     echo "${txtylw}1. minerandlocalgateway${txtrst} - miner with local API access; if unsure, select this"
     echo "${txtylw}2. efsn${txtrst} - pure miner without local API access; only select if you have a good reason"
     echo "${txtylw}3. gateway${txtrst} - local API access without mining; doesn't require keystore and password"
-    echo
     local nodetype
     local input
     while true; do
@@ -330,7 +343,7 @@ initConfig() {
         case $input in
             1) nodetype="minerandlocalgateway"; break ;;
             2) nodetype="efsn"; break ;;
-            3) nodetype="gateway"; echo; break ;;
+            3) nodetype="gateway"; break ;;
             *) echo -e "\n${txtred}Invalid input${txtrst}" ;;
         esac
     done
@@ -404,20 +417,27 @@ initConfig() {
     fi
 
     echo
-    echo "${txtylw}What name do you want the node to have on node.fusionnetwork.io? No spaces or special characters, three characters minimum.${txtrst}"
-    local nodename
-    while true; do
-        read -p "Enter node name: " nodename
-        if [ -z "$nodename" ]; then
-            echo "${txtred}Node name required${txtrst}"
-        elif [[ ! "$nodename" =~ ^[-_a-zA-Z0-9]{3,}$ ]]; then
-            echo "${txtred}Invalid characters in node name or too short${txtrst}"
-            echo "Only a-z, 0-9, - and _ allowed, minimum 3 chars"
-        else
-            break
-        fi
-    done
-    echo "${txtgrn}✓${txtrst} Saved node name"
+    question="${txtylw}Do you want your node to show up on node.fusionnetwork.io?${txtrst} [Y/n] "
+    askToContinue "$question"
+    if [ $? -eq 0 ]; then
+        echo
+        echo "${txtylw}What name do you want the node to have? No spaces or special characters, three characters minimum.${txtrst}"
+        local nodename
+        while true; do
+            read -p "Enter node name: " nodename
+            if [ -z "$nodename" ]; then
+                echo "${txtred}Node name required${txtrst}"
+            elif [[ ! "$nodename" =~ ^[-_a-zA-Z0-9]{3,}$ ]]; then
+                echo "${txtred}Invalid characters in node name or too short${txtrst}"
+                echo "Only a-z, 0-9, - and _ allowed, minimum 3 chars"
+            else
+                break
+            fi
+        done
+        echo "${txtgrn}✓${txtrst} The node will be listed on the node explorer"
+    else
+        echo "${txtred}✓${txtrst} The node will be hidden from the node explorer"
+    fi
 
     # write configuration to file in proper JSON format
     echo
@@ -457,11 +477,11 @@ createContainer() {
     echo "${txtgrn}✓${txtrst} Read node configuration"
 
     if [ "$testnet" = "true" ]; then
-        # add testnet suffix to image
-        imgsfx="2"
+        # add testnet prefix to image
+        imageprefix="testnet-"
     else
-        # don't add testnet suffix to image
-        imgsfx=""
+        # don't add testnet prefix to image
+        iamgeprefix=""
     fi
 
     if [ "$autobuy" = "true" ]; then
@@ -489,16 +509,16 @@ createContainer() {
         sudo docker create --name fusion -t --restart unless-stopped \
             -p 127.0.0.1:9000:9000 -p 127.0.0.1:9001:9001 -p 40408:40408 -p 40408:40408/udp \
             -v "$BASE_DIR/fusion-node":/fusion-node \
-            fusionnetwork/minerandlocalgateway$imgsfx \
-            -u "$address" "$autobuy" "$mining" \
+            fusionnetwork/${imageprefix}minerandlocalgateway \
+            -u "$address" $autobuy $mining \
             -e "$nodename"
 
     elif [ "$nodetype" = "efsn" ]; then
         sudo docker create --name fusion -t --restart unless-stopped \
             -p 40408:40408 -p 40408:40408/udp \
             -v "$BASE_DIR/fusion-node":/fusion-node \
-            fusionnetwork/efsn$imgsfx \
-            -u "$address" "$autobuy" "$mining" \
+            fusionnetwork/${imageprefix}efsn \
+            -u "$address" $autobuy $mining \
             -e "$nodename"
 
     elif [ "$nodetype" = "gateway" ]; then
@@ -516,7 +536,7 @@ createContainer() {
         sudo docker create --name fusion -t --restart unless-stopped \
             -p 127.0.0.1:9000:9000 -p 127.0.0.1:9001:9001 -p 40408:40408 -p 40408:40408/udp \
             -v "$BASE_DIR/fusion-node":/fusion-node \
-            fusionnetwork/gateway$imgsfx \
+            fusionnetwork/${imageprefix}gateway \
             $ethstats
 
     else
@@ -558,7 +578,7 @@ stopNode() {
 }
 
 installNode() {
-    [ $DEBUG -ne 1 ] && clear
+    [ $DEBUG_MODE -ne 1 ] && clear
     echo
     echo "---------------------"
     echo "| Node Installation |"
@@ -609,7 +629,7 @@ installNode() {
 }
 
 deinstallNode() {
-    [ $DEBUG -ne 1 ] && clear
+    [ $DEBUG_MODE -ne 1 ] && clear
     echo
     echo "-----------------------"
     echo "| Node Deinstallation |"
@@ -653,7 +673,7 @@ updateNode() {
 }
 
 updateNodeScreen() {
-    [ $DEBUG -ne 1 ] && clear
+    [ $DEBUG_MODE -ne 1 ] && clear
     echo
     echo "---------------"
     echo "| Node Update |"
@@ -664,7 +684,7 @@ updateNodeScreen() {
 }
 
 showNodeLogs() {
-    [ $DEBUG -ne 1 ] && clear
+    [ $DEBUG_MODE -ne 1 ] && clear
     echo
     echo "-------------------"
     echo "| Node Log Viewer |"
@@ -824,7 +844,7 @@ change_autostart() {
 
 configureNode() {
     while true; do
-        [ $DEBUG -ne 1 ] && clear
+        [ $DEBUG_MODE -ne 1 ] && clear
         echo
         echo "----------------------"
         echo "| Node Configuration |"
@@ -850,7 +870,7 @@ configureNode() {
 }
 
 show_menus_init() {
-    [ $DEBUG -ne 1 ] && clear
+    [ $DEBUG_MODE -ne 1 ] && clear
     echo
     echo "-----------------------"
     echo "| FUSION Node Manager |"
@@ -861,7 +881,7 @@ show_menus_init() {
     echo
 }
 
-read_options_init(){
+read_options_init() {
     local input
     read -n1 -r -s -p "Select option [1-2] " input
     case $input in
@@ -872,7 +892,7 @@ read_options_init(){
 }
 
 show_menus() {
-    [ $DEBUG -ne 1 ] && clear
+    [ $DEBUG_MODE -ne 1 ] && clear
     echo
     echo "-----------------------"
     echo "| FUSION Node Manager |"
@@ -895,7 +915,7 @@ show_menus() {
     echo
 }
 
-read_options(){
+read_options() {
     local input
     read -n1 -r -s -p "Select option [1-8] " input
     case $input in
@@ -911,7 +931,7 @@ read_options(){
     esac
 }
 
-[ $DEBUG -ne 1 ] && clear
+[ $DEBUG_MODE -ne 1 ] && clear
 echo
 echo "-----------------------"
 echo "| FUSION Node Manager |"
@@ -920,6 +940,7 @@ echo
 echo "${txtylw}Initializing script, please wait...${txtrst}"
 echo
 # make sure we're not running into avoidable problems during setup
+scriptUpdate
 distroChecks
 sanityChecks
 # check for updates if node.json already exists, save state in global variable
