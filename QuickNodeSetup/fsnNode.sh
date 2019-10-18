@@ -7,13 +7,20 @@ SCRIPT_VERSION=10
 # historically grown, changing this would break stuff
 BASE_DIR="/home/$USER"
 
-# set to 1 to enable debug mode
+# set to 1 to enable debug mode, or use -d argument
 DEBUG_MODE=0
 
 txtred=$(tput setaf 1)    # Red
 txtgrn=$(tput setaf 2)    # Green
 txtylw=$(tput setaf 3)    # Yellow
 txtrst=$(tput sgr0)       # Text reset
+
+while getopts ":d" opt; do
+    case $opt in
+         d) DEBUG_MODE=1 ;;
+        \?) echo "${txtred}Invalid argument: -$OPTARG${txtrst}" ; exit 1 ;;
+    esac
+done
 
 [ $DEBUG_MODE -eq 1 ] && set -x
 
