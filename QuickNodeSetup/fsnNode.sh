@@ -7,6 +7,9 @@ SCRIPT_VERSION=10
 # historically grown, changing this would break stuff
 BASE_DIR="/home/$USER"
 
+# global configuration file containing node settings
+CONF_FILE="$BASE_DIR/fusion-node/node.json"
+
 # set to 1 to enable debug mode, or use -d argument
 DEBUG_MODE=0
 
@@ -113,7 +116,7 @@ sanityChecks() {
     fi
 
     # silently make sure jq is installed if node.json already exists
-    if [ -f "$BASE_DIR/fusion-node/node.json" ]; then
+    if [ -f "$CONF_FILE" ]; then
         dpkg -s jq 2>/dev/null | grep -q -E "Status.+installed" || apt-get install -qq jq
     fi
 }
@@ -199,7 +202,7 @@ getCfgValue() {
     fi
 
     local keystore_file="$BASE_DIR/fusion-node/data/keystore/UTC.json"
-    local cfg_file="$BASE_DIR/fusion-node/node.json"
+    local cfg_file="$CONF_FILE"
 
     # extra spacing for readability
     if [ "$cfg_arg" = "address" ]; then
@@ -238,7 +241,7 @@ putCfgValue() {
         return 1
     fi
 
-    local cfg_file="$BASE_DIR/fusion-node/node.json"
+    local cfg_file="$CONF_FILE"
 
     # extra spacing for readability
     if [ "$cfg_arg" = "nodeType" ]; then
@@ -459,7 +462,7 @@ initConfig() {
     echo "${txtylw}Writing node configuration file${txtrst}"
     mkdir -p "$BASE_DIR/fusion-node/"
     jq -n --arg nodeType "$nodetype" --arg testnet "$testnet" --arg autobt "$autobuy" --arg mining "$mining" --arg nodeName "$nodename" \
-        '{"nodeType": $nodeType, "testnet": $testnet, "autobt": $autobt, "mining": $mining, "nodeName": $nodeName}' > "$BASE_DIR/fusion-node/node.json"
+        '{"nodeType": $nodeType, "testnet": $testnet, "autobt": $autobt, "mining": $mining, "nodeName": $nodeName}' > "$CONF_FILE"
     echo "${txtgrn}✓${txtrst} Wrote node configuration file"
 }
 
@@ -842,7 +845,7 @@ change_autostart() {
         # if auto-start wasn't enabled during installation, state will be empty here
         if [ "$state" != "enabled" ]; then
             # download systemd service unit definition if it doesn't exist yet
-            if [ ! -f /etc/systemd/system/fusion.service ]; then
+            if [ ! -f "/etc/systemd/system/fusion.service" ]; then
                 sudo curl -fsSL "https://raw.githubusercontent.com/FUSIONFoundation/efsn/master/QuickNodeSetup/fusion.service" \
                     -o "/etc/systemd/system/fusion.service"
             fi
@@ -993,7 +996,7 @@ distroChecks
 sanityChecks
 # check for updates if node.json already exists, save state in global variable
 hasUpdate=1
-if [ -f "$BASE_DIR/fusion-node/node.json" ]; then
+if [ -f "$CONF_FILE" ]; then
     checkUpdate
     hasUpdate=$?
 fi
@@ -1002,7 +1005,7 @@ fi
 trap '' SIGINT SIGQUIT SIGTSTP
 while true; do
     # showing only the install option on initial launch
-    if [ ! -f "$BASE_DIR/fusion-node/node.json" ]; then
+    if [ ! -f "$CONF_FILE" ]; then
         show_menus_init
         read_options_init
     else
