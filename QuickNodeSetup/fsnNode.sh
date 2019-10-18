@@ -396,16 +396,17 @@ initConfig() {
             echo "${txtred}✓${txtrst} Disabled ticket auto-buy"
         fi
 
-        echo
-        question="${txtylw}Do you want your node to mine blocks (participate in staking)?${txtrst} [Y/n] "
-        local mining="false"
-        askToContinue "$question"
-        if [ $? -eq 0 ]; then
+# MINING SETTING UNAVAILABLE UNTIL AFTER NODE UPGRADE
+#        echo
+#        question="${txtylw}Do you want your node to mine blocks (participate in staking)?${txtrst} [Y/n] "
+#        local mining="false"
+#        askToContinue "$question"
+#        if [ $? -eq 0 ]; then
             mining="true"
-            echo "${txtgrn}✓${txtrst} Enabled mining of blocks"
-        else
-            echo "${txtred}✓${txtrst} Disabled mining of blocks"
-        fi
+#            echo "${txtgrn}✓${txtrst} Enabled mining of blocks"
+#        else
+#            echo "${txtred}✓${txtrst} Disabled mining of blocks"
+#        fi
     fi
 
     echo
@@ -760,6 +761,12 @@ change_mining() {
         [ "$mining" != "false" ] && state="${txtgrn}enabled${txtrst}" || state="${txtred}disabled${txtrst}"
         echo
         echo "Mining of new blocks is currently $state"
+# MINING SETTING UNAVAILABLE UNTIL AFTER NODE UPGRADE
+echo
+echo "${txtylw}Sorry, the mining state can't be changed at this time; this feature will be enabled with a future release.${txtrst}"
+echo
+pauseScript
+return
         # we can't just use the API here as an unexpected node restart would cause problems
         local question="${txtylw}Do you want to change this setting? Doing so will enforce a node update and restart!${txtrst} [Y/n] "
         askToContinue "$question"
