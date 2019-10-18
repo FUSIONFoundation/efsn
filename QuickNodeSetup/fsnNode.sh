@@ -242,19 +242,19 @@ putCfgValue() {
 
     # extra spacing for readability
     if [ "$cfg_arg" = "nodeType" ]; then
-        cat <<< "$(jq --arg nodeType "$nodeType" '.nodeType = $nodeType' < $cfg_file)" > "$cfg_file"
+        cat <<< "$(jq --arg nodeType "$cfg_val" '.nodeType = $nodeType' < $cfg_file)" > "$cfg_file"
 
     elif [ "$cfg_arg" = "testnet" ]; then
-        cat <<< "$(jq --arg testnet "$testnet" '.testnet = $testnet' < $cfg_file)" > "$cfg_file"
+        cat <<< "$(jq --arg testnet "$cfg_val" '.testnet = $testnet' < $cfg_file)" > "$cfg_file"
 
     elif [ "$cfg_arg" = "autobt" ]; then
-        cat <<< "$(jq --arg autobt "$autobt" '.autobt = $autobt' < $cfg_file)" > "$cfg_file"
+        cat <<< "$(jq --arg autobt "$cfg_val" '.autobt = $autobt' < $cfg_file)" > "$cfg_file"
 
     elif [ "$cfg_arg" = "mining" ]; then
-        cat <<< "$(jq --arg mining "$mining" '.mining = $mining' < $cfg_file)" > "$cfg_file"
+        cat <<< "$(jq --arg mining "$cfg_val" '.mining = $mining' < $cfg_file)" > "$cfg_file"
 
     elif [ "$cfg_arg" = "nodeName" ]; then
-        cat <<< "$(jq --arg nodeName "$nodeName" '.nodeName = $nodeName' < $cfg_file)" > "$cfg_file"
+        cat <<< "$(jq --arg nodeName "$cfg_val" '.nodeName = $nodeName' < $cfg_file)" > "$cfg_file"
 
     else
         echo "${txtred}Unknown argument ($cfg_arg)${txtrst}"
@@ -309,6 +309,33 @@ updateKeystorePass() {
         fi
     done
     printf '%s' "$keystorepass" > "$BASE_DIR/fusion-node/password.txt"
+}
+
+updateExplorerListing() {
+    echo
+    question="${txtylw}Do you want your node to be listed on node.fusionnetwork.io?${txtrst} [Y/n] "
+    local nodename
+    askToContinue "$question"
+    if [ $? -eq 0 ]; then
+        echo
+        echo "${txtylw}What name do you want the node to have? No spaces or special characters, three characters minimum.${txtrst}"
+        while true; do
+            read -p "Enter node name: " nodename
+            if [ -z "$nodename" ]; then
+                echo "${txtred}Node name required${txtrst}"
+            elif [[ ! "$nodename" =~ ^[-_a-zA-Z0-9]{3,}$ ]]; then
+                echo "${txtred}Invalid characters in node name or too short${txtrst}"
+                echo "Only a-z, 0-9, - and _ allowed, minimum 3 chars"
+            else
+                break
+            fi
+        done
+        echo "${txtgrn}✓${txtrst} The node will be listed on the node explorer as \"$nodename\""
+    else
+        echo "${txtred}✓${txtrst} The node will not be listed on the node explorer"
+    fi
+    # bash functions can't return strings, so we're working around that with a global variable
+    nodename_global="$nodename"
 }
 
 warnRetreat() {
@@ -410,7 +437,7 @@ initConfig() {
     fi
 
     echo
-    question="${txtylw}Do you want your node to auto-start at boot to prevent downtimes?${txtrst} [Y/n] "
+    question="${txtylw}Do you want your node to auto-start after boot to prevent downtimes?${txtrst} [Y/n] "
     askToContinue "$question"
     if [ $? -eq 0 ]; then
         sudo curl -fsSL "https://raw.githubusercontent.com/FUSIONFoundation/efsn/master/QuickNodeSetup/fusion.service" \
@@ -424,28 +451,8 @@ initConfig() {
         echo "${txtred}✓${txtrst} Disabled node auto-start"
     fi
 
-    echo
-    question="${txtylw}Do you want your node to show up on node.fusionnetwork.io?${txtrst} [Y/n] "
-    askToContinue "$question"
-    if [ $? -eq 0 ]; then
-        echo
-        echo "${txtylw}What name do you want the node to have? No spaces or special characters, three characters minimum.${txtrst}"
-        local nodename
-        while true; do
-            read -p "Enter node name: " nodename
-            if [ -z "$nodename" ]; then
-                echo "${txtred}Node name required${txtrst}"
-            elif [[ ! "$nodename" =~ ^[-_a-zA-Z0-9]{3,}$ ]]; then
-                echo "${txtred}Invalid characters in node name or too short${txtrst}"
-                echo "Only a-z, 0-9, - and _ allowed, minimum 3 chars"
-            else
-                break
-            fi
-        done
-        echo "${txtgrn}✓${txtrst} The node will be listed on the node explorer"
-    else
-        echo "${txtred}✓${txtrst} The node will be hidden from the node explorer"
-    fi
+    updateExplorerListing
+    local nodename="$nodename_global"
 
     # write configuration to file in proper JSON format
     echo
@@ -534,10 +541,10 @@ createContainer() {
         # so we're passing the ethstats option directly to efsn
         local ethstats
         if [ -n "$nodename" ]; then
-            # set node name to be shown in node explorer
+            # set node name to be shown on node explorer
             ethstats="--ethstats $nodename:fsnMainnet@node.fusionnetwork.io"
         else
-            # node won't appear in node explorer at all
+            # node won't be listed on node explorer
             ethstats=""
         fi
 
@@ -856,6 +863,31 @@ change_autostart() {
     fi
 }
 
+change_explorer() {
+    local nodename="$(getCfgValue 'nodeName')"
+    if [ -n "$nodename" ]; then
+        echo
+        echo "The node is currently listed on node.fusionnetwork.io as ${txtgrn}$nodename${txtrst}"
+    else
+        echo
+        echo "The node is currently not listed on node.fusionnetwork.io"
+    fi
+    local question="${txtylw}Do you want to change this setting? Doing so will enforce a node update and restart!${txtrst} [Y/n] "
+    askToContinue "$question"
+    if [ $? -eq 0 ]; then
+        echo
+        echo "<<< Changing explorer listing >>>"
+        updateExplorerListing
+        local nodename="$nodename_global"
+        putCfgValue 'nodeName' "$nodename"
+        updateNode
+        echo
+        echo "<<< ${txtgrn}✓${txtrst} Changed explorer listing >>>"
+        echo
+        pauseScript
+    fi
+}
+
 configureNode() {
     while true; do
         [ $DEBUG_MODE -ne 1 ] && clear
@@ -867,17 +899,19 @@ configureNode() {
         echo "${txtylw}1. Enable/disable ticket auto-buy"
         echo "2. Enable/disable mining of new blocks"
         echo "3. Change staking wallet to be unlocked"
-        echo "4. Enable/disable auto-start at boot"
-        echo "5. Return to main menu${txtrst}"
+        echo "4. Enable/disable auto-start after boot"
+        echo "5. Hide/show or rename on node explorer"
+        echo "6. Return to main menu${txtrst}"
         echo
         local input
-        read -n1 -r -s -p "Select option [1-5] " input
+        read -n1 -r -s -p "Select option [1-6] " input
         case $input in
             1) echo; change_autobuy ;;
             2) echo; warnRetreat && change_mining ;;
             3) echo; warnRetreat && change_wallet ;;
             4) echo; change_autostart ;;
-            5) break ;;
+            5) echo; change_explorer ;;
+            6) break ;;
             *) echo -e "\n${txtred}Invalid input${txtrst}"; sleep 1 ;;
         esac
     done
