@@ -1088,6 +1088,14 @@ web3._extend({
 			call: 'fsn_isAutoBuyTicket',
 			params: 0
 		}),
+		new web3._extend.Method({
+			name: 'getLatestNotation',
+			call: 'fsn_getLatestNotation',
+			params: 1,
+			inputFormatter: [
+				web3._extend.formatters.inputDefaultBlockNumberFormatter
+			]
+		}),
 	],
 	properties:[
 		new web3._extend.Property({

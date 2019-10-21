@@ -549,6 +549,20 @@ func (s *PublicFusionAPI) GetBlockReward(ctx context.Context, blockNr rpc.BlockN
 	return reward.String(), nil
 }
 
+// GetLatestNotation wacom
+func (s *PublicFusionAPI) GetLatestNotation(ctx context.Context, blockNr rpc.BlockNumber) (uint64, error) {
+	state, _, err := s.b.StateAndHeaderByNumber(ctx, blockNr)
+	if state == nil || err != nil {
+		return 0, err
+	}
+	lastCount, err := state.GetNotationCount()
+	if err != nil {
+		return 0, err
+	}
+	latestNotation := state.CalcNotationDisplay(lastCount)
+	return latestNotation, state.Error()
+}
+
 //--------------------------------------------- PublicFusionAPI buile send tx args-------------------------------------
 func FSNCallArgsToSendTxArgs(args common.FSNBaseArgsInterface, funcType common.FSNCallFunc, funcData []byte) (*SendTxArgs, error) {
 	var param = common.FSNCallParam{Func: funcType, Data: funcData}

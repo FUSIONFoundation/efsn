@@ -895,13 +895,13 @@ func (db *StateDB) GenNotation(addr common.Address) error {
 			return fmt.Errorf("Account %s has a notation:%d", addr.String(), n)
 		}
 		// get last notation value
-		nextNotation, err := db.getNotationCount()
+		nextNotation, err := db.GetNotationCount()
 		nextNotation++
 		if err != nil {
 			log.Error("GenNotation: Unable to get next notation value")
 			return err
 		}
-		newNotation := db.calcNotationDisplay(nextNotation)
+		newNotation := db.CalcNotationDisplay(nextNotation)
 		db.setNotationCount(nextNotation)
 		db.setNotationToAddressLookup(newNotation, addr)
 		stateObject.SetNotation(newNotation)
@@ -927,7 +927,7 @@ type notationPersist struct {
 	Address common.Address
 }
 
-func (db *StateDB) getNotationCount() (uint64, error) {
+func (db *StateDB) GetNotationCount() (uint64, error) {
 	data := db.GetStructData(common.NotationKeyAddress, common.NotationKeyAddress.Bytes())
 	if len(data) == 0 || data == nil {
 		return 0, nil // not created yet
@@ -1014,7 +1014,7 @@ func (db *StateDB) TransferNotation(notation uint64, from common.Address, to com
 }
 
 // CalcNotationDisplay wacom
-func (db *StateDB) calcNotationDisplay(notation uint64) uint64 {
+func (db *StateDB) CalcNotationDisplay(notation uint64) uint64 {
 	if notation == 0 {
 		return notation
 	}
