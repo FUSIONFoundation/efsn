@@ -247,6 +247,9 @@ web3._extend({
 			name: 'dumpBlock',
 			call: 'debug_dumpBlock',
 			params: 1
+			inputFormatter: [
+				web3._extend.formatters.inputDefaultBlockNumberFormatter
+			]
 		}),
 		new web3._extend.Method({
 			name: 'chaindbProperty',
@@ -698,7 +701,9 @@ web3._extend({
 			name: 'getSnapshot',
 			call: 'fsn_getSnapshot',
 			params: 1,
-			inputFormatter: [null]
+			inputFormatter: [
+				web3._extend.formatters.inputDefaultBlockNumberFormatter
+			]
 		}),
 		new web3._extend.Method({
 			name: 'getSnapshotAtHash',
@@ -709,6 +714,9 @@ web3._extend({
 			name: 'getBlockReward',
 			call: 'fsn_getBlockReward',
 			params: 1,
+			inputFormatter: [
+				web3._extend.formatters.inputDefaultBlockNumberFormatter
+			]
 		}),
 		new web3._extend.Method({
 			name: 'getBalance',
