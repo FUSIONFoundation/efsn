@@ -337,6 +337,7 @@ func ReadBlock(db DatabaseReader, hash common.Hash, number uint64) *types.Block 
 func WriteBlock(db DatabaseWriter, block *types.Block) {
 	WriteBody(db, block.Hash(), block.NumberU64(), block.Body())
 	WriteHeader(db, block.Header())
+	common.DebugInfo("rawdb.WriteBlock", "number", block.NumberU64(), "hash", block.Hash())
 }
 
 // DeleteBlock removes all block data associated with a hash.

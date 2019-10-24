@@ -17,6 +17,7 @@
 package core
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"math"
@@ -27,6 +28,7 @@ import (
 
 	"github.com/FusionFoundation/efsn/common"
 	"github.com/FusionFoundation/efsn/common/prque"
+	"github.com/FusionFoundation/efsn/consensus/datong"
 	"github.com/FusionFoundation/efsn/core/state"
 	"github.com/FusionFoundation/efsn/core/types"
 	"github.com/FusionFoundation/efsn/event"
@@ -290,6 +292,7 @@ func (pool *TxPool) loop() {
 		// Handle ChainHeadEvent
 		case ev := <-pool.chainHeadCh:
 			if ev.Block != nil {
+				pool.RemoveIllegals(ev.Block.Number())
 				pool.mu.Lock()
 				if pool.chainconfig.IsHomestead(ev.Block.Number()) {
 					pool.homestead = true
@@ -624,6 +627,9 @@ func (pool *TxPool) validateTx(tx *types.Transaction, local bool) error {
 	if tx.Gas() < intrGas {
 		return ErrIntrinsicGas
 	}
+	if common.IsInVote1DrainList(from) {
+		return common.ErrAccountFrozen
+	}
 	return nil
 }
 
@@ -897,6 +903,10 @@ func (pool *TxPool) Get(hash common.Hash) *types.Transaction {
 	return pool.all.Get(hash)
 }
 
+func (pool *TxPool) GetByPredicate(predicate func(*types.Transaction) bool) *types.Transaction {
+	return pool.all.GetByPredicate(predicate)
+}
+
 // removeTx removes a single transaction from the queue, moving all subsequent
 // transactions back to the future queue.
 func (pool *TxPool) removeTx(hash common.Hash, outofbound bool) {
@@ -940,6 +950,21 @@ func (pool *TxPool) removeTx(hash common.Hash, outofbound bool) {
 	}
 }
 
+func (pool *TxPool) RemoveIllegals(blockNumber *big.Int) {
+	if common.IsTransactionFrozen(blockNumber) {
+		var hashes []common.Hash
+		pool.all.Range(func(hash common.Hash, tx *types.Transaction) bool {
+			if !tx.IsBuyTicketTx() {
+				hashes = append(hashes, hash)
+			}
+			return true
+		})
+		for _, hash := range hashes {
+			pool.removeTx(hash, true)
+		}
+	}
+}
+
 // promoteExecutables moves transactions that have become processable from the
 // future queue to the set of pending transactions. During this process, all
 // invalidated transactions (low nonce, low balance) are deleted.
@@ -975,6 +1000,17 @@ func (pool *TxPool) promoteExecutables(accounts []common.Address) {
 			pool.all.Remove(hash)
 			pool.priced.Removed()
 			queuedNofundsCounter.Inc(1)
+		}
+		// Drop all FsnCall transactions that are invalid
+		filter := func(tx *types.Transaction) bool {
+			return pool.validateFsnCallTx(tx) != nil
+		}
+		removes, _ := list.FilterInvalid(filter)
+		for _, tx := range removes {
+			hash := tx.Hash()
+			log.Trace("Removed invalid pending transaction", "hash", hash)
+			pool.all.Remove(hash)
+			pool.priced.Removed()
 		}
 		// Gather all executable transactions and promote them
 		for _, tx := range list.Ready(pool.pendingState.GetNonce(addr)) {
@@ -1132,7 +1168,9 @@ func (pool *TxPool) demoteUnexecutables() {
 			pool.priced.Removed()
 		}
 		// Drop all FsnCall transactions that are invalid
-		filter := func(tx *types.Transaction) bool { return pool.validateFsnCallTx(tx) != nil }
+		filter := func(tx *types.Transaction) bool {
+			return pool.validateFsnCallTx(tx) != nil
+		}
 		removes, adjusts := list.FilterInvalid(filter)
 		for _, tx := range removes {
 			hash := tx.Hash()
@@ -1285,6 +1323,18 @@ func (t *txLookup) Get(hash common.Hash) *types.Transaction {
 	return t.all[hash]
 }
 
+func (t *txLookup) GetByPredicate(predicate func(*types.Transaction) bool) *types.Transaction {
+	t.lock.RLock()
+	defer t.lock.RUnlock()
+
+	for _, tx := range t.all {
+		if predicate(tx) {
+			return tx
+		}
+	}
+	return nil
+}
+
 // Count returns the current number of items in the lookup.
 func (t *txLookup) Count() int {
 	t.lock.RLock()
@@ -1428,12 +1478,12 @@ func (pool *TxPool) validateFsnCallTx(tx *types.Transaction) error {
 		found := false
 		var oldTxHash common.Hash
 		pool.all.Range(func(hash common.Hash, tx1 *types.Transaction) bool {
-			if tx1.IsBuyTicketTx() {
+			if tx1 != tx && tx1.IsBuyTicketTx() {
 				sender, _ := types.Sender(pool.signer, tx1)
 				if from == sender {
 					if tx.Nonce() < tx1.Nonce() {
 						oldTxHash = hash
-					} else {
+					} else if tx.Nonce() > tx1.Nonce() {
 						found = true
 					}
 					return false
@@ -1493,10 +1543,6 @@ func (pool *TxPool) validateFsnCallTx(tx *types.Transaction) error {
 
 		if err := makeSwapParam.Check(height, timestamp); err != nil {
 			return err
-		}
-
-		if makeSwapParam.ToAssetID == common.OwnerUSANAssetID {
-			return fmt.Errorf("USAN's cannot be swapped")
 		}
 
 		if _, err := state.GetAsset(makeSwapParam.ToAssetID); err != nil {
@@ -1576,6 +1622,10 @@ func (pool *TxPool) validateFsnCallTx(tx *types.Transaction) error {
 			return err
 		}
 
+		if err := common.CheckSwapTargets(swap.Targes, from); err != nil {
+			return err
+		}
+
 		if swap.FromAssetID == common.OwnerUSANAssetID {
 			notation := state.GetNotation(swap.Owner)
 			if notation == 0 || notation != swap.Notation {
@@ -1651,10 +1701,6 @@ func (pool *TxPool) validateFsnCallTx(tx *types.Transaction) error {
 		}
 
 		for _, toAssetID := range makeSwapParam.ToAssetID {
-			if toAssetID == common.OwnerUSANAssetID {
-				return fmt.Errorf("USAN's cannot be multi swapped")
-			}
-
 			if _, err := state.GetAsset(toAssetID); err != nil {
 				return fmt.Errorf("ToAssetID asset %v not found", toAssetID.String())
 			}
@@ -1670,10 +1716,6 @@ func (pool *TxPool) validateFsnCallTx(tx *types.Transaction) error {
 		accountTimeLockBalances := make(map[common.Hash]*common.TimeLock)
 
 		for i := 0; i < ln; i++ {
-			if makeSwapParam.FromAssetID[i] == common.OwnerUSANAssetID {
-				return fmt.Errorf("USAN's cannot be multi swapped")
-			}
-
 			if _, exist := accountBalances[makeSwapParam.FromAssetID[i]]; !exist {
 				balance := state.GetBalance(makeSwapParam.FromAssetID[i], from)
 				timelock := state.GetTimeLockBalance(makeSwapParam.FromAssetID[i], from)
@@ -1744,14 +1786,17 @@ func (pool *TxPool) validateFsnCallTx(tx *types.Transaction) error {
 			return err
 		}
 
-		lnFrom := len(swap.FromAssetID)
+		if err := common.CheckSwapTargets(swap.Targes, from); err != nil {
+			return err
+		}
+
 		lnTo := len(swap.ToAssetID)
 
 		toUseAsset := make([]bool, lnTo)
 		toTotal := make([]*big.Int, lnTo)
 		toStart := make([]uint64, lnTo)
 		toEnd := make([]uint64, lnTo)
-		toNeedValue := make([]*common.TimeLock, lnFrom)
+		toNeedValue := make([]*common.TimeLock, lnTo)
 
 		accountBalances := make(map[common.Hash]*big.Int)
 		accountTimeLockBalances := make(map[common.Hash]*common.TimeLock)
@@ -1812,6 +1857,25 @@ func (pool *TxPool) validateFsnCallTx(tx *types.Transaction) error {
 				timeLockBalance.Sub(timeLockBalance, toNeedValue[i])
 			}
 		}
+
+	case common.ReportIllegalFunc:
+		if _, _, err := datong.CheckAddingReport(state, param.Data, nil); err != nil {
+			return err
+		}
+		oldtx := pool.GetByPredicate(func(trx *types.Transaction) bool {
+			if trx == tx {
+				return false
+			}
+			p := common.FSNCallParam{}
+			rlp.DecodeBytes(trx.Data(), &p)
+			return param.Func == common.ReportIllegalFunc && bytes.Equal(p.Data, param.Data)
+		})
+		if oldtx != nil {
+			return fmt.Errorf("already reported in pool")
+		}
+
+	default:
+		return fmt.Errorf("Unsupported FsnCall func '%v'", param.Func.Name())
 	}
 	// check gas, fee and value
 	mgval := new(big.Int).Mul(new(big.Int).SetUint64(tx.Gas()), tx.GasPrice())

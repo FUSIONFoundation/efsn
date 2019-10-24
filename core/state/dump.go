@@ -27,12 +27,13 @@ import (
 )
 
 type DumpAccount struct {
-	Balances map[common.Hash]*big.Int `json:"balance"`
-	Nonce    uint64                   `json:"nonce"`
-	Root     string                   `json:"root"`
-	CodeHash string                   `json:"codeHash"`
-	Code     string                   `json:"code"`
-	Storage  map[string]string        `json:"storage"`
+	Balances         map[common.Hash]*big.Int         `json:"balance"`
+	TimeLockBalances map[common.Hash]*common.TimeLock `json:"timelock"`
+	Nonce            uint64                           `json:"nonce"`
+	Root             string                           `json:"root"`
+	CodeHash         string                           `json:"codeHash"`
+	Code             string                           `json:"code"`
+	Storage          map[string]string                `json:"storage"`
 }
 
 type Dump struct {
@@ -59,13 +60,19 @@ func (self *StateDB) RawDump() Dump {
 		for i, v := range data.BalancesHash {
 			bal[v] = data.BalancesVal[i]
 		}
+		timelocks := make(map[common.Hash]*common.TimeLock)
+		for i, v := range data.TimeLockBalancesHash {
+			timelock := data.TimeLockBalancesVal[i]
+			timelocks[v] = timelock
+		}
 		account := DumpAccount{
-			Balances: bal,
-			Nonce:    data.Nonce,
-			Root:     common.Bytes2Hex(data.Root[:]),
-			CodeHash: common.Bytes2Hex(data.CodeHash),
-			Code:     common.Bytes2Hex(obj.Code(self.db)),
-			Storage:  make(map[string]string),
+			Balances:         bal,
+			TimeLockBalances: timelocks,
+			Nonce:            data.Nonce,
+			Root:             common.Bytes2Hex(data.Root[:]),
+			CodeHash:         common.Bytes2Hex(data.CodeHash),
+			Code:             common.Bytes2Hex(obj.Code(self.db)),
+			Storage:          make(map[string]string),
 		}
 		storageIt := trie.NewIterator(obj.getTrie(self.db).NodeIterator(nil))
 		for storageIt.Next() {

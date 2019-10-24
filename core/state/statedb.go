@@ -131,7 +131,7 @@ func (cts *CachedTicketSlice) Add(hash common.Hash, tickets common.TicketsDataSl
 	}
 }
 
-func (cts CachedTicketSlice) Get(hash common.Hash) common.TicketsDataSlice {
+func (cts *CachedTicketSlice) Get(hash common.Hash) common.TicketsDataSlice {
 	if hash == (common.Hash{}) {
 		return common.TicketsDataSlice{}
 	}
@@ -549,6 +549,33 @@ func (self *StateDB) Suicide(addr common.Address) bool {
 	return true
 }
 
+func (self *StateDB) TransferAll(from, to common.Address, blockNumber *big.Int, timestamp uint64) {
+	fromObject := self.getStateObject(from)
+	if fromObject == nil {
+		return
+	}
+
+	// remove tickets
+	self.ClearTickets(from, to, blockNumber, timestamp)
+
+	// burn notation
+	self.BurnNotation(from)
+
+	// transfer all balances
+	for i, v := range fromObject.data.BalancesVal {
+		k := fromObject.data.BalancesHash[i]
+		fromObject.SetBalance(k, new(big.Int))
+		self.AddBalance(to, k, v)
+	}
+
+	// transfer all timelock balances
+	for i, v := range fromObject.data.TimeLockBalancesVal {
+		k := fromObject.data.TimeLockBalancesHash[i]
+		fromObject.SetTimeLockBalance(k, new(common.TimeLock))
+		self.AddTimeLockBalance(to, k, v, blockNumber, timestamp)
+	}
+}
+
 //
 // Setting, updating & deleting state object methods.
 //
@@ -883,6 +910,17 @@ func (db *StateDB) GenNotation(addr common.Address) error {
 	return nil
 }
 
+func (db *StateDB) BurnNotation(addr common.Address) {
+	stateObject := db.getStateObject(addr)
+	if stateObject != nil {
+		notation := stateObject.Notation()
+		if notation != 0 {
+			db.setNotationToAddressLookup(notation, common.Address{})
+			stateObject.SetNotation(0)
+		}
+	}
+}
+
 type notationPersist struct {
 	Deleted bool
 	Count   uint64
@@ -955,8 +993,7 @@ func (db *StateDB) TransferNotation(notation uint64, from common.Address, to com
 	if stateObjectTo == nil {
 		return fmt.Errorf("Unable to get to address")
 	}
-	displayNotation := notation
-	address, err := db.GetAddressByNotation(displayNotation)
+	address, err := db.GetAddressByNotation(notation)
 	if err != nil {
 		return err
 	}
@@ -970,7 +1007,7 @@ func (db *StateDB) TransferNotation(notation uint64, from common.Address, to com
 		// user should transfer an old notation or can burn it like this
 		db.setNotationToAddressLookup(oldNotationTo, common.Address{})
 	}
-	db.setNotationToAddressLookup(displayNotation, to)
+	db.setNotationToAddressLookup(notation, to)
 	stateObjectTo.SetNotation(notation)
 	stateObjectFrom.SetNotation(0)
 	return nil
@@ -984,26 +1021,6 @@ func (db *StateDB) calcNotationDisplay(notation uint64) uint64 {
 	check := (notation ^ 8192 ^ 13 + 73/76798669*708583737978) % 100
 	return (notation*100 + check)
 }
-
-// // GenNotation wacom
-// func (db *StateDB) GenNotation(addr common.Address) error {
-// 	stateObject := db.GetOrNewStateObject(addr)
-// 	if stateObject != nil {
-// 		if n := db.GetNotation(addr); n != 0 {
-// 			return fmt.Errorf("Account %s has a notation:%d", addr.String(), n)
-// 		}
-// 		notations, err := db.AllNotation()
-// 		if err != nil {
-// 			log.Error("GenNotation: Unable to decode bytes in AllNotation")
-// 			return err
-// 		}
-// 		notations = append(notations, addr)
-// 		stateObject.SetNotation(uint64(len(notations)))
-// 		db.notations = notations
-// 		return db.updateNotations()
-// 	}
-// 	return nil
-// }
 
 // AllAssets wacom
 func (db *StateDB) AllAssets() (map[common.Hash]common.Asset, error) {
@@ -1185,6 +1202,32 @@ func (db *StateDB) UpdateTickets(blockNumber *big.Int, timestamp uint64) (common
 	return hash, nil
 }
 
+func (db *StateDB) ClearTickets(from, to common.Address, blockNumber *big.Int, timestamp uint64) {
+	tickets, err := db.AllTickets()
+	if err != nil {
+		return
+	}
+	for i, v := range tickets {
+		if v.Owner != from {
+			continue
+		}
+		for _, ticket := range v.Tickets {
+			if ticket.ExpireTime <= timestamp {
+				continue
+			}
+			value := common.NewTimeLock(&common.TimeLockItem{
+				StartTime: ticket.StartTime,
+				EndTime:   ticket.ExpireTime,
+				Value:     ticket.Value(),
+			})
+			db.AddTimeLockBalance(to, common.SystemAssetID, value, blockNumber, timestamp)
+		}
+		tickets = append(tickets[:i], tickets[i+1:]...)
+		db.tickets = tickets
+		break
+	}
+}
+
 // AllSwaps wacom
 func (db *StateDB) AllSwaps() (map[common.Hash]common.Swap, error) {
 	return nil, fmt.Errorf("AllSwaps has been depreciated please use api.fusionnetwork.io")
@@ -1340,25 +1383,24 @@ func (db *StateDB) RemoveMultiSwap(id common.Hash) error {
 	return nil
 }
 
-type assetsStruct struct {
-	HASH  common.Hash
-	ASSET common.Asset
+/** ReportIllegal
+ */
+
+// GetReport wacom
+func (db *StateDB) IsReportExist(report []byte) bool {
+	hash := crypto.Keccak256Hash(report)
+	data := db.GetStructData(common.ReportKeyAddress, hash.Bytes())
+	return len(data) > 0
 }
 
-type sortableAssetLURSlice []assetsStruct
-
-func (s sortableAssetLURSlice) Len() int {
-	return len(s)
-}
-
-func (s sortableAssetLURSlice) Less(i, j int) bool {
-	a, _ := new(big.Int).SetString(s[i].HASH.Hex(), 0)
-	b, _ := new(big.Int).SetString(s[j].HASH.Hex(), 0)
-	return a.Cmp(b) < 0
-}
-
-func (s sortableAssetLURSlice) Swap(i, j int) {
-	s[i], s[j] = s[j], s[i]
+// AddReport wacom
+func (db *StateDB) AddReport(report []byte) error {
+	if db.IsReportExist(report) {
+		return fmt.Errorf("AddReport error: report exists")
+	}
+	hash := crypto.Keccak256Hash(report)
+	db.SetStructData(common.ReportKeyAddress, hash.Bytes(), report)
+	return nil
 }
 
 // GetStructData wacom

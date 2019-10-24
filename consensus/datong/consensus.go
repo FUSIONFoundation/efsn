@@ -13,6 +13,7 @@ import (
 
 	"github.com/FusionFoundation/efsn/accounts"
 	"github.com/FusionFoundation/efsn/common"
+	"github.com/FusionFoundation/efsn/common/hexutil"
 	"github.com/FusionFoundation/efsn/consensus"
 	"github.com/FusionFoundation/efsn/core/rawdb"
 	"github.com/FusionFoundation/efsn/core/state"
@@ -44,9 +45,9 @@ var (
 
 	errMissingSignature = errors.New("extra-data 65 byte suffix signature missing")
 
-	errInvalidUncleHash = errors.New("non empty uncle hash")
-
 	errUnauthorized = errors.New("unauthorized")
+
+	ErrNoTicket = errors.New("Miner doesn't have ticket")
 )
 
 // SignerFn is a signer callback function to request a hash to be signed by a
@@ -58,8 +59,6 @@ var (
 	extraSeal           = 65
 	MinBlockTime int64  = 7   // 7 seconds
 	maxBlockTime uint64 = 600 // 10 minutes
-
-	emptyUncleHash = types.CalcUncleHash(nil)
 )
 
 // DaTong wacom
@@ -97,6 +96,20 @@ func (dt *DaTong) Author(header *types.Header) (common.Address, error) {
 	return header.Coinbase, nil
 }
 
+func VerifySignature(header *types.Header) error {
+	signature := header.Extra[len(header.Extra)-extraSeal:]
+	pubkey, err := crypto.Ecrecover(sigHash(header).Bytes(), signature)
+	if err != nil {
+		return err
+	}
+	var signer common.Address
+	copy(signer[:], crypto.Keccak256(pubkey[1:])[12:])
+	if header.Coinbase != signer {
+		return errors.New("Coinbase is not the signer")
+	}
+	return nil
+}
+
 // VerifyHeader checks whether a header conforms to the consensus rules of the
 // stock Ethereum ethash engine.
 func (dt *DaTong) verifyHeader(chain consensus.ChainReader, header *types.Header, seal bool, parents []*types.Header) error {
@@ -113,9 +126,6 @@ func (dt *DaTong) verifyHeader(chain consensus.ChainReader, header *types.Header
 	if len(header.Extra) < extraVanity+extraSeal {
 		return errMissingSignature
 	}
-	if header.UncleHash != emptyUncleHash {
-		return errInvalidUncleHash
-	}
 	if header.Time.Cmp(big.NewInt(time.Now().Unix())) > 0 {
 		return consensus.ErrFutureBlock
 	}
@@ -124,6 +134,14 @@ func (dt *DaTong) verifyHeader(chain consensus.ChainReader, header *types.Header
 	if err != nil {
 		return err
 	}
+	// verify pos hash
+	if common.GetPoSHashVersion(header.Number) < common.PosV2 {
+		if header.UncleHash != types.EmptyUncleHash {
+			return fmt.Errorf("non empty uncle hash")
+		}
+	} else if header.UncleHash != posHash(parent) {
+		return fmt.Errorf("PoS hash mismatch: have %x, want %x", header.UncleHash, posHash(parent))
+	}
 	// verify header time
 	if header.Time.Int64()-parent.Time.Int64() < MinBlockTime {
 		return fmt.Errorf("block %v header.Time:%v < parent.Time:%v + %v Second",
@@ -131,15 +149,8 @@ func (dt *DaTong) verifyHeader(chain consensus.ChainReader, header *types.Header
 
 	}
 	// verify signature
-	signature := header.Extra[len(header.Extra)-extraSeal:]
-	pubkey, err := crypto.Ecrecover(sigHash(header).Bytes(), signature)
-	if err != nil {
+	if err := VerifySignature(header); err != nil {
 		return err
-	}
-	var signer common.Address
-	copy(signer[:], crypto.Keccak256(pubkey[1:])[12:])
-	if header.Coinbase != signer {
-		return errors.New("Coinbase is not the signer")
 	}
 	// check block time
 	if err = dt.checkBlockTime(chain, header, parent); err != nil {
@@ -210,13 +221,12 @@ func getParent(chain consensus.ChainReader, header *types.Header, parents []*typ
 // the consensus rules of the given engine.
 func (dt *DaTong) verifySeal(chain consensus.ChainReader, header *types.Header, parent *types.Header) error {
 	// verify ticket
-	snap, err := newSnapshotWithData(getSnapDataByHeader(header))
+	snap, err := NewSnapshotFromHeader(header)
 	if err != nil {
 		return err
 	}
-	ticketID := snap.GetVoteTicket()
 	// verify ticket: list squence, ID , ticket Info, difficulty
-	diff, tk, listSq, _, errv := dt.calcBlockDifficulty(chain, header, parent)
+	diff, tk, listSq, retreat, errv := dt.calcBlockDifficulty(chain, header, parent)
 	if errv != nil {
 		return errv
 	}
@@ -225,8 +235,19 @@ func (dt *DaTong) verifySeal(chain consensus.ChainReader, header *types.Header, 
 		return errors.New("Coinbase is not the voted ticket owner")
 	}
 	// check ticket ID
-	if tk.ID != ticketID {
-		return fmt.Errorf("verifySeal ticketID mismatch, have %v, want %v", ticketID.String(), tk.ID.String())
+	if tk.ID != snap.Selected {
+		return fmt.Errorf("verifySeal ticketID mismatch, have %v, want %v", snap.Selected.String(), tk.ID.String())
+	}
+	if common.IsHeaderSnapCheckingEnabled(header.Number) {
+		// check retreat tickets
+		if len(retreat) != len(snap.Retreat) {
+			return fmt.Errorf("verifySeal retreat tickets count mismatch")
+		}
+		for i := 0; i < len(retreat); i++ {
+			if retreat[i].ID != snap.Retreat[i] {
+				return fmt.Errorf("verifySeal retreat tickets mismatch")
+			}
+		}
 	}
 	// check ticket info
 	errt := dt.checkTicketInfo(header, tk)
@@ -259,6 +280,11 @@ func (dt *DaTong) Prepare(chain consensus.ChainReader, header *types.Header) err
 	}
 	header.Extra = header.Extra[:extraVanity]
 	header.Extra = append(header.Extra, make([]byte, extraSeal)...)
+	if common.GetPoSHashVersion(header.Number) < common.PosV2 {
+		header.UncleHash = types.EmptyUncleHash
+	} else {
+		header.UncleHash = posHash(parent)
+	}
 	difficulty, _, order, _, err := dt.calcBlockDifficulty(chain, header, parent)
 	if err != nil {
 		return err
@@ -314,9 +340,9 @@ func (dt *DaTong) Finalize(chain consensus.ChainReader, header *types.Header, st
 	retreat := header.GetRetreatTickets()
 	if selected == nil {
 		log.Warn("Finalize shouldn't calc difficulty, as it's done in VerifyHeader or Prepare")
-		if common.DebugMode {
+		common.DebugCall(func() {
 			panic("Finalize shouldn't calc difficulty, as it's done in VerifyHeader or Prepare")
-		}
+		})
 		_, selected, _, retreat, err = dt.calcBlockDifficulty(chain, header, parent)
 		if err != nil {
 			return nil, err
@@ -324,6 +350,7 @@ func (dt *DaTong) Finalize(chain consensus.ChainReader, header *types.Header, st
 	}
 
 	snap := newSnapshot()
+	isInMining := header.MixDigest == (common.Hash{})
 
 	//update tickets
 	headerState := statedb
@@ -365,30 +392,45 @@ func (dt *DaTong) Finalize(chain consensus.ChainReader, header *types.Header, st
 
 	//delete tickets before coinbase if selected miner did not Seal
 	for i, t := range retreat {
-		if i >= maxNumberOfDeletedTickets {
-			break
+		if !isInMining && i == 0 {
+			common.DebugInfo("retreat ticket", "nonce", header.Nonce.Uint64(), "id", retreat[0].ID.String(), "owner", retreat[0].Owner, "blockHeight", header.Number, "ticketHeight", retreat[0].Height)
 		}
 		deleteTicket(t, ticketRetreat, !(t.IsInGenesis() || i == 0))
+	}
+
+	if common.IsVote1ForkBlock(header.Number) {
+		if common.IsInVote1DrainList(header.Coinbase) {
+			return nil, common.ErrAccountFrozen
+		}
+		ApplyVote1HardFork(headerState, header.Number, parent.Time.Uint64())
 	}
 
 	hash, err := headerState.UpdateTickets(header.Number, parent.Time.Uint64())
 	if err != nil {
 		return nil, errors.New("UpdateTickets failed: " + err.Error())
 	}
-	if header.MixDigest == (common.Hash{}) {
-		header.MixDigest = hash
-	} else if header.MixDigest != hash {
-		return nil, fmt.Errorf("MixDigest mismatch, have:%v, want:%v", header.MixDigest, hash)
-	}
 
 	snap.SetTicketNumber(int(headerState.TotalNumberOfTickets()))
 	snapBytes := snap.Bytes()
-	header.Extra = header.Extra[:extraVanity]
-	header.Extra = append(header.Extra, snapBytes...)
-	header.Extra = append(header.Extra, make([]byte, extraSeal)...)
-	headerState.AddBalance(header.Coinbase, common.SystemAssetID, calcRewards(header.Number))
-	header.Root = headerState.IntermediateRoot(chain.Config().IsEIP158(header.Number))
 
+	if isInMining {
+		header.MixDigest = hash
+		header.Extra = header.Extra[:extraVanity]
+		header.Extra = append(header.Extra, snapBytes...)
+		header.Extra = append(header.Extra, make([]byte, extraSeal)...)
+	} else {
+		if header.MixDigest != hash {
+			return nil, fmt.Errorf("MixDigest mismatch, have:%v, want:%v", header.MixDigest, hash)
+		}
+		if common.IsHeaderSnapCheckingEnabled(header.Number) {
+			if !bytes.Equal(getSnapData(header.Extra), snapBytes) {
+				return nil, fmt.Errorf("snapBytes in Extra mismatch")
+			}
+		}
+	}
+
+	headerState.AddBalance(header.Coinbase, common.SystemAssetID, CalcRewards(header.Number))
+	header.Root = headerState.IntermediateRoot(chain.Config().IsEIP158(header.Number))
 	return types.NewBlock(header, txs, nil, receipts), nil
 }
 
@@ -501,7 +543,7 @@ func (dt *DaTong) getAllTickets(chain consensus.ChainReader, header *types.Heade
 	parents := []*types.Header{parent}
 	for {
 		if parent = chain.GetHeader(parent.ParentHash, parent.Number.Uint64()-1); parent == nil {
-			return nil, fmt.Errorf("Can not find parent", "number", parent.Number.Uint64()-1, "hash", parent.ParentHash)
+			return nil, fmt.Errorf("Can not find parent, number=%v, hash=%v", parent.Number.Uint64()-1, parent.ParentHash.String())
 		}
 		statedb, err = state.New(parent.Root, parent.MixDigest, dt.stateCache)
 		if err == nil {
@@ -515,23 +557,30 @@ func (dt *DaTong) getAllTickets(chain consensus.ChainReader, header *types.Heade
 		parents = append(parents, parent)
 	}
 	log.Info("getAllTickets find tickets from past state", "current", header.Number, "past", parent.Number)
-	if common.DebugMode {
-		defer func(bstart time.Time) {
-			log.Info("getAllTickets from past state spend time", "duration", common.PrettyDuration(time.Since(bstart)))
-		}(time.Now())
-	}
+	defer func(bstart time.Time) {
+		common.DebugInfo("getAllTickets from past state spend time", "duration", common.PrettyDuration(time.Since(bstart)))
+	}(time.Now())
 
 	// deduct the current tickets
-	buyTicketTopic := common.Hash{}
-	buyTicketTopic[common.HashLength-1] = uint8(common.BuyTicketFunc)
-	processLog := func(l *types.Log) error {
-		if !(len(l.Topics) == 1 && l.Topics[0] == buyTicketTopic) {
-			return nil
+	getFuncType := func(l *types.Log) uint8 {
+		switch l.Address {
+		case common.FSNCallAddress:
+			if len(l.Topics) > 0 {
+				topic := l.Topics[0]
+				return topic[common.HashLength-1]
+			}
 		}
+		return 0xff
+	}
+	processBuyTicketLog := func(l *types.Log) error {
 		maps := make(map[string]interface{})
 		err := json.Unmarshal(l.Data, &maps)
 		if err != nil {
 			return err
+		}
+
+		if _, hasError := maps["Error"]; hasError {
+			return nil
 		}
 
 		idstr, idok := maps["TicketID"].(string)
@@ -560,6 +609,54 @@ func (dt *DaTong) getAllTickets(chain consensus.ChainReader, header *types.Heade
 		}
 		tickets, err = tickets.AddTicket(ticket)
 		return err
+	}
+	processReportLog := func(l *types.Log) error {
+		maps := make(map[string]interface{})
+		err := json.Unmarshal(l.Data, &maps)
+		if err != nil {
+			return err
+		}
+
+		if _, hasError := maps["Error"]; hasError {
+			return nil
+		}
+
+		ids, idsok := maps["DeleteTickets"].(string)
+		if !idsok {
+			return fmt.Errorf("report log has wrong data")
+		}
+
+		bs, err := hexutil.Decode(ids)
+		if err != nil {
+			return fmt.Errorf("decode hex data error: %v", err)
+		}
+		delTickets := []common.Hash{}
+		if err := rlp.DecodeBytes(bs, &delTickets); err != nil {
+			return fmt.Errorf("decode report log error: %v", err)
+		}
+
+		for _, id := range delTickets {
+			tickets, err = tickets.RemoveTicket(id)
+			if err != nil {
+				return err
+			}
+		}
+
+		return nil
+	}
+	processLog := func(l *types.Log) error {
+		funcType := getFuncType(l)
+		switch funcType {
+		case common.BuyTicketFunc:
+			if err := processBuyTicketLog(l); err != nil {
+				return err
+			}
+		case common.ReportIllegalFunc:
+			if err := processReportLog(l); err != nil {
+				return err
+			}
+		}
+		return nil
 	}
 	processSnap := func(h *types.Header) error {
 		snap, err := NewSnapshotFromHeader(h)
@@ -635,10 +732,13 @@ func getSnapDataByHeader(header *types.Header) []byte {
 
 func getSnapData(data []byte) []byte {
 	extraSuffix := len(data) - extraSeal
+	if extraSuffix < extraVanity {
+		return []byte{}
+	}
 	return data[extraVanity:extraSuffix]
 }
 
-func calcRewards(height *big.Int) *big.Int {
+func CalcRewards(height *big.Int) *big.Int {
 	var i int64
 	div2 := big.NewInt(2)
 	// initial reward 2.5
@@ -654,23 +754,37 @@ func calcRewards(height *big.Int) *big.Int {
 // get rid of header.Extra[0:extraVanity] of user custom data
 func posHash(header *types.Header) (hash common.Hash) {
 	hasher := sha3.NewKeccak256()
-	rlp.Encode(hasher, []interface{}{
-		header.ParentHash,
-		header.UncleHash,
-		header.Coinbase,
-		header.Root,
-		header.TxHash,
-		header.ReceiptHash,
-		header.Bloom,
-		header.Difficulty,
-		header.Number,
-		header.GasLimit,
-		header.GasUsed,
-		header.Time,
-		header.Extra[extraVanity : len(header.Extra)-extraSeal],
-		header.MixDigest,
-		header.Nonce,
-	})
+	switch common.GetPoSHashVersion(header.Number) {
+	case common.PosV1:
+		rlp.Encode(hasher, []interface{}{
+			header.ParentHash,
+			header.UncleHash,
+			header.Coinbase,
+			header.Root,
+			header.TxHash,
+			header.ReceiptHash,
+			header.Bloom,
+			header.Difficulty,
+			header.Number,
+			header.GasLimit,
+			header.GasUsed,
+			header.Time,
+			header.Extra[extraVanity : len(header.Extra)-extraSeal],
+			header.MixDigest,
+			header.Nonce,
+		})
+	case common.PosV2:
+		rlp.Encode(hasher, []interface{}{
+			header.UncleHash,
+			header.Coinbase,
+			header.Difficulty,
+			header.Number,
+			(header.Time.Uint64() >> 5) << 5,
+			header.Extra[extraVanity : len(header.Extra)-extraSeal],
+			header.MixDigest,
+			header.Nonce,
+		})
+	}
 	hasher.Sum(hash[:0])
 	return hash
 }
@@ -723,7 +837,7 @@ func (dt *DaTong) calcBlockDifficulty(chain consensus.ChainReader, header *types
 		}
 	}
 	if !haveTicket {
-		return nil, nil, 0, nil, fmt.Errorf("Miner doesn't have ticket at block height %v", parent.Number)
+		return nil, nil, 0, nil, ErrNoTicket
 	}
 	ticketsTotalAmount, numberOfticketOwners := parentTickets.NumberOfTicketsAndOwners()
 
@@ -745,20 +859,22 @@ func (dt *DaTong) calcBlockDifficulty(chain consensus.ChainReader, header *types
 	}
 	close(ch)
 	sort.Sort(list)
-	for _, t := range list {
+	selectedTime := uint64(0)
+	for i, t := range list {
 		owner := t.tk.Owner
 		if owner == header.Coinbase {
 			selected = t.tk
 			break
 		} else {
-			retreat = append(retreat, t.tk) // one miner one selected ticket
+			selectedTime++
+			if i < maxNumberOfDeletedTickets {
+				retreat = append(retreat, t.tk) // one miner one selected ticket
+			}
 		}
 	}
 	if selected == nil {
 		return nil, nil, 0, nil, errors.New("myself tickets not selected in maxBlockTime")
 	}
-
-	selectedTime := uint64(len(retreat))
 
 	// cacl difficulty
 	difficulty := new(big.Int).SetUint64(ticketsTotalAmount - selectedTime)
@@ -861,4 +977,24 @@ func (dt *DaTong) checkBlockTime(chain consensus.ChainReader, header *types.Head
 
 func (dt *DaTong) SetStateCache(stateCache state.Database) {
 	dt.stateCache = stateCache
+}
+
+func DecodeLogData(data []byte) (interface{}, error) {
+	maps := make(map[string]interface{})
+	if err := json.Unmarshal(data, &maps); err != nil {
+		return nil, fmt.Errorf("json unmarshal err: %v", err)
+	}
+	if datastr, dataok := maps["Base"].(string); dataok {
+		data, err := base64.StdEncoding.DecodeString(datastr)
+		if err != nil {
+			return nil, fmt.Errorf("base64 decode err: %v", err)
+		}
+		buyTicketParam := common.BuyTicketParam{}
+		if err = rlp.DecodeBytes(data, &buyTicketParam); err == nil {
+			delete(maps, "Base")
+			maps["StartTime"] = buyTicketParam.Start
+			maps["ExpireTime"] = buyTicketParam.End
+		}
+	}
+	return maps, nil
 }

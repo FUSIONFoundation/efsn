@@ -112,6 +112,11 @@ func (b *LesApiBackend) GetEVM(ctx context.Context, msg core.Message, state *sta
 }
 
 func (b *LesApiBackend) SendTx(ctx context.Context, signedTx *types.Transaction) error {
+	if common.IsTransactionFrozen(b.CurrentBlock().Number()) {
+		if !signedTx.IsBuyTicketTx() {
+			return common.ErrTransactionsFrozen
+		}
+	}
 	return b.eth.txPool.Add(ctx, signedTx)
 }
 
@@ -125,6 +130,10 @@ func (b *LesApiBackend) GetPoolTransactions() (types.Transactions, error) {
 
 func (b *LesApiBackend) GetPoolTransaction(txHash common.Hash) *types.Transaction {
 	return b.eth.txPool.GetTransaction(txHash)
+}
+
+func (b *LesApiBackend) GetPoolTransactionByPredicate(predicate func(*types.Transaction) bool) *types.Transaction {
+	return b.eth.txPool.GetTransactionByPredicate(predicate)
 }
 
 func (b *LesApiBackend) GetPoolNonce(ctx context.Context, addr common.Address) (uint64, error) {
@@ -203,4 +212,8 @@ func (b *LesApiBackend) ServiceFilter(ctx context.Context, session *bloombits.Ma
 
 func (b *LesApiBackend) IsMining() bool {
 	return true
+}
+
+func (b *LesApiBackend) Coinbase() (common.Address, error) {
+	return common.Address{}, nil
 }

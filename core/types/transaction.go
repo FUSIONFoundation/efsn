@@ -257,6 +257,18 @@ func (tx *Transaction) IsBuyTicketTx() bool {
 	return param.Func == common.BuyTicketFunc
 }
 
+func (tx *Transaction) GetOrder() int {
+	param := common.FSNCallParam{}
+	rlp.DecodeBytes(tx.Data(), &param)
+	switch param.Func {
+	case common.ReportIllegalFunc:
+		return 1000
+	case common.BuyTicketFunc:
+		return 900
+	}
+	return 0
+}
+
 // Transactions is a Transaction slice type for basic sorting.
 type Transactions []*Transaction
 
@@ -305,11 +317,10 @@ type TxByPrice Transactions
 
 func (s TxByPrice) Len() int { return len(s) }
 func (s TxByPrice) Less(i, j int) bool {
-	if s[i].IsBuyTicketTx() {
-		return true
-	}
-	if s[j].IsBuyTicketTx() {
-		return false
+	order1 := s[i].GetOrder()
+	order2 := s[j].GetOrder()
+	if order1 != order2 { // higher order first
+		return order1 > order2
 	}
 	return s[i].data.Price.Cmp(s[j].data.Price) > 0
 }

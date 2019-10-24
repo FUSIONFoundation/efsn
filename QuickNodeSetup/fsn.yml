@@ -136,7 +136,15 @@ Resources:
             --==BOUNDARY==
             Content-Type: text/x-shellscript; charset="us-ascii"
             #!/bin/bash
-            # Set any ECS agent configuration options
+            mkfs.ext4 /dev/xvdh
+            echo "/dev/xvdh  /home  ext4  defaults,discard,noatime,nodiratime  0 0" >> /etc/fstab
+            mv /home /home_old
+            mkdir /home
+            mount /home
+            # dotglob makes sure that hidden (dot) files are included
+            shopt -s dotglob
+            mv /home_old/* /home
+            rmdir /home_old
             mkdir -p /fusion-nodes/keystore
             # echo "password val" >> /fusion-nodes/password.txt
             # echo "keystore val" >> /fusion-nodes/keystore/UTC.txt
