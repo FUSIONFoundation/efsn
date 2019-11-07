@@ -144,6 +144,10 @@ var (
 		Name:  "devnet",
 		Usage: "Develop network: pre-configured proof-of-stake test network",
 	}
+	DevnetAddrFlag = cli.StringFlag{
+		Name:  "devnetaddr",
+		Usage: "Develop network genesis address",
+	}
 	DeveloperFlag = cli.BoolFlag{
 		Name:  "dev",
 		Usage: "Ephemeral proof-of-authority network with a pre-funded developer account, mining enabled",
@@ -1258,6 +1262,13 @@ func SetEthConfig(ctx *cli.Context, stack *node.Node, cfg *eth.Config) {
 			cfg.NetworkId = params.DevnetChainConfig.ChainID.Uint64()
 		}
 		cfg.Genesis = core.DefaultDevnetGenesisBlock()
+		if ctx.GlobalIsSet(DevnetAddrFlag.Name) {
+			devnetAddr := common.HexToAddress(ctx.GlobalString(DevnetAddrFlag.Name))
+			balance := new(big.Int).Mul(big.NewInt(1e8), big.NewInt(1e18))
+			genesisAccount := core.GenesisAccount{Balance: balance}
+			cfg.Genesis.TicketCreateInfo.Owner = devnetAddr
+			cfg.Genesis.Alloc[devnetAddr] = genesisAccount
+		}
 	case ctx.GlobalBool(DeveloperFlag.Name):
 		if !ctx.GlobalIsSet(NetworkIdFlag.Name) {
 			cfg.NetworkId = params.AllCliqueProtocolChanges.ChainID.Uint64()
