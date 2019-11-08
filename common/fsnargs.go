@@ -8,6 +8,7 @@ import (
 
 type FSNBaseArgsInterface interface {
 	BaseArgs() *FusionBaseArgs
+	ToData() ([]byte, error)
 }
 
 func (args *FusionBaseArgs) BaseArgs() *FusionBaseArgs {
@@ -45,8 +46,9 @@ type SendAssetArgs struct {
 // TimeLockArgs wacom
 type TimeLockArgs struct {
 	SendAssetArgs
-	StartTime *hexutil.Uint64 `json:"start"`
-	EndTime   *hexutil.Uint64 `json:"end"`
+	StartTime    *hexutil.Uint64 `json:"start"`
+	EndTime      *hexutil.Uint64 `json:"end"`
+	TimeLockType TimeLockType    `json:"type"`
 }
 
 // BuyTicketArgs wacom
@@ -127,6 +129,10 @@ type TakeMultiSwapArgs struct {
 
 //////////////////// args ToParam, ToData, Init ///////////////////////
 
+func (args *FusionBaseArgs) ToData() ([]byte, error) {
+	return nil, nil
+}
+
 func (args *SendAssetArgs) ToParam() *SendAssetParam {
 	return &SendAssetParam{
 		AssetID: args.AssetID,
@@ -139,9 +145,9 @@ func (args *SendAssetArgs) ToData() ([]byte, error) {
 	return args.ToParam().ToBytes()
 }
 
-func (args *TimeLockArgs) ToParam(typ TimeLockType) *TimeLockParam {
+func (args *TimeLockArgs) ToParam() *TimeLockParam {
 	return &TimeLockParam{
-		Type:      typ,
+		Type:      args.TimeLockType,
 		AssetID:   args.AssetID,
 		To:        args.To,
 		StartTime: uint64(*args.StartTime),
@@ -150,8 +156,8 @@ func (args *TimeLockArgs) ToParam(typ TimeLockType) *TimeLockParam {
 	}
 }
 
-func (args *TimeLockArgs) ToData(typ TimeLockType) ([]byte, error) {
-	return args.ToParam(typ).ToBytes()
+func (args *TimeLockArgs) ToData() ([]byte, error) {
+	return args.ToParam().ToBytes()
 }
 
 func (args *GenAssetArgs) ToParam() *GenAssetParam {
@@ -207,7 +213,8 @@ func (args *AssetValueChangeExArgs) ToData() ([]byte, error) {
 	return args.ToParam().ToBytes()
 }
 
-func (args *MakeSwapArgs) Init() {
+func (args *MakeSwapArgs) Init(time *big.Int) {
+	args.Time = time
 
 	if args.FromStartTime == nil {
 		args.FromStartTime = new(hexutil.Uint64)
@@ -230,7 +237,7 @@ func (args *MakeSwapArgs) Init() {
 	}
 }
 
-func (args *MakeSwapArgs) ToParam(time *big.Int) *MakeSwapParam {
+func (args *MakeSwapArgs) ToParam() *MakeSwapParam {
 	return &MakeSwapParam{
 		FromAssetID:   args.FromAssetID,
 		FromStartTime: uint64(*args.FromStartTime),
@@ -242,13 +249,13 @@ func (args *MakeSwapArgs) ToParam(time *big.Int) *MakeSwapParam {
 		MinToAmount:   args.MinToAmount.ToInt(),
 		SwapSize:      args.SwapSize,
 		Targes:        args.Targes,
-		Time:          time,
+		Time:          args.Time,
 		Description:   args.Description,
 	}
 }
 
-func (args *MakeSwapArgs) ToData(time *big.Int) ([]byte, error) {
-	return args.ToParam(time).ToBytes()
+func (args *MakeSwapArgs) ToData() ([]byte, error) {
+	return args.ToParam().ToBytes()
 }
 
 func (args *RecallSwapArgs) ToParam() *RecallSwapParam {
@@ -272,7 +279,8 @@ func (args *TakeSwapArgs) ToData() ([]byte, error) {
 	return args.ToParam().ToBytes()
 }
 
-func (args *MakeMultiSwapArgs) Init() {
+func (args *MakeMultiSwapArgs) Init(time *big.Int) {
+	args.Time = time
 
 	ln := len(args.MinFromAmount)
 
@@ -323,8 +331,7 @@ func (args *MakeMultiSwapArgs) Init() {
 	}
 }
 
-func (args *MakeMultiSwapArgs) ToParam(time *big.Int) *MakeMultiSwapParam {
-
+func (args *MakeMultiSwapArgs) ToParam() *MakeMultiSwapParam {
 	fromStartTime := make([]uint64, len(args.FromStartTime))
 	for i := 0; i < len(args.FromStartTime); i++ {
 		fromStartTime[i] = uint64(*args.FromStartTime[i])
@@ -360,13 +367,13 @@ func (args *MakeMultiSwapArgs) ToParam(time *big.Int) *MakeMultiSwapParam {
 		MinToAmount:   minToAmount,
 		SwapSize:      args.SwapSize,
 		Targes:        args.Targes,
-		Time:          time,
+		Time:          args.Time,
 		Description:   args.Description,
 	}
 }
 
-func (args *MakeMultiSwapArgs) ToData(time *big.Int) ([]byte, error) {
-	return args.ToParam(time).ToBytes()
+func (args *MakeMultiSwapArgs) ToData() ([]byte, error) {
+	return args.ToParam().ToBytes()
 }
 
 func (args *RecallMultiSwapArgs) ToParam() *RecallMultiSwapParam {
@@ -390,7 +397,8 @@ func (args *TakeMultiSwapArgs) ToData() ([]byte, error) {
 	return args.ToParam().ToBytes()
 }
 
-func (args *TimeLockArgs) Init() {
+func (args *TimeLockArgs) Init(timeLockType TimeLockType) {
+	args.TimeLockType = timeLockType
 
 	if args.StartTime == nil {
 		args.StartTime = new(hexutil.Uint64)
