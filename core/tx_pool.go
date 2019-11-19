@@ -1377,11 +1377,8 @@ func (pool *TxPool) validateAddFsnCallTx(tx *types.Transaction) error {
 			} else if tx1.IsBuyTicketTx() {
 				sender, _ := types.Sender(pool.signer, tx1)
 				if from == sender {
-					if tx.Nonce() < tx1.Nonce() {
-						oldTxHash = hash
-					} else if tx.Nonce() > tx1.Nonce() {
-						found = true
-					}
+					// always choose latest buy ticket tx
+					oldTxHash = hash
 					return false
 				}
 			}
