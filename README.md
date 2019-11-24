@@ -54,6 +54,8 @@ Remember to:
 
 4. (Optional) Add flag "-a" or "--autobt" to enable ticket auto-buy.
 
+5. (Optional) Add flag "-tn" or "--testnet" to connect to the public testnet.
+
 `Note: The password file must be named password.txt and the keystore file name must start with UTC...`
 
 ## How to run a Gateway

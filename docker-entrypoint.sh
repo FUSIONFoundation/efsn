@@ -5,14 +5,16 @@ DATA_DIR=$NODES_ROOT/data
 KEYSTORE_DIR=$DATA_DIR/keystore
 unlock=
 ethstats=
-autobt="false"
-mining="true"
+testnet=
+autobt=false
+mining=true
 
 display_usage() {
     echo "Commands for Fusion efsn:"
     echo -e "-e value    Reporting name of a ethstats service"
     echo -e "-u value    Account to unlock"
     echo -e "-a          Auto buy tickets"
+    echo -e "-tn         Connect to testnet"
     }
 
 while [ "$1" != "" ]; do
@@ -23,9 +25,11 @@ while [ "$1" != "" ]; do
         -e | --ethstats )       shift
                                 ethstats=$1
                                 ;;
-        -a | --autobt )         autobt="true"
+        -tn | --testnet )       testnet=true
                                 ;;
-        --disable-mining )      mining="false"
+        -a | --autobt )         autobt=true
+                                ;;
+        --disable-mining )      mining=false
                                 ;;
         * )                     display_usage
                                 exit 1
@@ -49,12 +53,19 @@ cp $NODES_ROOT/UTC* $KEYSTORE_DIR/ 2>/dev/null
 # format command option
 cmd_options="--datadir $DATA_DIR --password /fusion-node/password.txt"
 
-                                                                                                                                                                                                         
+if [ "$testnet" ]; then
+    testnet=" --testnet"
+    cmd_options=$cmd_options$testnet
+fi                                                                                                                                                                                                         
                                                                                                                                                                                                    
-
 if [ "$ethstats" ]; then
-    ethstats=" --ethstats $ethstats:fsnMainnet@node.fusionnetwork.io"
-    cmd_options=$cmd_options$ethstats
+    if [ "$testnet" ]; then
+        ethstats=" --ethstats $ethstats:devFusioInfo2019142@devnodestats.fusionnetwork.io"
+        cmd_options=$cmd_options$ethstats
+    else 
+        ethstats=" --ethstats $ethstats:fsnMainnet@node.fusionnetwork.io"
+        cmd_options=$cmd_options$ethstats
+    fi
 fi
 
 if [ "$unlock" ]; then
@@ -82,12 +93,12 @@ if [ "$unlock" ]; then
     cmd_options=$cmd_options$unlock
 fi
 
-if [ "$autobt" = "true" ]; then
+if [ "$autobt" = true ]; then
     autobt=" --autobt"
     cmd_options=$cmd_options$autobt
 fi
 
-if [ "$mining" = "true" ]; then
+if [ "$mining" = true ]; then
     mining=" --mine"
     cmd_options=$cmd_options$mining
 fi
