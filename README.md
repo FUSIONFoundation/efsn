@@ -70,7 +70,13 @@ Install Docker first, e.g. on Ubuntu do `sudo apt-get install docker.io`
 
 ### Run a Gateway from the image
 
+1. Connect to mainnet
+
 `docker run -it -p 9000:9000 -p 9001:9001 -p 40408:40408 -v YOURDIRECTORY:/fusion-node fusionnetwork/gateway`
+
+2. Connect to testnet
+
+`docker run -it -p 9000:9000 -p 9001:9001 -p 40408:40408 -v YOURDIRECTORY:/fusion-node fusionnetwork/gateway -tn`
 
 ### Build your own Gateway image (optional)
 

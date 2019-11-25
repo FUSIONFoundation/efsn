@@ -13,9 +13,6 @@ display_usage() {
 
 while [ "$1" != "" ]; do
     case $1 in
-        -u | --unlock )         shift
-                                unlock=$1
-                                ;;
         -e | --ethstats )       shift
                                 ethstats=$1
                                 ;;
