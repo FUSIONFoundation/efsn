@@ -15,4 +15,9 @@ COPY --from=builder /efsn/build/bin/efsn /usr/local/bin/
 
 EXPOSE 9000 9000/udp 9001 9001/udp 40407 40407/udp 40408 40408/udp
 
-ENTRYPOINT ["efsn", "--identity", "1", "--datadir", "/fusion-node", "--rpc" , "--ws", "--rpcaddr" , "0.0.0.0", "--gasprice" , "0", "--rpccorsdomain" , "*", "--wsorigins", "*", "--wsapi", "eth,net,fsn,fsntx", "--rpcapi", "eth,net,fsn,fsntx", "--wsaddr", "0.0.0.0", "--wsport", "9001", "--rpcport", "9000"]
+COPY ./docker-entrypoint-gtw.sh /usr/local/bin
+
+RUN chmod a+x /usr/local/bin/docker-entrypoint-gtw.sh \
+  && ln -s /usr/local/bin/docker-entrypoint-gtw.sh / # Needed for backwards compatability
+
+ENTRYPOINT ["docker-entrypoint-gtw.sh"]

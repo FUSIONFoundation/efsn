@@ -5,6 +5,7 @@ DATA_DIR=$NODES_ROOT/data
 KEYSTORE_DIR=$DATA_DIR/keystore
 unlock=
 ethstats=
+testnet=
 autobt=false
 
 display_usage() { 
@@ -12,6 +13,7 @@ display_usage() {
     echo -e "\n-e value    Reporting name of a ethstats service" 
     echo -e "\n-u value    Account to unlock" 
     echo -e "\n-a          Auto buy tickets" 
+    echo -e "\n-tn         Connect to testnet" 
     } 
 
 while [ "$1" != "" ]; do
@@ -19,8 +21,10 @@ while [ "$1" != "" ]; do
         -u | --unlock )         shift
                                 unlock=$1
                                 ;;
-        -e | --ethstats )           shift
+        -e | --ethstats )       shift
                                 ethstats=$1
+                                ;;
+        -tn | --testnet )       testnet=true
                                 ;;
         -a | --autobt )         autobt=true
                                 ;;
@@ -50,9 +54,19 @@ cmd_options="--datadir $DATA_DIR --password /fusion-node/password.txt --mine"
 # cmd_options_local_gtw=' --identity 1 --rpc --ws --rpcaddr 127.0.0.1 --rpccorsdomain 127.0.0.1 --wsapi "eth,net,fsn,fsntx" --rpcapi "eth,net,fsn,fsntx" --wsaddr 127.0.0.1 --wsport 9001 --rpcport 9000'
 cmd_options_local_gtw=' --rpc --ws --rpcaddr 0.0.0.0 --rpccorsdomain 0.0.0.0  --wsapi="eth,net,fsn,fsntx" --rpcapi="eth,net,fsn,fsntx" --wsaddr 0.0.0.0 --wsport 9001 --wsorigins=* --rpcport 9000'
 
+if [ "$testnet" ]; then
+    testnet=" --testnet"
+    cmd_options=$cmd_options$testnet
+fi     
+
 if [ "$ethstats" ]; then
-    ethstats=" --ethstats $ethstats:fsnMainnet@node.fusionnetwork.io"
-    cmd_options=$cmd_options$ethstats 
+    if [ "$testnet" ]; then
+        ethstats=" --ethstats $ethstats:devFusioInfo2019142@devnodestats.fusionnetwork.io"
+        cmd_options=$cmd_options$ethstats
+    else 
+        ethstats=" --ethstats $ethstats:fsnMainnet@node.fusionnetwork.io"
+        cmd_options=$cmd_options$ethstats
+    fi
 fi
 
 if [ "$unlock" ]; then
