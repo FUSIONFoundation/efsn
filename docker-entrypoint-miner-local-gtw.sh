@@ -5,14 +5,16 @@ DATA_DIR=$NODES_ROOT/data
 KEYSTORE_DIR=$DATA_DIR/keystore
 unlock=
 ethstats=
-autobt="false"
-mining="true"
+testnet=
+autobt=false
+mining=true
 
 display_usage() {
     echo "Commands for Fusion efsn:"
     echo -e "-e value    Reporting name of a ethstats service"
     echo -e "-u value    Account to unlock"
     echo -e "-a          Auto buy tickets"
+    echo -e "-tn         Connect to testnet"
     }
 
 while true; do
@@ -23,9 +25,11 @@ while true; do
         -e | --ethstats )       shift
                                 ethstats=$1
                                 ;;
-        -a | --autobt )         autobt="true"
+        -tn | --testnet )       testnet=true
                                 ;;
-        --disable-mining )      mining="false"
+        -a | --autobt )         autobt=true
+                                ;;
+        --disable-mining )      mining=false
                                 ;;
         * )                     display_usage
                                 exit 1
@@ -52,8 +56,16 @@ cmd_options="--datadir $DATA_DIR --password /fusion-node/password.txt"
 # cmd_options_local_gtw=' --identity 1 --rpc --ws --rpcaddr 127.0.0.1 --rpccorsdomain 127.0.0.1 --wsapi "eth,net,fsn,fsntx" --rpcapi "eth,net,fsn,fsntx" --wsaddr 127.0.0.1 --wsport 9001 --rpcport 9000'
 cmd_options_local_gtw=' --rpc --ws --rpcaddr 0.0.0.0 --rpccorsdomain 0.0.0.0  --wsapi="eth,net,fsn,fsntx" --rpcapi="eth,net,fsn,fsntx" --wsaddr 0.0.0.0 --wsport 9001 --wsorigins=* --rpcport 9000'
 
+if [ "$testnet" ]; then
+    testnet=" --testnet"
+    cmd_options=$cmd_options$testnet
+fi     
 if [ "$ethstats" ]; then
-    ethstats=" --ethstats $ethstats:fsnMainnet@node.fusionnetwork.io"
+    if [ "$testnet" ]; then
+        ethstats=" --ethstats $ethstats:devFusioInfo2019142@devnodestats.fusionnetwork.io"
+    else 
+        ethstats=" --ethstats $ethstats:fsnMainnet@node.fusionnetwork.io"
+    fi
     cmd_options=$cmd_options$ethstats
 fi
 
@@ -82,7 +94,7 @@ if [ "$unlock" ]; then
     cmd_options=$cmd_options$unlock
 fi
 
-if [ "$autobt" = "true" ]; then
+if [ "$autobt" = true ]; then
     autobt=" --autobt"
     cmd_options=$cmd_options$autobt
 fi
