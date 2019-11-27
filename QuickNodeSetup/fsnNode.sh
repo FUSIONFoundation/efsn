@@ -123,20 +123,11 @@ sanityChecks() {
 
 checkUpdate() {
     local nodetype="$(getCfgValue 'nodeType')"
-    local testnet="$(getCfgValue 'testnet')"
-
-    if [ "$testnet" = "true" ]; then
-        # add testnet suffix to image
-        imageprefix="testnet-"
-    else
-        # don't add testnet suffix to image
-        imageprefix=""
-    fi
 
     # get the container creation date as unix epoch for easy comparison
     local dateCreated=$(date -d "$(docker inspect -f "{{.Created}}" fusion 2>/dev/null)" '+%s')
     # query the Docker Hub registry for when the image was last updated
-    local dateUpdated="$(curl -fsL "https://registry.hub.docker.com/v2/repositories/fusionnetwork/${imageprefix}$nodetype" | jq -r '.last_updated')"
+    local dateUpdated="$(curl -fsL "https://registry.hub.docker.com/v2/repositories/fusionnetwork/$nodetype" | jq -r '.last_updated')"
     # make sure that no update is triggered if the registry returns no data
     [ -z "$dateUpdated" ] && dateUpdated=0 || dateUpdated=$(date -d "$dateUpdated" '+%s')
     # if the container is older than dateUpdated return 0, otherwise return 1
@@ -495,11 +486,11 @@ createContainer() {
     echo "${txtgrn}✓${txtrst} Read node configuration"
 
     if [ "$testnet" = "true" ]; then
-        # add testnet prefix to image
-        imageprefix="testnet-"
+        # run testnet node
+        testnet="--testnet"
     else
-        # don't add testnet prefix to image
-        iamgeprefix=""
+        # run mainnet node
+        testnet=""
     fi
 
     if [ "$autobuy" = "true" ]; then
@@ -527,35 +518,25 @@ createContainer() {
         sudo docker create --name fusion -t --restart unless-stopped \
             -p 127.0.0.1:9000:9000 -p 127.0.0.1:9001:9001 -p 40408:40408 -p 40408:40408/udp \
             -v "$BASE_DIR/fusion-node":/fusion-node \
-            fusionnetwork/${imageprefix}minerandlocalgateway \
-            -u "$address" $autobuy $mining \
+            fusionnetwork/minerandlocalgateway \
+            -u "$address" $testnet $autobuy $mining \
             -e "$nodename"
 
     elif [ "$nodetype" = "efsn" ]; then
         sudo docker create --name fusion -t --restart unless-stopped \
             -p 40408:40408 -p 40408:40408/udp \
             -v "$BASE_DIR/fusion-node":/fusion-node \
-            fusionnetwork/${imageprefix}efsn \
-            -u "$address" $autobuy $mining \
+            fusionnetwork/efsn \
+            -u "$address" $testnet $autobuy $mining \
             -e "$nodename"
 
     elif [ "$nodetype" = "gateway" ]; then
-        # the gateway image doesn't have an entrypoint script,
-        # so we're passing the ethstats option directly to efsn
-        local ethstats
-        if [ -n "$nodename" ]; then
-            # set node name to be shown on node explorer
-            ethstats="--ethstats $nodename:fsnMainnet@node.fusionnetwork.io"
-        else
-            # node won't be listed on node explorer
-            ethstats=""
-        fi
-
         sudo docker create --name fusion -t --restart unless-stopped \
             -p 127.0.0.1:9000:9000 -p 127.0.0.1:9001:9001 -p 40408:40408 -p 40408:40408/udp \
             -v "$BASE_DIR/fusion-node":/fusion-node \
-            fusionnetwork/${imageprefix}gateway \
-            $ethstats
+            fusionnetwork/gateway \
+            $testnet \
+            -e "$nodename"
 
     else
         echo "${txtred}Invalid node type${txtrst}"
