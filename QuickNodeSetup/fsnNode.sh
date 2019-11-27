@@ -307,7 +307,7 @@ updateKeystorePass() {
 
 updateExplorerListing() {
     echo
-    question="${txtylw}Do you want your node to be listed on node.fusionnetwork.io?${txtrst} [Y/n] "
+    question="${txtylw}Do you want your node to be listed on the node explorer?${txtrst} [Y/n] "
     local nodename
     askToContinue "$question"
     if [ $? -eq 0 ]; then
@@ -851,10 +851,10 @@ change_explorer() {
     local nodename="$(getCfgValue 'nodeName')"
     if [ -n "$nodename" ]; then
         echo
-        echo "The node is currently listed on node.fusionnetwork.io as ${txtgrn}$nodename${txtrst}"
+        echo "The node is currently listed on the node explorer as ${txtgrn}$nodename${txtrst}"
     else
         echo
-        echo "The node is currently not listed on node.fusionnetwork.io"
+        echo "The node is currently not listed on the node explorer"
     fi
     local question="${txtylw}Do you want to change this setting? Doing so will enforce a node update and restart!${txtrst} [Y/n] "
     askToContinue "$question"
