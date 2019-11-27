@@ -23,8 +23,7 @@ var (
 )
 
 func IsTransactionFrozen(blockNumber *big.Int) bool {
-	height := blockNumber.Uint64()
-	return height <= VOTE1_FREEZE_TX_END && height >= VOTE1_FREEZE_TX_START
+	return false
 }
 
 func IsVote1ForkBlock(blockNumber *big.Int) bool {

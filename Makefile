@@ -11,6 +11,11 @@
 GOBIN = $(shell pwd)/build/bin
 GO ?= latest
 
+# to prevent mistakely run 'bash Makefile',
+# which will execute dangerous command 'rm /*'
+ifneq ($(GOBIN),)
+endif
+
 efsn:
 	build/env.sh go run build/ci.go install ./cmd/efsn
 	@echo "Done building."

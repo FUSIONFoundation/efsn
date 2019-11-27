@@ -15,43 +15,55 @@ var (
 	termTimeFormat  = "01-02|15:04:05.000"
 )
 
-func encode(v interface{}) interface{} {
-	if v == nil {
-		return nil
+func encode(value interface{}) interface{} {
+	if value == nil {
+		return "nil"
 	}
-	switch v.(type) {
-	case string:
-		return v
-	case []byte:
-		return hex.EncodeToString(v.([]byte))
-	case Address:
-		return v.(Address).String()
-	case Hash:
-		return v.(Hash).String()
+	switch v := value.(type) {
+	case time.Time:
+		return v.Format(termTimeFormat)
+
+	case error:
+		return v.Error()
+
+	case fmt.Stringer:
+		return v.String()
+
 	case []string:
-		return fmt.Sprintf("%v", v.([]string))
-	case []Address:
+		return fmt.Sprintf("%+q", v)
+
+	case []byte:
+		return hex.EncodeToString(v)
+
+	case [][]byte:
 		str := "[ "
-		for _, item := range v.([]Address) {
-			str += item.String() + " "
+		for _, item := range v {
+			str += hex.EncodeToString(item) + " "
 		}
 		str += "]"
 		return str
-	case []Hash:
-		str := "[ "
-		for _, item := range v.([]Hash) {
-			str += item.String() + " "
+
+	default:
+		t := reflect.TypeOf(v)
+		if t.Kind() != reflect.Slice {
+			return v
 		}
-		str += "]"
-		return str
-	}
-	vv := reflect.ValueOf(v)
-	if method, ok := vv.Type().MethodByName("String"); ok {
-		if method.Func.Type().NumIn() == 1 && method.Func.Type().NumOut() > 0 {
-			return method.Func.Call([]reflect.Value{vv})[0]
+		s := reflect.ValueOf(v)
+		if s.Len() == 0 || !s.Index(0).CanInterface() {
+			return v
 		}
+		switch s.Index(0).Interface().(type) {
+		case fmt.Stringer:
+			str := "[ "
+			for i := 0; i < s.Len(); i++ {
+				elem := s.Index(i).Interface()
+				str += elem.(fmt.Stringer).String() + " "
+			}
+			str += "]"
+			return str
+		}
+		return v
 	}
-	return v
 }
 
 func subject(msg string) string {

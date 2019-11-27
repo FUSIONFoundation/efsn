@@ -60,6 +60,7 @@ if [ "$testnet" ]; then
     testnet=" --testnet"
     cmd_options=$cmd_options$testnet
 fi     
+
 if [ "$ethstats" ]; then
     if [ "$testnet" ]; then
         ethstats=" --ethstats $ethstats:devFusioInfo2019142@devnodestats.fusionnetwork.io"

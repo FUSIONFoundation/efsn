@@ -655,7 +655,7 @@ func (pool *TxPool) add(tx *types.Transaction, local bool) (bool, error) {
 		return false, err
 	}
 	// If the transaction is an invalid FsnCall tx, discard it
-	if err := pool.validateFsnCallTx(tx); err != nil {
+	if err := pool.validateAddFsnCallTx(tx); err != nil {
 		invalidTxCounter.Inc(1)
 		return false, err
 	}
@@ -1362,6 +1362,38 @@ func (t *txLookup) Remove(hash common.Hash) {
 	delete(t.all, hash)
 }
 
+func (pool *TxPool) validateAddFsnCallTx(tx *types.Transaction) error {
+	if err := pool.validateFsnCallTx(tx); err != nil {
+		return err
+	}
+	if tx.IsBuyTicketTx() {
+		from, _ := types.Sender(pool.signer, tx) // already validated
+		found := false
+		var oldTxHash common.Hash
+		pool.all.Range(func(hash common.Hash, tx1 *types.Transaction) bool {
+			if hash == tx.Hash() {
+				found = true
+				return false
+			} else if tx1.IsBuyTicketTx() {
+				sender, _ := types.Sender(pool.signer, tx1)
+				if from == sender {
+					// always choose latest buy ticket tx
+					oldTxHash = hash
+					return false
+				}
+			}
+			return true
+		})
+		if found == true {
+			return fmt.Errorf("%v has already bought a ticket in txpool", from.String())
+		}
+		if oldTxHash != (common.Hash{}) {
+			pool.removeTx(oldTxHash, true)
+		}
+	}
+	return nil
+}
+
 func (pool *TxPool) validateFsnCallTx(tx *types.Transaction) error {
 	to := tx.To()
 	if !common.IsFsnCall(to) {
@@ -1473,29 +1505,6 @@ func (pool *TxPool) validateFsnCallTx(tx *types.Transaction) error {
 
 		if state.GetTimeLockBalance(common.SystemAssetID, from).Cmp(needValue) < 0 {
 			fsnValue = value
-		}
-
-		found := false
-		var oldTxHash common.Hash
-		pool.all.Range(func(hash common.Hash, tx1 *types.Transaction) bool {
-			if tx1 != tx && tx1.IsBuyTicketTx() {
-				sender, _ := types.Sender(pool.signer, tx1)
-				if from == sender {
-					if tx.Nonce() < tx1.Nonce() {
-						oldTxHash = hash
-					} else if tx.Nonce() > tx1.Nonce() {
-						found = true
-					}
-					return false
-				}
-			}
-			return true
-		})
-		if found == true {
-			return fmt.Errorf("%v has already bought a ticket in txpool", from.String())
-		}
-		if oldTxHash != (common.Hash{}) {
-			pool.removeTx(oldTxHash, true)
 		}
 
 	case common.AssetValueChangeFunc:

@@ -54,6 +54,8 @@ Remember to:
 
 4. (Optional) Add flag "-a" or "--autobt" to enable ticket auto-buy.
 
+5. (Optional) Add flag "-tn" or "--testnet" to connect to the public testnet.
+
 `Note: The password file must be named password.txt and the keystore file name must start with UTC...`
 
 ## How to run a Gateway
@@ -68,7 +70,13 @@ Install Docker first, e.g. on Ubuntu do `sudo apt-get install docker.io`
 
 ### Run a Gateway from the image
 
+1. Connect to mainnet
+
 `docker run -it -p 9000:9000 -p 9001:9001 -p 40408:40408 -v YOURDIRECTORY:/fusion-node fusionnetwork/gateway`
+
+2. Connect to testnet
+
+`docker run -it -p 9000:9000 -p 9001:9001 -p 40408:40408 -v YOURDIRECTORY:/fusion-node fusionnetwork/gateway -tn`
 
 ### Build your own Gateway image (optional)
 

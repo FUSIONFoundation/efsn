@@ -549,6 +549,20 @@ func (s *PublicFusionAPI) GetBlockReward(ctx context.Context, blockNr rpc.BlockN
 	return reward.String(), nil
 }
 
+// GetLatestNotation wacom
+func (s *PublicFusionAPI) GetLatestNotation(ctx context.Context, blockNr rpc.BlockNumber) (uint64, error) {
+	state, _, err := s.b.StateAndHeaderByNumber(ctx, blockNr)
+	if state == nil || err != nil {
+		return 0, err
+	}
+	lastCount, err := state.GetNotationCount()
+	if err != nil {
+		return 0, err
+	}
+	latestNotation := state.CalcNotationDisplay(lastCount)
+	return latestNotation, state.Error()
+}
+
 //--------------------------------------------- PublicFusionAPI buile send tx args-------------------------------------
 func FSNCallArgsToSendTxArgs(args common.FSNBaseArgsInterface, funcType common.FSNCallFunc, funcData []byte) (*SendTxArgs, error) {
 	var param = common.FSNCallParam{Func: funcType, Data: funcData}
@@ -642,8 +656,8 @@ func (s *PublicFusionAPI) BuildAssetToTimeLockSendTxArgs(ctx context.Context, ar
 	if err = CheckAndSetToAddress(&args.SendAssetArgs, state); err != nil {
 		return nil, err
 	}
-	args.Init()
-	if err := args.ToParam(common.AssetToTimeLock).Check(common.BigMaxUint64, header.Time.Uint64()); err != nil {
+	args.Init(common.AssetToTimeLock)
+	if err := args.ToParam().Check(common.BigMaxUint64, header.Time.Uint64()); err != nil {
 		return nil, err
 	}
 	needValue := common.NewTimeLock(&common.TimeLockItem{
@@ -658,7 +672,7 @@ func (s *PublicFusionAPI) BuildAssetToTimeLockSendTxArgs(ctx context.Context, ar
 		return nil, fmt.Errorf("not enough asset")
 	}
 
-	funcData, err := args.ToData(common.AssetToTimeLock)
+	funcData, err := args.ToData()
 	if err != nil {
 		return nil, err
 	}
@@ -673,8 +687,8 @@ func (s *PublicFusionAPI) BuildTimeLockToTimeLockSendTxArgs(ctx context.Context,
 	if err = CheckAndSetToAddress(&args.SendAssetArgs, state); err != nil {
 		return nil, err
 	}
-	args.Init()
-	if err := args.ToParam(common.TimeLockToTimeLock).Check(common.BigMaxUint64, header.Time.Uint64()); err != nil {
+	args.Init(common.TimeLockToTimeLock)
+	if err := args.ToParam().Check(common.BigMaxUint64, header.Time.Uint64()); err != nil {
 		return nil, err
 	}
 	needValue := common.NewTimeLock(&common.TimeLockItem{
@@ -690,7 +704,7 @@ func (s *PublicFusionAPI) BuildTimeLockToTimeLockSendTxArgs(ctx context.Context,
 		return nil, fmt.Errorf("not enough time lock balance")
 	}
 
-	funcData, err := args.ToData(common.TimeLockToTimeLock)
+	funcData, err := args.ToData()
 	if err != nil {
 		return nil, err
 	}
@@ -705,10 +719,10 @@ func (s *PublicFusionAPI) BuildTimeLockToAssetSendTxArgs(ctx context.Context, ar
 	if err = CheckAndSetToAddress(&args.SendAssetArgs, state); err != nil {
 		return nil, err
 	}
-	args.Init()
+	args.Init(common.TimeLockToAsset)
 	*(*uint64)(args.StartTime) = header.Time.Uint64()
 	*(*uint64)(args.EndTime) = common.TimeLockForever
-	if err := args.ToParam(common.TimeLockToAsset).Check(common.BigMaxUint64, header.Time.Uint64()); err != nil {
+	if err := args.ToParam().Check(common.BigMaxUint64, header.Time.Uint64()); err != nil {
 		return nil, err
 	}
 	needValue := common.NewTimeLock(&common.TimeLockItem{
@@ -723,7 +737,7 @@ func (s *PublicFusionAPI) BuildTimeLockToAssetSendTxArgs(ctx context.Context, ar
 		return nil, fmt.Errorf("not enough time lock balance")
 	}
 
-	funcData, err := args.ToData(common.TimeLockToAsset)
+	funcData, err := args.ToData()
 	if err != nil {
 		return nil, err
 	}
@@ -823,9 +837,9 @@ func (s *PublicFusionAPI) BuildMakeSwapSendTxArgs(ctx context.Context, args comm
 		return nil, err
 	}
 
-	args.Init()
+	args.Init(header.Time)
 	now := uint64(time.Now().Unix())
-	if err := args.ToParam(header.Time).Check(common.BigMaxUint64, now); err != nil {
+	if err := args.ToParam().Check(common.BigMaxUint64, now); err != nil {
 		return nil, err
 	}
 
@@ -858,7 +872,7 @@ func (s *PublicFusionAPI) BuildMakeSwapSendTxArgs(ctx context.Context, args comm
 		}
 	}
 
-	funcData, err := args.ToData(header.Time)
+	funcData, err := args.ToData()
 	if err != nil {
 		return nil, err
 	}
@@ -945,9 +959,9 @@ func (s *PublicFusionAPI) BuildMakeMultiSwapSendTxArgs(ctx context.Context, args
 		return nil, err
 	}
 
-	args.Init()
+	args.Init(header.Time)
 	now := uint64(time.Now().Unix())
-	if err := args.ToParam(header.Time).Check(common.BigMaxUint64, now); err != nil {
+	if err := args.ToParam().Check(common.BigMaxUint64, now); err != nil {
 		return nil, err
 	}
 
@@ -980,7 +994,7 @@ func (s *PublicFusionAPI) BuildMakeMultiSwapSendTxArgs(ctx context.Context, args
 		}
 	}
 
-	funcData, err := args.ToData(header.Time)
+	funcData, err := args.ToData()
 	if err != nil {
 		return nil, err
 	}

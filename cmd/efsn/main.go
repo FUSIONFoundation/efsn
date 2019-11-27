@@ -124,6 +124,7 @@ var (
 		utils.TestnetFlag,
 		utils.RinkebyFlag,
 		utils.DevnetFlag,
+		utils.DevnetAddrFlag,
 		utils.VMEnableDebugFlag,
 		utils.NetworkIdFlag,
 		utils.RPCCORSDomainFlag,
