@@ -642,6 +642,20 @@ installNode() {
         fi
     fi
 
+    local memavail=$(awk '/^MemAvailable/ {print $2}' /proc/meminfo)
+    if [ $memavail -lt 2097152 ]; then
+        echo
+        echo "${txtylw}You seem to have less than 2GB of free memory available.${txtrst}"
+        echo "If the node runs out of memory, it will crash and your tickets might get retreated."
+        echo
+        local question="${txtylw}Are you sure you want to continue?${txtrst} [Y/n] "
+        askToContinue "$question"
+        if [ $? -eq 1 ]; then
+            echo "${txtred}✓${txtrst} Installation cancelled"
+            return 1
+        fi
+    fi
+
     echo
     echo "<<< Installing node >>>"
     installDeps
