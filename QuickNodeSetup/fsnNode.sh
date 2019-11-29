@@ -232,7 +232,15 @@ putCfgValue() {
         return 1
     fi
 
+    # create main node data directory
+    mkdir -p "$BASE_DIR/fusion-node/"
+
     local cfg_file="$CONF_FILE"
+
+    # create minimal JSON skeleton for jq if the config file doesn't exist yet
+    if [ ! -f "$cfg_file" ]; then
+        echo '{}' > "$cfg_file"
+    fi
 
     # extra spacing for readability
     if [ "$cfg_arg" = "nodeType" ]; then
@@ -328,36 +336,44 @@ updateExplorerListing() {
     else
         echo "${txtred}✓${txtrst} The node will not be listed on the node explorer"
     fi
-    # bash functions can't return strings, so we're working around that with a global variable
-    nodename_global="$nodename"
+    putCfgValue 'nodeName' "$nodename"
 }
 
 warnRetreat() {
     local nodetype="$(getCfgValue 'nodeType')"
     if [ "$nodetype" = "minerandlocalgateway" -o "$nodetype" = "efsn" ]; then
-        # check if the configured address is mining and has active tickets
-        local address="$(getCfgValue 'address')"
-        local mining="$(getCfgValue 'mining')"
-        # talking to the RPC socket directly without invoking efsn is the fastest possible way to access the API locally
-        # nc has to be called with sudo because the socket is owned by the container running with root privileges
-        local tickets=$(printf '{"jsonrpc":"2.0","method":"fsn_totalNumberOfTicketsByAddress","params":["%s","latest"],"id":1}' "$address" \
-            | sudo nc -N -U "$BASE_DIR/fusion-node/data/efsn.ipc" | jq -r '.result')
-        # tickets override for testing purposes
-        #tickets=12345
-        if [ "$mining" != "false" -a $tickets -gt 0 ]; then
-            echo
-            echo "${txtylw}Your node is currently configured for mining and has $tickets active tickets.${txtrst}"
-            echo "If you stop the node for too long, your tickets might get retreated."
-            echo
-            local question="${txtylw}Are you sure you want to continue?${txtrst} [Y/n] "
-            askToContinue "$question"
-            [ $? -eq 0 ] || return 1
+        if [ "$mining" != "false" ]; then
+            # check if the configured address is mining and has active tickets
+            local address="$(getCfgValue 'address')"
+            local mining="$(getCfgValue 'mining')"
+            # talking to the RPC socket directly without invoking efsn is the fastest possible way to access the API locally
+            # besides connecting to the HTTP/WS ports, but those are not exposed for the miner image, so this doesn't work:
+            #local data=$(printf '{"jsonrpc":"2.0","method":"fsn_totalNumberOfTicketsByAddress","params":["%s","latest"],"id":1}' "$address")
+            #local tickets=$(curl -s -H 'Content-Type: application/json' --data "$data" http://localhost:9000 | jq -r '.result')
+            # nc has to be called with sudo because the socket is owned by the container which is running with root privileges
+            local tickets=$(printf '{"jsonrpc":"2.0","method":"fsn_totalNumberOfTicketsByAddress","params":["%s","latest"],"id":1}' "$address" \
+                | sudo nc -N -U "$BASE_DIR/fusion-node/data/efsn.ipc" | jq -r '.result')
+            # tickets override for testing purposes
+            #tickets=12345
+            if [ $tickets -gt 0 ]; then
+                echo
+                echo "${txtylw}Your node is currently configured for mining and has $tickets active tickets.${txtrst}"
+                echo "If you stop the node for too long, your tickets might get retreated."
+                echo
+                local question="${txtylw}Are you sure you want to continue?${txtrst} [Y/n] "
+                askToContinue "$question"
+                [ $? -eq 0 ] || return 1
+            fi
         fi
     fi
 }
 
 initConfig() {
     local question
+
+    # purge existing node data; the user was warned about this,
+    # he can reconfigure the node if that's not what he wants
+    sudo rm -rf "$BASE_DIR/fusion-node/"
 
     echo
     echo "${txtylw}Please select the node type to install:${txtrst}"
@@ -377,6 +393,7 @@ initConfig() {
     done
     echo
     echo "${txtgrn}✓${txtrst} Selected node type $nodetype"
+    putCfgValue 'nodeType' "$nodetype"
 
     echo
     question="${txtylw}Do you want to install a mainnet node?${txtrst} [Y/n] "
@@ -395,9 +412,7 @@ initConfig() {
             echo "${txtgrn}✓${txtrst} Installing mainnet node"
         fi
     fi
-
-    # purging existing node data as late as possible
-    sudo rm -rf "$BASE_DIR/fusion-node/"
+    putCfgValue 'testnet' "$testnet"
 
     if [ "$nodetype" = "minerandlocalgateway" -o "$nodetype" = "efsn" ]; then
         updateKeystoreFile
@@ -416,6 +431,7 @@ initConfig() {
         else
             echo "${txtred}✓${txtrst} Disabled ticket auto-buy"
         fi
+        putCfgValue 'autobt' "$autobuy"
 
 # MINING SETTING UNAVAILABLE UNTIL AFTER NODE UPGRADE
 #        echo
@@ -428,14 +444,17 @@ initConfig() {
 #        else
 #            echo "${txtred}✓${txtrst} Disabled mining of blocks"
 #        fi
+#        putCfgValue 'mining' "$mining"
     fi
 
     echo
     question="${txtylw}Do you want your node to auto-start after boot to prevent downtimes?${txtrst} [Y/n] "
     askToContinue "$question"
     if [ $? -eq 0 ]; then
-        sudo curl -fsSL "https://raw.githubusercontent.com/FUSIONFoundation/efsn/master/QuickNodeSetup/fusion.service" \
-            -o "/etc/systemd/system/fusion.service"
+        if [ ! -f "/etc/systemd/system/fusion.service" ]; then
+            sudo curl -fsSL "https://raw.githubusercontent.com/FUSIONFoundation/efsn/master/QuickNodeSetup/fusion.service" \
+                -o "/etc/systemd/system/fusion.service"
+        fi
         sudo systemctl daemon-reload
         sudo systemctl -q enable fusion
         echo "${txtgrn}✓${txtrst} Enabled node auto-start"
@@ -446,15 +465,6 @@ initConfig() {
     fi
 
     updateExplorerListing
-    local nodename="$nodename_global"
-
-    # write configuration to file in proper JSON format
-    echo
-    echo "${txtylw}Writing node configuration file${txtrst}"
-    mkdir -p "$BASE_DIR/fusion-node/"
-    jq -n --arg nodeType "$nodetype" --arg testnet "$testnet" --arg autobt "$autobuy" --arg mining "$mining" --arg nodeName "$nodename" \
-        '{"nodeType": $nodeType, "testnet": $testnet, "autobt": $autobt, "mining": $mining, "nodeName": $nodeName}' > "$CONF_FILE"
-    echo "${txtgrn}✓${txtrst} Wrote node configuration file"
 }
 
 removeContainer() {
@@ -514,7 +524,7 @@ createContainer() {
     echo "${txtylw}Creating node container${txtrst}"
     if [ "$nodetype" = "minerandlocalgateway" ]; then
         # docker create automatically pulls the image if it's not there
-        # we don't need -i here as it's not really an interactive terminal
+        # we do not need -i here as it's not really an interactive terminal
         sudo docker create --name fusion -t --restart unless-stopped \
             -p 127.0.0.1:9000:9000 -p 127.0.0.1:9001:9001 -p 40408:40408 -p 40408:40408/udp \
             -v "$BASE_DIR/fusion-node":/fusion-node \
@@ -531,12 +541,28 @@ createContainer() {
             -e "$nodename"
 
     elif [ "$nodetype" = "gateway" ]; then
+        # one could optionally create a public gateway, but that should always utilize
+        # encryption which requires a properly configured reverse TLS proxy like nginx
         sudo docker create --name fusion -t --restart unless-stopped \
             -p 127.0.0.1:9000:9000 -p 127.0.0.1:9001:9001 -p 40408:40408 -p 40408:40408/udp \
             -v "$BASE_DIR/fusion-node":/fusion-node \
             fusionnetwork/gateway \
             $testnet \
             -e "$nodename"
+
+        # workaround for the breaking change introduced with https://github.com/FUSIONFoundation/efsn/commit/8fab78ee3872be05cda3c53db24a49ddea0dfe98
+        # originally the gateway did not use an entrypoint script which defined a data subdirectory; this prevents two things:
+        # 1) orphaned chaindata wasting disk space
+        # 2) a full resync because chaindata is gone
+        if [ -d "$BASE_DIR/fusion-node/efsn" ]; then
+            if [ -d "$BASE_DIR/fusion-node/data/efsn" ]; then
+                sudo rm -rf "$BASE_DIR/fusion-node/efsn/"
+            else
+                sudo mkdir -p "$BASE_DIR/fusion-node/data/"
+                sudo mv "$BASE_DIR/fusion-node/efsn/" "$BASE_DIR/fusion-node/data/efsn"
+            fi
+            sudo rm -rf "$BASE_DIR/fusion-node/efsn.ipc" "$BASE_DIR/fusion-node/keystore/"
+        fi
 
     else
         echo "${txtred}Invalid node type${txtrst}"
@@ -588,6 +614,8 @@ installNode() {
         echo "${txtylw}You already seem to have a node installed in $BASE_DIR/fusion-node.${txtrst}"
         echo "It will be stopped and its configuration and chaindata will be purged."
         echo "This means it has to sync from scratch again, which could take a while."
+        echo "Please look into the \"configure node\" menu if you want to change node"
+        echo "configuration settings which don't require a full reset."
         echo
         local question="${txtylw}Are you sure you want to continue?${txtrst} [Y/n] "
         askToContinue "$question"
@@ -698,7 +726,7 @@ showNodeLogs() {
     (
         # restoring SIGINT so Ctrl + C works
         trap - SIGINT
-        # we don't have to attach because we don't need interactive access
+        # we do not have to attach because we don't need interactive access
         # this also has the advantage that the node doesn't need to be running
         sudo docker logs fusion --tail=25 -f
         if [ $? -ne 0 ]; then
@@ -862,8 +890,6 @@ change_explorer() {
         echo
         echo "<<< Changing explorer listing >>>"
         updateExplorerListing
-        local nodename="$nodename_global"
-        putCfgValue 'nodeName' "$nodename"
         updateNode
         echo
         echo "<<< ${txtgrn}✓${txtrst} Changed explorer listing >>>"
