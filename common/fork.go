@@ -23,6 +23,7 @@ var TESTNET_FORKS = []uint64{
 const (
 	PosV1 = iota + 1
 	PosV2
+	PosV3
 )
 
 func GetForkHeight(n int) uint64 {
@@ -44,6 +45,9 @@ func IsHardFork(n int, blockNumber *big.Int) bool {
 }
 
 func GetPoSHashVersion(blockNumber *big.Int) int {
+	if IsHardFork(2, blockNumber) {
+		return PosV3
+	}
 	if IsHardFork(1, blockNumber) {
 		return PosV2
 	}

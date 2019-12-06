@@ -781,6 +781,16 @@ func posHash(header *types.Header) (hash common.Hash) {
 			header.MixDigest,
 			header.Nonce,
 		})
+	case common.PosV3:
+		rlp.Encode(hasher, []interface{}{
+			header.UncleHash,
+			header.Coinbase,
+			header.Difficulty,
+			header.Number,
+			(header.Time.Uint64() >> 5) << 5,
+			header.Extra[extraVanity : len(header.Extra)-extraSeal],
+			header.Nonce,
+		})
 	}
 	hasher.Sum(hash[:0])
 	return hash
