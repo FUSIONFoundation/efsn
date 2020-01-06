@@ -78,6 +78,25 @@ func (s *PublicFusionAPI) GetTimeLockBalance(ctx context.Context, assetID common
 	return b, state.Error()
 }
 
+// GetTimeLockValueByInterval wacom
+func (s *PublicFusionAPI) GetTimeLockValueByInterval(ctx context.Context, assetID common.Hash, address common.Address, startTime, endTime uint64, blockNr rpc.BlockNumber) (string, error) {
+	state, header, err := s.b.StateAndHeaderByNumber(ctx, blockNr)
+	if state == nil || err != nil {
+		return "0", err
+	}
+	b := state.GetTimeLockBalance(assetID, address)
+	if state.Error() != nil {
+		return "0", state.Error()
+	}
+	if startTime < header.Time.Uint64() {
+		startTime = header.Time.Uint64()
+	}
+	if endTime == 0 {
+		endTime = common.TimeLockForever
+	}
+	return b.GetSpendableValue(startTime, endTime).String(), nil
+}
+
 // GetAllTimeLockBalances wacom
 func (s *PublicFusionAPI) GetAllTimeLockBalances(ctx context.Context, address common.Address, blockNr rpc.BlockNumber) (map[common.Hash]*common.TimeLock, error) {
 	state, _, err := s.b.StateAndHeaderByNumber(ctx, blockNr)
