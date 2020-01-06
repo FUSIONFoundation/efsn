@@ -977,7 +977,7 @@ func (db *StateDB) GetAddressByNotation(notation uint64) (common.Address, error)
 	if err != nil {
 		return common.Address{}, err
 	}
-	if np.Deleted {
+	if np.Deleted || np.Address == (common.Address{}) {
 		return common.Address{}, fmt.Errorf("notation was deleted")
 	}
 	return np.Address, nil
