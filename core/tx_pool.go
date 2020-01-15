@@ -1434,6 +1434,9 @@ func (pool *TxPool) validateFsnCallTx(tx *types.Transaction) error {
 			}
 			timeLockParam.EndTime = common.TimeLockForever
 		}
+		if timeLockParam.To == (common.Address{}) {
+			return fmt.Errorf("receiver address must be set and not zero address")
+		}
 		if err := timeLockParam.Check(height, timestamp); err != nil {
 			return err
 		}
