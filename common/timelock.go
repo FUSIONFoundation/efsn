@@ -17,6 +17,7 @@ const (
 	AssetToTimeLock TimeLockType = iota
 	TimeLockToTimeLock
 	TimeLockToAsset
+	SmartTransfer
 )
 
 const (

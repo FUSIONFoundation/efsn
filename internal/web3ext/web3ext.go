@@ -905,6 +905,15 @@ web3._extend({
 			]
 		}),
 		new web3._extend.Method({
+			name: 'sendTimeLock',
+			call: 'fsn_sendTimeLock',
+			params: 2,
+			inputFormatter: [
+				web3._extend.formatters.inputTransactionFormatter,
+				null
+			]
+		}),
+		new web3._extend.Method({
 			name: 'allTickets',
 			call: 'fsn_allTickets',
 			params: 1,
@@ -1405,6 +1414,14 @@ web3._extend({
 				function(options){
 					return web3._extend.formatters.inputTransactionFormatter(options)
 				}
+			]
+		}),
+		new web3._extend.Method({
+			name: 'sendTimeLock',
+			call: 'fsntx_sendTimeLock',
+			params: 1,
+			inputFormatter: [
+				web3._extend.formatters.inputTransactionFormatter
 			]
 		}),
 		new web3._extend.Method({

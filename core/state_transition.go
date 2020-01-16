@@ -361,10 +361,12 @@ func (st *StateTransition) handleFsnCall(param *common.FSNCallParam) error {
 
 		start := timeLockParam.StartTime
 		end := timeLockParam.EndTime
-		var needValue *common.TimeLock
+		if start < timestamp {
+			start = timestamp
+		}
 
-		needValue = common.NewTimeLock(&common.TimeLockItem{
-			StartTime: common.MaxUint64(start, timestamp),
+		needValue := common.NewTimeLock(&common.TimeLockItem{
+			StartTime: start,
 			EndTime:   end,
 			Value:     new(big.Int).SetBytes(timeLockParam.Value.Bytes()),
 		})
@@ -416,6 +418,40 @@ func (st *StateTransition) handleFsnCall(param *common.FSNCallParam) error {
 			st.state.SubTimeLockBalance(st.msg.From(), timeLockParam.AssetID, needValue, height, timestamp)
 			st.state.AddBalance(timeLockParam.To, timeLockParam.AssetID, timeLockParam.Value)
 			st.addLog(common.TimeLockFunc, timeLockParam, common.NewKeyValue("LockType", "TimeLockToAsset"), common.NewKeyValue("AssetID", timeLockParam.AssetID))
+			return nil
+		case common.SmartTransfer:
+			if !common.IsSmartTransferEnabled(height) {
+				st.addLog(common.TimeLockFunc, timeLockParam, common.NewKeyValue("LockType", "SmartTransfer"), common.NewKeyValue("Error", "not enabled"))
+				return fmt.Errorf("SendTimeLock not enabled")
+			}
+			timeLockBalance := st.state.GetTimeLockBalance(timeLockParam.AssetID, st.msg.From())
+			if timeLockBalance.Cmp(needValue) < 0 {
+				timeLockValue := timeLockBalance.GetSpendableValue(start, end)
+				assetBalance := st.state.GetBalance(timeLockParam.AssetID, st.msg.From())
+				if new(big.Int).Add(timeLockValue, assetBalance).Cmp(timeLockParam.Value) < 0 {
+					st.addLog(common.TimeLockFunc, timeLockParam, common.NewKeyValue("LockType", "SmartTransfer"), common.NewKeyValue("Error", "not enough balance"))
+					return fmt.Errorf("not enough balance")
+				}
+				if timeLockValue.Sign() > 0 {
+					subTimeLock := common.GetTimeLock(timeLockValue, start, end)
+					st.state.SubTimeLockBalance(st.msg.From(), timeLockParam.AssetID, subTimeLock, height, timestamp)
+				}
+				useAssetAmount := new(big.Int).Sub(timeLockParam.Value, timeLockValue)
+				st.state.SubBalance(st.msg.From(), timeLockParam.AssetID, useAssetAmount)
+				surplus := common.GetSurplusTimeLock(useAssetAmount, start, end, timestamp)
+				if !surplus.IsEmpty() {
+					st.state.AddTimeLockBalance(st.msg.From(), timeLockParam.AssetID, surplus, height, timestamp)
+				}
+			} else {
+				st.state.SubTimeLockBalance(st.msg.From(), timeLockParam.AssetID, needValue, height, timestamp)
+			}
+
+			if !common.IsWholeAsset(start, end, timestamp) {
+				st.state.AddTimeLockBalance(timeLockParam.To, timeLockParam.AssetID, needValue, height, timestamp)
+			} else {
+				st.state.AddBalance(timeLockParam.To, timeLockParam.AssetID, timeLockParam.Value)
+			}
+			st.addLog(common.TimeLockFunc, timeLockParam, common.NewKeyValue("LockType", "SmartTransfer"), common.NewKeyValue("AssetID", timeLockParam.AssetID))
 			return nil
 		}
 	case common.BuyTicketFunc:
