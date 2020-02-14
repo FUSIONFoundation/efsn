@@ -754,13 +754,9 @@ func (s *PublicFusionAPI) BuildBuyTicketSendTxArgs(ctx context.Context, args com
 		return nil, fmt.Errorf("Purchase of BuyTicket for this block already submitted")
 	}
 
-	now := uint64(time.Now().Unix())
-	defStart := header.Time.Uint64()
-	if defStart+3600 < now {
-		defStart = now
-	}
-	args.Init(defStart)
-	if err := args.ToParam().Check(common.BigMaxUint64, now, 600); err != nil {
+	parentTime := header.Time.Uint64()
+	args.Init(parentTime)
+	if err := args.ToParam().Check(common.BigMaxUint64, parentTime); err != nil {
 		return nil, err
 	}
 

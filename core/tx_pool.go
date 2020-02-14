@@ -1385,6 +1385,8 @@ func (pool *TxPool) validateFsnCallTx(tx *types.Transaction) error {
 		return fmt.Errorf("validateFsnCallTx err:%v", err)
 	}
 
+	currBlockHeader := pool.chain.CurrentBlock().Header()
+
 	state := pool.currentState
 	from := msg.From()
 	height := common.BigMaxUint64
@@ -1471,7 +1473,7 @@ func (pool *TxPool) validateFsnCallTx(tx *types.Transaction) error {
 	case common.BuyTicketFunc:
 		buyTicketParam := common.BuyTicketParam{}
 		rlp.DecodeBytes(param.Data, &buyTicketParam)
-		if err := buyTicketParam.Check(height, timestamp, 0); err != nil {
+		if err := buyTicketParam.Check(height, currBlockHeader.Time.Uint64()); err != nil {
 			return err
 		}
 

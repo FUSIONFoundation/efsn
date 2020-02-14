@@ -78,7 +78,6 @@ func (v *BlockValidator) ValidateBody(block *types.Block) error {
 // ValidateRawTransaction validates the given block's raw transactions before applying them
 func (v *BlockValidator) ValidateRawTransaction(block *types.Block) error {
 	blockNumber := block.Number()
-	header := block.Header()
 	ticketBuyers := map[common.Address]bool{}
 	signer := types.MakeSigner(v.config, blockNumber)
 	for i, tx := range block.Transactions() {
@@ -97,13 +96,6 @@ func (v *BlockValidator) ValidateRawTransaction(block *types.Block) error {
 			return fmt.Errorf("block %v hash %x, transaction %x index %v, sender %v is buying more than one ticket", blockNumber, block.Hash(), tx.Hash(), i, from.String())
 		}
 		ticketBuyers[from] = true
-
-		// check buy ticket param
-		buyTicketParam := common.BuyTicketParam{}
-		rlp.DecodeBytes(param.Data, &buyTicketParam)
-		if err := buyTicketParam.Check(blockNumber, header.Time.Uint64(), -600); err != nil {
-			return nil
-		}
 	}
 	return nil
 }

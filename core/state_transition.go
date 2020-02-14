@@ -432,9 +432,17 @@ func (st *StateTransition) handleFsnCall(param *common.FSNCallParam) error {
 		buyTicketParam := common.BuyTicketParam{}
 		rlp.DecodeBytes(param.Data, &buyTicketParam)
 
-		if err := buyTicketParam.Check(height, 0, 0); err != nil {
-			st.addLog(common.BuyTicketFunc, param.Data, common.NewKeyValue("Error", err.Error()))
-			return err
+		// check buy ticket param
+		if common.IsHardFork(2, height) {
+			if err := buyTicketParam.Check(height, timestamp); err != nil {
+				st.addLog(common.BuyTicketFunc, param.Data, common.NewKeyValue("Error", err.Error()))
+				return err
+			}
+		} else {
+			if err := buyTicketParam.Check(height, 0); err != nil {
+				st.addLog(common.BuyTicketFunc, param.Data, common.NewKeyValue("Error", err.Error()))
+				return err
+			}
 		}
 
 		start := buyTicketParam.Start
