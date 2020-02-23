@@ -42,7 +42,7 @@ var (
 		EIP155Block:         big.NewInt(0),
 		EIP158Block:         big.NewInt(0),
 		ByzantiumBlock:      big.NewInt(0),
-		ConstantinopleBlock: nil,
+		ConstantinopleBlock: new(big.Int).SetUint64(common.MAINNET_FORKS[1]),
 		DaTong: &DaTongConfig{
 			Period: 15,
 		},
@@ -68,7 +68,7 @@ var (
 		EIP155Block:         big.NewInt(0),
 		EIP158Block:         big.NewInt(0),
 		ByzantiumBlock:      big.NewInt(0),
-		ConstantinopleBlock: nil,
+		ConstantinopleBlock: new(big.Int).SetUint64(common.TESTNET_FORKS[1]),
 		DaTong: &DaTongConfig{
 			Period: 15,
 		},
@@ -121,7 +121,7 @@ var (
 		EIP155Block:         big.NewInt(0),
 		EIP158Block:         big.NewInt(0),
 		ByzantiumBlock:      big.NewInt(0),
-		ConstantinopleBlock: nil,
+		ConstantinopleBlock: big.NewInt(0),
 		DaTong: &DaTongConfig{
 			Period: 15,
 		},
