@@ -1,9 +1,19 @@
 **/.git
+.github
 .git
 !.git/HEAD
 !.git/refs/heads
-**/*_test.go
 
-build/_workspace
-build/_bin
-tests/testdata
+**/*_test.go
+**/testdata
+
+**/*.swp
+**/*.orig
+**/*.rej
+
+build
+!build/ci.go
+!build/env.sh
+
+QuickNodeSetup
+cscope.*
