@@ -17,7 +17,7 @@ display_usage() {
     echo -e "-tn         Connect to testnet"
     }
 
-while [ "$1" != "" ]; do
+while true; do
     case $1 in
         -u | --unlock )         shift
                                 unlock=$1
@@ -34,7 +34,7 @@ while [ "$1" != "" ]; do
         * )                     display_usage
                                 exit 1
     esac
-    shift
+    shift || break
 done
 
 # create data folder if does not exit
@@ -56,16 +56,15 @@ cmd_options="--datadir $DATA_DIR --password /fusion-node/password.txt"
 if [ "$testnet" ]; then
     testnet=" --testnet"
     cmd_options=$cmd_options$testnet
-fi                                                                                                                                                                                                         
-                                                                                                                                                                                                   
+fi
+
 if [ "$ethstats" ]; then
     if [ "$testnet" ]; then
         ethstats=" --ethstats $ethstats:devFusioInfo2019142@devnodestats.fusionnetwork.io"
-        cmd_options=$cmd_options$ethstats
     else 
         ethstats=" --ethstats $ethstats:fsnMainnet@node.fusionnetwork.io"
-        cmd_options=$cmd_options$ethstats
     fi
+    cmd_options=$cmd_options$ethstats
 fi
 
 if [ "$unlock" ]; then
