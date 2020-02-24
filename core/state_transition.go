@@ -209,14 +209,6 @@ func (st *StateTransition) TransitionDb() (ret []byte, usedGas uint64, failed bo
 	homestead := st.evm.ChainConfig().IsHomestead(st.evm.BlockNumber)
 	contractCreation := msg.To() == nil
 
-	if common.IsTransactionFrozen(st.evm.BlockNumber) {
-		if fsnCallParam == nil || fsnCallParam.Func != common.BuyTicketFunc {
-			return nil, 0, false, common.ErrTransactionsFrozen
-		} else if common.IsInVote1DrainList(msg.From()) {
-			return nil, 0, false, common.ErrAccountFrozen
-		}
-	}
-
 	// Pay intrinsic gas
 	gas, err := IntrinsicGas(st.data, contractCreation, homestead)
 	if err != nil {
