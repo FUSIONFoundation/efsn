@@ -395,10 +395,10 @@ func (p *TakeSwapParam) Check(blockNumber *big.Int, swap *Swap, timestamp uint64
 // Check wacom
 func (p *MakeMultiSwapParam) Check(blockNumber *big.Int, timestamp uint64) error {
 	if p.MinFromAmount == nil || len(p.MinFromAmount) == 0 {
-		return fmt.Errorf("MinFromAmount must be specifed")
+		return fmt.Errorf("MinFromAmount must be specified")
 	}
 	if p.MinToAmount == nil || len(p.MinToAmount) == 0 {
-		return fmt.Errorf("MinToAmount must be specifed")
+		return fmt.Errorf("MinToAmount must be specified")
 	}
 	if p.SwapSize == nil || p.SwapSize.Cmp(Big0) <= 0 {
 		return fmt.Errorf("SwapSize must be ge 1")
