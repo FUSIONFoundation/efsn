@@ -1375,26 +1375,60 @@ func (pool *TxPool) validateAddFsnCallTx(tx *types.Transaction) error {
 	return nil
 }
 
-func (pool *TxPool) validateFsnCallTx(tx *types.Transaction) error {
-	to := tx.To()
-	if !common.IsFsnCall(to) {
+func (pool *TxPool) validateReceiveAssetPayableTx(tx *types.Transaction, from common.Address) error {
+	header := pool.chain.CurrentBlock().Header()
+	height := new(big.Int).Add(header.Number, big.NewInt(1))
+	input := tx.Data()
+	if !common.IsReceiveAssetPayableTx(height, input) {
 		return nil
 	}
+	if pool.currentState.GetCodeSize(*tx.To()) == 0 {
+		return fmt.Errorf("receiveAsset tx receiver must be contract")
+	}
+	timestamp := uint64(time.Now().Unix())
+	p := &common.TransferTimeLockParam{}
+	// use `timestamp+600` here to ensure timelock tx with minimum lifetime of 10 minutes,
+	// that is endtime of timelock must be greater than or equal to `now + 600 seconds`.
+	if err := common.ParseReceiveAssetPayableTxInput(p, input, timestamp+600); err != nil {
+		return err
+	}
+	p.Value = tx.Value()
+	p.GasValue = new(big.Int).Mul(new(big.Int).SetUint64(tx.Gas()), tx.GasPrice())
+	if !CanTransferTimeLock(pool.currentState, from, p) {
+		return ErrInsufficientFunds
+	}
+	return nil
+}
+
+func (pool *TxPool) validateFsnCallTx(tx *types.Transaction) error {
 	msg, err := tx.AsMessage(pool.signer)
 	if err != nil {
 		return fmt.Errorf("validateFsnCallTx err:%v", err)
+	}
+	from := msg.From()
+	to := tx.To()
+
+	if !common.IsFsnCall(to) {
+		if to == nil {
+			return nil
+		}
+		if err := pool.validateReceiveAssetPayableTx(tx, from); err != nil {
+			return err
+		}
+		return nil
 	}
 
 	currBlockHeader := pool.chain.CurrentBlock().Header()
 	nextBlockNumber := new(big.Int).Add(currBlockHeader.Number, big.NewInt(1))
 
 	state := pool.currentState
-	from := msg.From()
 	height := common.BigMaxUint64
 	timestamp := uint64(time.Now().Unix())
 
 	param := common.FSNCallParam{}
-	rlp.DecodeBytes(tx.Data(), &param)
+	if err := rlp.DecodeBytes(tx.Data(), &param); err != nil {
+		return fmt.Errorf("decode FSNCallParam error")
+	}
 
 	fee := common.GetFsnCallFee(to, param.Func)
 	fsnValue := big.NewInt(0)

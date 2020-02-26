@@ -43,7 +43,7 @@ func GetForkHeight(n int) uint64 {
 }
 
 func IsHardFork(n int, blockNumber *big.Int) bool {
-	return blockNumber.Uint64() >= GetForkHeight(n)
+	return blockNumber == nil || blockNumber.Uint64() >= GetForkHeight(n)
 }
 
 func GetPoSHashVersion(blockNumber *big.Int) int {
