@@ -119,6 +119,14 @@ func (c *Contract) Caller() common.Address {
 	return c.CallerAddress
 }
 
+func (c *Contract) GetParentCaller() (common.Address, error) {
+	parent, ok := c.caller.(*Contract)
+	if !ok {
+		return common.Address{}, ErrMustCallByContract
+	}
+	return parent.CallerAddress, nil
+}
+
 // UseGas attempts the use gas and subtracts it and returns true on success
 func (c *Contract) UseGas(gas uint64) (ok bool) {
 	if c.Gas < gas {

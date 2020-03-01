@@ -17,6 +17,7 @@ const (
 	AssetToTimeLock TimeLockType = iota
 	TimeLockToTimeLock
 	TimeLockToAsset
+	SmartTransfer
 )
 
 const (
@@ -73,7 +74,11 @@ func (z *TimeLockItem) AdjustStartEnd(startTime uint64, endTime uint64) *TimeLoc
 }
 
 func (z *TimeLockItem) EqualRange(x *TimeLockItem) bool {
-	return x != nil && z.StartTime == x.StartTime && z.EndTime == x.EndTime
+	return z.StartTime == x.StartTime && z.EndTime == x.EndTime
+}
+
+func (z *TimeLockItem) EqualTo(x *TimeLockItem) bool {
+	return z.EqualRange(x) && z.Value.Cmp(x.Value) == 0
 }
 
 func (z *TimeLockItem) CanMerge(x *TimeLockItem) bool {
@@ -95,13 +100,13 @@ const (
 
 func (z *TimeLockItem) Add(x *TimeLockItem) ([]*TimeLockItem, TailFlag) {
 	if x.EndTime < z.StartTime {
-		if x.CanMerge(z) == true {
+		if x.CanMerge(z) {
 			return []*TimeLockItem{x.Merge(z)}, TailInFirst
 		}
 		return []*TimeLockItem{x, z}, TailInFirst
 	}
 	if z.EndTime < x.StartTime {
-		if z.CanMerge(x) == true {
+		if z.CanMerge(x) {
 			return []*TimeLockItem{z.Merge(x)}, TailInSecond
 		}
 		return []*TimeLockItem{z, x}, TailInSecond
@@ -222,7 +227,7 @@ func NewTimeLock(items ...*TimeLockItem) *TimeLock {
 }
 
 func (z *TimeLock) IsEmpty() bool {
-	return len(z.Items) == 0
+	return z == nil || len(z.Items) == 0
 }
 
 func appendAndMergeItem(items []*TimeLockItem, addItem *TimeLockItem) []*TimeLockItem {
@@ -251,74 +256,58 @@ func appendAndMergeItems(items []*TimeLockItem, addItems []*TimeLockItem) []*Tim
 
 // Add wacom
 func (z *TimeLock) Add(x, y *TimeLock) *TimeLock {
-	xIsEmpty := x == nil || x.IsEmpty()
-	yIsEmpty := y == nil || y.IsEmpty()
-	if xIsEmpty && yIsEmpty {
-		return nil
+	if x.IsEmpty() {
+		z.Set(y)
+		return z
 	}
-
+	if y.IsEmpty() {
+		z.Set(x)
+		return z
+	}
 	items := make([]*TimeLockItem, 0)
-	var xV, yV, last *TimeLockItem
-	var res []*TimeLockItem
-	var tailFlag TailFlag
 	i, j := 0, 0
+	var xV, yV *TimeLockItem
 	for i < len(x.Items) && j < len(y.Items) {
-		xV = x.Items[i]
-		yV = y.Items[j]
-		if last != nil {
-			if tailFlag == TailInFirst {
-				xV = last
-			} else if tailFlag == TailInSecond {
-				yV = last
-			}
+		if xV == nil {
+			xV = x.Items[i]
 		}
-		if xV.EndTime < yV.StartTime {
-			items = appendAndMergeItem(items, xV)
+		if yV == nil {
+			yV = y.Items[j]
+		}
+		res, tailFlag := xV.Add(yV)
+		if tailFlag == TailInBoth {
 			i++
-			if tailFlag == TailInFirst {
-				last = nil
-			}
-			continue
-		}
-		if yV.EndTime < xV.StartTime {
-			items = appendAndMergeItem(items, yV)
 			j++
-			if tailFlag == TailInSecond {
-				last = nil
-			}
-			continue
-		}
-		res, tailFlag = xV.Add(yV)
-		last = res[len(res)-1]
-		if len(res) > 1 {
+			xV = nil
+			yV = nil
+			items = appendAndMergeItems(items, res)
+		} else {
 			items = appendAndMergeItems(items, res[:len(res)-1])
-		}
-		if tailFlag == TailInFirst {
-			j++
-		} else if tailFlag == TailInSecond {
-			i++
-		} else if tailFlag == TailInBoth {
-			i++
-			j++
-			items = appendAndMergeItem(items, last)
-			last = nil
+			last := res[len(res)-1]
+			if tailFlag == TailInFirst {
+				j++
+				xV = last
+				yV = nil
+				if j == len(y.Items) {
+					items = appendAndMergeItem(items, last)
+					i++
+				}
+			} else if tailFlag == TailInSecond {
+				i++
+				xV = nil
+				yV = last
+				if i == len(x.Items) {
+					items = appendAndMergeItem(items, last)
+					j++
+				}
+			}
 		}
 	}
-	if last != nil {
-		items = appendAndMergeItem(items, last)
-		if tailFlag == TailInFirst {
-			i++
-		} else if tailFlag == TailInSecond {
-			j++
-		}
-	}
-	if i >= len(x.Items) && j < len(y.Items) {
+	if i < len(x.Items) {
+		items = appendAndMergeItems(items, x.Items[i:])
+	} else if j < len(y.Items) {
 		items = appendAndMergeItems(items, y.Items[j:])
 	}
-	if j >= len(y.Items) && i < len(x.Items) {
-		items = appendAndMergeItems(items, x.Items[i:])
-	}
-
 	z.SetItems(items)
 	DebugCall(func() { z.CheckValid() })
 	return z
@@ -326,82 +315,106 @@ func (z *TimeLock) Add(x, y *TimeLock) *TimeLock {
 
 // Sub wacom
 func (z *TimeLock) Sub(x, y *TimeLock) *TimeLock {
-	if y == nil || len(y.Items) != 1 {
-		panic("Sub Just Support One TimeLockItem")
-	}
-	if x.Cmp(y) < 0 {
+	if !x.CanSub(y) {
+		log.Info("TimeLock::Sub failed", "x", x.RawString(), "y", y.RawString())
 		panic("Sub TimeLock not enough")
 	}
-	yV := y.Items[0]
 	items := make([]*TimeLockItem, 0)
-	for i := 0; i < len(x.Items); i++ {
-		xV := x.Items[i]
+	i, j := 0, 0
+	var xV, yV *TimeLockItem
+	for i < len(x.Items) && j < len(y.Items) {
+		if xV == nil {
+			xV = x.Items[i]
+		}
+		if yV == nil {
+			yV = y.Items[j]
+		}
 		res, missing := xV.Sub(yV)
-		items = appendAndMergeItems(items, res)
+		if xV.EndTime <= yV.EndTime {
+			i++
+			xV = nil
+			items = appendAndMergeItems(items, res)
+		} else {
+			items = appendAndMergeItems(items, res[:len(res)-1])
+			xV = res[len(res)-1]
+		}
 		if missing == nil {
-			items = appendAndMergeItems(items, x.Items[i+1:])
-			break
+			j++
+			if j == len(y.Items) && xV != nil {
+				items = appendAndMergeItem(items, xV)
+				i++
+			}
 		}
 		yV = missing
+	}
+	if i < len(x.Items) {
+		items = appendAndMergeItems(items, x.Items[i:])
 	}
 	z.SetItems(items)
 	DebugCall(func() { z.CheckValid() })
 	return z
 }
 
-// Cmp wacom
-func (z *TimeLock) Cmp(x *TimeLock) int {
-	if x == nil || len(x.Items) != 1 {
-		panic("Cmp Just Support One TimeLockItem")
-	}
-	if z.IsEmpty() == true {
-		return -1
+func (z *TimeLock) CanSub(x *TimeLock) bool {
+	if x.IsEmpty() {
+		return true
 	}
 	if err := x.IsValid(); err != nil {
-		log.Info("TimeLock:%v is invalid", x)
-		return -1
+		return false
 	}
-	item := x.Items[0]
-	if z.Items[0].StartTime > item.StartTime {
-		return -1 // has head gap
+	for _, item := range x.Items {
+		value := z.GetSpendableValue(item.StartTime, item.EndTime)
+		cmp := value.Cmp(item.Value)
+		if cmp < 0 {
+			return false
+		}
 	}
-	if z.Items[len(z.Items)-1].EndTime < item.EndTime {
-		return -1 // has tail gap
+	return true
+}
+
+// Cmp wacom
+func (z *TimeLock) Cmp(x *TimeLock) int {
+	if z.CanSub(x) {
+		if z.EqualTo(x) {
+			return 0
+		}
+		return 1
 	}
-	minVal := big.NewInt(0)
-	tempTime := uint64(0)
-	maybeGreat := z.Items[0].StartTime < item.StartTime || z.Items[len(z.Items)-1].EndTime > item.EndTime
-	for _, t := range z.Items {
-		if t.EndTime < item.StartTime {
+	return -1
+}
+
+func (z *TimeLock) GetSpendableValue(start, end uint64) *big.Int {
+	if start > end || z.IsEmpty() {
+		return big.NewInt(0)
+	}
+	if z.Items[len(z.Items)-1].EndTime < end {
+		return big.NewInt(0) // has tail gap
+	}
+	result := big.NewInt(0)
+	var tempEnd uint64
+	for _, item := range z.Items {
+		if item.EndTime < start {
 			continue
 		}
-		if tempTime == 0 {
-			if t.StartTime > item.StartTime {
-				return -1 // has head gap
+		if tempEnd == 0 {
+			if item.StartTime > start {
+				return big.NewInt(0) // has head gap
 			}
-			minVal = t.Value
-		} else if tempTime < t.StartTime && tempTime+1 < t.StartTime {
-			return -1 // has middle gap
-		}
-		if t.Value.Cmp(minVal) < 0 {
-			minVal = t.Value
-			res := minVal.Cmp(item.Value)
-			if res < 0 {
-				return -1 // has lower value
-			} else if res > 0 {
-				maybeGreat = true
+			result = item.Value
+		} else {
+			if item.StartTime != tempEnd+1 {
+				return big.NewInt(0) // has middle gap
+			}
+			if item.Value.Cmp(result) < 0 {
+				result = item.Value
 			}
 		}
-		tempTime = t.EndTime
-		if tempTime >= item.EndTime {
+		tempEnd = item.EndTime
+		if tempEnd >= end {
 			break
 		}
 	}
-	cmpVal := minVal.Cmp(item.Value)
-	if cmpVal == 0 && maybeGreat {
-		return 1
-	}
-	return cmpVal
+	return result
 }
 
 func (z *TimeLock) ClearExpired(timestamp uint64) *TimeLock {
@@ -417,6 +430,9 @@ func (z *TimeLock) ClearExpired(timestamp uint64) *TimeLock {
 }
 
 func (z *TimeLock) IsValid() error {
+	if z.IsEmpty() {
+		return nil
+	}
 	var prev, next *TimeLockItem
 	for i := 0; i < len(z.Items); i++ {
 		next = z.Items[i]
@@ -424,7 +440,7 @@ func (z *TimeLock) IsValid() error {
 			return fmt.Errorf("TimeLock is invalid, index:%v err:%v", i, err)
 		}
 		if prev != nil {
-			if prev.EndTime >= next.StartTime || prev.CanMerge(next) == true {
+			if prev.EndTime >= next.StartTime || prev.CanMerge(next) {
 				return fmt.Errorf("TimeLock is invalid, index:%v, prev:%v, next:%v", i, prev, next)
 			}
 		}
@@ -440,13 +456,28 @@ func (z *TimeLock) CheckValid() {
 	}
 }
 
+func (z *TimeLock) EqualTo(x *TimeLock) bool {
+	if z.IsEmpty() != x.IsEmpty() {
+		return false
+	}
+	if len(z.Items) != len(x.Items) {
+		return false
+	}
+	for i := 0; i < len(z.Items); i++ {
+		if !z.Items[i].EqualTo(x.Items[i]) {
+			return false
+		}
+	}
+	return true
+}
+
 // Set wacom
 func (z *TimeLock) Set(x *TimeLock) *TimeLock {
-	if x != nil {
-		z = x.Clone()
-	} else {
-		z = &TimeLock{}
+	var items []*TimeLockItem
+	if !x.IsEmpty() {
+		items = x.Items
 	}
+	z.SetItems(items)
 	return z
 }
 
@@ -460,7 +491,11 @@ func (z *TimeLock) SetItems(items []*TimeLockItem) {
 
 // Clone wacom
 func (z *TimeLock) Clone() *TimeLock {
-	return NewTimeLock(z.Items...)
+	var items []*TimeLockItem
+	if !z.IsEmpty() {
+		items = z.Items
+	}
+	return NewTimeLock(items...)
 }
 
 func (z *TimeLock) Len() int {
@@ -542,4 +577,41 @@ func (z *TimeLock) String() string {
 func (z *TimeLock) RawString() string {
 	b, _ := json.Marshal(z.Items)
 	return string(b)
+}
+
+func IsWholeAsset(start, end, timestamp uint64) bool {
+	return end == TimeLockForever && start <= timestamp
+}
+
+func GetTimeLock(value *big.Int, start, end uint64) *TimeLock {
+	if value.Sign() <= 0 {
+		return NewTimeLock()
+	}
+	return NewTimeLock(&TimeLockItem{
+		Value:     value,
+		StartTime: start,
+		EndTime:   end,
+	})
+}
+
+func GetSurplusTimeLock(value *big.Int, start, end, timestamp uint64) *TimeLock {
+	left := NewTimeLock()
+	if value.Sign() <= 0 {
+		return left
+	}
+	if start > timestamp {
+		left.Items = append(left.Items, &TimeLockItem{
+			Value:     value,
+			StartTime: timestamp,
+			EndTime:   start - 1,
+		})
+	}
+	if end < TimeLockForever {
+		left.Items = append(left.Items, &TimeLockItem{
+			Value:     value,
+			StartTime: end + 1,
+			EndTime:   TimeLockForever,
+		})
+	}
+	return left
 }

@@ -292,7 +292,6 @@ func (pool *TxPool) loop() {
 		// Handle ChainHeadEvent
 		case ev := <-pool.chainHeadCh:
 			if ev.Block != nil {
-				pool.RemoveIllegals(ev.Block.Number())
 				pool.mu.Lock()
 				if pool.chainconfig.IsHomestead(ev.Block.Number()) {
 					pool.homestead = true
@@ -627,9 +626,6 @@ func (pool *TxPool) validateTx(tx *types.Transaction, local bool) error {
 	if tx.Gas() < intrGas {
 		return ErrIntrinsicGas
 	}
-	if common.IsInVote1DrainList(from) {
-		return common.ErrAccountFrozen
-	}
 	return nil
 }
 
@@ -946,21 +942,6 @@ func (pool *TxPool) removeTx(hash common.Hash, outofbound bool) {
 		future.Remove(tx)
 		if future.Empty() {
 			delete(pool.queue, addr)
-		}
-	}
-}
-
-func (pool *TxPool) RemoveIllegals(blockNumber *big.Int) {
-	if common.IsTransactionFrozen(blockNumber) {
-		var hashes []common.Hash
-		pool.all.Range(func(hash common.Hash, tx *types.Transaction) bool {
-			if !tx.IsBuyTicketTx() {
-				hashes = append(hashes, hash)
-			}
-			return true
-		})
-		for _, hash := range hashes {
-			pool.removeTx(hash, true)
 		}
 	}
 }
@@ -1394,23 +1375,60 @@ func (pool *TxPool) validateAddFsnCallTx(tx *types.Transaction) error {
 	return nil
 }
 
-func (pool *TxPool) validateFsnCallTx(tx *types.Transaction) error {
-	to := tx.To()
-	if !common.IsFsnCall(to) {
+func (pool *TxPool) validateReceiveAssetPayableTx(tx *types.Transaction, from common.Address) error {
+	header := pool.chain.CurrentBlock().Header()
+	height := new(big.Int).Add(header.Number, big.NewInt(1))
+	input := tx.Data()
+	if !common.IsReceiveAssetPayableTx(height, input) {
 		return nil
 	}
+	if pool.currentState.GetCodeSize(*tx.To()) == 0 {
+		return fmt.Errorf("receiveAsset tx receiver must be contract")
+	}
+	timestamp := uint64(time.Now().Unix())
+	p := &common.TransferTimeLockParam{}
+	// use `timestamp+600` here to ensure timelock tx with minimum lifetime of 10 minutes,
+	// that is endtime of timelock must be greater than or equal to `now + 600 seconds`.
+	if err := common.ParseReceiveAssetPayableTxInput(p, input, timestamp+600); err != nil {
+		return err
+	}
+	p.Value = tx.Value()
+	p.GasValue = new(big.Int).Mul(new(big.Int).SetUint64(tx.Gas()), tx.GasPrice())
+	if !CanTransferTimeLock(pool.currentState, from, p) {
+		return ErrInsufficientFunds
+	}
+	return nil
+}
+
+func (pool *TxPool) validateFsnCallTx(tx *types.Transaction) error {
 	msg, err := tx.AsMessage(pool.signer)
 	if err != nil {
 		return fmt.Errorf("validateFsnCallTx err:%v", err)
 	}
+	from := msg.From()
+	to := tx.To()
+
+	if !common.IsFsnCall(to) {
+		if to == nil {
+			return nil
+		}
+		if err := pool.validateReceiveAssetPayableTx(tx, from); err != nil {
+			return err
+		}
+		return nil
+	}
+
+	currBlockHeader := pool.chain.CurrentBlock().Header()
+	nextBlockNumber := new(big.Int).Add(currBlockHeader.Number, big.NewInt(1))
 
 	state := pool.currentState
-	from := msg.From()
 	height := common.BigMaxUint64
 	timestamp := uint64(time.Now().Unix())
 
 	param := common.FSNCallParam{}
-	rlp.DecodeBytes(tx.Data(), &param)
+	if err := rlp.DecodeBytes(tx.Data(), &param); err != nil {
+		return fmt.Errorf("decode FSNCallParam error")
+	}
 
 	fee := common.GetFsnCallFee(to, param.Func)
 	fsnValue := big.NewInt(0)
@@ -1453,14 +1471,20 @@ func (pool *TxPool) validateFsnCallTx(tx *types.Transaction) error {
 			}
 			timeLockParam.EndTime = common.TimeLockForever
 		}
+		if timeLockParam.To == (common.Address{}) {
+			return fmt.Errorf("receiver address must be set and not zero address")
+		}
 		if err := timeLockParam.Check(height, timestamp); err != nil {
 			return err
 		}
 
 		start := timeLockParam.StartTime
 		end := timeLockParam.EndTime
+		if start < timestamp {
+			start = timestamp
+		}
 		needValue := common.NewTimeLock(&common.TimeLockItem{
-			StartTime: common.MaxUint64(start, timestamp),
+			StartTime: start,
 			EndTime:   end,
 			Value:     new(big.Int).SetBytes(timeLockParam.Value.Bytes()),
 		})
@@ -1482,12 +1506,25 @@ func (pool *TxPool) validateFsnCallTx(tx *types.Transaction) error {
 			if state.GetTimeLockBalance(timeLockParam.AssetID, from).Cmp(needValue) < 0 {
 				return fmt.Errorf("TimeLockToAsset: not enough time lock balance")
 			}
+		case common.SmartTransfer:
+			if !common.IsSmartTransferEnabled(nextBlockNumber) {
+				return fmt.Errorf("SendTimeLock not enabled")
+			}
+			timeLockBalance := state.GetTimeLockBalance(timeLockParam.AssetID, from)
+			if timeLockBalance.Cmp(needValue) < 0 {
+				timeLockValue := timeLockBalance.GetSpendableValue(start, end)
+				assetBalance := state.GetBalance(timeLockParam.AssetID, from)
+				if new(big.Int).Add(timeLockValue, assetBalance).Cmp(timeLockParam.Value) < 0 {
+					return fmt.Errorf("SendTimeLock: not enough balance")
+				}
+				fsnValue = new(big.Int).Sub(timeLockParam.Value, timeLockValue)
+			}
 		}
 
 	case common.BuyTicketFunc:
 		buyTicketParam := common.BuyTicketParam{}
 		rlp.DecodeBytes(param.Data, &buyTicketParam)
-		if err := buyTicketParam.Check(height, timestamp, 0); err != nil {
+		if err := buyTicketParam.Check(height, currBlockHeader.Time.Uint64()); err != nil {
 			return err
 		}
 

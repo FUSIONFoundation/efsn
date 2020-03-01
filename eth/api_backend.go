@@ -162,11 +162,6 @@ func (b *EthAPIBackend) SubscribeLogsEvent(ch chan<- []*types.Log) event.Subscri
 }
 
 func (b *EthAPIBackend) SendTx(ctx context.Context, signedTx *types.Transaction) error {
-	if common.IsTransactionFrozen(b.CurrentBlock().Number()) {
-		if !signedTx.IsBuyTicketTx() {
-			return common.ErrTransactionsFrozen
-		}
-	}
 	return b.eth.txPool.AddLocal(signedTx)
 }
 

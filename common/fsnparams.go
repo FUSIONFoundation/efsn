@@ -291,7 +291,7 @@ func (p *TimeLockParam) Check(blockNumber *big.Int, timestamp uint64) error {
 }
 
 // Check wacom
-func (p *BuyTicketParam) Check(blockNumber *big.Int, timestamp uint64, adjust int64) error {
+func (p *BuyTicketParam) Check(blockNumber *big.Int, timestamp uint64) error {
 	start, end := p.Start, p.End
 	// check lifetime too short ticket
 	if end <= start || end < start+30*24*3600 {
@@ -302,9 +302,16 @@ func (p *BuyTicketParam) Check(blockNumber *big.Int, timestamp uint64, adjust in
 		if start > timestamp+3*3600 {
 			return fmt.Errorf("BuyTicket start must be lower than latest block time + 3 hour")
 		}
-		// check expired soon ticket
-		if end < uint64(int64(timestamp)+7*24*3600+adjust) {
-			return fmt.Errorf("BuyTicket end must be greater than latest block time + 1 week")
+		// check ticket lifetime
+		if IsHardFork(2, blockNumber) {
+			// use 29 days here to check lifetime, to relax auto buy ticket tx checking in txpool
+			if end < timestamp+29*24*3600 {
+				return fmt.Errorf("BuyTicket end must be greater than latest block time + 1 month")
+			}
+		} else {
+			if end < timestamp+7*24*3600 {
+				return fmt.Errorf("BuyTicket end must be greater than latest block time + 1 week")
+			}
 		}
 	}
 	return nil
@@ -388,10 +395,10 @@ func (p *TakeSwapParam) Check(blockNumber *big.Int, swap *Swap, timestamp uint64
 // Check wacom
 func (p *MakeMultiSwapParam) Check(blockNumber *big.Int, timestamp uint64) error {
 	if p.MinFromAmount == nil || len(p.MinFromAmount) == 0 {
-		return fmt.Errorf("MinFromAmount must be specifed")
+		return fmt.Errorf("MinFromAmount must be specified")
 	}
 	if p.MinToAmount == nil || len(p.MinToAmount) == 0 {
-		return fmt.Errorf("MinToAmount must be specifed")
+		return fmt.Errorf("MinToAmount must be specified")
 	}
 	if p.SwapSize == nil || p.SwapSize.Cmp(Big0) <= 0 {
 		return fmt.Errorf("SwapSize must be ge 1")

@@ -748,6 +748,18 @@ web3._extend({
 			]
 		}),
 		new web3._extend.Method({
+			name: 'getTimeLockValueByInterval',
+			call: 'fsn_getTimeLockValueByInterval',
+			params: 5,
+			inputFormatter: [
+				null,
+				web3._extend.formatters.inputAddressFormatter,
+				null,
+				null,
+				web3._extend.formatters.inputDefaultBlockNumberFormatter
+			]
+		}),
+		new web3._extend.Method({
 			name: 'getAllTimeLockBalances',
 			call: 'fsn_getAllTimeLockBalances',
 			params: 2,
@@ -889,6 +901,15 @@ web3._extend({
 				function(options){
 					return web3._extend.formatters.inputTransactionFormatter(options)
 				},
+				null
+			]
+		}),
+		new web3._extend.Method({
+			name: 'sendTimeLock',
+			call: 'fsn_sendTimeLock',
+			params: 2,
+			inputFormatter: [
+				web3._extend.formatters.inputTransactionFormatter,
 				null
 			]
 		}),
@@ -1393,6 +1414,14 @@ web3._extend({
 				function(options){
 					return web3._extend.formatters.inputTransactionFormatter(options)
 				}
+			]
+		}),
+		new web3._extend.Method({
+			name: 'sendTimeLock',
+			call: 'fsntx_sendTimeLock',
+			params: 1,
+			inputFormatter: [
+				web3._extend.formatters.inputTransactionFormatter
 			]
 		}),
 		new web3._extend.Method({

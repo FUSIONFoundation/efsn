@@ -399,9 +399,6 @@ func (dt *DaTong) Finalize(chain consensus.ChainReader, header *types.Header, st
 	}
 
 	if common.IsVote1ForkBlock(header.Number) {
-		if common.IsInVote1DrainList(header.Coinbase) {
-			return nil, common.ErrAccountFrozen
-		}
 		ApplyVote1HardFork(headerState, header.Number, parent.Time.Uint64())
 	}
 
@@ -782,6 +779,16 @@ func posHash(header *types.Header) (hash common.Hash) {
 			(header.Time.Uint64() >> 5) << 5,
 			header.Extra[extraVanity : len(header.Extra)-extraSeal],
 			header.MixDigest,
+			header.Nonce,
+		})
+	case common.PosV3:
+		rlp.Encode(hasher, []interface{}{
+			header.UncleHash,
+			header.Coinbase,
+			header.Difficulty,
+			header.Number,
+			(header.Time.Uint64() >> 5) << 5,
+			header.Extra[extraVanity : len(header.Extra)-extraSeal],
 			header.Nonce,
 		})
 	}

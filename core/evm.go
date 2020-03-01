@@ -62,6 +62,9 @@ func NewEVMContext(msg Message, header *types.Header, chain ChainContext, author
 		GasLimit:    header.GasLimit,
 		GasPrice:    new(big.Int).Set(msg.GasPrice()),
 		MixDigest:   header.MixDigest,
+
+		CanTransferTimeLock: CanTransferTimeLock,
+		TransferTimeLock:    TransferTimeLock,
 	}
 }
 
@@ -101,4 +104,125 @@ func CanTransfer(db vm.StateDB, addr common.Address, amount *big.Int) bool {
 func Transfer(db vm.StateDB, sender, recipient common.Address, amount *big.Int) {
 	db.SubBalance(sender, common.SystemAssetID, amount)
 	db.AddBalance(recipient, common.SystemAssetID, amount)
+}
+
+func CanTransferTimeLock(db vm.StateDB, addr common.Address, p *common.TransferTimeLockParam) bool {
+	if p.Value.Sign() <= 0 {
+		return true
+	}
+	timelock := common.GetTimeLock(p.Value, p.StartTime, p.EndTime)
+	if err := timelock.IsValid(); err != nil {
+		return false
+	}
+
+	assetBalance := db.GetBalance(p.AssetID, addr)
+	if p.GasValue != nil && p.GasValue.Sign() > 0 {
+		if p.AssetID == common.SystemAssetID {
+			if assetBalance.Cmp(p.GasValue) < 0 {
+				return false
+			}
+			assetBalance = new(big.Int).Sub(assetBalance, p.GasValue)
+		} else if db.GetBalance(common.SystemAssetID, addr).Cmp(p.GasValue) < 0 {
+			return false
+		}
+	}
+
+	if p.Flag.IsUseAsset() {
+		if assetBalance.Cmp(p.Value) < 0 {
+			return false
+		}
+	} else {
+		timeLockBalance := db.GetTimeLockBalance(p.AssetID, addr)
+		if timeLockBalance.Cmp(timelock) < 0 {
+			if p.Flag.IsUseTimeLock() {
+				return false
+			}
+			timeLockValue := timeLockBalance.GetSpendableValue(p.StartTime, p.EndTime)
+			if new(big.Int).Add(timeLockValue, assetBalance).Cmp(p.Value) < 0 {
+				return false
+			}
+		}
+	}
+	return true
+}
+
+func TransferTimeLock(db vm.StateDB, sender, recipient common.Address, p *common.TransferTimeLockParam) {
+	if p.Value.Sign() <= 0 {
+		return
+	}
+	timelock := common.GetTimeLock(p.Value, p.StartTime, p.EndTime)
+	if err := timelock.IsValid(); err != nil {
+		return
+	}
+	if p.Flag.IsUseAsset() {
+		assetBalance := db.GetBalance(p.AssetID, sender)
+		if assetBalance.Cmp(p.Value) < 0 {
+			return
+		}
+		db.SubBalance(sender, p.AssetID, p.Value)
+		surplus := common.GetSurplusTimeLock(p.Value, p.StartTime, p.EndTime, p.Timestamp)
+		if !surplus.IsEmpty() {
+			db.AddTimeLockBalance(sender, p.AssetID, surplus, p.BlockNumber, p.Timestamp)
+		}
+	} else {
+		timeLockBalance := db.GetTimeLockBalance(p.AssetID, sender)
+		if timeLockBalance.Cmp(timelock) < 0 {
+			if p.Flag.IsUseTimeLock() {
+				return
+			}
+			timeLockValue := timeLockBalance.GetSpendableValue(p.StartTime, p.EndTime)
+			assetBalance := db.GetBalance(p.AssetID, sender)
+			if new(big.Int).Add(timeLockValue, assetBalance).Cmp(p.Value) < 0 {
+				return
+			}
+			if timeLockValue.Sign() > 0 {
+				subTimeLock := common.GetTimeLock(timeLockValue, p.StartTime, p.EndTime)
+				db.SubTimeLockBalance(sender, p.AssetID, subTimeLock, p.BlockNumber, p.Timestamp)
+			}
+			useAssetAmount := new(big.Int).Sub(p.Value, timeLockValue)
+			db.SubBalance(sender, p.AssetID, useAssetAmount)
+			surplus := common.GetSurplusTimeLock(useAssetAmount, p.StartTime, p.EndTime, p.Timestamp)
+			if !surplus.IsEmpty() {
+				db.AddTimeLockBalance(sender, p.AssetID, surplus, p.BlockNumber, p.Timestamp)
+			}
+		} else {
+			db.SubTimeLockBalance(sender, p.AssetID, timelock, p.BlockNumber, p.Timestamp)
+		}
+	}
+
+	if p.Flag.IsToTimeLock() || !common.IsWholeAsset(p.StartTime, p.EndTime, p.Timestamp) {
+		db.AddTimeLockBalance(recipient, p.AssetID, timelock, p.BlockNumber, p.Timestamp)
+	} else {
+		db.AddBalance(recipient, p.AssetID, p.Value)
+	}
+
+	logData := make([]byte, 128)
+	copy(logData[0:32], common.BigToHash(p.Value).Bytes())
+	copy(logData[32:64], common.BigToHash(new(big.Int).SetUint64(p.StartTime)).Bytes())
+	copy(logData[64:96], common.BigToHash(new(big.Int).SetUint64(p.EndTime)).Bytes())
+	copy(logData[96:128], common.BigToHash(big.NewInt(int64(p.Flag))).Bytes())
+
+	if p.IsReceive {
+		db.AddLog(&types.Log{
+			Address: recipient,
+			Topics: []common.Hash{
+				common.LogFusionAssetReceivedTopic,
+				p.AssetID,
+				common.BytesToHash(sender.Bytes()),
+			},
+			Data:        logData,
+			BlockNumber: p.BlockNumber.Uint64(),
+		})
+	} else {
+		db.AddLog(&types.Log{
+			Address: sender,
+			Topics: []common.Hash{
+				common.LogFusionAssetSentTopic,
+				p.AssetID,
+				common.BytesToHash(recipient.Bytes()),
+			},
+			Data:        logData,
+			BlockNumber: p.BlockNumber.Uint64(),
+		})
+	}
 }

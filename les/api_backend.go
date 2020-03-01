@@ -112,11 +112,6 @@ func (b *LesApiBackend) GetEVM(ctx context.Context, msg core.Message, state *sta
 }
 
 func (b *LesApiBackend) SendTx(ctx context.Context, signedTx *types.Transaction) error {
-	if common.IsTransactionFrozen(b.CurrentBlock().Number()) {
-		if !signedTx.IsBuyTicketTx() {
-			return common.ErrTransactionsFrozen
-		}
-	}
 	return b.eth.txPool.Add(ctx, signedTx)
 }
 

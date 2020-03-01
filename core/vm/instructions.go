@@ -392,7 +392,7 @@ func opAddress(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memo
 
 func opBalance(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory *Memory, stack *Stack) ([]byte, error) {
 	slot := stack.peek()
-	slot.Set(interpreter.evm.StateDB.GetBalance(common.SystemAssetID,common.BigToAddress(slot)))
+	slot.Set(interpreter.evm.StateDB.GetBalance(common.SystemAssetID, common.BigToAddress(slot)))
 	return nil, nil
 }
 
@@ -855,9 +855,13 @@ func opStop(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory 
 }
 
 func opSuicide(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory *Memory, stack *Stack) ([]byte, error) {
-	balance := interpreter.evm.StateDB.GetBalance(common.SystemAssetID,contract.Address())
-	interpreter.evm.StateDB.AddBalance(common.BigToAddress(stack.pop()), common.SystemAssetID, balance)
-
+	balance := interpreter.evm.StateDB.GetBalance(common.SystemAssetID, contract.Address())
+	timelock := interpreter.evm.StateDB.GetTimeLockBalance(common.SystemAssetID, contract.Address())
+	addr := common.BigToAddress(stack.pop())
+	interpreter.evm.StateDB.AddBalance(addr, common.SystemAssetID, balance)
+	if common.IsHardFork(2, interpreter.evm.BlockNumber) {
+		interpreter.evm.StateDB.AddTimeLockBalance(addr, common.SystemAssetID, timelock, interpreter.evm.BlockNumber, interpreter.evm.ParentTime.Uint64())
+	}
 	interpreter.evm.StateDB.Suicide(contract.Address())
 	return nil, nil
 }

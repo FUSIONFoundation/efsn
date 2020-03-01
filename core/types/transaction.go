@@ -243,6 +243,11 @@ func (tx *Transaction) WithSignature(signer Signer, sig []byte) (*Transaction, e
 // Cost returns amount + gasprice * gaslimit.
 func (tx *Transaction) Cost() *big.Int {
 	total := new(big.Int).Mul(tx.data.Price, new(big.Int).SetUint64(tx.data.GasLimit))
+	if common.IsReceiveAssetPayableTx(nil, tx.data.Payload) {
+		// in this situation, tx.data.Amount may be timelock value,
+		// we'll use `CanTransferTimeLock` to judge wether the balance is enough instead.
+		return total
+	}
 	total.Add(total, tx.data.Amount)
 	return total
 }

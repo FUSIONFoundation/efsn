@@ -136,7 +136,7 @@ func (f FSNCallFunc) Name() string {
 	case ReportIllegalFunc:
 		return "ReportIllegalFunc"
 	}
-	return "Unkonwn"
+	return "Unknown"
 }
 
 func IsFsnCall(to *Address) bool {

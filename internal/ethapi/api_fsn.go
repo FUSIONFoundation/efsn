@@ -78,6 +78,25 @@ func (s *PublicFusionAPI) GetTimeLockBalance(ctx context.Context, assetID common
 	return b, state.Error()
 }
 
+// GetTimeLockValueByInterval wacom
+func (s *PublicFusionAPI) GetTimeLockValueByInterval(ctx context.Context, assetID common.Hash, address common.Address, startTime, endTime uint64, blockNr rpc.BlockNumber) (string, error) {
+	state, header, err := s.b.StateAndHeaderByNumber(ctx, blockNr)
+	if state == nil || err != nil {
+		return "0", err
+	}
+	b := state.GetTimeLockBalance(assetID, address)
+	if state.Error() != nil {
+		return "0", state.Error()
+	}
+	if startTime < header.Time.Uint64() {
+		startTime = header.Time.Uint64()
+	}
+	if endTime == 0 {
+		endTime = common.TimeLockForever
+	}
+	return b.GetSpendableValue(startTime, endTime).String(), nil
+}
+
 // GetAllTimeLockBalances wacom
 func (s *PublicFusionAPI) GetAllTimeLockBalances(ctx context.Context, address common.Address, blockNr rpc.BlockNumber) (map[common.Hash]*common.TimeLock, error) {
 	state, _, err := s.b.StateAndHeaderByNumber(ctx, blockNr)
@@ -610,17 +629,19 @@ func (s *PublicFusionAPI) BuildGenAssetSendTxArgs(ctx context.Context, args comm
 }
 
 func CheckAndSetToAddress(args *common.SendAssetArgs, state *state.StateDB) error {
-	if args.ToUSAN == 0 {
-		return nil
-	}
-	address, err := state.GetAddressByNotation(args.ToUSAN)
-	if err != nil {
-		return err
+	if args.ToUSAN != 0 {
+		address, err := state.GetAddressByNotation(args.ToUSAN)
+		if err != nil {
+			return err
+		}
+		if args.To == (common.Address{}) {
+			args.To = address
+		} else if args.To != address {
+			return fmt.Errorf("'to' and 'toUSAN' conflicts")
+		}
 	}
 	if args.To == (common.Address{}) {
-		args.To = address
-	} else if args.To != address {
-		return fmt.Errorf("'to' and 'toUSAN' conflicts")
+		return fmt.Errorf("receiver address must be set and not zero address")
 	}
 	return nil
 }
@@ -744,6 +765,34 @@ func (s *PublicFusionAPI) BuildTimeLockToAssetSendTxArgs(ctx context.Context, ar
 	return FSNCallArgsToSendTxArgs(&args, common.TimeLockFunc, funcData)
 }
 
+func (s *PublicFusionAPI) BuildSendTimeLockSendTxArgs(ctx context.Context, args common.TimeLockArgs) (*SendTxArgs, error) {
+	state, header, err := s.b.StateAndHeaderByNumber(ctx, rpc.LatestBlockNumber)
+	if state == nil || err != nil {
+		return nil, err
+	}
+	if err = CheckAndSetToAddress(&args.SendAssetArgs, state); err != nil {
+		return nil, err
+	}
+	args.Init(common.SmartTransfer)
+	if err := args.ToParam().Check(common.BigMaxUint64, header.Time.Uint64()); err != nil {
+		return nil, err
+	}
+	needValue := common.NewTimeLock(&common.TimeLockItem{
+		StartTime: common.MaxUint64(uint64(*args.StartTime), header.Time.Uint64()),
+		EndTime:   uint64(*args.EndTime),
+		Value:     args.Value.ToInt(),
+	})
+	if err := needValue.IsValid(); err != nil {
+		return nil, fmt.Errorf("BuildSendTimeLockSendTxArgs err:%v", err.Error())
+	}
+
+	funcData, err := args.ToData()
+	if err != nil {
+		return nil, err
+	}
+	return FSNCallArgsToSendTxArgs(&args, common.TimeLockFunc, funcData)
+}
+
 func (s *PublicFusionAPI) BuildBuyTicketSendTxArgs(ctx context.Context, args common.BuyTicketArgs) (*SendTxArgs, error) {
 	state, header, err := s.b.StateAndHeaderByNumber(ctx, rpc.LatestBlockNumber)
 	if state == nil || err != nil {
@@ -754,13 +803,9 @@ func (s *PublicFusionAPI) BuildBuyTicketSendTxArgs(ctx context.Context, args com
 		return nil, fmt.Errorf("Purchase of BuyTicket for this block already submitted")
 	}
 
-	now := uint64(time.Now().Unix())
-	defStart := header.Time.Uint64()
-	if defStart+3600 < now {
-		defStart = now
-	}
-	args.Init(defStart)
-	if err := args.ToParam().Check(common.BigMaxUint64, now, 600); err != nil {
+	parentTime := header.Time.Uint64()
+	args.Init(parentTime)
+	if err := args.ToParam().Check(common.BigMaxUint64, parentTime); err != nil {
 		return nil, err
 	}
 
@@ -1150,6 +1195,15 @@ func (s *PrivateFusionAPI) TimeLockToAsset(ctx context.Context, args common.Time
 	return s.papi.SendTransaction(ctx, *sendArgs, passwd)
 }
 
+// SendTimeLock ss
+func (s *PrivateFusionAPI) SendTimeLock(ctx context.Context, args common.TimeLockArgs, passwd string) (common.Hash, error) {
+	sendArgs, err := s.BuildSendTimeLockSendTxArgs(ctx, args)
+	if err != nil {
+		return common.Hash{}, err
+	}
+	return s.papi.SendTransaction(ctx, *sendArgs, passwd)
+}
+
 /** on our public gateways too many buyTickets are past through
 this cache of purchase on block will stop multiple purchase
 attempt on a block (which state_transistion also flags).
@@ -1494,6 +1548,24 @@ func (s *FusionTransactionAPI) BuildTimeLockToAssetTx(ctx context.Context, args 
 // TimeLockToAsset ss
 func (s *FusionTransactionAPI) TimeLockToAsset(ctx context.Context, args common.TimeLockArgs) (common.Hash, error) {
 	tx, err := s.BuildTimeLockToAssetTx(ctx, args)
+	if err != nil {
+		return common.Hash{}, err
+	}
+	return s.sendTransaction(ctx, args.From, tx)
+}
+
+// BuildSendTimeLock ss
+func (s *FusionTransactionAPI) BuildSendTimeLock(ctx context.Context, args common.TimeLockArgs) (*types.Transaction, error) {
+	sendArgs, err := s.BuildSendTimeLockSendTxArgs(ctx, args)
+	if err != nil {
+		return nil, err
+	}
+	return s.buildTransaction(ctx, *sendArgs)
+}
+
+// SendTimeLock ss
+func (s *FusionTransactionAPI) SendTimeLock(ctx context.Context, args common.TimeLockArgs) (common.Hash, error) {
+	tx, err := s.BuildSendTimeLock(ctx, args)
 	if err != nil {
 		return common.Hash{}, err
 	}
