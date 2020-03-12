@@ -564,7 +564,7 @@ createContainer() {
     fi
 
     echo
-    echo "${txtylw}Creating node container${txtrst}"
+    echo "${txtylw}Creating node container from image $imagename${txtrst}"
     if [ "$nodetype" = "minerandlocalgateway" ]; then
         # docker create automatically pulls the image if it's not there
         # we do not need -i here as it's not really an interactive terminal
@@ -609,6 +609,13 @@ createContainer() {
 
     else
         echo "${txtred}Invalid node type${txtrst}"
+        exit 1
+    fi
+
+    # check the container is really created. it may fail as network reasons.
+    createdTime="$(sudo docker container inspect -f "{{.Created}}" fusion 2>/dev/null)"
+    if [ -z "$createdTime" ]; then
+        echo "${txtred}Create container failed, please check your network${txtrst}"
         exit 1
     fi
 
