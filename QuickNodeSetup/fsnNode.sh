@@ -78,6 +78,9 @@ sanityChecks() {
         fi
     fi
 
+    # silently make sure mlocate is installed before using locate command
+    dpkg -s mlocate 2>/dev/null | grep -q -E "Status.+installed" || sudo apt-get install -qq mlocate
+
     # using locate without prior update is a perf vs reliability tradeoff
     # we don't want to wait until the whole fs is indexed or even use find
     if [ $(sudo locate -r .*/efsn/chaindata$ -c) -gt 1 ]; then
@@ -117,7 +120,7 @@ sanityChecks() {
 
     # silently make sure jq is installed if node.json already exists
     if [ -f "$CONF_FILE" ]; then
-        dpkg -s jq 2>/dev/null | grep -q -E "Status.+installed" || apt-get install -qq jq
+        dpkg -s jq 2>/dev/null | grep -q -E "Status.+installed" || sudo apt-get install -qq jq
     fi
 }
 
@@ -1034,3 +1037,5 @@ while true; do
         read_options
     fi
 done
+
+#/* vim: set ts=4 sts=4 sw=4 et : */
