@@ -124,13 +124,45 @@ sanityChecks() {
     fi
 }
 
+getDockerImageName() {
+    local nodetype="$1"
+    local testnet="$2"
+    case $nodetype in
+        "minerandlocalgateway")
+            if [ "$testnet" = "true" ]; then
+                echo "fusionnetwork/testnet-minerandlocalgateway"
+            else
+                echo "fusionnetwork/minerandlocalgateway"
+            fi
+            ;;
+        "efsn")
+            if [ "$testnet" = "true" ]; then
+                echo "fusionnetwork/testnet-efsn"
+            else
+                echo "fusionnetwork/efsn"
+            fi
+            ;;
+        "gateway")
+            if [ "$testnet" = "true" ]; then
+                echo "fusionnetwork/testnet-gateway"
+            else
+                echo "fusionnetwork/gateway"
+            fi
+            ;;
+        *) echo ""
+            ;;
+    esac
+}
+
 checkUpdate() {
     local nodetype="$(getCfgValue 'nodeType')"
+    local testnet="$(getCfgValue 'testnet')"
+    local imagename="$(getDockerImageName $nodetype $testnet)"
 
     # get the container creation date as unix epoch for easy comparison
     local dateCreated=$(date -d "$(docker inspect -f "{{.Created}}" fusion 2>/dev/null)" '+%s')
     # query the Docker Hub registry for when the image was last updated
-    local dateUpdated="$(curl -fsL "https://registry.hub.docker.com/v2/repositories/fusionnetwork/$nodetype" | jq -r '.last_updated')"
+    local dateUpdated="$(curl -fsL "https://registry.hub.docker.com/v2/repositories/$imagename" | jq -r '.last_updated')"
     # make sure that no update is triggered if the registry returns no data
     [ -z "$dateUpdated" ] && dateUpdated=0 || dateUpdated=$(date -d "$dateUpdated" '+%s')
     # if the container is older than dateUpdated return 0, otherwise return 1
@@ -477,10 +509,17 @@ removeContainer() {
     echo
     echo "${txtylw}Removing container and base images${txtrst}"
     sudo docker rm fusion >/dev/null 2>&1
-    sudo docker rmi fusionnetwork/minerandlocalgateway fusionnetwork/efsn \
+    # mainnet images
+    sudo docker rmi fusionnetwork/minerandlocalgateway \
+        fusionnetwork/efsn \
         fusionnetwork/gateway >/dev/null 2>&1
-    sudo docker rmi fusionnetwork/minerandlocalgateway2 fusionnetwork/efsn2 \
+    sudo docker rmi fusionnetwork/minerandlocalgateway2 \
+        fusionnetwork/efsn2 \
         fusionnetwork/gateway2 >/dev/null 2>&1
+    # testnet images
+    sudo docker rmi fusionnetwork/testnet-minerandlocalgateway \
+        fusionnetwork/testnet-efsn \
+        fusionnetwork/testnet-gateway >/dev/null 2>&1
     echo "${txtgrn}✓${txtrst} Removed container and base images"
 }
 
@@ -497,6 +536,7 @@ createContainer() {
         local address="$(getCfgValue 'address')"
     fi
     echo "${txtgrn}✓${txtrst} Read node configuration"
+    local imagename="$(getDockerImageName $nodetype $testnet)"
 
     if [ "$testnet" = "true" ]; then
         # run testnet node
@@ -531,7 +571,7 @@ createContainer() {
         sudo docker create --name fusion -t --restart unless-stopped \
             -p 127.0.0.1:9000:9000 -p 127.0.0.1:9001:9001 -p 40408:40408 -p 40408:40408/udp \
             -v "$BASE_DIR/fusion-node":/fusion-node \
-            fusionnetwork/minerandlocalgateway \
+            $imagename \
             -u "$address" $testnet $autobuy $mining \
             -e "$nodename"
 
@@ -539,7 +579,7 @@ createContainer() {
         sudo docker create --name fusion -t --restart unless-stopped \
             -p 40408:40408 -p 40408:40408/udp \
             -v "$BASE_DIR/fusion-node":/fusion-node \
-            fusionnetwork/efsn \
+            $imagename \
             -u "$address" $testnet $autobuy $mining \
             -e "$nodename"
 
@@ -549,7 +589,7 @@ createContainer() {
         sudo docker create --name fusion -t --restart unless-stopped \
             -p 127.0.0.1:9000:9000 -p 127.0.0.1:9001:9001 -p 40408:40408 -p 40408:40408/udp \
             -v "$BASE_DIR/fusion-node":/fusion-node \
-            fusionnetwork/gateway \
+            $imagename \
             $testnet \
             -e "$nodename"
 
