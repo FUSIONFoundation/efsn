@@ -160,7 +160,7 @@ checkUpdate() {
     local imagename="$(getDockerImageName $nodetype $testnet)"
 
     # get the container creation date as unix epoch for easy comparison
-    local dateCreated=$(date -d "$(docker inspect -f "{{.Created}}" fusion 2>/dev/null)" '+%s')
+    local dateCreated=$(date -d "$(sudo docker container inspect -f "{{.Created}}" fusion 2>/dev/null)" '+%s')
     # query the Docker Hub registry for when the image was last updated
     local dateUpdated="$(curl -fsL "https://registry.hub.docker.com/v2/repositories/$imagename" | jq -r '.last_updated')"
     # make sure that no update is triggered if the registry returns no data
@@ -504,7 +504,7 @@ initConfig() {
 
 removeContainer() {
     # only try to stop the container if it's running
-    [ "$(sudo docker inspect -f "{{.State.Running}}" fusion 2>/dev/null)" = "true" ] && stopNode
+    [ "$(sudo docker container inspect -f "{{.State.Running}}" fusion 2>/dev/null)" = "true" ] && stopNode
     # remove container and base images no matter what
     echo
     echo "${txtylw}Removing container and base images${txtrst}"
