@@ -17,7 +17,7 @@ display_usage() {
     echo -e "-tn         Connect to testnet"
     }
 
-while true; do
+while [ "$1" != "" ]; do
     case $1 in
         -u | --unlock )         shift
                                 unlock=$1
@@ -34,7 +34,7 @@ while true; do
         * )                     display_usage
                                 exit 1
     esac
-    shift || break
+    shift
 done
 
 # create data folder if does not exit
