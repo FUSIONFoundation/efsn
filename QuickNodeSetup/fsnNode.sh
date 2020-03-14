@@ -39,25 +39,58 @@ scriptUpdate() {
 }
 
 distroChecks() {
+    if ! command -v lsb_release >/dev/null 2>&1; then
+        echo "${txtred}Missing command lsb_release, please install it firstly${txtrst}"
+        exit 1
+    fi
     # check for distribution and corresponding version (release)
-    if [ "$(lsb_release -si)" = "Ubuntu" ]; then
-        if [ $(lsb_release -sr | sed -E 's/([0-9]+).*/\1/') -lt 18 ]; then
+    distroID="$(lsb_release -si)"
+    distroMajorVerion="$(lsb_release -sr | sed -E 's/([0-9]+).*/\1/')"
+    if [ "$distroID" = "Ubuntu" ]; then
+        if [ $distroMajorVerion -lt 18 ]; then
             echo "${txtred}Unsupported Ubuntu release${txtrst}"
             echo "Currently supported: Ubuntu 18.04 or newer"
             exit 1
         fi
+    elif [ "$distroID" = "CentOS" ]; then
+        if [ $distroMajorVerion -lt 7 ]; then
+            echo "${txtred}Unsupported CentOs release${txtrst}"
+            echo "Currently supported: CentOS 7 or newer"
+            exit 1
+        fi
     else
-        echo "${txtred}Unsupported distribution${txtrst}"
-        echo "Currently supported: Ubuntu 18.04 or newer"
+        echo "${txtred}Warning: May be unsupported distribution${txtrst}"
+        echo "Ubuntu and CentOS is advised"
+        #exit 1 # don't forbid other OS systems but warning
+    fi
+}
+
+dependChecks() {
+    echo
+    echo "${txtylw}Checking dependencies${txtrst}"
+
+    missingCmds=""
+    for cmd in curl docker jq locate; do
+        if ! command -v $cmd >/dev/null 2>&1; then
+            missingCmds="$missingCmds $cmd"
+        fi
+    done
+
+    if [ -n "$missingCmds" ]; then
+        echo "${txtred}Please install missing commands: $missingCmds${txtrst}"
+        echo "eg. sudo apt install -q -y ca-certificates curl docker.io mlocate jq"
+        echo "or, sudo yum install -q -y ca-certificates curl docker.io mlocate jq"
         exit 1
     fi
+
+    echo "${txtred}✓${txtrst} Check dependencies passed"
 }
 
 sanityChecks() {
     if [ -z "$BASH" ]; then
         echo "${txtred}The setup script has to be run in the bash shell.${txtrst}"
-            echo "Please run it again in bash:"
-            echo "bash -c \"\$(curl -fsSL https://raw.githubusercontent.com/FUSIONFoundation/efsn/master/QuickNodeSetup/fsnNode.sh)\""
+        echo "Please run it again in bash:"
+        echo "bash -c \"\$(curl -fsSL https://raw.githubusercontent.com/FUSIONFoundation/efsn/master/QuickNodeSetup/fsnNode.sh)\""
         exit 1
     fi
 
@@ -77,9 +110,6 @@ sanityChecks() {
             exit 1
         fi
     fi
-
-    # silently make sure mlocate is installed before using locate command
-    dpkg -s mlocate 2>/dev/null | grep -q -E "Status.+installed" || sudo apt-get install -qq mlocate
 
     # using locate without prior update is a perf vs reliability tradeoff
     # we don't want to wait until the whole fs is indexed or even use find
@@ -116,11 +146,6 @@ sanityChecks() {
         else
             exit 1
         fi
-    fi
-
-    # silently make sure jq is installed if node.json already exists
-    if [ -f "$CONF_FILE" ]; then
-        dpkg -s jq 2>/dev/null | grep -q -E "Status.+installed" || sudo apt-get install -qq jq
     fi
 }
 
@@ -184,37 +209,6 @@ askToContinue() {
             *)    echo -e "\n${txtred}Invalid input${txtrst}" ;;
         esac
     done
-}
-
-installDocker() {
-    # install recent Docker version; function currently unused
-    # this has some additional requirements for the key import
-    sudo apt-get install -q -y apt-transport-https gnupg-agent software-properties-common | grep -v "is already the newest version"
-    echo
-    echo "${txtylw}Adding Docker repository${txtrst}"
-    curl -fsSL "https://download.docker.com/linux/ubuntu/gpg" | sudo apt-key add -
-    sudo add-apt-repository -u -y "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
-    echo "${txtgrn}✓${txtrst} Added Docker repository"
-
-    echo
-    echo "${txtylw}Installing Docker${txtrst}"
-    sudo apt-get install -q -y docker-ce
-    echo "${txtgrn}✓${txtrst} Installed Docker"
-}
-
-installDeps() {
-    echo
-    echo "${txtylw}Updating package lists${txtrst}"
-    echo "This might take a moment, please wait..."
-    sudo apt-get -qq update
-    echo "${txtgrn}✓${txtrst} Updated package lists"
-
-    echo
-    echo "${txtylw}Installing dependencies${txtrst}"
-    sudo apt-get install -q -y ca-certificates curl docker.io jq | grep -v "is already the newest version"
-    # install recent Docker version if distribution package not installed
-#   dpkg -s docker.io | grep -q -E "Status.+installed" || installDocker
-    echo "${txtgrn}✓${txtrst} Installed dependencies"
 }
 
 getCfgValue() {
@@ -708,7 +702,6 @@ installNode() {
 
     echo
     echo "<<< Installing node >>>"
-    installDeps
     initConfig
     removeContainer
     createContainer
@@ -1064,6 +1057,9 @@ echo
 # make sure we're not running into avoidable problems during setup
 scriptUpdate
 distroChecks
+# check dependencies instead of install dependencies
+# because the install method may diff in differrent OS
+dependChecks
 sanityChecks
 # check for updates if node.json already exists, save state in global variable
 hasUpdate=1
