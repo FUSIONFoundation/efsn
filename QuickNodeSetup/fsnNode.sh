@@ -40,7 +40,7 @@ scriptUpdate() {
 
 distroChecks() {
     if ! command -v lsb_release >/dev/null 2>&1; then
-        echo "${txtred}Missing command lsb_release, please install it firstly${txtrst}"
+        echo "${txtred}Missing command 'lsb_release', please install it${txtrst}"
         exit 1
     fi
     # check for distribution and corresponding version (release)
@@ -69,18 +69,27 @@ dependChecks() {
     echo
     echo "${txtylw}Checking dependencies${txtrst}"
 
+    if ! command -v docker >/dev/null 2>&1; then
+        echo "${txtred}Missing command 'docker', please install it${txtrst}"
+        exit 1
+    fi
+
     missingCmds=""
-    for cmd in curl docker jq locate; do
+    for cmd in curl jq locate; do
         if ! command -v $cmd >/dev/null 2>&1; then
             missingCmds="$missingCmds $cmd"
         fi
     done
 
     if [ -n "$missingCmds" ]; then
-        echo "${txtred}Please install missing commands: $missingCmds${txtrst}"
-        echo "eg. sudo apt install -q -y ca-certificates curl docker.io mlocate jq"
-        echo "or, sudo yum install -q -y ca-certificates curl docker.io mlocate jq"
-        exit 1
+        if command -v apt >/dev/null 2>&1; then
+            sudo apt install -q -y ca-certificates curl jq mlocate
+        elif command -v yum >/dev/null 2>&1; then
+            sudo yum install -q -y ca-certificates curl jq mlocate
+        else
+            echo "${txtred}Please install missing commands: $missingCmds${txtrst}"
+            exit 1
+        fi
     fi
 
     echo "${txtred}✓${txtrst} Check dependencies passed"
