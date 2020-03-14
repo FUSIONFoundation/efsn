@@ -368,35 +368,6 @@ updateExplorerListing() {
     putCfgValue 'nodeName' "$nodename"
 }
 
-warnRetreat() {
-    local nodetype="$(getCfgValue 'nodeType')"
-    if [ "$nodetype" = "minerandlocalgateway" -o "$nodetype" = "efsn" ]; then
-        if [ "$mining" != "false" ]; then
-            # check if the configured address is mining and has active tickets
-            local address="$(getCfgValue 'address')"
-            local mining="$(getCfgValue 'mining')"
-            # talking to the RPC socket directly without invoking efsn is the fastest possible way to access the API locally
-            # besides connecting to the HTTP/WS ports, but those are not exposed for the miner image, so this doesn't work:
-            #local data=$(printf '{"jsonrpc":"2.0","method":"fsn_totalNumberOfTicketsByAddress","params":["%s","latest"],"id":1}' "$address")
-            #local tickets=$(curl -s -H 'Content-Type: application/json' --data "$data" http://localhost:9000 | jq -r '.result')
-            # nc has to be called with sudo because the socket is owned by the container which is running with root privileges
-            local tickets=$(printf '{"jsonrpc":"2.0","method":"fsn_totalNumberOfTicketsByAddress","params":["%s","latest"],"id":1}' "$address" \
-                | sudo nc -N -U "$BASE_DIR/fusion-node/data/efsn.ipc" | jq -r '.result')
-            # tickets override for testing purposes
-            #tickets=12345
-            if [ $tickets -gt 0 ]; then
-                echo
-                echo "${txtylw}Your node is currently configured for mining and has $tickets active tickets.${txtrst}"
-                echo "If you stop the node for too long, your tickets might get retreated."
-                echo
-                local question="${txtylw}Are you sure you want to continue?${txtrst} [Y/n] "
-                askToContinue "$question"
-                [ $? -eq 0 ] || return 1
-            fi
-        fi
-    fi
-}
-
 initConfig() {
     local question
 
@@ -952,6 +923,33 @@ change_explorer() {
         echo "<<< ${txtgrn}✓${txtrst} Changed explorer listing >>>"
         echo
         pauseScript
+    fi
+}
+
+warnRetreat() {
+    local mining="$(getCfgValue 'mining')"
+    if [ "$mining" = "false" ]; then
+        return
+    fi
+    local address="$(getCfgValue 'address')"
+    if [ -z "$address" ]; then
+        return
+    fi
+    local nodetype="$(getCfgValue 'nodeType')"
+    if [ "$nodetype" != "minerandlocalgateway" -a "$nodetype" != "efsn" ]; then
+        return
+    fi
+
+    local tickets=$(sudo docker exec fusion efsn --exec "fsn.totalNumberOfTicketsByAddress(\"$address\")" attach /fusion-node/data/efsn.ipc 2>/dev/null)
+
+    if [ -n "$tickets" ] && [ $tickets -gt 0 ]; then
+        echo
+        echo "${txtylw}Your node is currently configured for mining and has $tickets active tickets.${txtrst}"
+        echo "If you stop the node for too long, your tickets might get retreated."
+        echo
+        local question="${txtylw}Are you sure you want to continue?${txtrst} [Y/n] "
+        askToContinue "$question"
+        [ $? -eq 0 ] || return 1
     fi
 }
 
