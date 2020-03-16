@@ -108,6 +108,7 @@ sanityChecks() {
     # checking the effective user id, where 0 is root
     if [ $EUID -ne 0 ]; then
         # validate user, no point in moving on as non-root user without sudo access
+        echo "${txtylw}Validate if current user have sudo access${txtrst}"
         if ! sudo -v 2>/dev/null; then
             echo "${txtred}You are neither logged in as user root, nor do you have sudo access.${txtrst}"
             echo "Please run the setup script again as user root or configure sudo access."
@@ -115,10 +116,15 @@ sanityChecks() {
         fi
         # make sure that the script isn't run as root and non-root user alternately
         if sudo [ -f "/home/root/fusion-node/node.json" ]; then
-            echo "${txtred}The setup script was originally run with root privileges.${txtrst}"
-            echo "Please run it again as user root or by invoking sudo:"
+            echo "${txtred}Warning: The setup script was originally run with root privileges.${txtrst}"
+            echo "We suggest you to run it again as user root or by invoking sudo:"
             echo "sudo bash -c \"\$(curl -fsSL https://raw.githubusercontent.com/FUSIONFoundation/efsn/master/QuickNodeSetup/fsnNode.sh)\""
-            exit 1
+            echo
+            local question="${txtylw}Are you sure you want to continue as user $USER?${txtrst} [Y/n] "
+            askToContinue "$question"
+            if [ $? -eq 1 ]; then
+                exit 1
+            fi
         fi
     fi
 
