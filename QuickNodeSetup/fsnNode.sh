@@ -74,8 +74,10 @@ dependChecks() {
         exit 1
     fi
 
+    neededCmds="curl jq locate"
+    neededPkgs="ca-certificates curl jq mlocate"
     missingCmds=""
-    for cmd in curl jq locate; do
+    for cmd in $neededCmds; do
         if ! command -v $cmd >/dev/null 2>&1; then
             missingCmds="$missingCmds $cmd"
         fi
@@ -83,9 +85,9 @@ dependChecks() {
 
     if [ -n "$missingCmds" ]; then
         if command -v apt >/dev/null 2>&1; then
-            sudo apt install -q -y ca-certificates curl jq mlocate
+            sudo apt install -q -y $neededPkgs
         elif command -v yum >/dev/null 2>&1; then
-            sudo yum install -q -y ca-certificates curl jq mlocate
+            sudo yum install -q -y $neededPkgs
         else
             echo "${txtred}Please install missing commands: $missingCmds${txtrst}"
             exit 1
@@ -123,36 +125,14 @@ sanityChecks() {
     # using locate without prior update is a perf vs reliability tradeoff
     # we don't want to wait until the whole fs is indexed or even use find
     if [ $(sudo locate -r .*/efsn/chaindata$ -c) -gt 1 ]; then
-        echo "${txtred}Found more than one chaindata directory.${txtrst}"
-        echo "Please clean up the system manually first."
+        echo "${txtred}Warning: Found more than one chaindata directory.${txtrst}"
+        echo "Please check and clean up the system manually first."
         sudo locate -r .*/efsn/chaindata$
 
         echo
         local question="${txtylw}Do you believe this issue is already resolved?${txtrst} [Y/n] "
         askToContinue "$question"
-        if [ $? -eq 0 ]; then
-            echo "Running checks again..."
-            sudo updatedb
-            sanityChecks
-        else
-            exit 1
-        fi
-    fi
-
-    # this also covers the case where the setup script was originally run as non-root user
-    if [ -n "$(sudo locate -r .*/efsn/chaindata$ | grep -v $BASE_DIR)" ]; then
-        echo "${txtred}Found chaindata directory outside of $BASE_DIR.${txtrst}"
-        echo "Please clean up the system manually first."
-        sudo locate -r .*/efsn/chaindata$
-
-        echo
-        local question="${txtylw}Do you believe this issue is already resolved?${txtrst} [Y/n] "
-        askToContinue "$question"
-        if [ $? -eq 0 ]; then
-            echo "Running checks again..."
-            sudo updatedb
-            sanityChecks
-        else
+        if [ $? -eq 1 ]; then
             exit 1
         fi
     fi
