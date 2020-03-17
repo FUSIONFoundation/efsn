@@ -107,13 +107,6 @@ sanityChecks() {
 
     # checking the effective user id, where 0 is root
     if [ $EUID -ne 0 ]; then
-        # validate user, no point in moving on as non-root user without sudo access
-        echo "${txtylw}Validate if current user have sudo access${txtrst}"
-        if ! sudo -v 2>/dev/null; then
-            echo "${txtred}You are neither logged in as user root, nor do you have sudo access.${txtrst}"
-            echo "Please run the setup script again as user root or configure sudo access."
-            exit 1
-        fi
         # make sure that the script isn't run as root and non-root user alternately
         if sudo [ -f "/home/root/fusion-node/node.json" ]; then
             echo "${txtred}Warning: The setup script was originally run with root privileges.${txtrst}"
