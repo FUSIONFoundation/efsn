@@ -39,88 +39,101 @@ scriptUpdate() {
 }
 
 distroChecks() {
+    if ! command -v lsb_release >/dev/null 2>&1; then
+        echo "${txtred}Missing command 'lsb_release', please install it${txtrst}"
+        exit 1
+    fi
     # check for distribution and corresponding version (release)
-    if [ "$(lsb_release -si)" = "Ubuntu" ]; then
-        if [ $(lsb_release -sr | sed -E 's/([0-9]+).*/\1/') -lt 18 ]; then
+    distroID="$(lsb_release -si)"
+    distroMajorVerion="$(lsb_release -sr | sed -E 's/([0-9]+).*/\1/')"
+    if [ "$distroID" = "Ubuntu" ]; then
+        if [ $distroMajorVerion -lt 18 ]; then
             echo "${txtred}Unsupported Ubuntu release${txtrst}"
             echo "Currently supported: Ubuntu 18.04 or newer"
             exit 1
         fi
+    elif [ "$distroID" = "CentOS" ]; then
+        if [ $distroMajorVerion -lt 7 ]; then
+            echo "${txtred}Unsupported CentOs release${txtrst}"
+            echo "Currently supported: CentOS 7 or newer"
+            exit 1
+        fi
     else
-        echo "${txtred}Unsupported distribution${txtrst}"
-        echo "Currently supported: Ubuntu 18.04 or newer"
+        echo "${txtred}Warning: May be unsupported distribution${txtrst}"
+        echo "Ubuntu and CentOS is advised"
+        #exit 1 # don't forbid other OS systems but warning
+    fi
+}
+
+dependChecks() {
+    echo
+    echo "${txtylw}Checking dependencies${txtrst}"
+
+    if ! command -v docker >/dev/null 2>&1; then
+        echo "${txtred}Missing command 'docker', please install it${txtrst}"
         exit 1
     fi
+
+    neededCmds="curl jq locate"
+    neededPkgs="ca-certificates curl jq mlocate"
+    missingCmds=""
+    for cmd in $neededCmds; do
+        if ! command -v $cmd >/dev/null 2>&1; then
+            missingCmds="$missingCmds $cmd"
+        fi
+    done
+
+    if [ -n "$missingCmds" ]; then
+        if command -v apt >/dev/null 2>&1; then
+            sudo apt install -q -y $neededPkgs
+        elif command -v yum >/dev/null 2>&1; then
+            sudo yum install -q -y $neededPkgs
+        else
+            echo "${txtred}Please install missing commands: $missingCmds${txtrst}"
+            exit 1
+        fi
+    fi
+
+    echo "${txtred}✓${txtrst} Check dependencies passed"
 }
 
 sanityChecks() {
     if [ -z "$BASH" ]; then
         echo "${txtred}The setup script has to be run in the bash shell.${txtrst}"
-            echo "Please run it again in bash:"
-            echo "bash -c \"\$(curl -fsSL https://raw.githubusercontent.com/FUSIONFoundation/efsn/master/QuickNodeSetup/fsnNode.sh)\""
+        echo "Please run it again in bash:"
+        echo "bash -c \"\$(curl -fsSL https://raw.githubusercontent.com/FUSIONFoundation/efsn/master/QuickNodeSetup/fsnNode.sh)\""
         exit 1
     fi
 
     # checking the effective user id, where 0 is root
     if [ $EUID -ne 0 ]; then
-        # validate user, no point in moving on as non-root user without sudo access
-        if ! sudo -v 2>/dev/null; then
-            echo "${txtred}You are neither logged in as user root, nor do you have sudo access.${txtrst}"
-            echo "Please run the setup script again as user root or configure sudo access."
-            exit 1
-        fi
         # make sure that the script isn't run as root and non-root user alternately
         if sudo [ -f "/home/root/fusion-node/node.json" ]; then
-            echo "${txtred}The setup script was originally run with root privileges.${txtrst}"
-            echo "Please run it again as user root or by invoking sudo:"
+            echo "${txtred}Warning: The setup script was originally run with root privileges.${txtrst}"
+            echo "We suggest you to run it again as user root or by invoking sudo:"
             echo "sudo bash -c \"\$(curl -fsSL https://raw.githubusercontent.com/FUSIONFoundation/efsn/master/QuickNodeSetup/fsnNode.sh)\""
-            exit 1
+            echo
+            local question="${txtylw}Are you sure you want to continue as user $USER?${txtrst} [Y/n] "
+            askToContinue "$question"
+            if [ $? -eq 1 ]; then
+                exit 1
+            fi
         fi
     fi
-
-    # silently make sure mlocate is installed before using locate command
-    dpkg -s mlocate 2>/dev/null | grep -q -E "Status.+installed" || sudo apt-get install -qq mlocate
 
     # using locate without prior update is a perf vs reliability tradeoff
     # we don't want to wait until the whole fs is indexed or even use find
     if [ $(sudo locate -r .*/efsn/chaindata$ -c) -gt 1 ]; then
-        echo "${txtred}Found more than one chaindata directory.${txtrst}"
-        echo "Please clean up the system manually first."
+        echo "${txtred}Warning: Found more than one chaindata directory.${txtrst}"
+        echo "Please check and clean up the system manually first."
         sudo locate -r .*/efsn/chaindata$
 
         echo
         local question="${txtylw}Do you believe this issue is already resolved?${txtrst} [Y/n] "
         askToContinue "$question"
-        if [ $? -eq 0 ]; then
-            echo "Running checks again..."
-            sudo updatedb
-            sanityChecks
-        else
+        if [ $? -eq 1 ]; then
             exit 1
         fi
-    fi
-
-    # this also covers the case where the setup script was originally run as non-root user
-    if [ -n "$(sudo locate -r .*/efsn/chaindata$ | grep -v $BASE_DIR)" ]; then
-        echo "${txtred}Found chaindata directory outside of $BASE_DIR.${txtrst}"
-        echo "Please clean up the system manually first."
-        sudo locate -r .*/efsn/chaindata$
-
-        echo
-        local question="${txtylw}Do you believe this issue is already resolved?${txtrst} [Y/n] "
-        askToContinue "$question"
-        if [ $? -eq 0 ]; then
-            echo "Running checks again..."
-            sudo updatedb
-            sanityChecks
-        else
-            exit 1
-        fi
-    fi
-
-    # silently make sure jq is installed if node.json already exists
-    if [ -f "$CONF_FILE" ]; then
-        dpkg -s jq 2>/dev/null | grep -q -E "Status.+installed" || sudo apt-get install -qq jq
     fi
 }
 
@@ -184,37 +197,6 @@ askToContinue() {
             *)    echo -e "\n${txtred}Invalid input${txtrst}" ;;
         esac
     done
-}
-
-installDocker() {
-    # install recent Docker version; function currently unused
-    # this has some additional requirements for the key import
-    sudo apt-get install -q -y apt-transport-https gnupg-agent software-properties-common | grep -v "is already the newest version"
-    echo
-    echo "${txtylw}Adding Docker repository${txtrst}"
-    curl -fsSL "https://download.docker.com/linux/ubuntu/gpg" | sudo apt-key add -
-    sudo add-apt-repository -u -y "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
-    echo "${txtgrn}✓${txtrst} Added Docker repository"
-
-    echo
-    echo "${txtylw}Installing Docker${txtrst}"
-    sudo apt-get install -q -y docker-ce
-    echo "${txtgrn}✓${txtrst} Installed Docker"
-}
-
-installDeps() {
-    echo
-    echo "${txtylw}Updating package lists${txtrst}"
-    echo "This might take a moment, please wait..."
-    sudo apt-get -qq update
-    echo "${txtgrn}✓${txtrst} Updated package lists"
-
-    echo
-    echo "${txtylw}Installing dependencies${txtrst}"
-    sudo apt-get install -q -y ca-certificates curl docker.io jq | grep -v "is already the newest version"
-    # install recent Docker version if distribution package not installed
-#   dpkg -s docker.io | grep -q -E "Status.+installed" || installDocker
-    echo "${txtgrn}✓${txtrst} Installed dependencies"
 }
 
 getCfgValue() {
@@ -372,35 +354,6 @@ updateExplorerListing() {
         echo "${txtred}✓${txtrst} The node will not be listed on the node explorer"
     fi
     putCfgValue 'nodeName' "$nodename"
-}
-
-warnRetreat() {
-    local nodetype="$(getCfgValue 'nodeType')"
-    if [ "$nodetype" = "minerandlocalgateway" -o "$nodetype" = "efsn" ]; then
-        if [ "$mining" != "false" ]; then
-            # check if the configured address is mining and has active tickets
-            local address="$(getCfgValue 'address')"
-            local mining="$(getCfgValue 'mining')"
-            # talking to the RPC socket directly without invoking efsn is the fastest possible way to access the API locally
-            # besides connecting to the HTTP/WS ports, but those are not exposed for the miner image, so this doesn't work:
-            #local data=$(printf '{"jsonrpc":"2.0","method":"fsn_totalNumberOfTicketsByAddress","params":["%s","latest"],"id":1}' "$address")
-            #local tickets=$(curl -s -H 'Content-Type: application/json' --data "$data" http://localhost:9000 | jq -r '.result')
-            # nc has to be called with sudo because the socket is owned by the container which is running with root privileges
-            local tickets=$(printf '{"jsonrpc":"2.0","method":"fsn_totalNumberOfTicketsByAddress","params":["%s","latest"],"id":1}' "$address" \
-                | sudo nc -N -U "$BASE_DIR/fusion-node/data/efsn.ipc" | jq -r '.result')
-            # tickets override for testing purposes
-            #tickets=12345
-            if [ $tickets -gt 0 ]; then
-                echo
-                echo "${txtylw}Your node is currently configured for mining and has $tickets active tickets.${txtrst}"
-                echo "If you stop the node for too long, your tickets might get retreated."
-                echo
-                local question="${txtylw}Are you sure you want to continue?${txtrst} [Y/n] "
-                askToContinue "$question"
-                [ $? -eq 0 ] || return 1
-            fi
-        fi
-    fi
 }
 
 initConfig() {
@@ -708,7 +661,6 @@ installNode() {
 
     echo
     echo "<<< Installing node >>>"
-    installDeps
     initConfig
     removeContainer
     createContainer
@@ -962,6 +914,33 @@ change_explorer() {
     fi
 }
 
+warnRetreat() {
+    local mining="$(getCfgValue 'mining')"
+    if [ "$mining" = "false" ]; then
+        return
+    fi
+    local address="$(getCfgValue 'address')"
+    if [ -z "$address" ]; then
+        return
+    fi
+    local nodetype="$(getCfgValue 'nodeType')"
+    if [ "$nodetype" != "minerandlocalgateway" -a "$nodetype" != "efsn" ]; then
+        return
+    fi
+
+    local tickets=$(sudo docker exec fusion efsn --exec "fsn.totalNumberOfTicketsByAddress(\"$address\")" attach /fusion-node/data/efsn.ipc 2>/dev/null)
+
+    if [ -n "$tickets" ] && [ $tickets -gt 0 ]; then
+        echo
+        echo "${txtylw}Your node is currently configured for mining and has $tickets active tickets.${txtrst}"
+        echo "If you stop the node for too long, your tickets might get retreated."
+        echo
+        local question="${txtylw}Are you sure you want to continue?${txtrst} [Y/n] "
+        askToContinue "$question"
+        [ $? -eq 0 ] || return 1
+    fi
+}
+
 configureNode() {
     while true; do
         [ $DEBUG_MODE -ne 1 ] && clear
@@ -1064,6 +1043,9 @@ echo
 # make sure we're not running into avoidable problems during setup
 scriptUpdate
 distroChecks
+# check dependencies instead of install dependencies
+# because the install method may diff in differrent OS
+dependChecks
 sanityChecks
 # check for updates if node.json already exists, save state in global variable
 hasUpdate=1
