@@ -582,6 +582,95 @@ func (s *PublicFusionAPI) GetLatestNotation(ctx context.Context, blockNr rpc.Blo
 	return latestNotation, state.Error()
 }
 
+type RetreatTicketInfo struct {
+	ID          common.Hash
+	Owner       common.Address
+	Height      uint64
+	StartTime   uint64
+	ExpireTime  uint64
+	Value       *big.Int
+	RetreatType string
+}
+
+// GetRetreatTickets wacom
+func (s *PublicFusionAPI) GetRetreatTickets(ctx context.Context, blockNr rpc.BlockNumber) ([]RetreatTicketInfo, error) {
+	result := make([]RetreatTicketInfo, 0)
+	header, err := s.b.HeaderByNumber(ctx, blockNr)
+	if err != nil || header == nil {
+		return result, fmt.Errorf("get block header failed, err=%v", err)
+	}
+	if header.Number.Sign() == 0 {
+		return result, nil
+	}
+
+	var tickets common.TicketsDataSlice
+	addRetreatTickets := func(ids []common.Hash, retreatType string) (err error) {
+		if len(ids) == 0 {
+			return nil
+		}
+		if tickets == nil {
+			prevNr := rpc.BlockNumber(header.Number.Int64() - 1)
+			tickets, err = s.getAllTickets(ctx, prevNr)
+			if err != nil {
+				return err
+			}
+		}
+		for _, tid := range ids {
+			tikcet, err := tickets.Get(tid)
+			if err != nil {
+				return err
+			}
+			retreat := RetreatTicketInfo{
+				ID:          tid,
+				Owner:       tikcet.Owner,
+				Height:      tikcet.Height,
+				StartTime:   tikcet.StartTime,
+				ExpireTime:  tikcet.ExpireTime,
+				Value:       tikcet.Value(),
+				RetreatType: retreatType,
+			}
+			result = append(result, retreat)
+		}
+		return nil
+	}
+
+	// add retreat tickets of miss mining
+	snap, _ := datong.NewSnapshotFromHeader(header)
+	if err := addRetreatTickets(snap.Retreat, "miss-mining"); err != nil {
+		return result, err
+	}
+
+	// add punish tickets of double blocking
+	block, err := s.b.BlockByNumber(ctx, blockNr)
+	if err != nil {
+		return result, err
+	}
+	receipts, err := s.b.GetReceipts(ctx, block.Hash())
+	if err != nil {
+		return result, err
+	}
+	var tids []common.Hash
+	for i, tx := range block.Transactions() {
+		if !common.IsFsnCall(tx.To()) {
+			continue
+		}
+		fsnCallParam := &common.FSNCallParam{}
+		rlp.DecodeBytes(tx.Data(), fsnCallParam)
+		if fsnCallParam.Func != common.ReportIllegalFunc {
+			continue
+		}
+		for _, l := range receipts[i].Logs {
+			punishTickets, _ := datong.DecodePunishTickets(l.Data)
+			tids = append(tids, punishTickets...)
+		}
+	}
+	if err := addRetreatTickets(tids, "double-blocking"); err != nil {
+		return result, err
+	}
+
+	return result, nil
+}
+
 //--------------------------------------------- PublicFusionAPI buile send tx args-------------------------------------
 func FSNCallArgsToSendTxArgs(args common.FSNBaseArgsInterface, funcType common.FSNCallFunc, funcData []byte) (*SendTxArgs, error) {
 	var param = common.FSNCallParam{Func: funcType, Data: funcData}

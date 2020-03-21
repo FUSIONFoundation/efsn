@@ -2,10 +2,12 @@ package datong
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"math/big"
 
 	"github.com/FusionFoundation/efsn/common"
+	"github.com/FusionFoundation/efsn/common/hexutil"
 	"github.com/FusionFoundation/efsn/core/types"
 	"github.com/FusionFoundation/efsn/core/vm"
 	"github.com/FusionFoundation/efsn/rlp"
@@ -233,4 +235,32 @@ func DecodeTxInput(input []byte) (interface{}, error) {
 		return common.DecodeFsnCallParam(&fsnCall, reportContent)
 	}
 	return nil, fmt.Errorf("Unknown FuncType %v", fsnCall.Func)
+}
+
+func DecodePunishTickets(data []byte) ([]common.Hash, error) {
+	maps := make(map[string]interface{})
+	err := json.Unmarshal(data, &maps)
+	if err != nil {
+		return nil, err
+	}
+
+	if _, hasError := maps["Error"]; hasError {
+		return nil, nil
+	}
+
+	ids, idsok := maps["DeleteTickets"].(string)
+	if !idsok {
+		return nil, fmt.Errorf("report log has wrong data")
+	}
+
+	bs, err := hexutil.Decode(ids)
+	if err != nil {
+		return nil, fmt.Errorf("decode hex data error: %v", err)
+	}
+	delTickets := []common.Hash{}
+	if err := rlp.DecodeBytes(bs, &delTickets); err != nil {
+		return nil, fmt.Errorf("decode report log error: %v", err)
+	}
+
+	return delTickets, nil
 }
