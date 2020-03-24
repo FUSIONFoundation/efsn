@@ -48,15 +48,15 @@ distroChecks() {
     distroMajorVerion="$(lsb_release -sr | sed -E 's/([0-9]+).*/\1/')"
     if [ "$distroID" = "Ubuntu" ]; then
         if [ $distroMajorVerion -lt 18 ]; then
-            echo "${txtred}Unsupported Ubuntu release${txtrst}"
+            echo "${txtred}Warning: Unsupported Ubuntu release${txtrst}"
             echo "Currently supported: Ubuntu 18.04 or newer"
-            exit 1
+            # exit 1
         fi
     elif [ "$distroID" = "CentOS" ]; then
         if [ $distroMajorVerion -lt 7 ]; then
-            echo "${txtred}Unsupported CentOs release${txtrst}"
+            echo "${txtred}Warning: Unsupported CentOS release${txtrst}"
             echo "Currently supported: CentOS 7 or newer"
-            exit 1
+            # exit 1
         fi
     else
         echo "${txtred}Warning: May be unsupported distribution${txtrst}"
