@@ -156,6 +156,18 @@ func (dt *DaTong) verifyHeader(chain consensus.ChainReader, header *types.Header
 	if err = dt.checkBlockTime(chain, header, parent); err != nil {
 		return err
 	}
+	if isInRange, err := CheckPoint(header.Number.Uint64(), header.Hash()); isInRange {
+		if err == nil {
+			selected, retreat, err := dt.getSelectedAndRetreatedTickets(chain, header, parent)
+			if err != nil {
+				return err
+			}
+			// assign selected and retreated tickets (used in Finalize)
+			header.SetSelectedTicket(selected)
+			header.SetRetreatTickets(retreat)
+		}
+		return err
+	}
 	return dt.verifySeal(chain, header, parent)
 }
 
@@ -1004,4 +1016,28 @@ func DecodeLogData(data []byte) (interface{}, error) {
 		}
 	}
 	return maps, nil
+}
+
+func (dt *DaTong) getSelectedAndRetreatedTickets(chain consensus.ChainReader, header *types.Header, parent *types.Header) (*common.Ticket, common.TicketPtrSlice, error) {
+	parentTickets, err := dt.getAllTickets(chain, parent)
+	if err != nil {
+		return nil, nil, err
+	}
+	snap, err := NewSnapshotFromHeader(header)
+	if err != nil {
+		return nil, nil, err
+	}
+	selectedTicket, err := parentTickets.Get(snap.Selected)
+	if err != nil {
+		return nil, nil, err
+	}
+	retreat := make(common.TicketPtrSlice, len(snap.Retreat))
+	for i, tid := range snap.Retreat {
+		ticket, err := parentTickets.Get(tid)
+		if err != nil {
+			return nil, nil, err
+		}
+		retreat[i] = ticket
+	}
+	return selectedTicket, retreat, nil
 }

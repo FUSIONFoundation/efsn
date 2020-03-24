@@ -32,6 +32,7 @@ import (
 	"github.com/FusionFoundation/efsn/accounts/keystore"
 	"github.com/FusionFoundation/efsn/cmd/utils"
 	"github.com/FusionFoundation/efsn/common"
+	"github.com/FusionFoundation/efsn/consensus/datong"
 	"github.com/FusionFoundation/efsn/console"
 	"github.com/FusionFoundation/efsn/eth"
 	"github.com/FusionFoundation/efsn/ethclient"
@@ -138,6 +139,7 @@ var (
 		utils.EWASMInterpreterFlag,
 		utils.EVMInterpreterFlag,
 		utils.ResyncFromHeightFlag,
+		utils.CheckPointsFileFlag,
 		configFileFlag,
 	}
 
@@ -290,6 +292,7 @@ func startNode(ctx *cli.Context, stack *node.Node) {
 	} else if ctx.GlobalBool(utils.TestnetFlag.Name) {
 		common.InitTestnet()
 	}
+	datong.InitCheckPoints(ctx.GlobalString(utils.CheckPointsFileFlag.Name))
 
 	// Start up the node itself
 	utils.StartNode(stack)
