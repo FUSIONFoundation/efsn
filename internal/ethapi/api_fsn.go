@@ -1643,8 +1643,8 @@ func (s *FusionTransactionAPI) TimeLockToAsset(ctx context.Context, args common.
 	return s.sendTransaction(ctx, args.From, tx)
 }
 
-// BuildSendTimeLock ss
-func (s *FusionTransactionAPI) BuildSendTimeLock(ctx context.Context, args common.TimeLockArgs) (*types.Transaction, error) {
+// BuildSendTimeLockTx ss
+func (s *FusionTransactionAPI) BuildSendTimeLockTx(ctx context.Context, args common.TimeLockArgs) (*types.Transaction, error) {
 	sendArgs, err := s.BuildSendTimeLockSendTxArgs(ctx, args)
 	if err != nil {
 		return nil, err
@@ -1654,7 +1654,7 @@ func (s *FusionTransactionAPI) BuildSendTimeLock(ctx context.Context, args commo
 
 // SendTimeLock ss
 func (s *FusionTransactionAPI) SendTimeLock(ctx context.Context, args common.TimeLockArgs) (common.Hash, error) {
-	tx, err := s.BuildSendTimeLock(ctx, args)
+	tx, err := s.BuildSendTimeLockTx(ctx, args)
 	if err != nil {
 		return common.Hash{}, err
 	}

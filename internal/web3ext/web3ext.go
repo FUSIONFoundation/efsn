@@ -1425,6 +1425,14 @@ web3._extend({
 			]
 		}),
 		new web3._extend.Method({
+			name: 'buildSendTimeLockTx',
+			call: 'fsntx_buildSendTimeLockTx',
+			params: 1,
+			inputFormatter: [
+				web3._extend.formatters.inputTransactionFormatter
+			]
+		}),
+		new web3._extend.Method({
 			name: 'sendTimeLock',
 			call: 'fsntx_sendTimeLock',
 			params: 1,
