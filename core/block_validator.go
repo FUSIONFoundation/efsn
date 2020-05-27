@@ -21,6 +21,7 @@ import (
 
 	"github.com/FusionFoundation/efsn/common"
 	"github.com/FusionFoundation/efsn/consensus"
+	"github.com/FusionFoundation/efsn/consensus/datong"
 	"github.com/FusionFoundation/efsn/core/state"
 	"github.com/FusionFoundation/efsn/core/types"
 	"github.com/FusionFoundation/efsn/params"
@@ -68,6 +69,9 @@ func (v *BlockValidator) ValidateBody(block *types.Block) error {
 	}
 	if hash := types.DeriveSha(block.Transactions()); hash != header.TxHash {
 		return fmt.Errorf("transaction root hash mismatch: have %x, want %x", hash, header.TxHash)
+	}
+	if datong.IsInCheckPointsRange(block.NumberU64()) {
+		return nil
 	}
 	if err := v.ValidateRawTransaction(block); err != nil {
 		return err

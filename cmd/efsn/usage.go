@@ -84,6 +84,7 @@ var AppHelpFlagGroups = []flagGroup{
 			utils.LightPeersFlag,
 			utils.LightKDFFlag,
 			utils.ResyncFromHeightFlag,
+			utils.CheckPointsFileFlag,
 		},
 	},
 	{

@@ -642,6 +642,11 @@ var (
 		Usage: "Force resync from specified block height",
 		Value: 0,
 	}
+	CheckPointsFileFlag = cli.StringFlag{
+		Name:  "checkpoints",
+		Usage: "Specify check points custom file",
+		Value: "",
+	}
 )
 
 // MakeDataDir retrieves the currently requested data directory, terminating

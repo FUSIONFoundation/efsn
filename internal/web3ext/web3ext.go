@@ -1125,6 +1125,14 @@ web3._extend({
 				web3._extend.formatters.inputDefaultBlockNumberFormatter
 			]
 		}),
+		new web3._extend.Method({
+			name: 'getRetreatTickets',
+			call: 'fsn_getRetreatTickets',
+			params: 1,
+			inputFormatter: [
+				web3._extend.formatters.inputDefaultBlockNumberFormatter
+			]
+		}),
 	],
 	properties:[
 		new web3._extend.Property({
@@ -1414,6 +1422,14 @@ web3._extend({
 				function(options){
 					return web3._extend.formatters.inputTransactionFormatter(options)
 				}
+			]
+		}),
+		new web3._extend.Method({
+			name: 'buildSendTimeLockTx',
+			call: 'fsntx_buildSendTimeLockTx',
+			params: 1,
+			inputFormatter: [
+				web3._extend.formatters.inputTransactionFormatter
 			]
 		}),
 		new web3._extend.Method({

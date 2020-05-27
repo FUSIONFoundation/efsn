@@ -582,6 +582,95 @@ func (s *PublicFusionAPI) GetLatestNotation(ctx context.Context, blockNr rpc.Blo
 	return latestNotation, state.Error()
 }
 
+type RetreatTicketInfo struct {
+	ID          common.Hash
+	Owner       common.Address
+	Height      uint64
+	StartTime   uint64
+	ExpireTime  uint64
+	Value       *big.Int
+	RetreatType string
+}
+
+// GetRetreatTickets wacom
+func (s *PublicFusionAPI) GetRetreatTickets(ctx context.Context, blockNr rpc.BlockNumber) ([]RetreatTicketInfo, error) {
+	result := make([]RetreatTicketInfo, 0)
+	header, err := s.b.HeaderByNumber(ctx, blockNr)
+	if err != nil || header == nil {
+		return result, fmt.Errorf("get block header failed, err=%v", err)
+	}
+	if header.Number.Sign() == 0 {
+		return result, nil
+	}
+
+	var tickets common.TicketsDataSlice
+	addRetreatTickets := func(ids []common.Hash, retreatType string) (err error) {
+		if len(ids) == 0 {
+			return nil
+		}
+		if tickets == nil {
+			prevNr := rpc.BlockNumber(header.Number.Int64() - 1)
+			tickets, err = s.getAllTickets(ctx, prevNr)
+			if err != nil {
+				return err
+			}
+		}
+		for _, tid := range ids {
+			tikcet, err := tickets.Get(tid)
+			if err != nil {
+				return err
+			}
+			retreat := RetreatTicketInfo{
+				ID:          tid,
+				Owner:       tikcet.Owner,
+				Height:      tikcet.Height,
+				StartTime:   tikcet.StartTime,
+				ExpireTime:  tikcet.ExpireTime,
+				Value:       tikcet.Value(),
+				RetreatType: retreatType,
+			}
+			result = append(result, retreat)
+		}
+		return nil
+	}
+
+	// add retreat tickets of miss mining
+	snap, _ := datong.NewSnapshotFromHeader(header)
+	if err := addRetreatTickets(snap.Retreat, "miss-mining"); err != nil {
+		return result, err
+	}
+
+	// add punish tickets of double blocking
+	block, err := s.b.BlockByNumber(ctx, blockNr)
+	if err != nil {
+		return result, err
+	}
+	receipts, err := s.b.GetReceipts(ctx, block.Hash())
+	if err != nil {
+		return result, err
+	}
+	var tids []common.Hash
+	for i, tx := range block.Transactions() {
+		if !common.IsFsnCall(tx.To()) {
+			continue
+		}
+		fsnCallParam := &common.FSNCallParam{}
+		rlp.DecodeBytes(tx.Data(), fsnCallParam)
+		if fsnCallParam.Func != common.ReportIllegalFunc {
+			continue
+		}
+		for _, l := range receipts[i].Logs {
+			punishTickets, _ := datong.DecodePunishTickets(l.Data)
+			tids = append(tids, punishTickets...)
+		}
+	}
+	if err := addRetreatTickets(tids, "double-blocking"); err != nil {
+		return result, err
+	}
+
+	return result, nil
+}
+
 //--------------------------------------------- PublicFusionAPI buile send tx args-------------------------------------
 func FSNCallArgsToSendTxArgs(args common.FSNBaseArgsInterface, funcType common.FSNCallFunc, funcData []byte) (*SendTxArgs, error) {
 	var param = common.FSNCallParam{Func: funcType, Data: funcData}
@@ -1320,7 +1409,8 @@ func (s *PrivateFusionAPI) TakeMultiSwap(ctx context.Context, args common.TakeMu
 
 // FusionTransactionAPI ss
 type FusionTransactionAPI struct {
-	PublicFusionAPI
+	b         Backend
+	pubapi    *PublicFusionAPI
 	nonceLock *AddrLocker
 	txapi     *PublicTransactionPoolAPI
 }
@@ -1330,9 +1420,10 @@ var fusionTransactionAPI *FusionTransactionAPI
 // NewFusionTransactionAPI ss
 func NewFusionTransactionAPI(b Backend, nonceLock *AddrLocker, txapi *PublicTransactionPoolAPI) *FusionTransactionAPI {
 	fusionTransactionAPI = &FusionTransactionAPI{
-		PublicFusionAPI: *NewPublicFusionAPI(b),
-		nonceLock:       nonceLock,
-		txapi:           txapi,
+		b:         b,
+		pubapi:    NewPublicFusionAPI(b),
+		nonceLock: nonceLock,
+		txapi:     txapi,
 	}
 	return fusionTransactionAPI
 }
@@ -1448,7 +1539,7 @@ func (s *FusionTransactionAPI) SendRawTransaction(ctx context.Context, tx *types
 
 // BuildGenNotationTx ss
 func (s *FusionTransactionAPI) BuildGenNotationTx(ctx context.Context, args common.FusionBaseArgs) (*types.Transaction, error) {
-	sendArgs, err := s.BuildGenNotationSendTxArgs(ctx, args)
+	sendArgs, err := s.pubapi.BuildGenNotationSendTxArgs(ctx, args)
 	if err != nil {
 		return nil, err
 	}
@@ -1466,7 +1557,7 @@ func (s *FusionTransactionAPI) GenNotation(ctx context.Context, args common.Fusi
 
 // BuildGenAssetTx ss
 func (s *FusionTransactionAPI) BuildGenAssetTx(ctx context.Context, args common.GenAssetArgs) (*types.Transaction, error) {
-	sendArgs, err := s.BuildGenAssetSendTxArgs(ctx, args)
+	sendArgs, err := s.pubapi.BuildGenAssetSendTxArgs(ctx, args)
 	if err != nil {
 		return nil, err
 	}
@@ -1484,7 +1575,7 @@ func (s *FusionTransactionAPI) GenAsset(ctx context.Context, args common.GenAsse
 
 // BuildSendAssetTx ss
 func (s *FusionTransactionAPI) BuildSendAssetTx(ctx context.Context, args common.SendAssetArgs) (*types.Transaction, error) {
-	sendArgs, err := s.BuildSendAssetSendTxArgs(ctx, args)
+	sendArgs, err := s.pubapi.BuildSendAssetSendTxArgs(ctx, args)
 	if err != nil {
 		return nil, err
 	}
@@ -1502,7 +1593,7 @@ func (s *FusionTransactionAPI) SendAsset(ctx context.Context, args common.SendAs
 
 // BuildAssetToTimeLockTx ss
 func (s *FusionTransactionAPI) BuildAssetToTimeLockTx(ctx context.Context, args common.TimeLockArgs) (*types.Transaction, error) {
-	sendArgs, err := s.BuildAssetToTimeLockSendTxArgs(ctx, args)
+	sendArgs, err := s.pubapi.BuildAssetToTimeLockSendTxArgs(ctx, args)
 	if err != nil {
 		return nil, err
 	}
@@ -1520,7 +1611,7 @@ func (s *FusionTransactionAPI) AssetToTimeLock(ctx context.Context, args common.
 
 // BuildTimeLockToTimeLockTx ss
 func (s *FusionTransactionAPI) BuildTimeLockToTimeLockTx(ctx context.Context, args common.TimeLockArgs) (*types.Transaction, error) {
-	sendArgs, err := s.BuildTimeLockToTimeLockSendTxArgs(ctx, args)
+	sendArgs, err := s.pubapi.BuildTimeLockToTimeLockSendTxArgs(ctx, args)
 	if err != nil {
 		return nil, err
 	}
@@ -1538,7 +1629,7 @@ func (s *FusionTransactionAPI) TimeLockToTimeLock(ctx context.Context, args comm
 
 // BuildTimeLockToAssetTx ss
 func (s *FusionTransactionAPI) BuildTimeLockToAssetTx(ctx context.Context, args common.TimeLockArgs) (*types.Transaction, error) {
-	sendArgs, err := s.BuildTimeLockToAssetSendTxArgs(ctx, args)
+	sendArgs, err := s.pubapi.BuildTimeLockToAssetSendTxArgs(ctx, args)
 	if err != nil {
 		return nil, err
 	}
@@ -1554,9 +1645,9 @@ func (s *FusionTransactionAPI) TimeLockToAsset(ctx context.Context, args common.
 	return s.sendTransaction(ctx, args.From, tx)
 }
 
-// BuildSendTimeLock ss
-func (s *FusionTransactionAPI) BuildSendTimeLock(ctx context.Context, args common.TimeLockArgs) (*types.Transaction, error) {
-	sendArgs, err := s.BuildSendTimeLockSendTxArgs(ctx, args)
+// BuildSendTimeLockTx ss
+func (s *FusionTransactionAPI) BuildSendTimeLockTx(ctx context.Context, args common.TimeLockArgs) (*types.Transaction, error) {
+	sendArgs, err := s.pubapi.BuildSendTimeLockSendTxArgs(ctx, args)
 	if err != nil {
 		return nil, err
 	}
@@ -1565,7 +1656,7 @@ func (s *FusionTransactionAPI) BuildSendTimeLock(ctx context.Context, args commo
 
 // SendTimeLock ss
 func (s *FusionTransactionAPI) SendTimeLock(ctx context.Context, args common.TimeLockArgs) (common.Hash, error) {
-	tx, err := s.BuildSendTimeLock(ctx, args)
+	tx, err := s.BuildSendTimeLockTx(ctx, args)
 	if err != nil {
 		return common.Hash{}, err
 	}
@@ -1574,7 +1665,7 @@ func (s *FusionTransactionAPI) SendTimeLock(ctx context.Context, args common.Tim
 
 // BuildBuyTicketTx ss
 func (s *FusionTransactionAPI) BuildBuyTicketTx(ctx context.Context, args common.BuyTicketArgs) (*types.Transaction, error) {
-	sendArgs, err := s.BuildBuyTicketSendTxArgs(ctx, args)
+	sendArgs, err := s.pubapi.BuildBuyTicketSendTxArgs(ctx, args)
 	if err != nil {
 		return nil, err
 	}
@@ -1598,7 +1689,7 @@ func (s *FusionTransactionAPI) BuyTicket(ctx context.Context, args common.BuyTic
 // BuildIncAssetTx ss
 func (s *FusionTransactionAPI) BuildIncAssetTx(ctx context.Context, args common.AssetValueChangeExArgs) (*types.Transaction, error) {
 	args.IsInc = true
-	sendArgs, err := s.BuildAssetValueChangeSendTxArgs(ctx, args)
+	sendArgs, err := s.pubapi.BuildAssetValueChangeSendTxArgs(ctx, args)
 	if err != nil {
 		return nil, err
 	}
@@ -1617,7 +1708,7 @@ func (s *FusionTransactionAPI) IncAsset(ctx context.Context, args common.AssetVa
 // BuildDecAssetTx ss
 func (s *FusionTransactionAPI) BuildDecAssetTx(ctx context.Context, args common.AssetValueChangeExArgs) (*types.Transaction, error) {
 	args.IsInc = false
-	sendArgs, err := s.BuildAssetValueChangeSendTxArgs(ctx, args)
+	sendArgs, err := s.pubapi.BuildAssetValueChangeSendTxArgs(ctx, args)
 	if err != nil {
 		return nil, err
 	}
@@ -1635,7 +1726,7 @@ func (s *FusionTransactionAPI) DecAsset(ctx context.Context, args common.AssetVa
 
 // BuildMakeSwapTx ss
 func (s *FusionTransactionAPI) BuildMakeSwapTx(ctx context.Context, args common.MakeSwapArgs) (*types.Transaction, error) {
-	sendArgs, err := s.BuildMakeSwapSendTxArgs(ctx, args)
+	sendArgs, err := s.pubapi.BuildMakeSwapSendTxArgs(ctx, args)
 	if err != nil {
 		return nil, err
 	}
@@ -1653,7 +1744,7 @@ func (s *FusionTransactionAPI) MakeSwap(ctx context.Context, args common.MakeSwa
 
 // BuildRecallSwapTx ss
 func (s *FusionTransactionAPI) BuildRecallSwapTx(ctx context.Context, args common.RecallSwapArgs) (*types.Transaction, error) {
-	sendArgs, err := s.BuildRecallSwapSendTxArgs(ctx, args)
+	sendArgs, err := s.pubapi.BuildRecallSwapSendTxArgs(ctx, args)
 	if err != nil {
 		return nil, err
 	}
@@ -1671,7 +1762,7 @@ func (s *FusionTransactionAPI) RecallSwap(ctx context.Context, args common.Recal
 
 // BuildTakeSwapTx ss
 func (s *FusionTransactionAPI) BuildTakeSwapTx(ctx context.Context, args common.TakeSwapArgs) (*types.Transaction, error) {
-	sendArgs, err := s.BuildTakeSwapSendTxArgs(ctx, args)
+	sendArgs, err := s.pubapi.BuildTakeSwapSendTxArgs(ctx, args)
 	if err != nil {
 		return nil, err
 	}
@@ -1698,7 +1789,7 @@ func (s *FusionTransactionAPI) MakeMultiSwap(ctx context.Context, args common.Ma
 
 // BuildMakeMultiSwapTx ss
 func (s *FusionTransactionAPI) BuildMakeMultiSwapTx(ctx context.Context, args common.MakeMultiSwapArgs) (*types.Transaction, error) {
-	sendArgs, err := s.BuildMakeMultiSwapSendTxArgs(ctx, args)
+	sendArgs, err := s.pubapi.BuildMakeMultiSwapSendTxArgs(ctx, args)
 	if err != nil {
 		return nil, err
 	}
@@ -1716,7 +1807,7 @@ func (s *FusionTransactionAPI) RecallMultiSwap(ctx context.Context, args common.
 
 // BuildRecallMultiSwapTx ss
 func (s *FusionTransactionAPI) BuildRecallMultiSwapTx(ctx context.Context, args common.RecallMultiSwapArgs) (*types.Transaction, error) {
-	sendArgs, err := s.BuildRecallMultiSwapSendTxArgs(ctx, args)
+	sendArgs, err := s.pubapi.BuildRecallMultiSwapSendTxArgs(ctx, args)
 	if err != nil {
 		return nil, err
 	}
@@ -1734,7 +1825,7 @@ func (s *FusionTransactionAPI) TakeMultiSwap(ctx context.Context, args common.Ta
 
 // BuildTakeSwapTx ss
 func (s *FusionTransactionAPI) BuildTakeMultiSwapTx(ctx context.Context, args common.TakeMultiSwapArgs) (*types.Transaction, error) {
-	sendArgs, err := s.BuildTakeMultiSwapSendTxArgs(ctx, args)
+	sendArgs, err := s.pubapi.BuildTakeMultiSwapSendTxArgs(ctx, args)
 	if err != nil {
 		return nil, err
 	}
