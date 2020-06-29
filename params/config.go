@@ -25,8 +25,8 @@ import (
 
 // Genesis hashes to enforce below configs on.
 var (
-	MainnetGenesisHash = common.HexToHash("0xabce10521451bd9945a776816b40f49ddb3cef755e4f10c58dc5bc60bfdb911e")
-	TestnetGenesisHash = common.HexToHash("0x41941023680923e0fe4d74a34bdac8141f2540e3ae90623718e47d66d1ca4a2d")
+	MainnetGenesisHash = common.HexToHash("0xc2422b1d9d16331be2a5b207c0783027d4419498003f729f4b9e9c5c1838623a")
+	TestnetGenesisHash = common.HexToHash("0xbc679bca6ecc3cc41c4d5d3455d72d23991b2770d2f3144043a25e7cb5503f46")
 	RinkebyGenesisHash = common.HexToHash("0x6341fd3daf94b748c72ced5a5b26028f2474f5f00d824504e4fa37a75767e177")
 )
 
@@ -42,7 +42,7 @@ var (
 		EIP155Block:         big.NewInt(0),
 		EIP158Block:         big.NewInt(0),
 		ByzantiumBlock:      big.NewInt(0),
-		ConstantinopleBlock: new(big.Int).SetUint64(common.MAINNET_FORKS[1]),
+		ConstantinopleBlock: common.MainnetConstantinopleEnableHeight,
 		DaTong: &DaTongConfig{
 			Period: 15,
 		},
@@ -68,7 +68,7 @@ var (
 		EIP155Block:         big.NewInt(0),
 		EIP158Block:         big.NewInt(0),
 		ByzantiumBlock:      big.NewInt(0),
-		ConstantinopleBlock: new(big.Int).SetUint64(common.TESTNET_FORKS[1]),
+		ConstantinopleBlock: common.TestnetConstantinopleEnableHeight,
 		DaTong: &DaTongConfig{
 			Period: 15,
 		},
@@ -121,7 +121,7 @@ var (
 		EIP155Block:         big.NewInt(0),
 		EIP158Block:         big.NewInt(0),
 		ByzantiumBlock:      big.NewInt(0),
-		ConstantinopleBlock: big.NewInt(0),
+		ConstantinopleBlock: common.DevnetConstantinopleEnableHeight,
 		DaTong: &DaTongConfig{
 			Period: 15,
 		},
@@ -334,6 +334,12 @@ func (c *ChainConfig) checkCompatible(newcfg *ChainConfig, head *big.Int) *Confi
 	}
 	if isForkIncompatible(c.ByzantiumBlock, newcfg.ByzantiumBlock, head) {
 		return newCompatError("Byzantium fork block", c.ByzantiumBlock, newcfg.ByzantiumBlock)
+	}
+	if c.ConstantinopleBlock != nil { // adjust old stored ConstantinopleBlock
+		constantinopleEnableHeight := common.GetConstantinopleEnableHeight()
+		if constantinopleEnableHeight == nil || c.ConstantinopleBlock.Cmp(constantinopleEnableHeight) < 0 {
+			c.ConstantinopleBlock = constantinopleEnableHeight
+		}
 	}
 	if isForkIncompatible(c.ConstantinopleBlock, newcfg.ConstantinopleBlock, head) {
 		return newCompatError("Constantinople fork block", c.ConstantinopleBlock, newcfg.ConstantinopleBlock)

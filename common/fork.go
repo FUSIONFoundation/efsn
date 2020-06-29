@@ -8,6 +8,10 @@ import (
 var (
 	UseTestnetRule = false
 	UseDevnetRule  = false
+
+	MainnetConstantinopleEnableHeight *big.Int = nil
+	TestnetConstantinopleEnableHeight *big.Int = big.NewInt(1577000)
+	DevnetConstantinopleEnableHeight  *big.Int = big.NewInt(0)
 )
 
 // mainnet fork heights
@@ -70,4 +74,14 @@ func IsMultipleMiningCheckingEnabled(blockNumber *big.Int) bool {
 
 func IsSmartTransferEnabled(blockNumber *big.Int) bool {
 	return IsHardFork(2, blockNumber)
+}
+
+func GetConstantinopleEnableHeight() *big.Int {
+	if UseDevnetRule {
+		return DevnetConstantinopleEnableHeight
+	}
+	if UseTestnetRule {
+		return TestnetConstantinopleEnableHeight
+	}
+	return MainnetConstantinopleEnableHeight
 }
