@@ -1,9 +1,15 @@
 package datong
 
 import (
+	"encoding/base64"
+	"encoding/json"
+	"fmt"
+	"math/big"
+
 	"github.com/FusionFoundation/efsn/common"
 	"github.com/FusionFoundation/efsn/consensus"
 	"github.com/FusionFoundation/efsn/core/types"
+	"github.com/FusionFoundation/efsn/rlp"
 	"github.com/FusionFoundation/efsn/rpc"
 )
 
@@ -43,4 +49,36 @@ func (api *API) GetSnapshot(number *rpc.BlockNumber) (*Snapshot, error) {
 func (api *API) GetSnapshotAtHash(hash common.Hash) (*Snapshot, error) {
 	header := api.chain.GetHeaderByHash(hash)
 	return getSnapshotByHeader(header)
+}
+
+// DecodeLogData decode log data
+func DecodeLogData(data []byte) (interface{}, error) {
+	maps := make(map[string]interface{})
+	if err := json.Unmarshal(data, &maps); err != nil {
+		return nil, fmt.Errorf("json unmarshal err: %v", err)
+	}
+	// adjust Value from float64 to big.Int to prevent losing precision
+	if value, exist := maps["Value"]; exist {
+		if _, ok := value.(float64); ok {
+			bigVal := struct {
+				Value *big.Int `json:",string"`
+			}{}
+			if err := json.Unmarshal(data, &bigVal); err == nil {
+				maps["Value"] = bigVal.Value
+			}
+		}
+	}
+	if datastr, dataok := maps["Base"].(string); dataok {
+		data, err := base64.StdEncoding.DecodeString(datastr)
+		if err != nil {
+			return nil, fmt.Errorf("base64 decode err: %v", err)
+		}
+		buyTicketParam := common.BuyTicketParam{}
+		if err = rlp.DecodeBytes(data, &buyTicketParam); err == nil {
+			delete(maps, "Base")
+			maps["StartTime"] = buyTicketParam.Start
+			maps["ExpireTime"] = buyTicketParam.End
+		}
+	}
+	return maps, nil
 }
