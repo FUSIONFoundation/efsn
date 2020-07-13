@@ -908,16 +908,16 @@ change_explorer() {
 }
 
 warnRetreat() {
+    local nodetype="$(getCfgValue 'nodeType')"
+    if [ "$nodetype" != "minerandlocalgateway" -a "$nodetype" != "efsn" ]; then
+        return
+    fi
     local mining="$(getCfgValue 'mining')"
     if [ "$mining" = "false" ]; then
         return
     fi
     local address="$(getCfgValue 'address')"
     if [ -z "$address" ]; then
-        return
-    fi
-    local nodetype="$(getCfgValue 'nodeType')"
-    if [ "$nodetype" != "minerandlocalgateway" -a "$nodetype" != "efsn" ]; then
         return
     fi
 
