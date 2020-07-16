@@ -156,7 +156,7 @@ func (dt *DaTong) verifyHeader(chain consensus.ChainReader, header *types.Header
 	if err = dt.checkBlockTime(chain, header, parent); err != nil {
 		return err
 	}
-	if isInRange, err := CheckPoint(header.Number.Uint64(), header.Hash()); isInRange {
+	if isInRange, err := CheckPoint(chain.Config().ChainID, header.Number.Uint64(), header.Hash()); isInRange {
 		if err == nil {
 			selected, retreat, err := dt.getSelectedAndRetreatedTickets(chain, header, parent)
 			if err != nil {

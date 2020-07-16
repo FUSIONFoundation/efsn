@@ -4,9 +4,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"math/big"
 
 	"github.com/FusionFoundation/efsn/common"
 	"github.com/FusionFoundation/efsn/log"
+	"github.com/FusionFoundation/efsn/params"
 )
 
 var (
@@ -84,7 +86,20 @@ func IsInCheckPointsRange(blockHeight uint64) bool {
 	return blockHeight <= LastCheckPoint
 }
 
-func CheckPoint(blockHeight uint64, blockHash common.Hash) (isInRange bool, err error) {
+func CheckPoint(chainID *big.Int, blockHeight uint64, blockHash common.Hash) (isInRange bool, err error) {
+	var defaultChainID *big.Int
+	switch {
+	case common.UseTestnetRule:
+		defaultChainID = params.DevnetChainConfig.ChainID
+	case common.UseDevnetRule:
+		defaultChainID = params.TestnetChainConfig.ChainID
+	default: // maininet
+		defaultChainID = params.MainnetChainConfig.ChainID
+	}
+	// private chain
+	if chainID == nil || chainID.Cmp(defaultChainID) != 0 {
+		return false, nil
+	}
 	if blockHeight > LastCheckPoint {
 		return false, nil
 	}
