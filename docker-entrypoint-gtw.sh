@@ -53,4 +53,4 @@ fi
 echo "flags: $cmd_options$cmd_options_local_gtw"
 
 # efsn  --unlock $unlock --ethstats
-eval "efsn $cmd_options$cmd_options_local_gtw"
+exec efsn $cmd_options$cmd_options_local_gtw
