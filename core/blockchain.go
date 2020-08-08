@@ -1098,6 +1098,8 @@ func (bc *BlockChain) insertChain(chain types.Blocks) (int, []interface{}, []*ty
 		events        = make([]interface{}, 0, len(chain))
 		lastCanon     *types.Block
 		coalescedLogs []*types.Log
+
+		lastPowerCanon *types.Block // last block with first order
 	)
 
 	// Start the parallel header verifier
@@ -1261,6 +1263,14 @@ func (bc *BlockChain) insertChain(chain types.Blocks) (int, []interface{}, []*ty
 
 		cache, _ := bc.stateCache.TrieDB().Size()
 		stats.report(chain, i, cache)
+
+		if block.Nonce() == 0 {
+			lastPowerCanon = block
+		}
+	}
+	if lastPowerCanon != nil && lastPowerCanon != lastCanon {
+		log.Info("notify first order chain head event", "number", lastPowerCanon.Number(), "hash", lastPowerCanon.Hash())
+		events = append(events, ChainHeadEvent{lastPowerCanon})
 	}
 	// Append a single chain head event if we've progressed the chain
 	if lastCanon != nil && bc.CurrentBlock().Hash() == lastCanon.Hash() {

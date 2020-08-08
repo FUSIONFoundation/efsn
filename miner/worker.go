@@ -489,8 +489,19 @@ func (w *worker) taskLoop() {
 			if sealHash == prev {
 				continue
 			}
-			// Interrupt previous sealing operation
-			interrupt()
+
+			w.pendingMu.Lock()
+			prevTask, exist := w.pendingTasks[prev]
+			w.pendingMu.Unlock()
+
+			if !exist || prevTask.block.Nonce() != 0 || task.block.ParentHash() == prevTask.block.ParentHash() {
+				log.Info("interrupt previous sealing operation as new sealing is coming", "sealHash", sealHash.String(), "number", task.block.Number(), "hash", task.block.Hash())
+				// Interrupt previous sealing operation
+				interrupt()
+			} else {
+				log.Info("keep mining as order is first", "sealHash", prev.String(), "number", prevTask.block.Number(), "hash", prevTask.block.Hash())
+			}
+
 			stopCh, prev = make(chan struct{}), sealHash
 
 			if w.skipSealHook != nil && w.skipSealHook(task) {
@@ -673,6 +684,11 @@ func (w *worker) commitTransactions(txs *types.TransactionsByPriceAndNonce, coin
 					ratio: ratio,
 					inc:   true,
 				}
+			}
+			// If my order is the first one, do not discard
+			if w.current.header.Nonce.Uint64() == 0 {
+				log.Info("keep mining as my order is first", "number", w.current.header.Number, "hash", w.current.header.Hash())
+				return false
 			}
 			return atomic.LoadInt32(interrupt) == commitInterruptNewHead
 		}
