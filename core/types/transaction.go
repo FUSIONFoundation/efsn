@@ -256,6 +256,12 @@ func (tx *Transaction) RawSignatureValues() (*big.Int, *big.Int, *big.Int) {
 	return tx.data.V, tx.data.R, tx.data.S
 }
 
+func (tx *Transaction) IsTimeLockTx() bool {
+	param := common.FSNCallParam{}
+	rlp.DecodeBytes(tx.Data(), &param)
+	return param.Func == common.TimeLockFunc
+}
+
 func (tx *Transaction) IsBuyTicketTx() bool {
 	param := common.FSNCallParam{}
 	rlp.DecodeBytes(tx.Data(), &param)

@@ -74,6 +74,9 @@ const (
 
 	// staleThreshold is the maximum depth of the acceptable stale block.
 	staleThreshold = 7
+
+	// maxTimelockTxCount is the maximum count of timelock txs to seal in a block.
+	maxTimelockTxCount = 50
 )
 
 // environment is the worker's current environment and holds all of the current state information.
@@ -83,6 +86,8 @@ type environment struct {
 	state   *state.StateDB // apply state changes here
 	tcount  int            // tx count in cycle
 	gasPool *core.GasPool  // available gas used to pack transactions
+
+	timelockTxCount uint64 // time lock tx count in cycle
 
 	header   *types.Header
 	txs      []*types.Transaction
@@ -619,6 +624,7 @@ func (w *worker) makeCurrent(parent *types.Block, header *types.Header) error {
 
 	// Keep track of transactions which return errors so they can be removed
 	env.tcount = 0
+	env.timelockTxCount = 0
 	w.current = env
 	return nil
 }
@@ -697,6 +703,12 @@ func (w *worker) commitTransactions(txs *types.TransactionsByPriceAndNonce, coin
 			log.Trace("Not enough gas for further transactions", "have", w.current.gasPool, "want", params.TxGas)
 			break
 		}
+		// If we have reached the maximum timelock transactions then we'are done
+		// Because timelock transaction need more resource to calc and store
+		if w.current.timelockTxCount >= maxTimelockTxCount {
+			log.Debug("reach maximum timelock transactions", "max", maxTimelockTxCount)
+			break
+		}
 		// Retrieve the next transaction and abort if all done
 		tx := txs.Peek()
 		if tx == nil {
@@ -747,6 +759,9 @@ func (w *worker) commitTransactions(txs *types.TransactionsByPriceAndNonce, coin
 			// Everything ok, collect the logs and shift in the next transaction from the same account
 			coalescedLogs = append(coalescedLogs, logs...)
 			w.current.tcount++
+			if tx.IsTimeLockTx() {
+				w.current.timelockTxCount++
+			}
 			txs.Shift()
 
 		default:
