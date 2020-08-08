@@ -500,7 +500,6 @@ func (w *worker) taskLoop() {
 			w.pendingMu.Unlock()
 
 			if !exist || prevTask.block.Nonce() != 0 || task.block.ParentHash() == prevTask.block.ParentHash() {
-				log.Info("interrupt previous sealing operation as new sealing is coming", "sealHash", sealHash.String(), "number", task.block.Number(), "hash", task.block.Hash())
 				// Interrupt previous sealing operation
 				interrupt()
 			} else {
