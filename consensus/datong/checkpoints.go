@@ -7,6 +7,7 @@ import (
 	"math/big"
 
 	"github.com/FusionFoundation/efsn/common"
+	"github.com/FusionFoundation/efsn/core/types"
 	"github.com/FusionFoundation/efsn/log"
 	"github.com/FusionFoundation/efsn/params"
 )
@@ -113,4 +114,46 @@ func CheckPoint(chainID *big.Int, blockHeight uint64, blockHash common.Hash) (is
 		}
 	}
 	return true, nil
+}
+
+func CheckPointsInBlockChain(chainID *big.Int, chain types.Blocks) (int, error) {
+	headers := make([]*types.Header, len(chain))
+	for i, block := range chain {
+		headers[i] = block.Header()
+	}
+	return CheckPointsInHeaderChain(chainID, headers)
+}
+
+func CheckPointsInHeaderChain(chainID *big.Int, chain []*types.Header) (int, error) {
+	var defaultChainID *big.Int
+	switch {
+	case common.UseTestnetRule:
+		defaultChainID = params.DevnetChainConfig.ChainID
+	case common.UseDevnetRule:
+		defaultChainID = params.TestnetChainConfig.ChainID
+	default: // maininet
+		defaultChainID = params.MainnetChainConfig.ChainID
+	}
+	// private chain
+	if chainID == nil || chainID.Cmp(defaultChainID) != 0 {
+		return 0, nil
+	}
+	for i, header := range chain {
+		blockHeight := header.Number.Uint64()
+		if blockHeight > LastCheckPoint {
+			break
+		}
+		hash, exist := CheckPoints[blockHeight]
+		if !exist {
+			continue
+		}
+		blockHash := header.Hash()
+		if blockHash != hash {
+			log.Info("check point failed, block hash mismatch", "number", blockHeight, "have", blockHash, "want", hash)
+			return i, fmt.Errorf("check point failed, block hash mismatch: number=%v, have 0x%x, want 0x%x", blockHeight, blockHash, hash)
+		} else {
+			log.Info("check point passed", "number", blockHeight, "hash", blockHash)
+		}
+	}
+	return 0, nil
 }

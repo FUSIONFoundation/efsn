@@ -257,6 +257,10 @@ func (hc *HeaderChain) ValidateHeaderChain(chain []*types.Header, checkFreq int)
 		}
 	}
 
+	if i, err := datong.CheckPointsInHeaderChain(hc.config.ChainID, chain); err != nil {
+		return i, err
+	}
+
 	return 0, nil
 }
 
@@ -269,6 +273,9 @@ func (hc *HeaderChain) ValidateHeaderChain(chain []*types.Header, checkFreq int)
 // of the header retrieval mechanisms already need to verfy nonces, as well as
 // because nonces can be verified sparsely, not needing to check each.
 func (hc *HeaderChain) InsertHeaderChain(chain []*types.Header, writeHeader WhCallback, start time.Time) (int, error) {
+	if i, err := datong.CheckPointsInHeaderChain(hc.config.ChainID, chain); err != nil {
+		return i, err
+	}
 	// Collect some import statistics to report on
 	stats := struct{ processed, ignored int }{}
 	// All headers passed verification, import them into the database
