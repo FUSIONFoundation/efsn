@@ -23,12 +23,12 @@ import (
 	"sync"
 	"time"
 
-	mapset "github.com/deckarep/golang-set"
 	"github.com/FusionFoundation/efsn/common"
 	"github.com/FusionFoundation/efsn/core/types"
 	"github.com/FusionFoundation/efsn/p2p"
 	"github.com/FusionFoundation/efsn/params"
 	"github.com/FusionFoundation/efsn/rlp"
+	mapset "github.com/deckarep/golang-set"
 )
 
 var (
@@ -80,7 +80,7 @@ type peer struct {
 	rw p2p.MsgReadWriter
 
 	version  int         // Protocol version negotiated
-	forkDrop *time.Timer // Timed connection dropper if forks aren't validated in time
+	syncDrop *time.Timer // Timed connection dropper if sync progress isn't validated in time
 
 	head common.Hash
 	td   *big.Int
