@@ -22,8 +22,9 @@ var (
 		1000000: common.HexToHash("0x4b0d0d5a0739c801c3d4fe91258d3b9ddf81f471464e221921442ea503d711a6"),
 		1500000: common.HexToHash("0x2808c2f24aa2280453e257970a9cf05ef9a4cf5c1a742a9a466a633aff45400a"),
 		1700000: common.HexToHash("0x39a997b94b24a050a3b222cd89427cdffedc8706a24160e6bab06ffa95f1c7fa"),
+		2680000: common.HexToHash("0x4c49d0119abea53f5cb0ba6107bf481670397e8b814fa4360353eedded9bf383"),
 	}
-	mainnetLastCheckPoint uint64 = 1700000
+	mainnetLastCheckPoint uint64 = 2680000
 
 	testnetCheckPoints = map[uint64]common.Hash{
 		10000:   common.HexToHash("0x26a9441584f9b312e9e42df099e5b72f06e71a6335a31b65eba48782b506af5f"),
@@ -33,8 +34,9 @@ var (
 		1000000: common.HexToHash("0x6165f4fd79216afc5ef3f15e01e42aff9d1f252d1b7baa4395aabeeb89368615"),
 		1500000: common.HexToHash("0xd984e123d3a16f754faf77b4d18afc532a9101b7a3b4cf20cd374d376223d1a5"),
 		1577000: common.HexToHash("0xeeec5e5781ef697e5b181bc5da8c90fe6c80624e235bbe331e19da62766e1345"),
+		2621077: common.HexToHash("0xada50d3c256310c2eb41127ebbb426673b6b12d7c89b5f51f973cb4c944c302c"),
 	}
-	testnetLastCheckPoint uint64 = 1577000
+	testnetLastCheckPoint uint64 = 2621077
 
 	devnetCheckPoints           = map[uint64]common.Hash{}
 	devnetLastCheckPoint uint64 = 0
