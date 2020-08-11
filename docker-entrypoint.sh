@@ -105,4 +105,4 @@ fi
 echo "efsn flags: $cmd_options"
 
 # efsn  --unlock $unlock --ethstats
-eval "efsn $cmd_options"
+exec efsn $cmd_options
