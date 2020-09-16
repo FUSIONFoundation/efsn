@@ -38,6 +38,7 @@ swarm:
 
 all:
 	build/env.sh go run build/ci.go install
+	@echo "Done building."
 
 android:
 	build/env.sh go run build/ci.go aar --local
