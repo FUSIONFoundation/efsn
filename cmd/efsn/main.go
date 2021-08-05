@@ -21,7 +21,6 @@ import (
 	"fmt"
 	"math"
 	"os"
-	"runtime"
 	godebug "runtime/debug"
 	"sort"
 	"strconv"
@@ -41,7 +40,7 @@ import (
 	"github.com/FusionFoundation/efsn/log"
 	"github.com/FusionFoundation/efsn/metrics"
 	"github.com/FusionFoundation/efsn/node"
-	"github.com/elastic/gosigar"
+	gopsutil "github.com/shirou/gopsutil/mem"
 	"gopkg.in/urfave/cli.v1"
 )
 
@@ -65,10 +64,6 @@ var (
 		utils.DataDirFlag,
 		utils.KeyStoreDirFlag,
 		utils.NoUSBFlag,
-		utils.DashboardEnabledFlag,
-		utils.DashboardAddrFlag,
-		utils.DashboardPortFlag,
-		utils.DashboardRefreshFlag,
 		utils.EthashCacheDirFlag,
 		utils.EthashCachesInMemoryFlag,
 		utils.EthashCachesOnDiskFlag,
@@ -219,18 +214,16 @@ func init() {
 	app.Flags = append(app.Flags, metricsFlags...)
 
 	app.Before = func(ctx *cli.Context) error {
-		runtime.GOMAXPROCS(runtime.NumCPU())
-
-		logdir := ""
-		if ctx.GlobalBool(utils.DashboardEnabledFlag.Name) {
-			logdir = (&node.Config{DataDir: utils.MakeDataDir(ctx)}).ResolvePath("logs")
-		}
-		if err := debug.Setup(ctx, logdir); err != nil {
+		if err := debug.Setup(ctx, ""); err != nil {
 			return err
 		}
 		// Cap the cache allowance and tune the garbage collector
-		var mem gosigar.Mem
-		if err := mem.Get(); err == nil {
+		mem, err := gopsutil.VirtualMemory()
+		if err == nil {
+			if 32<<(^uintptr(0)>>63) == 32 && mem.Total > 2*1024*1024*1024 {
+				log.Warn("Lowering memory allowance on 32bit arch", "available", mem.Total/1024/1024, "addressable", 2*1024)
+				mem.Total = 2 * 1024 * 1024 * 1024
+			}
 			allowance := int(mem.Total / 1024 / 1024 / 3)
 			if cache := ctx.GlobalInt(utils.CacheFlag.Name); cache > allowance {
 				log.Warn("Sanitizing cache to Go's GC limits", "provided", cache, "updated", allowance)
