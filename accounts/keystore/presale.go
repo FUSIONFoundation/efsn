@@ -27,7 +27,7 @@ import (
 
 	"github.com/FusionFoundation/efsn/accounts"
 	"github.com/FusionFoundation/efsn/crypto"
-	"github.com/pborman/uuid"
+	"github.com/google/uuid"
 	"golang.org/x/crypto/pbkdf2"
 )
 
@@ -37,7 +37,10 @@ func importPreSaleKey(keyStore keyStore, keyJSON []byte, password string) (accou
 	if err != nil {
 		return accounts.Account{}, nil, err
 	}
-	key.Id = uuid.NewRandom()
+	key.Id, err = uuid.NewRandom()
+	if err != nil {
+		return accounts.Account{}, nil, err
+	}
 	a := accounts.Account{Address: key.Address, URL: accounts.URL{Scheme: KeyStoreScheme, Path: keyStore.JoinPath(keyFileName(key.Address))}}
 	err = keyStore.StoreKey(a.URL.Path, key, password)
 	return a, key, err
@@ -80,7 +83,7 @@ func decryptPreSaleKey(fileContent []byte, password string) (key *Key, err error
 	ecKey := crypto.ToECDSAUnsafe(ethPriv)
 
 	key = &Key{
-		Id:         nil,
+		Id:         uuid.UUID{},
 		Address:    crypto.PubkeyToAddress(ecKey.PublicKey),
 		PrivateKey: ecKey,
 	}
