@@ -32,7 +32,7 @@ import (
 	"github.com/FusionFoundation/efsn/cmd/utils"
 	"github.com/FusionFoundation/efsn/common"
 	"github.com/FusionFoundation/efsn/consensus/datong"
-	"github.com/FusionFoundation/efsn/console"
+	"github.com/FusionFoundation/efsn/console/prompt"
 	"github.com/FusionFoundation/efsn/eth"
 	"github.com/FusionFoundation/efsn/ethclient"
 	"github.com/FusionFoundation/efsn/internal/debug"
@@ -246,7 +246,7 @@ func init() {
 
 	app.After = func(ctx *cli.Context) error {
 		debug.Exit()
-		console.Stdin.Close() // Resets terminal mode.
+		prompt.Stdin.Close() // Resets terminal mode.
 		return nil
 	}
 }

@@ -27,7 +27,7 @@ import (
 
 	"github.com/FusionFoundation/efsn/cmd/utils"
 	"github.com/FusionFoundation/efsn/common"
-	"github.com/FusionFoundation/efsn/console"
+	"github.com/FusionFoundation/efsn/console/prompt"
 	"github.com/FusionFoundation/efsn/core"
 	"github.com/FusionFoundation/efsn/core/state"
 	"github.com/FusionFoundation/efsn/core/types"
@@ -425,7 +425,7 @@ func removeDB(ctx *cli.Context) error {
 		}
 		// Confirm removal and execute
 		fmt.Println(dbdir)
-		confirm, err := console.Stdin.PromptConfirm("Remove this database?")
+		confirm, err := prompt.Stdin.PromptConfirm("Remove this database?")
 		switch {
 		case err != nil:
 			utils.Fatalf("%v", err)
