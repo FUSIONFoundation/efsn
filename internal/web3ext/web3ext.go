@@ -18,54 +18,21 @@
 package web3ext
 
 var Modules = map[string]string{
-	"admin":      Admin_JS,
-	"chequebook": Chequebook_JS,
-	"clique":     Clique_JS,
-	"ethash":     Ethash_JS,
-	"debug":      Debug_JS,
-	"eth":        Eth_JS,
-	"miner":      Miner_JS,
-	"net":        Net_JS,
-	"personal":   Personal_JS,
-	"rpc":        RPC_JS,
-	"shh":        Shh_JS,
-	"swarmfs":    SWARMFS_JS,
-	"txpool":     TxPool_JS,
-	"fsn":        FsnJS,
-	"fsntx":      FsnTxJS,
-	"fsnbt":      FsnBT,
+	"admin":    Admin_JS,
+	"clique":   Clique_JS,
+	"ethash":   Ethash_JS,
+	"debug":    Debug_JS,
+	"eth":      Eth_JS,
+	"miner":    Miner_JS,
+	"net":      Net_JS,
+	"personal": Personal_JS,
+	"rpc":      RPC_JS,
+	"shh":      Shh_JS,
+	"txpool":   TxPool_JS,
+	"fsn":      FsnJS,
+	"fsntx":    FsnTxJS,
+	"fsnbt":    FsnBT,
 }
-
-const Chequebook_JS = `
-web3._extend({
-	property: 'chequebook',
-	methods: [
-		new web3._extend.Method({
-			name: 'deposit',
-			call: 'chequebook_deposit',
-			params: 1,
-			inputFormatter: [null]
-		}),
-		new web3._extend.Property({
-			name: 'balance',
-			getter: 'chequebook_balance',
-			outputFormatter: web3._extend.utils.toDecimal
-		}),
-		new web3._extend.Method({
-			name: 'cash',
-			call: 'chequebook_cash',
-			params: 1,
-			inputFormatter: [null]
-		}),
-		new web3._extend.Method({
-			name: 'issue',
-			call: 'chequebook_issue',
-			params: 2,
-			inputFormatter: [null, null]
-		}),
-	]
-});
-`
 
 const Clique_JS = `
 web3._extend({
@@ -226,7 +193,8 @@ web3._extend({
 		new web3._extend.Method({
 			name: 'printBlock',
 			call: 'debug_printBlock',
-			params: 1
+			params: 1,
+			inputFormatter: [web3._extend.formatters.inputBlockNumberFormatter]
 		}),
 		new web3._extend.Method({
 			name: 'getBlockRlp',
@@ -246,10 +214,8 @@ web3._extend({
 		new web3._extend.Method({
 			name: 'dumpBlock',
 			call: 'debug_dumpBlock',
-			params: 1
-			inputFormatter: [
-				web3._extend.formatters.inputDefaultBlockNumberFormatter
-			]
+			params: 1,
+			inputFormatter: [web3._extend.formatters.inputBlockNumberFormatter]
 		}),
 		new web3._extend.Method({
 			name: 'chaindbProperty',
@@ -260,11 +226,6 @@ web3._extend({
 		new web3._extend.Method({
 			name: 'chaindbCompact',
 			call: 'debug_chaindbCompact',
-		}),
-		new web3._extend.Method({
-			name: 'metrics',
-			call: 'debug_metrics',
-			params: 1
 		}),
 		new web3._extend.Method({
 			name: 'verbosity',
@@ -388,7 +349,7 @@ web3._extend({
 			name: 'traceBlockByNumber',
 			call: 'debug_traceBlockByNumber',
 			params: 2,
-			inputFormatter: [null, null]
+			inputFormatter: [web3._extend.formatters.inputBlockNumberFormatter, null]
 		}),
 		new web3._extend.Method({
 			name: 'traceBlockByHash',
@@ -641,30 +602,6 @@ web3._extend({
 		new web3._extend.Property({
 			name: 'info',
 			getter: 'shh_info'
-		}),
-	]
-});
-`
-
-const SWARMFS_JS = `
-web3._extend({
-	property: 'swarmfs',
-	methods:
-	[
-		new web3._extend.Method({
-			name: 'mount',
-			call: 'swarmfs_mount',
-			params: 2
-		}),
-		new web3._extend.Method({
-			name: 'unmount',
-			call: 'swarmfs_unmount',
-			params: 1
-		}),
-		new web3._extend.Method({
-			name: 'listmounts',
-			call: 'swarmfs_listmounts',
-			params: 0
 		}),
 	]
 });
