@@ -26,8 +26,5 @@ export GOPATH
 cd "$ethdir/efsn"
 PWD="$ethdir/efsn"
 
-# Use vendor
-export GO111MODULE=off
-
 # Launch the arguments with the configured environment.
 exec "$@"
