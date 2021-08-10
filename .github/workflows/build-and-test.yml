@@ -9,6 +9,6 @@ jobs:
     - uses: actions/checkout@v2
 
     - name: Build
-      uses: cedrickring/golang-action/go1.13@1.4.1
+      uses: cedrickring/golang-action@1.7.0
       with:
         args: make all
