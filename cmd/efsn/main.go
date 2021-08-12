@@ -131,8 +131,6 @@ var (
 		utils.NoCompactionFlag,
 		utils.GpoBlocksFlag,
 		utils.GpoPercentileFlag,
-		utils.EWASMInterpreterFlag,
-		utils.EVMInterpreterFlag,
 		utils.ResyncFromHeightFlag,
 		utils.CheckPointsFileFlag,
 		configFileFlag,

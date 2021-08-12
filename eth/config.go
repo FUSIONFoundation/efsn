@@ -121,11 +121,6 @@ type Config struct {
 
 	// Miscellaneous options
 	DocRoot string `toml:"-"`
-
-	// Type of the EWASM interpreter ("" for detault)
-	EWASMInterpreter string
-	// Type of the EVM interpreter ("" for default)
-	EVMInterpreter string
 }
 
 type configMarshaling struct {

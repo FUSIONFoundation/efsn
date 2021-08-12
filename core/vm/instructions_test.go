@@ -35,10 +35,9 @@ func testTwoOperandOp(t *testing.T, tests []twoOperandTest, opFn func(pc *uint64
 		env            = NewEVM(Context{}, nil, params.TestChainConfig, Config{})
 		stack          = newstack()
 		pc             = uint64(0)
-		evmInterpreter = NewEVMInterpreter(env, env.vmConfig)
+		evmInterpreter = env.interpreter
 	)
 
-	env.interpreter = evmInterpreter
 	evmInterpreter.intPool = poolOfIntPools.get()
 	for i, test := range tests {
 		x := new(big.Int).SetBytes(common.Hex2Bytes(test.x))
@@ -75,10 +74,9 @@ func TestByteOp(t *testing.T) {
 	var (
 		env            = NewEVM(Context{}, nil, params.TestChainConfig, Config{})
 		stack          = newstack()
-		evmInterpreter = NewEVMInterpreter(env, env.vmConfig)
+		evmInterpreter = env.interpreter
 	)
 
-	env.interpreter = evmInterpreter
 	evmInterpreter.intPool = poolOfIntPools.get()
 	tests := []struct {
 		v        string
