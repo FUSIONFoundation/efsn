@@ -89,19 +89,19 @@ func (c *FSNContract) sendAsset() ([]byte, error) {
 		AssetID:     p.asset,
 		StartTime:   p.start,
 		EndTime:     p.end,
-		Timestamp:   c.evm.Time.Uint64(),
+		Timestamp:   c.evm.Context.Time.Uint64(),
 		Flag:        p.flag,
 		Value:       p.value,
 		GasValue:    nil,
-		BlockNumber: c.evm.BlockNumber,
+		BlockNumber: c.evm.Context.BlockNumber,
 		IsReceive:   false,
 	}
 
 	state := c.evm.StateDB
-	if !c.evm.CanTransferTimeLock(state, from, tranferTimeLockParam) {
+	if !c.evm.Context.CanTransferTimeLock(state, from, tranferTimeLockParam) {
 		return nil, ErrNotEnoughBalance
 	}
-	c.evm.TransferTimeLock(state, from, to, tranferTimeLockParam)
+	c.evm.Context.TransferTimeLock(state, from, to, tranferTimeLockParam)
 
 	return toOKData("sendAsset"), nil
 }

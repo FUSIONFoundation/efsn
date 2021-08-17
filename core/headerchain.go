@@ -246,7 +246,7 @@ func (hc *HeaderChain) ValidateHeaderChain(chain []*types.Header, checkFreq int)
 		}
 		// If the header is a banned one, straight out abort
 		if BadHashes[header.Hash()] {
-			return i, ErrBlacklistedHash
+			return i, ErrBannedHash
 		}
 		// Otherwise wait for headers checks and ensure they pass
 		datong.SetHeaders(headers[:i])

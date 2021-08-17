@@ -51,8 +51,6 @@ import (
 var (
 	blockInsertTimer = metrics.NewRegisteredTimer("chain/inserts", nil)
 
-	ErrNoGenesis = errors.New("Genesis not found in chain")
-
 	ResyncFromHeight uint64 = 0 // force sync from this height even though has synced
 )
 
@@ -224,6 +222,11 @@ func NewBlockChain(db ethdb.Database, cacheConfig *CacheConfig, chainConfig *par
 	// Take ownership of this particular state
 	go bc.update()
 	return bc, nil
+}
+
+// GetVMConfig returns the block chain VM config.
+func (bc *BlockChain) GetVMConfig() *vm.Config {
+	return &bc.vmConfig
 }
 
 func (bc *BlockChain) getProcInterrupt() bool {
@@ -1154,8 +1157,8 @@ func (bc *BlockChain) insertChain(chain types.Blocks) (int, []interface{}, []*ty
 		}
 		// If the header is a banned one, straight out abort
 		if BadHashes[block.Hash()] {
-			bc.reportBlock(block, nil, ErrBlacklistedHash)
-			return i, events, coalescedLogs, ErrBlacklistedHash
+			bc.reportBlock(block, nil, ErrBannedHash)
+			return i, events, coalescedLogs, ErrBannedHash
 		}
 		// Wait for the block's verification to complete
 		bstart := time.Now()

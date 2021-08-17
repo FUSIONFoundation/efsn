@@ -71,9 +71,12 @@ func main() {
 	}
 	// If the entire solidity code was specified, build and bind based on that
 	var (
-		abis  []string
-		bins  []string
-		types []string
+		abis    []string
+		bins    []string
+		types   []string
+		sigs    []map[string]string
+		libs    = make(map[string]string)
+		aliases = make(map[string]string)
 	)
 	if *solFlag != "" || *abiFlag == "-" {
 		// Generate the list of types to exclude from binding
@@ -134,7 +137,7 @@ func main() {
 		types = append(types, kind)
 	}
 	// Generate the contract binding
-	code, err := bind.Bind(types, abis, bins, *pkgFlag, lang)
+	code, err := bind.Bind(types, abis, bins, sigs, *pkgFlag, lang, libs, aliases)
 	if err != nil {
 		fmt.Printf("Failed to generate ABI binding: %v\n", err)
 		os.Exit(-1)
