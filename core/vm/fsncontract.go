@@ -35,15 +35,17 @@ func (f FcFuncType) Name() string {
 }
 
 type FSNContract struct {
-	evm      *EVM
-	contract *Contract
-	input    []byte
+	evm            *EVM
+	from           common.Address
+	parentContract bool
+	input          []byte
 }
 
-func NewFSNContract(evm *EVM, contract *Contract) *FSNContract {
+func NewFSNContract(evm *EVM, from common.Address, parentContract bool) *FSNContract {
 	return &FSNContract{
-		evm:      evm,
-		contract: contract,
+		evm:            evm,
+		from:           from,
+		parentContract: parentContract,
 	}
 }
 
@@ -74,15 +76,14 @@ func (c *FSNContract) Run(input []byte) (ret []byte, err error) {
 }
 
 func (c *FSNContract) sendAsset() ([]byte, error) {
-	_, err := c.contract.GetParentCaller()
-	if err != nil {
-		return nil, err
+	if !c.parentContract {
+		return nil, ErrMustCallByContract
 	}
 	p, err := c.parseParams()
 	if err != nil {
 		return nil, err
 	}
-	from := c.contract.Caller()
+	from := c.from
 	to := p.address
 
 	tranferTimeLockParam := &common.TransferTimeLockParam{
