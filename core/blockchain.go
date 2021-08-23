@@ -1546,23 +1546,22 @@ func (bc *BlockChain) reportBlock(block *types.Block, receipts types.Receipts, e
 	bc.addBadBlock(block)
 
 	var receiptString string
-	for _, receipt := range receipts {
-		receiptString += fmt.Sprintf("\t%v\n", receipt)
+	for i, receipt := range receipts {
+		receiptString += fmt.Sprintf("\t %d: cumulative: %v gas: %v contract: %v status: %v tx: %v logs: %v bloom: %x state: %x\n",
+			i, receipt.CumulativeGasUsed, receipt.GasUsed, receipt.ContractAddress.Hex(),
+			receipt.Status, receipt.TxHash.Hex(), receipt.Logs, receipt.Bloom, receipt.PostState)
 	}
 	log.Error(fmt.Sprintf(`
 ########## BAD BLOCK #########
 Chain config: %v
 
 Number: %v
-Order: %v
 Hash: 0x%x
-Miner: 0x%x
-Difficulty: %v
 %v
 
 Error: %v
 ##############################
-`, bc.chainConfig, block.Number(), block.Nonce(), block.Hash(), block.Header().Coinbase, block.Difficulty(), receiptString, err))
+`, bc.chainConfig, block.Number(), block.Hash(), receiptString, err))
 }
 
 // InsertHeaderChain attempts to insert the given header chain in to the local
