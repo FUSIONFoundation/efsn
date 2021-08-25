@@ -204,9 +204,11 @@ func (evm *EVM) Call(caller ContractRef, addr common.Address, input []byte, gas 
 		}
 	} else {
 		// Fail if we're trying to transfer more than the available balance
-		if value.Sign() != 0 && !evm.Context.CanTransfer(evm.StateDB, caller.Address(), value) {
+		if !evm.Context.CanTransfer(evm.StateDB, caller.Address(), value) {
 			return nil, gas, ErrInsufficientBalance
 		}
+		// do not add value.Sign() != 0 condition
+		// fusion will modify the balance if balance is nil due to multi-asset balance structure which is different with Ethereum
 	}
 	snapshot := evm.StateDB.Snapshot()
 	p, isPrecompile := evm.precompile(addr, caller)
