@@ -57,13 +57,13 @@ func NewStateProcessor(config *params.ChainConfig, bc *BlockChain, engine consen
 // transactions failed to execute due to insufficient gas it will return an error.
 func (p *StateProcessor) Process(block *types.Block, statedb *state.StateDB, cfg vm.Config) (types.Receipts, []*types.Log, uint64, error) {
 	var (
-		receipts types.Receipts
-		usedGas  = new(uint64)
-		header   = block.Header()
+		receipts    types.Receipts
+		usedGas     = new(uint64)
+		header      = block.Header()
 		blockHash   = block.Hash()
 		blockNumber = block.Number()
-		allLogs  []*types.Log
-		gp       = new(GasPool).AddGas(block.GasLimit())
+		allLogs     []*types.Log
+		gp          = new(GasPool).AddGas(block.GasLimit())
 	)
 	// Mutate the block and state according to any hard-fork specs
 	if p.config.DAOForkSupport && p.config.DAOForkBlock != nil && p.config.DAOForkBlock.Cmp(block.Number()) == 0 {
@@ -77,7 +77,7 @@ func (p *StateProcessor) Process(block *types.Block, statedb *state.StateDB, cfg
 		if err != nil {
 			return nil, nil, 0, fmt.Errorf("could not apply tx %d [%v]: %w", i, tx.Hash().Hex(), err)
 		}
-		statedb.Prepare(tx.Hash(), block.Hash(), i)
+		statedb.Prepare(tx.Hash(), i)
 		receipt, err := applyTransaction(msg, p.config, p.bc, nil, gp, statedb, blockNumber, blockHash, tx, usedGas, vmenv)
 		if err != nil {
 			return nil, nil, 0, fmt.Errorf("could not apply tx %d [%v]: %w", i, tx.Hash().Hex(), err)
@@ -97,7 +97,7 @@ func applyTransaction(msg types.Message, config *params.ChainConfig, bc ChainCon
 	evm.Reset(txContext, statedb)
 
 	// Apply the transaction to the current state (included in the env)
-	result, err  := ApplyMessage(evm, msg, gp)
+	result, err := ApplyMessage(evm, msg, gp)
 	if err != nil {
 		return nil, err
 	}
@@ -120,7 +120,7 @@ func applyTransaction(msg types.Message, config *params.ChainConfig, bc ChainCon
 		receipt.ContractAddress = crypto.CreateAddress(evm.TxContext.Origin, tx.Nonce())
 	}
 	// Set the receipt logs and create a bloom for filtering
-	receipt.Logs = statedb.GetLogs(tx.Hash())
+	receipt.Logs = statedb.GetLogs(tx.Hash(), blockHash)
 	receipt.Bloom = types.CreateBloom(types.Receipts{receipt})
 
 	return receipt, err
