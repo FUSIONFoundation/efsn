@@ -54,6 +54,8 @@ func (evm *EVM) precompile(addr common.Address, caller ContractRef) (Precompiled
 	// Other Precompiled Contract
 	var precompiles map[common.Address]PrecompiledContract
 	switch {
+	case evm.chainRules.IsIstanbul:
+		precompiles = PrecompiledContractsIstanbul
 	case evm.chainRules.IsByzantium:
 		precompiles = PrecompiledContractsByzantium
 	default:

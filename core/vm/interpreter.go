@@ -18,6 +18,7 @@ package vm
 
 import (
 	"github.com/FusionFoundation/efsn/common"
+	"github.com/FusionFoundation/efsn/log"
 	"hash"
 	"sync/atomic"
 
@@ -26,20 +27,15 @@ import (
 
 // Config are the configuration options for the Interpreter
 type Config struct {
-	// Debug enabled debugging Interpreter options
-	Debug bool
-	// Tracer is the op code logger
-	Tracer Tracer
-	// NoRecursion disabled Interpreter call, callcode,
-	// delegate call and create.
-	NoRecursion bool
-	NoBaseFee   bool // Forces the EIP-1559 baseFee to 0 (needed for 0 price calls)
-	// Enable recording of SHA3/keccak preimages
-	EnablePreimageRecording bool
-	// JumpTable contains the EVM instruction table. This
-	// may be left uninitialised and will be set to the default
-	// table.
-	JumpTable [256]*operation
+	Debug                   bool   // Enables debugging
+	Tracer                  Tracer // Opcode logger
+	NoRecursion             bool   // Disables call, callcode, delegate call and create
+	NoBaseFee               bool   // Forces the EIP-1559 baseFee to 0 (needed for 0 price calls)
+	EnablePreimageRecording bool   // Enables recording of SHA3/keccak preimages
+
+	JumpTable [256]*operation // EVM instruction table, automatically populated if unset
+
+	ExtraEips []int // Additional EIPS that are to be enabled
 }
 
 // ScopeContext contains the things that are per-call, such as stack and memory,
@@ -78,6 +74,8 @@ func NewEVMInterpreter(evm *EVM, cfg Config) *EVMInterpreter {
 	if cfg.JumpTable[STOP] == nil {
 		var jt JumpTable
 		switch {
+		case evm.chainRules.IsIstanbul:
+			jt = istanbulInstructionSet
 		case evm.chainRules.IsConstantinople:
 			jt = constantinopleInstructionSet
 		case evm.chainRules.IsByzantium:
@@ -90,6 +88,13 @@ func NewEVMInterpreter(evm *EVM, cfg Config) *EVMInterpreter {
 			jt = homesteadInstructionSet
 		default:
 			jt = frontierInstructionSet
+		}
+		for i, eip := range cfg.ExtraEips {
+			if err := EnableEIP(eip, &jt); err != nil {
+				// Disable it, so caller can check if it's activated or not
+				cfg.ExtraEips = append(cfg.ExtraEips[:i], cfg.ExtraEips[i+1:]...)
+				log.Error("EIP activation failed", "eip", eip, "error", err)
+			}
 		}
 		cfg.JumpTable = jt
 	}
