@@ -114,7 +114,7 @@ func (r *BlockRequest) Validate(db ethdb.Database, msg *Msg) error {
 	if header == nil {
 		return errHeaderUnavailable
 	}
-	if header.TxHash != types.DeriveSha(types.Transactions(body.Transactions)) {
+	if header.TxHash != types.DeriveSha(types.Transactions(body.Transactions), trie.NewStackTrie(nil)) {
 		return errTxHashMismatch
 	}
 	// Validations passed, encode and store RLP
@@ -167,7 +167,7 @@ func (r *ReceiptsRequest) Validate(db ethdb.Database, msg *Msg) error {
 	if header == nil {
 		return errHeaderUnavailable
 	}
-	if header.ReceiptHash != types.DeriveSha(receipt) {
+	if header.ReceiptHash != types.DeriveSha(receipt, trie.NewStackTrie(nil)) {
 		return errReceiptHashMismatch
 	}
 	// Validations passed, store and return
@@ -227,7 +227,7 @@ func (r *TrieRequest) Validate(db ethdb.Database, msg *Msg) error {
 		}
 		nodeSet := proofs[0].NodeSet()
 		// Verify the proof and store if checks out
-		if _, _, err := trie.VerifyProof(r.Id.Root, r.Key, nodeSet); err != nil {
+		if _, err := trie.VerifyProof(r.Id.Root, r.Key, nodeSet); err != nil {
 			return fmt.Errorf("merkle proof verification failed: %v", err)
 		}
 		r.Proof = nodeSet
@@ -238,7 +238,7 @@ func (r *TrieRequest) Validate(db ethdb.Database, msg *Msg) error {
 		// Verify the proof and store if checks out
 		nodeSet := proofs.NodeSet()
 		reads := &readTraceDB{db: nodeSet}
-		if _, _, err := trie.VerifyProof(r.Id.Root, r.Key, reads); err != nil {
+		if _, err := trie.VerifyProof(r.Id.Root, r.Key, reads); err != nil {
 			return fmt.Errorf("merkle proof verification failed: %v", err)
 		}
 		// check if all nodes have been read by VerifyProof
@@ -411,7 +411,7 @@ func (r *ChtRequest) Validate(db ethdb.Database, msg *Msg) error {
 		var encNumber [8]byte
 		binary.BigEndian.PutUint64(encNumber[:], r.BlockNum)
 
-		value, _, err := trie.VerifyProof(r.ChtRoot, encNumber[:], light.NodeList(proof.Proof).NodeSet())
+		value, err := trie.VerifyProof(r.ChtRoot, encNumber[:], light.NodeList(proof.Proof).NodeSet())
 		if err != nil {
 			return err
 		}
@@ -446,7 +446,7 @@ func (r *ChtRequest) Validate(db ethdb.Database, msg *Msg) error {
 		binary.BigEndian.PutUint64(encNumber[:], r.BlockNum)
 
 		reads := &readTraceDB{db: nodeSet}
-		value, _, err := trie.VerifyProof(r.ChtRoot, encNumber[:], reads)
+		value, err := trie.VerifyProof(r.ChtRoot, encNumber[:], reads)
 		if err != nil {
 			return fmt.Errorf("merkle proof verification failed: %v", err)
 		}
@@ -540,7 +540,7 @@ func (r *BloomRequest) Validate(db ethdb.Database, msg *Msg) error {
 
 	for i, idx := range r.SectionIndexList {
 		binary.BigEndian.PutUint64(encNumber[2:], idx)
-		value, _, err := trie.VerifyProof(r.BloomTrieRoot, encNumber[:], reads)
+		value, err := trie.VerifyProof(r.BloomTrieRoot, encNumber[:], reads)
 		if err != nil {
 			return err
 		}
@@ -557,7 +557,7 @@ func (r *BloomRequest) Validate(db ethdb.Database, msg *Msg) error {
 // readTraceDB stores the keys of database reads. We use this to check that received node
 // sets contain only the trie nodes necessary to make proofs pass.
 type readTraceDB struct {
-	db    trie.DatabaseReader
+	db    ethdb.KeyValueReader
 	reads map[string]struct{}
 }
 

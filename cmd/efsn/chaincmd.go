@@ -31,12 +31,7 @@ import (
 	"github.com/FusionFoundation/efsn/core"
 	"github.com/FusionFoundation/efsn/core/state"
 	"github.com/FusionFoundation/efsn/core/types"
-	"github.com/FusionFoundation/efsn/eth/downloader"
-	"github.com/FusionFoundation/efsn/ethdb"
-	"github.com/FusionFoundation/efsn/event"
 	"github.com/FusionFoundation/efsn/log"
-	"github.com/FusionFoundation/efsn/trie"
-	"github.com/syndtr/goleveldb/leveldb/util"
 	"gopkg.in/urfave/cli.v1"
 )
 
@@ -124,24 +119,6 @@ be gzipped.`,
 		Description: `
 The export-preimages command export hash preimages to an RLP encoded stream`,
 	}
-	copydbCommand = cli.Command{
-		Action:    utils.MigrateFlags(copyDb),
-		Name:      "copydb",
-		Usage:     "Create a local chain from a target chaindata folder",
-		ArgsUsage: "<sourceChaindataDir>",
-		Flags: []cli.Flag{
-			utils.DataDirFlag,
-			utils.CacheFlag,
-			utils.SyncModeFlag,
-			utils.FakePoWFlag,
-			utils.TestnetFlag,
-			utils.RinkebyFlag,
-			utils.DevnetFlag,
-		},
-		Category: "BLOCKCHAIN COMMANDS",
-		Description: `
-The first argument must be the directory containing the blockchain to download from`,
-	}
 	removedbCommand = cli.Command{
 		Action:    utils.MigrateFlags(removeDB),
 		Name:      "removedb",
@@ -192,7 +169,7 @@ func initGenesis(ctx *cli.Context) error {
 	// Open an initialise both full and light databases
 	stack := makeFullNode(ctx)
 	for _, name := range []string{"chaindata", "lightchaindata"} {
-		chaindb, err := stack.OpenDatabase(name, 0, 0)
+		chaindb, err := stack.OpenDatabase(name, 0, 0, "", false)
 		if err != nil {
 			utils.Fatalf("Failed to open database: %v", err)
 		}
@@ -200,6 +177,7 @@ func initGenesis(ctx *cli.Context) error {
 		if err != nil {
 			utils.Fatalf("Failed to write genesis block: %v", err)
 		}
+		chaindb.Close()
 		log.Info("Successfully wrote genesis state", "database", name, "hash", hash)
 	}
 	return nil
@@ -210,8 +188,8 @@ func importChain(ctx *cli.Context) error {
 		utils.Fatalf("This command requires an argument.")
 	}
 	stack := makeFullNode(ctx)
-	chain, chainDb := utils.MakeChain(ctx, stack)
-	defer chainDb.Close()
+	chain, db := utils.MakeChain(ctx, stack)
+	defer db.Close()
 
 	// Start periodically gathering memory profiles
 	var peakMemAlloc, peakMemSys uint64
@@ -246,22 +224,17 @@ func importChain(ctx *cli.Context) error {
 	fmt.Printf("Import done in %v.\n\n", time.Since(start))
 
 	// Output pre-compaction stats mostly to see the import trashing
-	db := chainDb.(*ethdb.LDBDatabase)
-
-	stats, err := db.LDB().GetProperty("leveldb.stats")
+	stats, err := db.Stat("leveldb.stats")
 	if err != nil {
 		utils.Fatalf("Failed to read database stats: %v", err)
 	}
 	fmt.Println(stats)
 
-	ioStats, err := db.LDB().GetProperty("leveldb.iostats")
+	ioStats, err := db.Stat("leveldb.iostats")
 	if err != nil {
 		utils.Fatalf("Failed to read database iostats: %v", err)
 	}
 	fmt.Println(ioStats)
-
-	fmt.Printf("Trie cache misses:  %d\n", trie.CacheMisses())
-	fmt.Printf("Trie cache unloads: %d\n\n", trie.CacheUnloads())
 
 	// Print the memory statistics used by the importing
 	mem := new(runtime.MemStats)
@@ -279,23 +252,22 @@ func importChain(ctx *cli.Context) error {
 	// Compact the entire database to more accurately measure disk io and print the stats
 	start = time.Now()
 	fmt.Println("Compacting entire database...")
-	if err = db.LDB().CompactRange(util.Range{}); err != nil {
+	if err = db.Compact(nil, nil); err != nil {
 		utils.Fatalf("Compaction failed: %v", err)
 	}
 	fmt.Printf("Compaction done in %v.\n\n", time.Since(start))
 
-	stats, err = db.LDB().GetProperty("leveldb.stats")
+	stats, err = db.Stat("leveldb.stats")
 	if err != nil {
 		utils.Fatalf("Failed to read database stats: %v", err)
 	}
 	fmt.Println(stats)
 
-	ioStats, err = db.LDB().GetProperty("leveldb.iostats")
+	ioStats, err = db.Stat("leveldb.iostats")
 	if err != nil {
 		utils.Fatalf("Failed to read database iostats: %v", err)
 	}
 	fmt.Println(ioStats)
-
 	return nil
 }
 
@@ -337,10 +309,11 @@ func importPreimages(ctx *cli.Context) error {
 		utils.Fatalf("This command requires an argument.")
 	}
 	stack := makeFullNode(ctx)
-	diskdb := utils.MakeChainDatabase(ctx, stack).(*ethdb.LDBDatabase)
 
+	db := utils.MakeChainDatabase(ctx, stack, false)
 	start := time.Now()
-	if err := utils.ImportPreimages(diskdb, ctx.Args().First()); err != nil {
+
+	if err := utils.ImportPreimages(db, ctx.Args().First()); err != nil {
 		utils.Fatalf("Import error: %v\n", err)
 	}
 	fmt.Printf("Import done in %v\n", time.Since(start))
@@ -353,61 +326,13 @@ func exportPreimages(ctx *cli.Context) error {
 		utils.Fatalf("This command requires an argument.")
 	}
 	stack := makeFullNode(ctx)
-	diskdb := utils.MakeChainDatabase(ctx, stack).(*ethdb.LDBDatabase)
-
+	db := utils.MakeChainDatabase(ctx, stack, true)
 	start := time.Now()
-	if err := utils.ExportPreimages(diskdb, ctx.Args().First()); err != nil {
+
+	if err := utils.ExportPreimages(db, ctx.Args().First()); err != nil {
 		utils.Fatalf("Export error: %v\n", err)
 	}
 	fmt.Printf("Export done in %v\n", time.Since(start))
-	return nil
-}
-
-func copyDb(ctx *cli.Context) error {
-	// Ensure we have a source chain directory to copy
-	if len(ctx.Args()) != 1 {
-		utils.Fatalf("Source chaindata directory path argument missing")
-	}
-	// Initialize a new chain for the running node to sync into
-	stack := makeFullNode(ctx)
-	chain, chainDb := utils.MakeChain(ctx, stack)
-
-	syncmode := *utils.GlobalTextMarshaler(ctx, utils.SyncModeFlag.Name).(*downloader.SyncMode)
-	dl := downloader.New(syncmode, chainDb, new(event.TypeMux), chain, nil, nil)
-
-	// Create a source peer to satisfy downloader requests from
-	db, err := ethdb.NewLDBDatabase(ctx.Args().First(), ctx.GlobalInt(utils.CacheFlag.Name), 256)
-	if err != nil {
-		return err
-	}
-	hc, err := core.NewHeaderChain(db, chain.Config(), chain.Engine(), func() bool { return false })
-	if err != nil {
-		return err
-	}
-	peer := downloader.NewFakePeer("local", db, hc, dl)
-	if err = dl.RegisterPeer("local", 63, peer); err != nil {
-		return err
-	}
-	// Synchronise with the simulated peer
-	start := time.Now()
-
-	currentHeader := hc.CurrentHeader()
-	if err = dl.Synchronise("local", currentHeader.Hash(), hc.GetTd(currentHeader.Hash(), currentHeader.Number.Uint64()), syncmode); err != nil {
-		return err
-	}
-	for dl.Synchronising() {
-		time.Sleep(10 * time.Millisecond)
-	}
-	fmt.Printf("Database copy done in %v\n", time.Since(start))
-
-	// Compact the entire database to remove any sync overhead
-	start = time.Now()
-	fmt.Println("Compacting entire database...")
-	if err = chainDb.(*ethdb.LDBDatabase).LDB().CompactRange(util.Range{}); err != nil {
-		utils.Fatalf("Compaction failed: %v", err)
-	}
-	fmt.Printf("Compaction done in %v.\n\n", time.Since(start))
-
 	return nil
 }
 

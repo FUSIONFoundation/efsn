@@ -18,6 +18,7 @@ package rawdb
 
 import (
 	"encoding/json"
+	"github.com/FusionFoundation/efsn/ethdb"
 
 	"github.com/FusionFoundation/efsn/common"
 	"github.com/FusionFoundation/efsn/log"
@@ -26,25 +27,33 @@ import (
 )
 
 // ReadDatabaseVersion retrieves the version number of the database.
-func ReadDatabaseVersion(db DatabaseReader) int {
-	var version int
+func ReadDatabaseVersion(db ethdb.KeyValueReader) *uint64 {
+	var version uint64
 
-	enc, _ := db.Get(databaseVerisionKey)
-	rlp.DecodeBytes(enc, &version)
+	enc, _ := db.Get(databaseVersionKey)
+	if len(enc) == 0 {
+		return nil
+	}
+	if err := rlp.DecodeBytes(enc, &version); err != nil {
+		return nil
+	}
 
-	return version
+	return &version
 }
 
 // WriteDatabaseVersion stores the version number of the database
-func WriteDatabaseVersion(db DatabaseWriter, version int) {
-	enc, _ := rlp.EncodeToBytes(version)
-	if err := db.Put(databaseVerisionKey, enc); err != nil {
+func WriteDatabaseVersion(db ethdb.KeyValueWriter, version uint64) {
+	enc, err := rlp.EncodeToBytes(version)
+	if err != nil {
+		log.Crit("Failed to encode database version", "err", err)
+	}
+	if err = db.Put(databaseVersionKey, enc); err != nil {
 		log.Crit("Failed to store the database version", "err", err)
 	}
 }
 
 // ReadChainConfig retrieves the consensus settings based on the given genesis hash.
-func ReadChainConfig(db DatabaseReader, hash common.Hash) *params.ChainConfig {
+func ReadChainConfig(db ethdb.KeyValueReader, hash common.Hash) *params.ChainConfig {
 	data, _ := db.Get(configKey(hash))
 	if len(data) == 0 {
 		return nil
@@ -58,7 +67,7 @@ func ReadChainConfig(db DatabaseReader, hash common.Hash) *params.ChainConfig {
 }
 
 // WriteChainConfig writes the chain config settings to the database.
-func WriteChainConfig(db DatabaseWriter, hash common.Hash, cfg *params.ChainConfig) {
+func WriteChainConfig(db ethdb.KeyValueWriter, hash common.Hash, cfg *params.ChainConfig) {
 	if cfg == nil {
 		return
 	}
@@ -69,22 +78,4 @@ func WriteChainConfig(db DatabaseWriter, hash common.Hash, cfg *params.ChainConf
 	if err := db.Put(configKey(hash), data); err != nil {
 		log.Crit("Failed to store chain config", "err", err)
 	}
-}
-
-// ReadPreimage retrieves a single preimage of the provided hash.
-func ReadPreimage(db DatabaseReader, hash common.Hash) []byte {
-	data, _ := db.Get(preimageKey(hash))
-	return data
-}
-
-// WritePreimages writes the provided set of preimages to the database. `number` is the
-// current block number, and is used for debug messages only.
-func WritePreimages(db DatabaseWriter, number uint64, preimages map[common.Hash][]byte) {
-	for hash, preimage := range preimages {
-		if err := db.Put(preimageKey(hash), preimage); err != nil {
-			log.Crit("Failed to store trie preimage", "err", err)
-		}
-	}
-	preimageCounter.Inc(int64(len(preimages)))
-	preimageHitCounter.Inc(int64(len(preimages)))
 }

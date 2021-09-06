@@ -20,12 +20,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/FusionFoundation/efsn/accounts/abi"
 	"math/big"
 	"sync"
 	"time"
 
 	"github.com/FusionFoundation/efsn"
+	"github.com/FusionFoundation/efsn/accounts/abi"
 	"github.com/FusionFoundation/efsn/accounts/abi/bind"
 	"github.com/FusionFoundation/efsn/common"
 	"github.com/FusionFoundation/efsn/common/math"
@@ -66,7 +66,7 @@ type SimulatedBackend struct {
 // NewSimulatedBackend creates a new binding backend using a simulated blockchain
 // for testing purposes.
 func NewSimulatedBackend(alloc core.GenesisAlloc, gasLimit uint64) *SimulatedBackend {
-	database := ethdb.NewMemDatabase()
+	database := rawdb.NewMemoryDatabase()
 	genesis := core.Genesis{Config: params.AllEthashProtocolChanges, GasLimit: gasLimit, Alloc: alloc}
 	genesis.MustCommit(database)
 	blockchain, _ := core.NewBlockChain(database, nil, genesis.Config, ethash.NewFaker(), vm.Config{}, nil)

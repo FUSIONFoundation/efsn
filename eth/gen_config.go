@@ -8,7 +8,6 @@ import (
 
 	"github.com/FusionFoundation/efsn/common"
 	"github.com/FusionFoundation/efsn/common/hexutil"
-	"github.com/FusionFoundation/efsn/consensus/ethash"
 	"github.com/FusionFoundation/efsn/core"
 	"github.com/FusionFoundation/efsn/eth/downloader"
 	"github.com/FusionFoundation/efsn/eth/gasprice"
@@ -28,7 +27,8 @@ func (c Config) MarshalTOML() (interface{}, error) {
 		SkipBcVersionCheck      bool `toml:"-"`
 		DatabaseHandles         int  `toml:"-"`
 		DatabaseCache           int
-		TrieCache               int
+		TrieCleanCache          int
+		TrieDirtyCache          int
 		TrieTimeout             time.Duration
 		Etherbase               common.Address `toml:",omitempty"`
 		MinerNotify             []string       `toml:",omitempty"`
@@ -38,7 +38,6 @@ func (c Config) MarshalTOML() (interface{}, error) {
 		MinerGasPrice           *big.Int
 		MinerRecommit           time.Duration
 		MinerNoverify           bool
-		Ethash                  ethash.Config
 		TxPool                  core.TxPoolConfig
 		GPO                     gasprice.Config
 		EnablePreimageRecording bool
@@ -54,7 +53,8 @@ func (c Config) MarshalTOML() (interface{}, error) {
 	enc.SkipBcVersionCheck = c.SkipBcVersionCheck
 	enc.DatabaseHandles = c.DatabaseHandles
 	enc.DatabaseCache = c.DatabaseCache
-	enc.TrieCache = c.TrieCache
+	enc.TrieCleanCache = c.TrieCleanCache
+	enc.TrieDirtyCache = c.TrieDirtyCache
 	enc.TrieTimeout = c.TrieTimeout
 	enc.Etherbase = c.Etherbase
 	enc.MinerNotify = c.MinerNotify
@@ -64,7 +64,6 @@ func (c Config) MarshalTOML() (interface{}, error) {
 	enc.MinerGasPrice = c.MinerGasPrice
 	enc.MinerRecommit = c.MinerRecommit
 	enc.MinerNoverify = c.MinerNoverify
-	enc.Ethash = c.Ethash
 	enc.TxPool = c.TxPool
 	enc.GPO = c.GPO
 	enc.EnablePreimageRecording = c.EnablePreimageRecording
@@ -84,7 +83,8 @@ func (c *Config) UnmarshalTOML(unmarshal func(interface{}) error) error {
 		SkipBcVersionCheck      *bool `toml:"-"`
 		DatabaseHandles         *int  `toml:"-"`
 		DatabaseCache           *int
-		TrieCache               *int
+		TrieCleanCache          *int
+		TrieDirtyCache          *int
 		TrieTimeout             *time.Duration
 		Etherbase               *common.Address `toml:",omitempty"`
 		MinerNotify             []string        `toml:",omitempty"`
@@ -94,7 +94,6 @@ func (c *Config) UnmarshalTOML(unmarshal func(interface{}) error) error {
 		MinerGasPrice           *big.Int
 		MinerRecommit           *time.Duration
 		MinerNoverify           *bool
-		Ethash                  *ethash.Config
 		TxPool                  *core.TxPoolConfig
 		GPO                     *gasprice.Config
 		EnablePreimageRecording *bool
@@ -131,8 +130,11 @@ func (c *Config) UnmarshalTOML(unmarshal func(interface{}) error) error {
 	if dec.DatabaseCache != nil {
 		c.DatabaseCache = *dec.DatabaseCache
 	}
-	if dec.TrieCache != nil {
-		c.TrieCache = *dec.TrieCache
+	if dec.TrieCleanCache != nil {
+		c.TrieCleanCache = *dec.TrieCleanCache
+	}
+	if dec.TrieDirtyCache != nil {
+		c.TrieDirtyCache = *dec.TrieDirtyCache
 	}
 	if dec.TrieTimeout != nil {
 		c.TrieTimeout = *dec.TrieTimeout
@@ -160,9 +162,6 @@ func (c *Config) UnmarshalTOML(unmarshal func(interface{}) error) error {
 	}
 	if dec.MinerNoverify != nil {
 		c.MinerNoverify = *dec.MinerNoverify
-	}
-	if dec.Ethash != nil {
-		c.Ethash = *dec.Ethash
 	}
 	if dec.TxPool != nil {
 		c.TxPool = *dec.TxPool

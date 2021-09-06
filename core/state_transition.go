@@ -35,6 +35,8 @@ import (
 	"github.com/FusionFoundation/efsn/rlp"
 )
 
+var emptyCodeHash = crypto.Keccak256Hash(nil)
+
 /*
 The State Transitioning Model
 
@@ -75,8 +77,9 @@ type Message interface {
 	Value() *big.Int
 
 	Nonce() uint64
-	CheckNonce() bool
+	IsFake() bool
 	Data() []byte
+	AccessList() types.AccessList
 
 	AsTransaction() *types.Transaction
 }
@@ -203,13 +206,21 @@ func (st *StateTransition) buyGas() error {
 }
 
 func (st *StateTransition) preCheck() error {
-	// Make sure this transaction's nonce is correct.
-	if st.msg.CheckNonce() {
-		nonce := st.state.GetNonce(st.msg.From())
-		if nonce < st.msg.Nonce() {
-			return ErrNonceTooHigh
-		} else if nonce > st.msg.Nonce() {
-			return ErrNonceTooLow
+	// Only check transactions that are not fake
+	if !st.msg.IsFake() {
+		// Make sure this transaction's nonce is correct.
+		stNonce := st.state.GetNonce(st.msg.From())
+		if msgNonce := st.msg.Nonce(); stNonce < msgNonce {
+			return fmt.Errorf("%w: address %v, tx: %d state: %d", ErrNonceTooHigh,
+				st.msg.From().Hex(), msgNonce, stNonce)
+		} else if stNonce > msgNonce {
+			return fmt.Errorf("%w: address %v, tx: %d state: %d", ErrNonceTooLow,
+				st.msg.From().Hex(), msgNonce, stNonce)
+		}
+		// Make sure the sender is an EOA
+		if codeHash := st.state.GetCodeHash(st.msg.From()); codeHash != emptyCodeHash && codeHash != (common.Hash{}) {
+			return fmt.Errorf("%w: address %v, codehash: %s", ErrSenderNoEOA,
+				st.msg.From().Hex(), codeHash)
 		}
 	}
 	return st.buyGas()

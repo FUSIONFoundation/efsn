@@ -18,6 +18,7 @@ package miner
 
 import (
 	"bytes"
+	"github.com/FusionFoundation/efsn/trie"
 	"math/big"
 	"sync"
 	"sync/atomic"
@@ -639,6 +640,7 @@ func (w *worker) updateSnapshot() {
 		w.current.txs,
 		nil,
 		w.current.receipts,
+		trie.NewStackTrie(nil),
 	)
 
 	w.snapshotState = w.current.state.Copy()
@@ -805,10 +807,10 @@ func (w *worker) commitNewWork(interrupt *int32, noempty bool, timestamp int64) 
 
 	tstart := time.Now()
 	parent := w.chain.CurrentBlock()
-	minTime := new(big.Int).Add(parent.Time(), big.NewInt(datong.MinBlockTime))
+	minTime := parent.Time() + datong.MinBlockTime
 
-	if minTime.Cmp(new(big.Int).SetInt64(timestamp)) > 0 {
-		timestamp = minTime.Int64()
+	if minTime > uint64(timestamp) {
+		timestamp = int64(minTime)
 	}
 
 	// this will ensure we're not going off too far in the future
@@ -824,7 +826,7 @@ func (w *worker) commitNewWork(interrupt *int32, noempty bool, timestamp int64) 
 		Number:     num.Add(num, common.Big1),
 		GasLimit:   core.CalcGasLimit(parent, w.gasFloor, w.gasCeil),
 		Extra:      w.extra,
-		Time:       big.NewInt(timestamp),
+		Time:       uint64(timestamp),
 		Difficulty: common.Big0,
 	}
 	// Only set the coinbase if our consensus engine is running (avoid spurious block rewards)

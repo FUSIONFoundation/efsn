@@ -14,6 +14,7 @@ import (
 	"github.com/FusionFoundation/efsn/accounts"
 	"github.com/FusionFoundation/efsn/common"
 	"github.com/FusionFoundation/efsn/common/hexutil"
+	cmath "github.com/FusionFoundation/efsn/common/math"
 	"github.com/FusionFoundation/efsn/consensus"
 	"github.com/FusionFoundation/efsn/core/rawdb"
 	"github.com/FusionFoundation/efsn/core/state"
@@ -25,8 +26,7 @@ import (
 	"github.com/FusionFoundation/efsn/params"
 	"github.com/FusionFoundation/efsn/rlp"
 	"github.com/FusionFoundation/efsn/rpc"
-
-	cmath "github.com/FusionFoundation/efsn/common/math"
+	"github.com/FusionFoundation/efsn/trie"
 )
 
 const (
@@ -57,7 +57,7 @@ type SignerFn func(accounts.Account, []byte) ([]byte, error)
 var (
 	extraVanity         = 32
 	extraSeal           = 65
-	MinBlockTime int64  = 7   // 7 seconds
+	MinBlockTime uint64 = 7   // 7 seconds
 	maxBlockTime uint64 = 600 // 10 minutes
 )
 
@@ -126,7 +126,8 @@ func (dt *DaTong) verifyHeader(chain consensus.ChainReader, header *types.Header
 	if len(header.Extra) < extraVanity+extraSeal {
 		return errMissingSignature
 	}
-	if header.Time.Cmp(big.NewInt(time.Now().Unix())) > 0 {
+	// Don't waste time checking blocks from the future
+	if header.Time > uint64(time.Now().Unix()) {
 		return consensus.ErrFutureBlock
 	}
 	// verify Ancestor
@@ -143,9 +144,9 @@ func (dt *DaTong) verifyHeader(chain consensus.ChainReader, header *types.Header
 		return fmt.Errorf("PoS hash mismatch: have %x, want %x", header.UncleHash, posHash(parent))
 	}
 	// verify header time
-	if header.Time.Int64()-parent.Time.Int64() < MinBlockTime {
+	if header.Time-parent.Time < MinBlockTime {
 		return fmt.Errorf("block %v header.Time:%v < parent.Time:%v + %v Second",
-			header.Number, header.Time.Int64(), parent.Time.Int64(), MinBlockTime)
+			header.Number, header.Time, parent.Time, MinBlockTime)
 
 	}
 	// verify signature
@@ -305,15 +306,15 @@ func (dt *DaTong) Prepare(chain consensus.ChainReader, header *types.Header) err
 	header.Difficulty = difficulty
 	// adjust block time if illegal
 	if order > 0 {
-		recvTime := header.Time.Int64() - parent.Time.Int64()
-		maxDelaySeconds := int64(maxBlockTime + dt.config.Period)
+		recvTime := header.Time - parent.Time
+		maxDelaySeconds := maxBlockTime + dt.config.Period
 		if recvTime < maxDelaySeconds {
-			expectTime := int64(dt.config.Period + order*delayTimeModifier)
+			expectTime := dt.config.Period + order*delayTimeModifier
 			if recvTime < expectTime {
 				if expectTime > maxDelaySeconds {
 					expectTime = maxDelaySeconds
 				}
-				header.Time = big.NewInt(parent.Time.Int64() + expectTime)
+				header.Time = parent.Time + expectTime
 			}
 		}
 	}
@@ -377,7 +378,7 @@ func (dt *DaTong) Finalize(chain consensus.ChainReader, header *types.Header, st
 	}
 
 	returnTicket := func(ticket *common.Ticket) {
-		if ticket.ExpireTime <= header.Time.Uint64() {
+		if ticket.ExpireTime <= header.Time {
 			return
 		}
 		value := common.NewTimeLock(&common.TimeLockItem{
@@ -385,7 +386,7 @@ func (dt *DaTong) Finalize(chain consensus.ChainReader, header *types.Header, st
 			EndTime:   ticket.ExpireTime,
 			Value:     ticket.Value(),
 		})
-		headerState.AddTimeLockBalance(ticket.Owner, common.SystemAssetID, value, header.Number, header.Time.Uint64())
+		headerState.AddTimeLockBalance(ticket.Owner, common.SystemAssetID, value, header.Number, header.Time)
 	}
 
 	deleteTicket := func(ticket *common.Ticket, logType ticketLogType, returnBack bool) {
@@ -411,10 +412,10 @@ func (dt *DaTong) Finalize(chain consensus.ChainReader, header *types.Header, st
 	}
 
 	if common.IsVote1ForkBlock(header.Number) {
-		ApplyVote1HardFork(headerState, header.Number, parent.Time.Uint64())
+		ApplyVote1HardFork(headerState, header.Number, parent.Time)
 	}
 
-	hash, err := headerState.UpdateTickets(header.Number, parent.Time.Uint64())
+	hash, err := headerState.UpdateTickets(header.Number, parent.Time)
 	if err != nil {
 		return nil, errors.New("UpdateTickets failed: " + err.Error())
 	}
@@ -440,7 +441,7 @@ func (dt *DaTong) Finalize(chain consensus.ChainReader, header *types.Header, st
 
 	headerState.AddBalance(header.Coinbase, common.SystemAssetID, CalcRewards(header.Number))
 	header.Root = headerState.IntermediateRoot(chain.Config().IsEIP158(header.Number))
-	return types.NewBlock(header, txs, nil, receipts), nil
+	return types.NewBlock(header, txs, nil, receipts, trie.NewStackTrie(nil)), nil
 }
 
 // Seal generates a new sealing request for the given input block and pushes
@@ -688,7 +689,7 @@ func (dt *DaTong) getAllTickets(chain consensus.ChainReader, header *types.Heade
 	for i := len(parents) - 1; i >= 0; i-- {
 		hash := parents[i].Hash()
 		if number := rawdb.ReadHeaderNumber(dt.db, hash); number != nil {
-			receipts := rawdb.ReadReceipts(dt.db, hash, *number)
+			receipts := rawdb.ReadReceipts(dt.db, hash, *number, chain.Config())
 			for _, receipt := range receipts {
 				for _, log := range receipt.Logs {
 					if err := processLog(log); err != nil {
@@ -702,7 +703,7 @@ func (dt *DaTong) getAllTickets(chain consensus.ChainReader, header *types.Heade
 		}
 	}
 
-	tickets, err = tickets.ClearExpiredTickets(header.Time.Uint64())
+	tickets, err = tickets.ClearExpiredTickets(header.Time)
 	if err != nil {
 		return nil, err
 	}
@@ -788,7 +789,7 @@ func posHash(header *types.Header) (hash common.Hash) {
 			header.Coinbase,
 			header.Difficulty,
 			header.Number,
-			(header.Time.Uint64() >> 5) << 5,
+			(header.Time >> 5) << 5,
 			header.Extra[extraVanity : len(header.Extra)-extraSeal],
 			header.MixDigest,
 			header.Nonce,
@@ -799,7 +800,7 @@ func posHash(header *types.Header) (hash common.Hash) {
 			header.Coinbase,
 			header.Difficulty,
 			header.Number,
-			(header.Time.Uint64() >> 5) << 5,
+			(header.Time >> 5) << 5,
 			header.Extra[extraVanity : len(header.Extra)-extraSeal],
 			header.Nonce,
 		})
@@ -931,23 +932,24 @@ func (c *DaTong) PreProcess(chain consensus.ChainReader, header *types.Header, s
 func (dt *DaTong) calcDelayTime(chain consensus.ChainReader, header *types.Header) (time.Duration, error) {
 	list := header.Nonce.Uint64()
 	if list > 0 {
-		return time.Unix(header.Time.Int64(), 0).Sub(time.Now()), nil
+		return time.Unix(int64(header.Time), 0).Sub(time.Now()), nil
 	}
 
 	// delayTime = ParentTime + (15 - 2) - time.Now
 	parent := chain.GetHeaderByNumber(header.Number.Uint64() - 1)
-	endTime := new(big.Int).Add(header.Time, new(big.Int).SetUint64(list*uint64(delayTimeModifier)+dt.config.Period-2))
-	delayTime := time.Unix(endTime.Int64(), 0).Sub(time.Now())
+	endTime := header.Time + list*delayTimeModifier + dt.config.Period - 2
+
+	delayTime := time.Unix(int64(endTime), 0).Sub(time.Now())
 
 	// delay maximum
-	if (new(big.Int).Sub(endTime, header.Time)).Uint64() > maxBlockTime {
-		endTime = new(big.Int).Add(header.Time, new(big.Int).SetUint64(maxBlockTime+dt.config.Period-2+list))
-		delayTime = time.Unix(endTime.Int64(), 0).Sub(time.Now())
+	if endTime-header.Time > maxBlockTime {
+		endTime = header.Time + maxBlockTime + dt.config.Period - 2 + list
+		delayTime = time.Unix(int64(endTime), 0).Sub(time.Now())
 	}
 	if header.Number.Uint64() > (adjustIntervalBlocks + 1) {
 		// adjust = ( ( parent - gparent ) / 2 - (dt.config.Period) ) / dt.config.Period
 		gparent := chain.GetHeaderByNumber(header.Number.Uint64() - 1 - adjustIntervalBlocks)
-		adjust := ((time.Unix(parent.Time.Int64(), 0).Sub(time.Unix(gparent.Time.Int64(), 0)) / adjustIntervalBlocks) -
+		adjust := ((time.Unix(int64(parent.Time), 0).Sub(time.Unix(int64(gparent.Time), 0)) / adjustIntervalBlocks) -
 			time.Duration(int64(dt.config.Period))*time.Second) /
 			time.Duration(int64(adjustIntervalBlocks))
 
@@ -971,7 +973,7 @@ func (dt *DaTong) checkTicketInfo(header *types.Header, ticket *common.Ticket) e
 	// check start and expire time
 	if ticket.ExpireTime <= ticket.StartTime ||
 		ticket.ExpireTime < (ticket.StartTime+30*24*3600) ||
-		ticket.ExpireTime < header.Time.Uint64() {
+		ticket.ExpireTime < header.Time {
 		return errors.New("checkTicketInfo ticket ExpireTime mismatch")
 	}
 	return nil
@@ -983,10 +985,10 @@ func (dt *DaTong) checkBlockTime(chain consensus.ChainReader, header *types.Head
 	if list <= 0 { // No.1 pass, check others
 		return nil
 	}
-	recvTime := header.Time.Int64() - parent.Time.Int64()
-	maxDelaySeconds := int64(maxBlockTime + dt.config.Period)
+	recvTime := header.Time - parent.Time
+	maxDelaySeconds := maxBlockTime + dt.config.Period
 	if recvTime < maxDelaySeconds {
-		expectTime := int64(dt.config.Period + list*delayTimeModifier)
+		expectTime := dt.config.Period + list*delayTimeModifier
 		if recvTime < expectTime {
 			return fmt.Errorf("block time mismatch: order: %v, receive: %v, expect: %v.", list, recvTime, expectTime)
 		}

@@ -14,20 +14,19 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with the go-ethereum library. If not, see <http://www.gnu.org/licenses/>.
 
-package rawdb
+package memorydb
 
-// DatabaseReader wraps the Has and Get method of a backing data store.
-type DatabaseReader interface {
-	Has(key []byte) (bool, error)
-	Get(key []byte) ([]byte, error)
-}
+import (
+	"testing"
 
-// DatabaseWriter wraps the Put method of a backing data store.
-type DatabaseWriter interface {
-	Put(key []byte, value []byte) error
-}
+	"github.com/FusionFoundation/efsn/ethdb"
+	"github.com/FusionFoundation/efsn/ethdb/dbtest"
+)
 
-// DatabaseDeleter wraps the Delete method of a backing data store.
-type DatabaseDeleter interface {
-	Delete(key []byte) error
+func TestMemoryDB(t *testing.T) {
+	t.Run("DatabaseSuite", func(t *testing.T) {
+		dbtest.TestDatabaseSuite(t, func() ethdb.KeyValueStore {
+			return New()
+		})
+	})
 }

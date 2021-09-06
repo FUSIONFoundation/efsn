@@ -26,6 +26,7 @@ import (
 	"github.com/FusionFoundation/efsn/core/types"
 	"github.com/FusionFoundation/efsn/params"
 	"github.com/FusionFoundation/efsn/rlp"
+	"github.com/FusionFoundation/efsn/trie"
 )
 
 // BlockValidator is responsible for validating block headers, uncles and
@@ -67,7 +68,7 @@ func (v *BlockValidator) ValidateBody(block *types.Block) error {
 	if err := v.engine.VerifyUncles(v.bc, block); err != nil {
 		return err
 	}
-	if hash := types.DeriveSha(block.Transactions()); hash != header.TxHash {
+	if hash := types.DeriveSha(block.Transactions(), trie.NewStackTrie(nil)); hash != header.TxHash {
 		return fmt.Errorf("transaction root hash mismatch: have %x, want %x", hash, header.TxHash)
 	}
 	if datong.IsInCheckPointsRange(block.NumberU64()) {
@@ -120,7 +121,7 @@ func (v *BlockValidator) ValidateState(block, parent *types.Block, statedb *stat
 		return fmt.Errorf("invalid bloom (remote: %x  local: %x)", header.Bloom, rbloom)
 	}
 	// Tre receipt Trie's root (R = (Tr [[H1, R1], ... [Hn, R1]]))
-	receiptSha := types.DeriveSha(receipts)
+	receiptSha := types.DeriveSha(receipts, trie.NewStackTrie(nil))
 	if receiptSha != header.ReceiptHash {
 		return fmt.Errorf("invalid receipt root hash (remote: %x local: %x)", header.ReceiptHash, receiptSha)
 	}

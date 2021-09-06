@@ -88,8 +88,8 @@ func (s *PublicFusionAPI) GetTimeLockValueByInterval(ctx context.Context, assetI
 	if state.Error() != nil {
 		return "0", state.Error()
 	}
-	if startTime < header.Time.Uint64() {
-		startTime = header.Time.Uint64()
+	if startTime < header.Time {
+		startTime = header.Time
 	}
 	if endTime == 0 {
 		endTime = common.TimeLockForever
@@ -767,11 +767,11 @@ func (s *PublicFusionAPI) BuildAssetToTimeLockSendTxArgs(ctx context.Context, ar
 		return nil, err
 	}
 	args.Init(common.AssetToTimeLock)
-	if err := args.ToParam().Check(common.BigMaxUint64, header.Time.Uint64()); err != nil {
+	if err := args.ToParam().Check(common.BigMaxUint64, header.Time); err != nil {
 		return nil, err
 	}
 	needValue := common.NewTimeLock(&common.TimeLockItem{
-		StartTime: common.MaxUint64(uint64(*args.StartTime), header.Time.Uint64()),
+		StartTime: common.MaxUint64(uint64(*args.StartTime), header.Time),
 		EndTime:   uint64(*args.EndTime),
 		Value:     args.Value.ToInt(),
 	})
@@ -798,11 +798,11 @@ func (s *PublicFusionAPI) BuildTimeLockToTimeLockSendTxArgs(ctx context.Context,
 		return nil, err
 	}
 	args.Init(common.TimeLockToTimeLock)
-	if err := args.ToParam().Check(common.BigMaxUint64, header.Time.Uint64()); err != nil {
+	if err := args.ToParam().Check(common.BigMaxUint64, header.Time); err != nil {
 		return nil, err
 	}
 	needValue := common.NewTimeLock(&common.TimeLockItem{
-		StartTime: common.MaxUint64(uint64(*args.StartTime), header.Time.Uint64()),
+		StartTime: common.MaxUint64(uint64(*args.StartTime), header.Time),
 		EndTime:   uint64(*args.EndTime),
 		Value:     args.Value.ToInt(),
 	})
@@ -830,9 +830,9 @@ func (s *PublicFusionAPI) BuildTimeLockToAssetSendTxArgs(ctx context.Context, ar
 		return nil, err
 	}
 	args.Init(common.TimeLockToAsset)
-	*(*uint64)(args.StartTime) = header.Time.Uint64()
+	*(*uint64)(args.StartTime) = header.Time
 	*(*uint64)(args.EndTime) = common.TimeLockForever
-	if err := args.ToParam().Check(common.BigMaxUint64, header.Time.Uint64()); err != nil {
+	if err := args.ToParam().Check(common.BigMaxUint64, header.Time); err != nil {
 		return nil, err
 	}
 	needValue := common.NewTimeLock(&common.TimeLockItem{
@@ -863,11 +863,11 @@ func (s *PublicFusionAPI) BuildSendTimeLockSendTxArgs(ctx context.Context, args 
 		return nil, err
 	}
 	args.Init(common.SmartTransfer)
-	if err := args.ToParam().Check(common.BigMaxUint64, header.Time.Uint64()); err != nil {
+	if err := args.ToParam().Check(common.BigMaxUint64, header.Time); err != nil {
 		return nil, err
 	}
 	needValue := common.NewTimeLock(&common.TimeLockItem{
-		StartTime: common.MaxUint64(uint64(*args.StartTime), header.Time.Uint64()),
+		StartTime: common.MaxUint64(uint64(*args.StartTime), header.Time),
 		EndTime:   uint64(*args.EndTime),
 		Value:     args.Value.ToInt(),
 	})
@@ -892,7 +892,7 @@ func (s *PublicFusionAPI) BuildBuyTicketSendTxArgs(ctx context.Context, args com
 		return nil, fmt.Errorf("Purchase of BuyTicket for this block already submitted")
 	}
 
-	parentTime := header.Time.Uint64()
+	parentTime := header.Time
 	args.Init(parentTime)
 	if err := args.ToParam().Check(common.BigMaxUint64, parentTime); err != nil {
 		return nil, err
@@ -902,7 +902,7 @@ func (s *PublicFusionAPI) BuildBuyTicketSendTxArgs(ctx context.Context, args com
 	end := uint64(*args.End)
 	value := common.TicketPrice(header.Number)
 	needValue := common.NewTimeLock(&common.TimeLockItem{
-		StartTime: common.MaxUint64(start, header.Time.Uint64()),
+		StartTime: common.MaxUint64(start, header.Time),
 		EndTime:   end,
 		Value:     value,
 	})
@@ -971,7 +971,7 @@ func (s *PublicFusionAPI) BuildMakeSwapSendTxArgs(ctx context.Context, args comm
 		return nil, err
 	}
 
-	args.Init(header.Time)
+	args.Init(new(big.Int).SetUint64(header.Time))
 	now := uint64(time.Now().Unix())
 	if err := args.ToParam().Check(common.BigMaxUint64, now); err != nil {
 		return nil, err
@@ -992,7 +992,7 @@ func (s *PublicFusionAPI) BuildMakeSwapSendTxArgs(ctx context.Context, args comm
 		}
 	} else {
 		needValue := common.NewTimeLock(&common.TimeLockItem{
-			StartTime: common.MaxUint64(start, header.Time.Uint64()),
+			StartTime: common.MaxUint64(start, header.Time),
 			EndTime:   end,
 			Value:     total,
 		})
@@ -1093,7 +1093,7 @@ func (s *PublicFusionAPI) BuildMakeMultiSwapSendTxArgs(ctx context.Context, args
 		return nil, err
 	}
 
-	args.Init(header.Time)
+	args.Init(new(big.Int).SetUint64(header.Time))
 	now := uint64(time.Now().Unix())
 	if err := args.ToParam().Check(common.BigMaxUint64, now); err != nil {
 		return nil, err
@@ -1113,7 +1113,7 @@ func (s *PublicFusionAPI) BuildMakeMultiSwapSendTxArgs(ctx context.Context, args
 			}
 		} else {
 			needValue := common.NewTimeLock(&common.TimeLockItem{
-				StartTime: common.MaxUint64(start, header.Time.Uint64()),
+				StartTime: common.MaxUint64(start, header.Time),
 				EndTime:   end,
 				Value:     total,
 			})

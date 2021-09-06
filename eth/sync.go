@@ -212,7 +212,7 @@ func (pm *ProtocolManager) synchronise(peer *peer) {
 	if head.NumberU64() >= pm.checkpointNumber {
 		// Checkpoint passed, sanity check the timestamp to have a fallback mechanism
 		// for non-checkpointed (number = 0) private networks.
-		if head.Time().Uint64() >= uint64(time.Now().AddDate(0, -1, 0).Unix()) {
+		if head.Time() >= uint64(time.Now().AddDate(0, -1, 0).Unix()) {
 			atomic.StoreUint32(&pm.acceptTxs, 1) // Mark initial sync done
 		}
 	}

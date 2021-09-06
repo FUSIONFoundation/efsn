@@ -37,6 +37,7 @@ import (
 	"github.com/FusionFoundation/efsn/log"
 	"github.com/FusionFoundation/efsn/params"
 	"github.com/FusionFoundation/efsn/rlp"
+	"github.com/FusionFoundation/efsn/trie"
 )
 
 //go:generate gencodec -type Genesis -field-override genesisSpecMarshaling -out gen_genesis.go
@@ -144,7 +145,7 @@ type GenesisMismatchError struct {
 }
 
 func (e *GenesisMismatchError) Error() string {
-	return fmt.Sprintf("database already contains an incompatible genesis block (have %x, new %x)", e.Stored[:8], e.New[:8])
+	return fmt.Sprintf("database contains incompatible genesis (have %x, new %x)", e.Stored, e.New)
 }
 
 // SetupGenesisBlock writes or updates the genesis block in db.
@@ -233,7 +234,7 @@ func (g *Genesis) configOrDefault(ghash common.Hash) *params.ChainConfig {
 func (g *Genesis) ToBlock(db ethdb.Database) *types.Block {
 
 	if db == nil {
-		db = ethdb.NewMemDatabase()
+		db = rawdb.NewMemoryDatabase()
 	}
 	statedb, _ := state.New(common.Hash{}, common.Hash{}, state.NewDatabase(db))
 	for addr, account := range g.Alloc {
@@ -244,9 +245,6 @@ func (g *Genesis) ToBlock(db ethdb.Database) *types.Block {
 			statedb.SetState(addr, key, value)
 		}
 	}
-
-	blockNumber := new(big.Int).SetUint64(g.Number)
-	timestamp := new(big.Int).SetUint64(g.Timestamp)
 
 	if g.TicketCreateInfo != nil {
 		expireTime := g.TicketCreateInfo.Time + 30*24*3600
@@ -276,9 +274,9 @@ func (g *Genesis) ToBlock(db ethdb.Database) *types.Block {
 
 	root := statedb.IntermediateRoot(false)
 	head := &types.Header{
-		Number:     blockNumber,
+		Number:     new(big.Int).SetUint64(g.Number),
 		Nonce:      types.EncodeNonce(g.Nonce),
-		Time:       timestamp,
+		Time:       g.Timestamp,
 		ParentHash: g.ParentHash,
 		UncleHash:  types.EmptyUncleHash,
 		Extra:      g.ExtraData,
@@ -296,9 +294,9 @@ func (g *Genesis) ToBlock(db ethdb.Database) *types.Block {
 		head.Difficulty = params.GenesisDifficulty
 	}
 	statedb.Commit(false)
-	statedb.Database().TrieDB().Commit(root, true)
+	statedb.Database().TrieDB().Commit(root, true, nil)
 
-	return types.NewBlock(head, nil, nil, nil)
+	return types.NewBlock(head, nil, nil, nil, trie.NewStackTrie(nil))
 }
 
 // Commit writes the block and state of a genesis specification to the database.

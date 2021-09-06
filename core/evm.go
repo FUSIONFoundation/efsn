@@ -44,7 +44,7 @@ func NewEVMBlockContext(header *types.Header, chain ChainContext, author *common
 	} else {
 		beneficiary = *author
 	}
-	parentTime := big.NewInt(0)
+	var parentTime uint64 = 0
 	parent := chain.GetHeader(header.ParentHash, header.Number.Uint64()-1)
 	if parent != nil {
 		parentTime = parent.Time
@@ -55,8 +55,8 @@ func NewEVMBlockContext(header *types.Header, chain ChainContext, author *common
 		GetHash:     GetHashFn(header, chain),
 		Coinbase:    beneficiary,
 		BlockNumber: new(big.Int).Set(header.Number),
-		Time:        new(big.Int).Set(header.Time),
-		ParentTime:  new(big.Int).Set(parentTime),
+		Time:        new(big.Int).SetUint64(header.Time),
+		ParentTime:  new(big.Int).SetUint64(parentTime),
 		Difficulty:  new(big.Int).Set(header.Difficulty),
 		GasLimit:    header.GasLimit,
 		MixDigest:   header.MixDigest,

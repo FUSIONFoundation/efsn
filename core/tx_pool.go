@@ -865,19 +865,22 @@ func (pool *TxPool) addTxsLocked(txs []*types.Transaction, local bool) []error {
 // Status returns the status (unknown/pending/queued) of a batch of transactions
 // identified by their hashes.
 func (pool *TxPool) Status(hashes []common.Hash) []TxStatus {
-	pool.mu.RLock()
-	defer pool.mu.RUnlock()
-
 	status := make([]TxStatus, len(hashes))
 	for i, hash := range hashes {
-		if tx := pool.all.Get(hash); tx != nil {
-			from, _ := types.Sender(pool.signer, tx) // already validated
-			if pool.pending[from] != nil && pool.pending[from].txs.items[tx.Nonce()] != nil {
-				status[i] = TxStatusPending
-			} else {
-				status[i] = TxStatusQueued
-			}
+		tx := pool.Get(hash)
+		if tx == nil {
+			continue
 		}
+		from, _ := types.Sender(pool.signer, tx) // already validated
+		pool.mu.RLock()
+		if txList := pool.pending[from]; txList != nil && txList.txs.items[tx.Nonce()] != nil {
+			status[i] = TxStatusPending
+		} else if txList := pool.queue[from]; txList != nil && txList.txs.items[tx.Nonce()] != nil {
+			status[i] = TxStatusQueued
+		}
+		// implicit else: the tx may have been included into a block between
+		// checking pool.Get and obtaining the lock. In that case, TxStatusUnknown is correct
+		pool.mu.RUnlock()
 	}
 	return status
 }
@@ -1513,7 +1516,7 @@ func (pool *TxPool) validateFsnCallTx(tx *types.Transaction) error {
 	case common.BuyTicketFunc:
 		buyTicketParam := common.BuyTicketParam{}
 		rlp.DecodeBytes(param.Data, &buyTicketParam)
-		if err := buyTicketParam.Check(height, currBlockHeader.Time.Uint64()); err != nil {
+		if err := buyTicketParam.Check(height, currBlockHeader.Time); err != nil {
 			return err
 		}
 

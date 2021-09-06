@@ -157,19 +157,19 @@ func (self *LightChain) loadLastState() error {
 	// Issue a status log and return
 	header := self.hc.CurrentHeader()
 	headerTd := self.GetTd(header.Hash(), header.Number.Uint64())
-	log.Info("Loaded most recent local header", "number", header.Number, "hash", header.Hash(), "td", headerTd, "age", common.PrettyAge(time.Unix(header.Time.Int64(), 0)))
+	log.Info("Loaded most recent local header", "number", header.Number, "hash", header.Hash(), "td", headerTd, "age", common.PrettyAge(time.Unix(int64(header.Time), 0)))
 
 	return nil
 }
 
 // SetHead rewinds the local chain to a new head. Everything above the new
 // head will be deleted and the new one set.
-func (bc *LightChain) SetHead(head uint64) {
-	bc.mu.Lock()
-	defer bc.mu.Unlock()
+func (lc *LightChain) SetHead(head uint64) error {
+	lc.chainmu.Lock()
+	defer lc.chainmu.Unlock()
 
-	bc.hc.SetHead(head, nil)
-	bc.loadLastState()
+	lc.hc.SetHead(head, nil)
+	return lc.loadLastState()
 }
 
 // GasLimit returns the gas limit of the current HEAD block.
@@ -488,7 +488,7 @@ func (self *LightChain) SyncCht(ctx context.Context) bool {
 
 		// Ensure the chain didn't move past the latest block while retrieving it
 		if self.hc.CurrentHeader().Number.Uint64() < header.Number.Uint64() {
-			log.Info("Updated latest header based on CHT", "number", header.Number, "hash", header.Hash(), "age", common.PrettyAge(time.Unix(header.Time.Int64(), 0)))
+			log.Info("Updated latest header based on CHT", "number", header.Number, "hash", header.Hash(), "age", common.PrettyAge(time.Unix(int64(header.Time), 0)))
 			self.hc.SetCurrentHeader(header)
 		}
 		return true
