@@ -20,13 +20,13 @@ import (
 	"github.com/FusionFoundation/efsn/core/state"
 	"github.com/FusionFoundation/efsn/core/types"
 	"github.com/FusionFoundation/efsn/crypto"
-	"github.com/FusionFoundation/efsn/crypto/sha3"
 	"github.com/FusionFoundation/efsn/ethdb"
 	"github.com/FusionFoundation/efsn/log"
 	"github.com/FusionFoundation/efsn/params"
 	"github.com/FusionFoundation/efsn/rlp"
 	"github.com/FusionFoundation/efsn/rpc"
 	"github.com/FusionFoundation/efsn/trie"
+	"golang.org/x/crypto/sha3"
 )
 
 const (
@@ -494,7 +494,7 @@ func (dt *DaTong) Seal(chain consensus.ChainReader, block *types.Block, results 
 
 // SealHash returns the hash of a block prior to it being sealed.
 func (dt *DaTong) SealHash(header *types.Header) (hash common.Hash) {
-	hasher := sha3.NewKeccak256()
+	hasher := sha3.NewLegacyKeccak256()
 	rlp.Encode(hasher, []interface{}{
 		header.ParentHash,
 		header.UncleHash,
@@ -714,7 +714,7 @@ func (dt *DaTong) getAllTickets(chain consensus.ChainReader, header *types.Heade
 }
 
 func sigHash(header *types.Header) (hash common.Hash) {
-	hasher := sha3.NewKeccak256()
+	hasher := sha3.NewLegacyKeccak256()
 	rlp.Encode(hasher, []interface{}{
 		header.ParentHash,
 		header.UncleHash,
@@ -763,7 +763,7 @@ func CalcRewards(height *big.Int) *big.Int {
 
 // get rid of header.Extra[0:extraVanity] of user custom data
 func posHash(header *types.Header) (hash common.Hash) {
-	hasher := sha3.NewKeccak256()
+	hasher := sha3.NewLegacyKeccak256()
 	switch common.GetPoSHashVersion(header.Number) {
 	case common.PosV1:
 		rlp.Encode(hasher, []interface{}{
