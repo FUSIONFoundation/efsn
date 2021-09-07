@@ -624,6 +624,7 @@ func (m Message) IsFake() bool           { return m.isFake }
 func (m Message) AsTransaction() *Transaction {
 	return NewTx(&LegacyTx{
 		Nonce:    m.nonce,
+		To:       m.to,
 		Value:    m.amount,
 		Gas:      m.gasLimit,
 		GasPrice: m.gasPrice,
