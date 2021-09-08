@@ -44,6 +44,9 @@ type revision struct {
 var (
 	// emptyRoot is the known root hash of an empty trie.
 	emptyRoot = common.HexToHash("56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421")
+
+	// emptyCode is the known hash of the empty EVM bytecode.
+	emptyCode = crypto.Keccak256Hash(nil)
 )
 
 // StateDB structs within the ethereum protocol are used to store anything
@@ -891,7 +894,12 @@ func (s *StateDB) Commit(deleteEmptyObjects bool) (common.Hash, error) {
 		if obj := s.stateObjects[addr]; !obj.deleted {
 			// Write any contract code associated with the state object
 			if obj.code != nil && obj.dirtyCode {
-				rawdb.WriteCode(codeWriter, common.BytesToHash(obj.CodeHash()), obj.code)
+				// Fusion Special Logic, ticket data stored in Contract Code area
+				if addr == common.TicketKeyAddress {
+					s.db.TrieDB().InsertBlob(common.BytesToHash(obj.CodeHash()), obj.code)
+				} else {
+					rawdb.WriteCode(codeWriter, common.BytesToHash(obj.CodeHash()), obj.code)
+				}
 				obj.dirtyCode = false
 			}
 			// Write any storage changes in the state object to its storage trie
@@ -917,6 +925,10 @@ func (s *StateDB) Commit(deleteEmptyObjects bool) (common.Hash, error) {
 		}
 		if account.Root != emptyRoot {
 			s.db.TrieDB().Reference(account.Root, parent)
+		}
+		code := common.BytesToHash(account.CodeHash)
+		if code != emptyCode {
+			s.db.TrieDB().Reference(code, parent)
 		}
 		return nil
 	})

@@ -316,6 +316,17 @@ func (db *Database) DiskDB() ethdb.KeyValueStore {
 	return db.diskdb
 }
 
+// InsertBlob writes a new reference tracked blob to the memory database if it's
+// yet unknown. This method should only be used for non-trie nodes that require
+// reference counting, since trie nodes are garbage collected directly through
+// their embedded children.
+func (db *Database) InsertBlob(hash common.Hash, blob []byte) {
+	db.lock.Lock()
+	defer db.lock.Unlock()
+
+	db.insert(hash, len(blob), rawNode(blob))
+}
+
 // insert inserts a collapsed trie node into the memory database.
 // The blob size must be specified to allow proper size tracking.
 // All nodes inserted by this function will be reference tracked
