@@ -27,7 +27,6 @@ import (
 
 	"github.com/FusionFoundation/efsn/cmd/utils"
 	"github.com/FusionFoundation/efsn/common"
-	"github.com/FusionFoundation/efsn/console/prompt"
 	"github.com/FusionFoundation/efsn/core"
 	"github.com/FusionFoundation/efsn/core/state"
 	"github.com/FusionFoundation/efsn/core/types"
@@ -118,18 +117,6 @@ be gzipped.`,
 		Category: "BLOCKCHAIN COMMANDS",
 		Description: `
 The export-preimages command export hash preimages to an RLP encoded stream`,
-	}
-	removedbCommand = cli.Command{
-		Action:    utils.MigrateFlags(removeDB),
-		Name:      "removedb",
-		Usage:     "Remove blockchain and state databases",
-		ArgsUsage: " ",
-		Flags: []cli.Flag{
-			utils.DataDirFlag,
-		},
-		Category: "BLOCKCHAIN COMMANDS",
-		Description: `
-Remove blockchain and state databases`,
 	}
 	dumpCommand = cli.Command{
 		Action:    utils.MigrateFlags(dump),
@@ -228,17 +215,7 @@ func importChain(ctx *cli.Context) error {
 	fmt.Printf("Import done in %v.\n\n", time.Since(start))
 
 	// Output pre-compaction stats mostly to see the import trashing
-	stats, err := db.Stat("leveldb.stats")
-	if err != nil {
-		utils.Fatalf("Failed to read database stats: %v", err)
-	}
-	fmt.Println(stats)
-
-	ioStats, err := db.Stat("leveldb.iostats")
-	if err != nil {
-		utils.Fatalf("Failed to read database iostats: %v", err)
-	}
-	fmt.Println(ioStats)
+	showLeveldbStats(db)
 
 	// Print the memory statistics used by the importing
 	mem := new(runtime.MemStats)
@@ -256,22 +233,12 @@ func importChain(ctx *cli.Context) error {
 	// Compact the entire database to more accurately measure disk io and print the stats
 	start = time.Now()
 	fmt.Println("Compacting entire database...")
-	if err = db.Compact(nil, nil); err != nil {
+	if err := db.Compact(nil, nil); err != nil {
 		utils.Fatalf("Compaction failed: %v", err)
 	}
 	fmt.Printf("Compaction done in %v.\n\n", time.Since(start))
 
-	stats, err = db.Stat("leveldb.stats")
-	if err != nil {
-		utils.Fatalf("Failed to read database stats: %v", err)
-	}
-	fmt.Println(stats)
-
-	ioStats, err = db.Stat("leveldb.iostats")
-	if err != nil {
-		utils.Fatalf("Failed to read database iostats: %v", err)
-	}
-	fmt.Println(ioStats)
+	showLeveldbStats(db)
 	return nil
 }
 
@@ -342,35 +309,6 @@ func exportPreimages(ctx *cli.Context) error {
 		utils.Fatalf("Export error: %v\n", err)
 	}
 	fmt.Printf("Export done in %v\n", time.Since(start))
-	return nil
-}
-
-func removeDB(ctx *cli.Context) error {
-	stack, _ := makeConfigNode(ctx)
-
-	for _, name := range []string{"chaindata", "lightchaindata"} {
-		// Ensure the database exists in the first place
-		logger := log.New("database", name)
-
-		dbdir := stack.ResolvePath(name)
-		if !common.FileExist(dbdir) {
-			logger.Info("Database doesn't exist, skipping", "path", dbdir)
-			continue
-		}
-		// Confirm removal and execute
-		fmt.Println(dbdir)
-		confirm, err := prompt.Stdin.PromptConfirm("Remove this database?")
-		switch {
-		case err != nil:
-			utils.Fatalf("%v", err)
-		case !confirm:
-			logger.Warn("Database deletion aborted")
-		default:
-			start := time.Now()
-			os.RemoveAll(dbdir)
-			logger.Info("Database successfully deleted", "elapsed", common.PrettyDuration(time.Since(start)))
-		}
-	}
 	return nil
 }
 

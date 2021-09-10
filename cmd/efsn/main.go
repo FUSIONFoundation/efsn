@@ -158,7 +158,7 @@ func init() {
 	// Initialize the CLI app and start Geth
 	app.Action = geth
 	app.HideVersion = true // we have a command to print the version
-	app.Copyright = "Copyright 2017-2020 The efsn Authors"
+	app.Copyright = "Copyright 2017-2021 The efsn Authors"
 	app.Commands = []cli.Command{
 		// See chaincmd.go:
 		initCommand,
@@ -181,6 +181,8 @@ func init() {
 		licenseCommand,
 		// See config.go
 		dumpConfigCommand,
+		// see dbcmd.go
+		dbCommand,
 		// See rawtx.go
 		rawTxCommand,
 	}
