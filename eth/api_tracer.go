@@ -393,8 +393,7 @@ func (api *PrivateDebugAPI) TraceBlockFromFile(ctx context.Context, file string,
 // EVM against a block pulled from the pool of bad ones and returns them as a JSON
 // object.
 func (api *PrivateDebugAPI) TraceBadBlock(ctx context.Context, hash common.Hash, config *TraceConfig) ([]*txTraceResult, error) {
-	blocks := api.eth.blockchain.BadBlocks()
-	for _, block := range blocks {
+	for _, block := range rawdb.ReadAllBadBlocks(api.eth.ChainDb()) {
 		if block.Hash() == hash {
 			return api.traceBlock(ctx, block, config)
 		}
