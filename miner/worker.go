@@ -18,7 +18,6 @@ package miner
 
 import (
 	"bytes"
-	"github.com/FusionFoundation/efsn/trie"
 	"math/big"
 	"sync"
 	"sync/atomic"
@@ -35,6 +34,7 @@ import (
 	"github.com/FusionFoundation/efsn/event"
 	"github.com/FusionFoundation/efsn/log"
 	"github.com/FusionFoundation/efsn/params"
+	"github.com/FusionFoundation/efsn/trie"
 )
 
 const (
@@ -617,7 +617,7 @@ func (w *worker) makeCurrent(parent *types.Block, header *types.Header) error {
 		return err
 	}
 	env := &environment{
-		signer: types.NewEIP155Signer(w.config.ChainID),
+		signer: types.MakeSigner(w.config, header.Number),
 		state:  state,
 		header: header,
 	}
@@ -764,6 +764,11 @@ func (w *worker) commitTransactions(txs *types.TransactionsByPriceAndNonce, coin
 				w.current.timelockTxCount++
 			}
 			txs.Shift()
+
+		case core.ErrTxTypeNotSupported:
+			// Pop the unsupported transaction without shifting in the next from the account
+			log.Trace("Skipping unsupported transaction type", "sender", from, "type", tx.Type())
+			txs.Pop()
 
 		default:
 			// Strange error, discard the transaction and get the next in line (note, the

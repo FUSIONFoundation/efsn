@@ -33,7 +33,6 @@ import (
 	"github.com/FusionFoundation/efsn/crypto"
 	"github.com/FusionFoundation/efsn/internal/ethapi"
 	"github.com/FusionFoundation/efsn/log"
-	"github.com/FusionFoundation/efsn/rlp"
 )
 
 // ExternalAPI defines the external API through which signing requests are made.
@@ -356,8 +355,8 @@ func (api *SignerAPI) SignTransaction(ctx context.Context, args SendTxArgs, meth
 		return nil, err
 	}
 
-	rlpdata, err := rlp.EncodeToBytes(signedTx)
-	response := ethapi.SignTransactionResult{Raw: rlpdata, Tx: signedTx}
+	data, err := signedTx.MarshalBinary()
+	response := ethapi.SignTransactionResult{Raw: data, Tx: signedTx}
 
 	// Finally, send the signed tx to the UI
 	api.UI.OnApprovedTx(response)

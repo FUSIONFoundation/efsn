@@ -1530,7 +1530,7 @@ func (s *FusionTransactionAPI) sendTransaction(ctx context.Context, from common.
 
 // SendRawTransaction wacom
 func (s *FusionTransactionAPI) SendRawTransaction(ctx context.Context, tx *types.Transaction) (common.Hash, error) {
-	encodedTx, err := rlp.EncodeToBytes(tx)
+	encodedTx, err := tx.MarshalBinary()
 	if err != nil {
 		return common.Hash{}, err
 	}
