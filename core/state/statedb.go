@@ -367,17 +367,10 @@ func (s *StateDB) GetCode(addr common.Address) []byte {
 
 func (s *StateDB) GetCodeSize(addr common.Address) int {
 	stateObject := s.getStateObject(addr)
-	if stateObject == nil {
-		return 0
+	if stateObject != nil {
+		return stateObject.CodeSize(s.db)
 	}
-	if stateObject.code != nil {
-		return len(stateObject.code)
-	}
-	size, err := s.db.ContractCodeSize(stateObject.addrHash, common.BytesToHash(stateObject.CodeHash()))
-	if err != nil {
-		s.setError(err)
-	}
-	return size
+	return 0
 }
 
 func (s *StateDB) GetCodeHash(addr common.Address) common.Hash {
@@ -637,19 +630,26 @@ func (s *StateDB) getDeletedStateObject(addr common.Address) *stateObject {
 		return obj
 	}
 
+	var (
+		data *Account
+		err  error
+	)
 	// Load the object from the database.
-	enc, err := s.trie.TryGet(addr[:])
-	if len(enc) == 0 {
-		s.setError(err)
+	enc, err := s.trie.TryGet(addr.Bytes())
+	if err != nil {
+		s.setError(fmt.Errorf("getDeleteStateObject (%x) error: %v", addr.Bytes(), err))
 		return nil
 	}
-	var data Account
-	if err := rlp.DecodeBytes(enc, &data); err != nil {
+	if len(enc) == 0 {
+		return nil
+	}
+	data = new(Account)
+	if err := rlp.DecodeBytes(enc, data); err != nil {
 		log.Error("Failed to decode state object", "addr", addr, "err", err)
 		return nil
 	}
 	// Insert into the live set.
-	obj := newObject(s, addr, data)
+	obj := newObject(s, addr, *data)
 	s.setStateObject(obj)
 	return obj
 }
