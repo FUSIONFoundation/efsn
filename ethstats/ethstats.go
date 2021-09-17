@@ -707,7 +707,7 @@ func (s *Service) reportStats(conn *websocket.Conn) error {
 	)
 	if s.eth != nil {
 		mining = s.eth.Miner().Mining()
-		hashrate = int(s.eth.Miner().HashRate())
+		hashrate = int(s.eth.Miner().Hashrate())
 		if _, ok := s.engine.(*datong.DaTong); ok {
 			header := s.eth.BlockChain().CurrentBlock().Header()
 			if statedb, err := s.eth.BlockChain().StateAt(header.Root, header.MixDigest); err == nil {
@@ -724,7 +724,7 @@ func (s *Service) reportStats(conn *websocket.Conn) error {
 		sync := s.eth.Downloader().Progress()
 		syncing = s.eth.BlockChain().CurrentHeader().Number.Uint64() >= sync.HighestBlock
 
-		price, _ := s.eth.APIBackend.SuggestPrice(context.Background())
+		price, _ := s.eth.APIBackend.SuggestGasTipCap(context.Background())
 		gasprice = int(price.Uint64())
 	} else {
 		sync := s.les.Downloader().Progress()

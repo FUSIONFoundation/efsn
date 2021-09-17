@@ -19,7 +19,6 @@ package light
 import (
 	"bytes"
 	"context"
-
 	"github.com/FusionFoundation/efsn/common"
 	"github.com/FusionFoundation/efsn/core/rawdb"
 	"github.com/FusionFoundation/efsn/core/types"

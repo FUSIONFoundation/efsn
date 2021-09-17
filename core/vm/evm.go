@@ -86,9 +86,11 @@ type BlockContext struct {
 	GasLimit    uint64         // Provides information for GASLIMIT
 	BlockNumber *big.Int       // Provides information for NUMBER
 	Time        *big.Int       // Provides information for TIME
-	ParentTime  *big.Int       // Provides information for TIME
 	Difficulty  *big.Int       // Provides information for DIFFICULTY
-	MixDigest   common.Hash    // Provides information for MIXDIGEST
+	BaseFee     *big.Int       // Provides information for BASEFEE
+	// Fusion information
+	ParentTime *big.Int    // Provides information for Parent TIME
+	MixDigest  common.Hash // Provides information for MIXDIGEST
 }
 
 // TxContext provides the EVM with information about a transaction.
@@ -469,6 +471,11 @@ func (evm *EVM) create(caller ContractRef, codeAndHash *codeAndHash, gas uint64,
 	// Check whether the max code size has been exceeded, assign err if the case.
 	if err == nil && evm.chainRules.IsEIP158 && len(ret) > params.MaxCodeSize {
 		err = ErrMaxCodeSizeExceeded
+	}
+
+	// Reject code starting with 0xEF if EIP-3541 is enabled.
+	if err == nil && len(ret) >= 1 && ret[0] == 0xEF && evm.chainRules.IsLondon {
+		err = ErrInvalidCode
 	}
 
 	// if the contract creation ran successfully and no errors were returned

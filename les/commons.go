@@ -18,11 +18,11 @@ package les
 
 import (
 	"fmt"
+	"github.com/FusionFoundation/efsn/eth/ethconfig"
 	"math/big"
 
 	"github.com/FusionFoundation/efsn/common"
 	"github.com/FusionFoundation/efsn/core"
-	"github.com/FusionFoundation/efsn/eth"
 	"github.com/FusionFoundation/efsn/ethdb"
 	"github.com/FusionFoundation/efsn/light"
 	"github.com/FusionFoundation/efsn/p2p"
@@ -32,7 +32,7 @@ import (
 
 // lesCommons contains fields needed by both server and client.
 type lesCommons struct {
-	config                       *eth.Config
+	config                       *ethconfig.Config
 	iConfig                      *light.IndexerConfig
 	chainDb                      ethdb.Database
 	protocolManager              *ProtocolManager

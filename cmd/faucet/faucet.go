@@ -27,6 +27,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"github.com/FusionFoundation/efsn/eth/ethconfig"
 	"html/template"
 	"io/ioutil"
 	"math"
@@ -46,7 +47,6 @@ import (
 	"github.com/FusionFoundation/efsn/common"
 	"github.com/FusionFoundation/efsn/core"
 	"github.com/FusionFoundation/efsn/core/types"
-	"github.com/FusionFoundation/efsn/eth"
 	"github.com/FusionFoundation/efsn/eth/downloader"
 	"github.com/FusionFoundation/efsn/ethclient"
 	"github.com/FusionFoundation/efsn/ethstats"
@@ -232,7 +232,7 @@ func newFaucet(genesis *core.Genesis, port int, enodes []*discv5.Node, network u
 	}
 	// Assemble the Ethereum light client protocol
 	if err := stack.Register(func(ctx *node.ServiceContext) (node.Service, error) {
-		cfg := eth.DefaultConfig
+		cfg := ethconfig.Defaults
 		cfg.SyncMode = downloader.LightSync
 		cfg.NetworkId = network
 		cfg.Genesis = genesis

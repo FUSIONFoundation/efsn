@@ -20,6 +20,7 @@ import (
 	"bufio"
 	"errors"
 	"fmt"
+	"github.com/FusionFoundation/efsn/eth/ethconfig"
 	"io"
 	"os"
 	"reflect"
@@ -28,7 +29,6 @@ import (
 	cli "gopkg.in/urfave/cli.v1"
 
 	"github.com/FusionFoundation/efsn/cmd/utils"
-	"github.com/FusionFoundation/efsn/eth"
 	"github.com/FusionFoundation/efsn/node"
 	"github.com/FusionFoundation/efsn/params"
 	"github.com/naoina/toml"
@@ -73,7 +73,7 @@ type ethstatsConfig struct {
 }
 
 type gethConfig struct {
-	Eth      eth.Config
+	Eth      ethconfig.Config
 	Node     node.Config
 	Ethstats ethstatsConfig
 }
@@ -96,7 +96,7 @@ func loadConfig(file string, cfg *gethConfig) error {
 func defaultNodeConfig() node.Config {
 	cfg := node.DefaultConfig
 	cfg.Name = clientIdentifier
-	cfg.Version = params.VersionWithCommit(gitCommit)
+	cfg.Version = params.VersionWithCommit(gitCommit, gitDate)
 	cfg.HTTPModules = append(cfg.HTTPModules, "eth", "shh")
 	cfg.WSModules = append(cfg.WSModules, "eth", "shh")
 	cfg.IPCPath = "efsn.ipc"
@@ -106,7 +106,7 @@ func defaultNodeConfig() node.Config {
 func makeConfigNode(ctx *cli.Context) (*node.Node, gethConfig) {
 	// Load defaults.
 	cfg := gethConfig{
-		Eth:  eth.DefaultConfig,
+		Eth:  ethconfig.Defaults,
 		Node: defaultNodeConfig(),
 	}
 

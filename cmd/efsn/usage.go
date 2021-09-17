@@ -71,7 +71,6 @@ var AppHelpFlagGroups = []flagGroup{
 			utils.NoUSBFlag,
 			utils.NetworkIdFlag,
 			utils.TestnetFlag,
-			utils.RinkebyFlag,
 			utils.DevnetFlag,
 			utils.DevnetAddrFlag,
 			utils.SyncModeFlag,
@@ -208,16 +207,6 @@ var AppHelpFlagGroups = []flagGroup{
 			utils.MetricsInfluxDBUsernameFlag,
 			utils.MetricsInfluxDBPasswordFlag,
 			utils.MetricsInfluxDBHostTagFlag,
-		},
-	},
-	{
-		Name: "DEPRECATED",
-		Flags: []cli.Flag{
-			utils.MinerLegacyThreadsFlag,
-			utils.MinerLegacyGasTargetFlag,
-			utils.MinerLegacyGasPriceFlag,
-			utils.MinerLegacyEtherbaseFlag,
-			utils.MinerLegacyExtraDataFlag,
 		},
 	},
 	{

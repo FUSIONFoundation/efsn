@@ -22,10 +22,10 @@ package geth
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/FusionFoundation/efsn/eth/ethconfig"
 	"path/filepath"
 
 	"github.com/FusionFoundation/efsn/core"
-	"github.com/FusionFoundation/efsn/eth"
 	"github.com/FusionFoundation/efsn/eth/downloader"
 	"github.com/FusionFoundation/efsn/ethclient"
 	"github.com/FusionFoundation/efsn/ethstats"
@@ -151,7 +151,7 @@ func NewNode(datadir string, config *NodeConfig) (stack *Node, _ error) {
 	}
 	// Register the Ethereum protocol if requested
 	if config.EthereumEnabled {
-		ethConf := eth.DefaultConfig
+		ethConf := ethconfig.DefaultConfig
 		ethConf.Genesis = genesis
 		ethConf.SyncMode = downloader.LightSync
 		ethConf.NetworkId = uint64(config.EthereumNetworkID)

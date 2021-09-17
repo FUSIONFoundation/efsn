@@ -20,6 +20,7 @@ package les
 import (
 	"crypto/ecdsa"
 	"encoding/binary"
+	"github.com/FusionFoundation/efsn/eth/ethconfig"
 	"math"
 	"sync"
 
@@ -49,7 +50,7 @@ type LesServer struct {
 	quitSync    chan struct{}
 }
 
-func NewLesServer(eth *eth.Ethereum, config *eth.Config) (*LesServer, error) {
+func NewLesServer(eth *eth.Ethereum, config *ethconfig.Config) (*LesServer, error) {
 	quitSync := make(chan struct{})
 	pm, err := NewProtocolManager(eth.BlockChain().Config(), light.DefaultServerIndexerConfig, false, config.NetworkId, eth.EventMux(), eth.Engine(), newPeerSet(), eth.BlockChain(), eth.TxPool(), eth.ChainDb(), nil, nil, nil, quitSync, new(sync.WaitGroup))
 	if err != nil {

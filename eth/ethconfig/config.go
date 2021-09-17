@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with the go-ethereum library. If not, see <http://www.gnu.org/licenses/>.
 
-package eth
+package ethconfig
 
 import (
 	"math/big"
@@ -22,28 +22,28 @@ import (
 	"os/user"
 	"time"
 
-	"github.com/FusionFoundation/efsn/common"
-	"github.com/FusionFoundation/efsn/common/hexutil"
 	"github.com/FusionFoundation/efsn/core"
 	"github.com/FusionFoundation/efsn/eth/downloader"
 	"github.com/FusionFoundation/efsn/eth/gasprice"
+	"github.com/FusionFoundation/efsn/miner"
 	"github.com/FusionFoundation/efsn/params"
 )
 
-// DefaultConfig contains default settings for use on the Ethereum main net.
-var DefaultConfig = Config{
-	SyncMode:       downloader.DefaultSyncMode(),
+// Defaults contains default settings for use on the Ethereum main net.
+var Defaults = Config{
+	SyncMode:       downloader.FullSync,
 	NetworkId:      32659,
 	LightPeers:     100,
 	DatabaseCache:  512,
 	TrieCleanCache: 256,
 	TrieDirtyCache: 256,
 	TrieTimeout:    60 * time.Minute,
-	MinerGasFloor:  8000000,
-	MinerGasCeil:   8000000,
-	MinerGasPrice:  big.NewInt(params.GWei),
-	MinerRecommit:  3 * time.Second,
-
+	Miner: miner.Config{
+		GasFloor: 8_000_000,
+		GasCeil:  40_000_000,
+		GasPrice: big.NewInt(params.GWei),
+		Recommit: 3 * time.Second,
+	},
 	TxPool: core.DefaultTxPoolConfig,
 	GPO: gasprice.Config{
 		Blocks:     20,
@@ -60,7 +60,7 @@ func init() {
 	}
 }
 
-//go:generate gencodec -type Config -field-override configMarshaling -formats toml -out gen_config.go
+//go:generate gencodec -type Config -formats toml -out gen_config.go
 
 type Config struct {
 	// The genesis block, which is inserted if the database is empty.
@@ -70,7 +70,8 @@ type Config struct {
 	// Protocol options
 	NetworkId uint64 // Network ID to use for selecting peers to connect to
 	SyncMode  downloader.SyncMode
-	NoPruning bool
+
+	NoPruning bool // Whether to disable pruning and flush everything to disk
 
 	// Light client options
 	LightServ  int `toml:",omitempty"` // Maximum percentage of time allowed for serving LES requests
@@ -80,19 +81,13 @@ type Config struct {
 	SkipBcVersionCheck bool `toml:"-"`
 	DatabaseHandles    int  `toml:"-"`
 	DatabaseCache      int
-	TrieCleanCache     int
-	TrieDirtyCache     int
-	TrieTimeout        time.Duration
 
-	// Mining-related options
-	Etherbase      common.Address `toml:",omitempty"`
-	MinerNotify    []string       `toml:",omitempty"`
-	MinerExtraData []byte         `toml:",omitempty"`
-	MinerGasFloor  uint64
-	MinerGasCeil   uint64
-	MinerGasPrice  *big.Int
-	MinerRecommit  time.Duration
-	MinerNoverify  bool
+	TrieCleanCache int
+	TrieDirtyCache int
+	TrieTimeout    time.Duration
+
+	// Mining options
+	Miner miner.Config
 
 	// Transaction pool options
 	TxPool core.TxPoolConfig
@@ -105,8 +100,4 @@ type Config struct {
 
 	// Miscellaneous options
 	DocRoot string `toml:"-"`
-}
-
-type configMarshaling struct {
-	MinerExtraData hexutil.Bytes
 }

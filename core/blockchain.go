@@ -54,6 +54,8 @@ var (
 
 	blockInsertTimer = metrics.NewRegisteredTimer("chain/inserts", nil)
 
+	blockReorgInvalidatedTx = metrics.NewRegisteredMeter("chain/reorg/invalidTx", nil)
+
 	errInsertionInterrupted = errors.New("insertion is interrupted")
 
 	ResyncFromHeight uint64 = 0 // force sync from this height even though has synced

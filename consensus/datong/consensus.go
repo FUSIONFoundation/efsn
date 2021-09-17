@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/FusionFoundation/efsn/consensus/misc"
 	"math/big"
 	"sort"
 	"sync"
@@ -135,6 +136,33 @@ func (dt *DaTong) verifyHeader(chain consensus.ChainReader, header *types.Header
 	if err != nil {
 		return err
 	}
+	// Verify that the gas limit is <= 2^63-1
+	cap := uint64(0x7fffffffffffffff)
+	if header.GasLimit > cap {
+		return fmt.Errorf("invalid gasLimit: have %v, max %v", header.GasLimit, cap)
+	}
+	// Verify that the gasUsed is <= gasLimit
+	if header.GasUsed > header.GasLimit {
+		return fmt.Errorf("invalid gasUsed: have %d, gasLimit %d", header.GasUsed, header.GasLimit)
+	}
+	// Verify the block's gas usage and (if applicable) verify the base fee.
+	if !chain.Config().IsLondon(header.Number) {
+		// Verify BaseFee not present before EIP-1559 fork.
+		if header.BaseFee != nil {
+			return fmt.Errorf("invalid baseFee before fork: have %d, expected 'nil'", header.BaseFee)
+		}
+		if err := misc.VerifyGaslimit(parent.GasLimit, header.GasLimit); err != nil {
+			return err
+		}
+	} else if err := misc.VerifyEip1559Header(chain.Config(), parent, header); err != nil {
+		// Verify the header's EIP-1559 attributes.
+		return err
+	}
+	// Verify that the block number is parent's +1
+	if diff := new(big.Int).Sub(header.Number, parent.Number); diff.Cmp(big.NewInt(1)) != 0 {
+		return consensus.ErrInvalidNumber
+	}
+
 	// verify pos hash
 	if common.GetPoSHashVersion(header.Number) < common.PosV2 {
 		if header.UncleHash != types.EmptyUncleHash {
@@ -495,7 +523,8 @@ func (dt *DaTong) Seal(chain consensus.ChainReader, block *types.Block, results 
 // SealHash returns the hash of a block prior to it being sealed.
 func (dt *DaTong) SealHash(header *types.Header) (hash common.Hash) {
 	hasher := sha3.NewLegacyKeccak256()
-	rlp.Encode(hasher, []interface{}{
+
+	enc := []interface{}{
 		header.ParentHash,
 		header.UncleHash,
 		header.Coinbase,
@@ -510,7 +539,11 @@ func (dt *DaTong) SealHash(header *types.Header) (hash common.Hash) {
 		header.Extra[:extraVanity],
 		header.MixDigest,
 		header.Nonce,
-	})
+	}
+	if header.BaseFee != nil {
+		enc = append(enc, header.BaseFee)
+	}
+	rlp.Encode(hasher, enc)
 	hasher.Sum(hash[:0])
 	return hash
 }

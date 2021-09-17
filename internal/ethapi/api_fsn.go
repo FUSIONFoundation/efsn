@@ -271,14 +271,21 @@ type TxAndReceipt struct {
 
 // GetTransactionAndReceipt returns the transaction receipt for the given transaction hash.
 func (s *PublicFusionAPI) GetTransactionAndReceipt(ctx context.Context, hash common.Hash) (TxAndReceipt, error) {
-	// Try to return an already finalized transaction
 	var orgTx *RPCTransaction
-	tx, blockHash, blockNumber, index := rawdb.ReadTransaction(s.b.ChainDb(), hash)
+	// Try to return an already finalized transaction
+	tx, blockHash, blockNumber, index, err := s.b.GetTransaction(ctx, hash)
+	if err != nil {
+		return TxAndReceipt{}, err
+	}
 	if tx != nil {
-		orgTx = newRPCTransaction(tx, blockHash, blockNumber, index)
+		header, err := s.b.HeaderByHash(ctx, blockHash)
+		if err != nil {
+			return TxAndReceipt{}, err
+		}
+		orgTx = newRPCTransaction(tx, blockHash, blockNumber, index, header.BaseFee)
 	} else if poolTx := s.b.GetPoolTransaction(hash); poolTx != nil {
 		// No finalized transaction, try to retrieve it from the pool
-		orgTx = newRPCPendingTransaction(poolTx)
+		orgTx = newRPCPendingTransaction(tx, s.b.CurrentHeader(), s.b.ChainConfig())
 	} else {
 		return TxAndReceipt{}, fmt.Errorf("Tx not found")
 	}

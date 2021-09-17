@@ -22,6 +22,7 @@ package main
 import (
 	"crypto/ecdsa"
 	"fmt"
+	"github.com/FusionFoundation/efsn/eth/ethconfig"
 	"io/ioutil"
 	"math/big"
 	"math/rand"
@@ -177,15 +178,15 @@ func makeMiner(genesis *core.Genesis, nodes []string) (*node.Node, error) {
 		return nil, err
 	}
 	if err := stack.Register(func(ctx *node.ServiceContext) (node.Service, error) {
-		return eth.New(ctx, &eth.Config{
+		return eth.New(ctx, &ethconfig.Config{
 			Genesis:         genesis,
 			NetworkId:       genesis.Config.ChainID.Uint64(),
 			SyncMode:        downloader.FullSync,
 			DatabaseCache:   256,
 			DatabaseHandles: 256,
 			TxPool:          core.DefaultTxPoolConfig,
-			GPO:             eth.DefaultConfig.GPO,
-			Ethash:          eth.DefaultConfig.Ethash,
+			GPO:             ethconfig.DefaultConfig.GPO,
+			Ethash:          ethconfig.DefaultConfig.Ethash,
 			MinerGasFloor:   genesis.GasLimit * 9 / 10,
 			MinerGasCeil:    genesis.GasLimit * 11 / 10,
 			MinerGasPrice:   big.NewInt(1),
