@@ -1,4 +1,4 @@
-// Copyright 2014 The go-ethereum Authors
+// Copyright 2021 The go-ethereum Authors
 // This file is part of the go-ethereum library.
 //
 // The go-ethereum library is free software: you can redistribute it and/or modify
@@ -14,33 +14,13 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with the go-ethereum library. If not, see <http://www.gnu.org/licenses/>.
 
+// +build nacl js !cgo
+
 package rlp
 
-import (
-	"fmt"
-	"io"
-)
+import "reflect"
 
-type MyCoolType struct {
-	Name string
-	a, b uint
-}
-
-// EncodeRLP writes x as RLP list [a, b] that omits the Name field.
-func (x *MyCoolType) EncodeRLP(w io.Writer) (err error) {
-	return Encode(w, []uint{x.a, x.b})
-}
-
-func ExampleEncoder() {
-	var t *MyCoolType // t is nil pointer to MyCoolType
-	bytes, _ := EncodeToBytes(t)
-	fmt.Printf("%v → %X\n", t, bytes)
-
-	t = &MyCoolType{Name: "foobar", a: 5, b: 6}
-	bytes, _ = EncodeToBytes(t)
-	fmt.Printf("%v → %X\n", t, bytes)
-
-	// Output:
-	// <nil> → C0
-	// &{foobar 5 6} → C20506
+// byteArrayBytes returns a slice of the byte array v.
+func byteArrayBytes(v reflect.Value) []byte {
+	return v.Slice(0, v.Len()).Bytes()
 }
