@@ -73,7 +73,7 @@ var (
 		EIP158Block:         big.NewInt(0),
 		ByzantiumBlock:      big.NewInt(0),
 		ConstantinopleBlock: big.NewInt(1_577_000),
-		PetersburgBlock:     nil,
+		PetersburgBlock:     big.NewInt(9_999_999),
 		IstanbulBlock:       nil,
 		BerlinBlock:         nil,
 		LondonBlock:         nil,
