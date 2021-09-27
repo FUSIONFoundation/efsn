@@ -286,6 +286,12 @@ func gasCreate2(evm *EVM, contract *Contract, stack *Stack, mem *Memory, memoryS
 	if err != nil {
 		return 0, err
 	}
+
+	// Fusion Testnet rule, don't calc the code sha3 gas before Petersburg
+	if evm.chainRules.IsConstantinople && !evm.chainRules.IsPetersburg {
+		return gas, err
+	}
+
 	wordGas, overflow := stack.Back(2).Uint64WithOverflow()
 	if overflow {
 		return 0, ErrGasUintOverflow
