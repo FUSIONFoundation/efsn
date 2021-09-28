@@ -23,8 +23,8 @@ import (
 	"strings"
 	"sync"
 
-	mapset "github.com/deckarep/golang-set"
 	"github.com/FusionFoundation/efsn/common/hexutil"
+	mapset "github.com/deckarep/golang-set"
 )
 
 // API describes the set of methods offered over the RPC interface
@@ -153,9 +153,8 @@ func (bn *BlockNumber) UnmarshalJSON(data []byte) error {
 		return err
 	}
 	if blckNum > math.MaxInt64 {
-		return fmt.Errorf("Blocknumber too high")
+		return fmt.Errorf("block number larger than int64")
 	}
-
 	*bn = BlockNumber(blckNum)
 	return nil
 }
