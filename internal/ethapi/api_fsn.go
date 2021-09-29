@@ -679,7 +679,7 @@ func (s *PublicFusionAPI) GetRetreatTickets(ctx context.Context, blockNr rpc.Blo
 }
 
 //--------------------------------------------- PublicFusionAPI buile send tx args-------------------------------------
-func FSNCallArgsToSendTxArgs(args common.FSNBaseArgsInterface, funcType common.FSNCallFunc, funcData []byte) (*SendTxArgs, error) {
+func FSNCallArgsToSendTxArgs(args common.FSNBaseArgsInterface, funcType common.FSNCallFunc, funcData []byte) (*TransactionArgs, error) {
 	var param = common.FSNCallParam{Func: funcType, Data: funcData}
 	data, err := param.ToBytes()
 	if err != nil {
@@ -687,19 +687,18 @@ func FSNCallArgsToSendTxArgs(args common.FSNBaseArgsInterface, funcType common.F
 	}
 	var argsData = hexutil.Bytes(data)
 	baseArgs := args.BaseArgs()
-	return &SendTxArgs{
-		From:     baseArgs.From,
+	return &TransactionArgs{
+		From:     &baseArgs.From,
 		To:       &common.FSNCallAddress,
 		Gas:      baseArgs.Gas,
 		GasPrice: baseArgs.GasPrice,
 		Value:    (*hexutil.Big)(big.NewInt(0)),
 		Nonce:    baseArgs.Nonce,
-		Data:     &argsData,
-		Input:    nil,
+		Input:    &argsData,
 	}, nil
 }
 
-func (s *PublicFusionAPI) BuildGenNotationSendTxArgs(ctx context.Context, args common.FusionBaseArgs) (*SendTxArgs, error) {
+func (s *PublicFusionAPI) BuildGenNotationSendTxArgs(ctx context.Context, args common.FusionBaseArgs) (*TransactionArgs, error) {
 	state, _, err := s.b.StateAndHeaderByNumber(ctx, rpc.LatestBlockNumber)
 	if state == nil || err != nil {
 		return nil, err
@@ -712,7 +711,7 @@ func (s *PublicFusionAPI) BuildGenNotationSendTxArgs(ctx context.Context, args c
 	return FSNCallArgsToSendTxArgs(&args, common.GenNotationFunc, nil)
 }
 
-func (s *PublicFusionAPI) BuildGenAssetSendTxArgs(ctx context.Context, args common.GenAssetArgs) (*SendTxArgs, error) {
+func (s *PublicFusionAPI) BuildGenAssetSendTxArgs(ctx context.Context, args common.GenAssetArgs) (*TransactionArgs, error) {
 	if err := args.ToParam().Check(common.BigMaxUint64); err != nil {
 		return nil, err
 	}
@@ -742,7 +741,7 @@ func CheckAndSetToAddress(args *common.SendAssetArgs, state *state.StateDB) erro
 	return nil
 }
 
-func (s *PublicFusionAPI) BuildSendAssetSendTxArgs(ctx context.Context, args common.SendAssetArgs) (*SendTxArgs, error) {
+func (s *PublicFusionAPI) BuildSendAssetSendTxArgs(ctx context.Context, args common.SendAssetArgs) (*TransactionArgs, error) {
 	state, _, err := s.b.StateAndHeaderByNumber(ctx, rpc.LatestBlockNumber)
 	if state == nil || err != nil {
 		return nil, err
@@ -765,7 +764,7 @@ func (s *PublicFusionAPI) BuildSendAssetSendTxArgs(ctx context.Context, args com
 	return FSNCallArgsToSendTxArgs(&args, common.SendAssetFunc, funcData)
 }
 
-func (s *PublicFusionAPI) BuildAssetToTimeLockSendTxArgs(ctx context.Context, args common.TimeLockArgs) (*SendTxArgs, error) {
+func (s *PublicFusionAPI) BuildAssetToTimeLockSendTxArgs(ctx context.Context, args common.TimeLockArgs) (*TransactionArgs, error) {
 	state, header, err := s.b.StateAndHeaderByNumber(ctx, rpc.LatestBlockNumber)
 	if state == nil || err != nil {
 		return nil, err
@@ -796,7 +795,7 @@ func (s *PublicFusionAPI) BuildAssetToTimeLockSendTxArgs(ctx context.Context, ar
 	return FSNCallArgsToSendTxArgs(&args, common.TimeLockFunc, funcData)
 }
 
-func (s *PublicFusionAPI) BuildTimeLockToTimeLockSendTxArgs(ctx context.Context, args common.TimeLockArgs) (*SendTxArgs, error) {
+func (s *PublicFusionAPI) BuildTimeLockToTimeLockSendTxArgs(ctx context.Context, args common.TimeLockArgs) (*TransactionArgs, error) {
 	state, header, err := s.b.StateAndHeaderByNumber(ctx, rpc.LatestBlockNumber)
 	if state == nil || err != nil {
 		return nil, err
@@ -828,7 +827,7 @@ func (s *PublicFusionAPI) BuildTimeLockToTimeLockSendTxArgs(ctx context.Context,
 	return FSNCallArgsToSendTxArgs(&args, common.TimeLockFunc, funcData)
 }
 
-func (s *PublicFusionAPI) BuildTimeLockToAssetSendTxArgs(ctx context.Context, args common.TimeLockArgs) (*SendTxArgs, error) {
+func (s *PublicFusionAPI) BuildTimeLockToAssetSendTxArgs(ctx context.Context, args common.TimeLockArgs) (*TransactionArgs, error) {
 	state, header, err := s.b.StateAndHeaderByNumber(ctx, rpc.LatestBlockNumber)
 	if state == nil || err != nil {
 		return nil, err
@@ -861,7 +860,7 @@ func (s *PublicFusionAPI) BuildTimeLockToAssetSendTxArgs(ctx context.Context, ar
 	return FSNCallArgsToSendTxArgs(&args, common.TimeLockFunc, funcData)
 }
 
-func (s *PublicFusionAPI) BuildSendTimeLockSendTxArgs(ctx context.Context, args common.TimeLockArgs) (*SendTxArgs, error) {
+func (s *PublicFusionAPI) BuildSendTimeLockSendTxArgs(ctx context.Context, args common.TimeLockArgs) (*TransactionArgs, error) {
 	state, header, err := s.b.StateAndHeaderByNumber(ctx, rpc.LatestBlockNumber)
 	if state == nil || err != nil {
 		return nil, err
@@ -889,7 +888,7 @@ func (s *PublicFusionAPI) BuildSendTimeLockSendTxArgs(ctx context.Context, args 
 	return FSNCallArgsToSendTxArgs(&args, common.TimeLockFunc, funcData)
 }
 
-func (s *PublicFusionAPI) BuildBuyTicketSendTxArgs(ctx context.Context, args common.BuyTicketArgs) (*SendTxArgs, error) {
+func (s *PublicFusionAPI) BuildBuyTicketSendTxArgs(ctx context.Context, args common.BuyTicketArgs) (*TransactionArgs, error) {
 	state, header, err := s.b.StateAndHeaderByNumber(ctx, rpc.LatestBlockNumber)
 	if state == nil || err != nil {
 		return nil, err
@@ -930,7 +929,7 @@ func (s *PublicFusionAPI) BuildBuyTicketSendTxArgs(ctx context.Context, args com
 	return FSNCallArgsToSendTxArgs(&args, common.BuyTicketFunc, funcData)
 }
 
-func (s *PublicFusionAPI) BuildAssetValueChangeSendTxArgs(ctx context.Context, args common.AssetValueChangeExArgs) (*SendTxArgs, error) {
+func (s *PublicFusionAPI) BuildAssetValueChangeSendTxArgs(ctx context.Context, args common.AssetValueChangeExArgs) (*TransactionArgs, error) {
 	state, _, err := s.b.StateAndHeaderByNumber(ctx, rpc.LatestBlockNumber)
 	if state == nil || err != nil {
 		return nil, err
@@ -972,7 +971,7 @@ func (s *PublicFusionAPI) BuildAssetValueChangeSendTxArgs(ctx context.Context, a
 	return FSNCallArgsToSendTxArgs(&args, common.AssetValueChangeFunc, funcData)
 }
 
-func (s *PublicFusionAPI) BuildMakeSwapSendTxArgs(ctx context.Context, args common.MakeSwapArgs) (*SendTxArgs, error) {
+func (s *PublicFusionAPI) BuildMakeSwapSendTxArgs(ctx context.Context, args common.MakeSwapArgs) (*TransactionArgs, error) {
 	state, header, err := s.b.StateAndHeaderByNumber(ctx, rpc.LatestBlockNumber)
 	if state == nil || err != nil {
 		return nil, err
@@ -1020,7 +1019,7 @@ func (s *PublicFusionAPI) BuildMakeSwapSendTxArgs(ctx context.Context, args comm
 	return FSNCallArgsToSendTxArgs(&args, common.MakeSwapFuncExt, funcData)
 }
 
-func (s *PublicFusionAPI) BuildRecallSwapSendTxArgs(ctx context.Context, args common.RecallSwapArgs) (*SendTxArgs, error) {
+func (s *PublicFusionAPI) BuildRecallSwapSendTxArgs(ctx context.Context, args common.RecallSwapArgs) (*TransactionArgs, error) {
 	state, _, err := s.b.StateAndHeaderByNumber(ctx, rpc.LatestBlockNumber)
 	if state == nil || err != nil {
 		return nil, err
@@ -1047,7 +1046,7 @@ func (s *PublicFusionAPI) BuildRecallSwapSendTxArgs(ctx context.Context, args co
 	return FSNCallArgsToSendTxArgs(&args, common.RecallSwapFunc, funcData)
 }
 
-func (s *PublicFusionAPI) BuildTakeSwapSendTxArgs(ctx context.Context, args common.TakeSwapArgs) (*SendTxArgs, error) {
+func (s *PublicFusionAPI) BuildTakeSwapSendTxArgs(ctx context.Context, args common.TakeSwapArgs) (*TransactionArgs, error) {
 	state, _, err := s.b.StateAndHeaderByNumber(ctx, rpc.LatestBlockNumber)
 	if state == nil || err != nil {
 		return nil, err
@@ -1094,7 +1093,7 @@ func (s *PublicFusionAPI) BuildTakeSwapSendTxArgs(ctx context.Context, args comm
 	return FSNCallArgsToSendTxArgs(&args, common.TakeSwapFuncExt, funcData)
 }
 
-func (s *PublicFusionAPI) BuildMakeMultiSwapSendTxArgs(ctx context.Context, args common.MakeMultiSwapArgs) (*SendTxArgs, error) {
+func (s *PublicFusionAPI) BuildMakeMultiSwapSendTxArgs(ctx context.Context, args common.MakeMultiSwapArgs) (*TransactionArgs, error) {
 	state, header, err := s.b.StateAndHeaderByNumber(ctx, rpc.LatestBlockNumber)
 	if state == nil || err != nil {
 		return nil, err
@@ -1142,7 +1141,7 @@ func (s *PublicFusionAPI) BuildMakeMultiSwapSendTxArgs(ctx context.Context, args
 	return FSNCallArgsToSendTxArgs(&args, common.MakeMultiSwapFunc, funcData)
 }
 
-func (s *PublicFusionAPI) BuildRecallMultiSwapSendTxArgs(ctx context.Context, args common.RecallMultiSwapArgs) (*SendTxArgs, error) {
+func (s *PublicFusionAPI) BuildRecallMultiSwapSendTxArgs(ctx context.Context, args common.RecallMultiSwapArgs) (*TransactionArgs, error) {
 	state, _, err := s.b.StateAndHeaderByNumber(ctx, rpc.LatestBlockNumber)
 	if state == nil || err != nil {
 		return nil, err
@@ -1169,7 +1168,7 @@ func (s *PublicFusionAPI) BuildRecallMultiSwapSendTxArgs(ctx context.Context, ar
 	return FSNCallArgsToSendTxArgs(&args, common.RecallMultiSwapFunc, funcData)
 }
 
-func (s *PublicFusionAPI) BuildTakeMultiSwapSendTxArgs(ctx context.Context, args common.TakeMultiSwapArgs) (*SendTxArgs, error) {
+func (s *PublicFusionAPI) BuildTakeMultiSwapSendTxArgs(ctx context.Context, args common.TakeMultiSwapArgs) (*TransactionArgs, error) {
 	state, _, err := s.b.StateAndHeaderByNumber(ctx, rpc.LatestBlockNumber)
 	if state == nil || err != nil {
 		return nil, err
@@ -1506,10 +1505,10 @@ func (s *FusionTransactionAPI) ReportIllegal(ctx context.Context, args common.Fu
 	return s.sendTransaction(ctx, args.From, tx)
 }
 
-func (s *FusionTransactionAPI) buildTransaction(ctx context.Context, args SendTxArgs) (*types.Transaction, error) {
+func (s *FusionTransactionAPI) buildTransaction(ctx context.Context, args TransactionArgs) (*types.Transaction, error) {
 	if args.Nonce == nil {
-		s.nonceLock.LockAddr(args.From)
-		defer s.nonceLock.UnlockAddr(args.From)
+		s.nonceLock.LockAddr(args.from())
+		defer s.nonceLock.UnlockAddr(args.from())
 	}
 	if err := args.setDefaults(ctx, s.b); err != nil {
 		return nil, err

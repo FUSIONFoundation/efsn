@@ -29,6 +29,26 @@ import (
 	"github.com/FusionFoundation/efsn/params"
 )
 
+// FullNodeGPO contains default gasprice oracle settings for full node.
+var FullNodeGPO = gasprice.Config{
+	Blocks:           20,
+	Percentile:       60,
+	MaxHeaderHistory: 1024,
+	MaxBlockHistory:  1024,
+	MaxPrice:         gasprice.DefaultMaxPrice,
+	IgnorePrice:      gasprice.DefaultIgnorePrice,
+}
+
+// LightClientGPO contains default gasprice oracle settings for light client.
+var LightClientGPO = gasprice.Config{
+	Blocks:           2,
+	Percentile:       60,
+	MaxHeaderHistory: 300,
+	MaxBlockHistory:  5,
+	MaxPrice:         gasprice.DefaultMaxPrice,
+	IgnorePrice:      gasprice.DefaultIgnorePrice,
+}
+
 // Defaults contains default settings for use on the Ethereum main net.
 var Defaults = Config{
 	SyncMode:       downloader.FullSync,
@@ -44,11 +64,10 @@ var Defaults = Config{
 		GasPrice: big.NewInt(params.GWei),
 		Recommit: 3 * time.Second,
 	},
-	TxPool: core.DefaultTxPoolConfig,
-	GPO: gasprice.Config{
-		Blocks:     20,
-		Percentile: 60,
-	},
+	TxPool:      core.DefaultTxPoolConfig,
+	RPCGasCap:   50_000_000,
+	GPO:         FullNodeGPO,
+	RPCTxFeeCap: 1, // 1 fsn
 }
 
 func init() {
@@ -100,4 +119,11 @@ type Config struct {
 
 	// Miscellaneous options
 	DocRoot string `toml:"-"`
+
+	// RPCGasCap is the global gas cap for eth-call variants.
+	RPCGasCap uint64
+
+	// RPCTxFeeCap is the global transaction fee(price * gaslimit) cap for
+	// send-transction variants. The unit is ether.
+	RPCTxFeeCap float64
 }

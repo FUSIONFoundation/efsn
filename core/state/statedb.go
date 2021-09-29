@@ -509,6 +509,15 @@ func (s *StateDB) SetState(addr common.Address, key, value common.Hash) {
 	}
 }
 
+// SetStorage replaces the entire storage for the specified account with given
+// storage. This function should only be used for debugging.
+func (s *StateDB) SetStorage(addr common.Address, storage map[common.Hash]common.Hash) {
+	stateObject := s.GetOrNewStateObject(addr)
+	if stateObject != nil {
+		stateObject.SetStorage(storage)
+	}
+}
+
 func (s *StateDB) SetData(addr common.Address, value []byte) common.Hash {
 	stateObject := s.GetOrNewStateObject(addr)
 	if stateObject != nil {

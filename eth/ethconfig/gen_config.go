@@ -31,6 +31,8 @@ func (c Config) MarshalTOML() (interface{}, error) {
 		GPO                     gasprice.Config
 		EnablePreimageRecording bool
 		DocRoot                 string `toml:"-"`
+		RPCGasCap               uint64
+		RPCTxFeeCap             float64
 	}
 	var enc Config
 	enc.Genesis = c.Genesis
@@ -50,6 +52,8 @@ func (c Config) MarshalTOML() (interface{}, error) {
 	enc.GPO = c.GPO
 	enc.EnablePreimageRecording = c.EnablePreimageRecording
 	enc.DocRoot = c.DocRoot
+	enc.RPCGasCap = c.RPCGasCap
+	enc.RPCTxFeeCap = c.RPCTxFeeCap
 	return &enc, nil
 }
 
@@ -73,6 +77,8 @@ func (c *Config) UnmarshalTOML(unmarshal func(interface{}) error) error {
 		GPO                     *gasprice.Config
 		EnablePreimageRecording *bool
 		DocRoot                 *string `toml:"-"`
+		RPCGasCap               *uint64
+		RPCTxFeeCap             *float64
 	}
 	var dec Config
 	if err := unmarshal(&dec); err != nil {
@@ -128,6 +134,12 @@ func (c *Config) UnmarshalTOML(unmarshal func(interface{}) error) error {
 	}
 	if dec.DocRoot != nil {
 		c.DocRoot = *dec.DocRoot
+	}
+	if dec.RPCGasCap != nil {
+		c.RPCGasCap = *dec.RPCGasCap
+	}
+	if dec.RPCTxFeeCap != nil {
+		c.RPCTxFeeCap = *dec.RPCTxFeeCap
 	}
 	return nil
 }
