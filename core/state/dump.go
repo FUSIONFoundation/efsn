@@ -95,6 +95,7 @@ func (s *StateDB) RawDump() Dump {
 		}
 		addr := common.BytesToAddress(addrBytes)
 		obj := newObject(s, addr, data)
+		account.Code = obj.Code(s.db)
 
 		account.Storage = make(map[common.Hash]string)
 		storageIt := trie.NewIterator(obj.getTrie(s.db).NodeIterator(nil))
