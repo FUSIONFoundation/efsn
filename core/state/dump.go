@@ -22,12 +22,14 @@ import (
 	"github.com/FusionFoundation/efsn/common/hexutil"
 	"github.com/FusionFoundation/efsn/log"
 	"math/big"
+	"time"
 
 	"github.com/FusionFoundation/efsn/common"
 	"github.com/FusionFoundation/efsn/rlp"
 	"github.com/FusionFoundation/efsn/trie"
 )
 
+// DumpAccount represents an account in the state.
 type DumpAccount struct {
 	Balances         map[common.Hash]*big.Int         `json:"balance"`
 	TimeLockBalances map[common.Hash]*common.TimeLock `json:"timelock"`
@@ -36,8 +38,11 @@ type DumpAccount struct {
 	CodeHash         hexutil.Bytes                    `json:"codeHash"`
 	Code             hexutil.Bytes                    `json:"code,omitempty"`
 	Storage          map[common.Hash]string           `json:"storage,omitempty"`
+	Address          *common.Address                  `json:"address,omitempty"` // Address only present in iterative (line-by-line) mode
+	SecureKey        hexutil.Bytes                    `json:"key,omitempty"`     // If we don't have address, we can output the key
 }
 
+// Dump represents the full dump in a collected format, as one large map.
 type Dump struct {
 	Root     string                         `json:"root"`
 	Accounts map[common.Address]DumpAccount `json:"accounts"`
@@ -50,16 +55,21 @@ func (s *StateDB) RawDump() Dump {
 		Accounts: make(map[common.Address]DumpAccount),
 	}
 
+	var (
+		missingPreimages int
+		accounts         uint64
+		start            = time.Now()
+		logged           = time.Now()
+	)
+	log.Info("Trie dumping started", "root", s.trie.Hash())
+
 	it := trie.NewIterator(s.trie.NodeIterator(nil))
 	for it.Next() {
 		var data Account
 		if err := rlp.DecodeBytes(it.Value, &data); err != nil {
 			panic(err)
 		}
-
-		addrBytes := s.trie.GetKey(it.Key)
-		addr := common.BytesToAddress(addrBytes)
-		obj := newObject(s, addr, data)
+		// Fusion Balance
 		bal := make(map[common.Hash]*big.Int)
 		for i, v := range data.BalancesHash {
 			bal[v] = data.BalancesVal[i]
@@ -75,9 +85,18 @@ func (s *StateDB) RawDump() Dump {
 			Nonce:            data.Nonce,
 			Root:             data.Root[:],
 			CodeHash:         data.CodeHash,
-			Code:             obj.Code(s.db),
-			Storage:          make(map[common.Hash]string),
+			SecureKey:        it.Key,
 		}
+		addrBytes := s.trie.GetKey(it.Key)
+		if addrBytes == nil {
+			// Preimage missing
+			missingPreimages++
+			account.SecureKey = it.Key
+		}
+		addr := common.BytesToAddress(addrBytes)
+		obj := newObject(s, addr, data)
+
+		account.Storage = make(map[common.Hash]string)
 		storageIt := trie.NewIterator(obj.getTrie(s.db).NodeIterator(nil))
 		for storageIt.Next() {
 			_, content, _, err := rlp.Split(storageIt.Value)
@@ -88,7 +107,18 @@ func (s *StateDB) RawDump() Dump {
 			account.Storage[common.BytesToHash(s.trie.GetKey(storageIt.Key))] = common.Bytes2Hex(content)
 		}
 		dump.Accounts[addr] = account
+		accounts++
+		if time.Since(logged) > 8*time.Second {
+			log.Info("Trie dumping in progress", "at", it.Key, "accounts", accounts,
+				"elapsed", common.PrettyDuration(time.Since(start)))
+			logged = time.Now()
+		}
 	}
+	if missingPreimages > 0 {
+		log.Warn("Dump incomplete due to missing preimages", "missing", missingPreimages)
+	}
+	log.Info("Trie dumping complete", "accounts", accounts,
+		"elapsed", common.PrettyDuration(time.Since(start)))
 	return dump
 }
 
