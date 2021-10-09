@@ -165,10 +165,11 @@ func New(ctx *node.ServiceContext, config *ethconfig.Config) (*Ethereum, error) 
 			EnablePreimageRecording: config.EnablePreimageRecording,
 		}
 		cacheConfig = &core.CacheConfig{
-			TrieCleanLimit: config.TrieCleanCache,
-			TrieDirtyLimit: config.TrieDirtyCache,
-			Disabled:       config.NoPruning,
-			TrieTimeLimit:  config.TrieTimeout,
+			TrieCleanLimit:    config.TrieCleanCache,
+			TrieDirtyLimit:    config.TrieDirtyCache,
+			TrieDirtyDisabled: config.NoPruning,
+			TrieTimeLimit:     config.TrieTimeout,
+			Preimages:         config.Preimages,
 		}
 	)
 	eth.blockchain, err = core.NewBlockChain(chainDb, cacheConfig, chainConfig, eth.engine, vmConfig, eth.shouldPreserve)
