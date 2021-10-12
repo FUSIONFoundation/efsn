@@ -1512,6 +1512,10 @@ func (s *FusionTransactionAPI) buildTransaction(ctx context.Context, args Transa
 		s.nonceLock.LockAddr(args.from())
 		defer s.nonceLock.UnlockAddr(args.from())
 	}
+	// Fusion use default 90000 gas
+	fsnDefaultGas := new(hexutil.Uint64)
+	*fsnDefaultGas = 90000
+	args.Gas = fsnDefaultGas
 	if err := args.setDefaults(ctx, s.b); err != nil {
 		return nil, err
 	}
