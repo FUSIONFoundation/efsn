@@ -1512,10 +1512,14 @@ func (s *FusionTransactionAPI) buildTransaction(ctx context.Context, args Transa
 		s.nonceLock.LockAddr(args.from())
 		defer s.nonceLock.UnlockAddr(args.from())
 	}
-	// Fusion use default 90000 gas
-	fsnDefaultGas := new(hexutil.Uint64)
-	*fsnDefaultGas = 90000
-	args.Gas = fsnDefaultGas
+	// Fusion use latest Block to estimate the gas
+	latestBlockNr := rpc.BlockNumberOrHashWithNumber(rpc.LatestBlockNumber)
+	estimated, err := DoEstimateGas(ctx, s.b, args, latestBlockNr, s.b.RPCGasCap())
+	if err != nil {
+		return nil, err
+	}
+	args.Gas = &estimated
+
 	if err := args.setDefaults(ctx, s.b); err != nil {
 		return nil, err
 	}
