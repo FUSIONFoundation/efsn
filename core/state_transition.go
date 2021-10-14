@@ -364,7 +364,9 @@ func (st *StateTransition) TransitionDb() (*ExecutionResult, error) {
 	}
 	effectiveTip := st.gasPrice
 	if london {
-		effectiveTip = cmath.BigMin(st.gasTipCap, st.gasFeeCap)
+		effectiveTip = cmath.BigMin(st.gasTipCap, new(big.Int).Sub(st.gasFeeCap, st.evm.Context.BaseFee))
+		// Fusion don't burn the base fee
+		effectiveTip.Add(effectiveTip, st.evm.Context.BaseFee)
 	}
 
 	minerFees := new(big.Int).Mul(new(big.Int).SetUint64(st.gasUsed()), effectiveTip)
