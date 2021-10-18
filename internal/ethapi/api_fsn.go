@@ -1512,13 +1512,23 @@ func (s *FusionTransactionAPI) buildTransaction(ctx context.Context, args Transa
 		s.nonceLock.LockAddr(args.from())
 		defer s.nonceLock.UnlockAddr(args.from())
 	}
-	// Fusion use latest Block to estimate the gas
-	latestBlockNr := rpc.BlockNumberOrHashWithNumber(rpc.LatestBlockNumber)
-	estimated, err := DoEstimateGas(ctx, s.b, args, latestBlockNr, s.b.RPCGasCap())
-	if err != nil {
-		return nil, err
+	// Back compatible with legacy tx gas price
+	if args.GasPrice == nil {
+		price, err := s.b.SuggestGasTipCap(ctx)
+		if err != nil {
+			return nil, err
+		}
+		args.GasPrice = (*hexutil.Big)(price)
 	}
-	args.Gas = &estimated
+	// Fusion use latest Block to estimate the gas
+	if args.Gas == nil {
+		latestBlockNr := rpc.BlockNumberOrHashWithNumber(rpc.LatestBlockNumber)
+		estimated, err := DoEstimateGas(ctx, s.b, args, latestBlockNr, s.b.RPCGasCap())
+		if err != nil {
+			return nil, err
+		}
+		args.Gas = &estimated
+	}
 
 	if err := args.setDefaults(ctx, s.b); err != nil {
 		return nil, err
