@@ -27,7 +27,7 @@ import (
 
 	ethereum "github.com/FusionFoundation/efsn"
 	"github.com/FusionFoundation/efsn/common"
-	"github.com/FusionFoundation/efsn/consensus/ethash"
+
 	"github.com/FusionFoundation/efsn/core"
 	"github.com/FusionFoundation/efsn/core/bloombits"
 	"github.com/FusionFoundation/efsn/core/rawdb"

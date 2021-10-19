@@ -17,14 +17,12 @@
 package miner
 
 import (
+	"github.com/FusionFoundation/efsn/consensus/datong"
 	"math/big"
 	"testing"
 	"time"
 
-	"github.com/FusionFoundation/efsn/common"
 	"github.com/FusionFoundation/efsn/consensus"
-	"github.com/FusionFoundation/efsn/consensus/clique"
-	"github.com/FusionFoundation/efsn/consensus/ethash"
 	"github.com/FusionFoundation/efsn/core"
 	"github.com/FusionFoundation/efsn/core/types"
 	"github.com/FusionFoundation/efsn/core/vm"
@@ -87,10 +85,11 @@ func newTestWorkerBackend(t *testing.T, chainConfig *params.ChainConfig, engine 
 	)
 
 	switch engine.(type) {
-	case *clique.Clique:
-		gspec.ExtraData = make([]byte, 32+common.AddressLength+65)
-		copy(gspec.ExtraData[32:], testBankAddress[:])
-	case *ethash.Ethash:
+	case *datong.DaTong:
+	//case *clique.Clique:
+	//	gspec.ExtraData = make([]byte, 32+common.AddressLength+65)
+	//	copy(gspec.ExtraData[32:], testBankAddress[:])
+	//case *ethash.Ethash:
 	default:
 		t.Fatalf("unexpected consensus engine type: %T", engine)
 	}

@@ -21,9 +21,9 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/FusionFoundation/efsn/common"
-	"github.com/FusionFoundation/efsn/consensus/ethash"
+	"github.com/davecgh/go-spew/spew"
+
 	"github.com/FusionFoundation/efsn/core/rawdb"
 	"github.com/FusionFoundation/efsn/core/vm"
 	"github.com/FusionFoundation/efsn/ethdb"

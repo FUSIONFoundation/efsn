@@ -24,9 +24,9 @@ import (
 
 	"github.com/FusionFoundation/efsn/common"
 	"github.com/FusionFoundation/efsn/internal/ethapi"
+	"github.com/FusionFoundation/efsn/internal/jsre/deps"
 	"github.com/FusionFoundation/efsn/log"
 	"github.com/FusionFoundation/efsn/signer/core"
-	"github.com/FusionFoundation/efsn/signer/rules/deps"
 	"github.com/FusionFoundation/efsn/signer/storage"
 	"github.com/robertkrimen/otto"
 )

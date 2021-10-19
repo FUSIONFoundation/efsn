@@ -24,7 +24,7 @@ import (
 	"time"
 
 	"github.com/FusionFoundation/efsn/common"
-	"github.com/FusionFoundation/efsn/consensus/ethash"
+
 	"github.com/FusionFoundation/efsn/core"
 	"github.com/FusionFoundation/efsn/core/rawdb"
 	"github.com/FusionFoundation/efsn/core/types"

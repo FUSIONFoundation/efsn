@@ -29,7 +29,7 @@ import (
 	"time"
 
 	"github.com/FusionFoundation/efsn/common"
-	"github.com/FusionFoundation/efsn/consensus/ethash"
+
 	"github.com/FusionFoundation/efsn/core"
 	"github.com/FusionFoundation/efsn/eth"
 	"github.com/FusionFoundation/efsn/internal/jsre"
