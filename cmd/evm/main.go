@@ -22,14 +22,17 @@ import (
 	"math/big"
 	"os"
 
+	"github.com/FusionFoundation/efsn/cmd/evm/internal/t8ntool"
 	"github.com/FusionFoundation/efsn/cmd/utils"
+	"github.com/FusionFoundation/efsn/internal/flags"
 	"gopkg.in/urfave/cli.v1"
 )
 
 var gitCommit = "" // Git SHA1 commit hash of the release (set via linker flags)
+var gitDate = ""
 
 var (
-	app = utils.NewApp(gitCommit, "the evm command line interface")
+	app = flags.NewApp(gitCommit, gitDate, "the evm command line interface")
 
 	DebugFlag = cli.BoolFlag{
 		Name:  "debug",
@@ -78,9 +81,17 @@ var (
 		Name:  "input",
 		Usage: "input for the EVM",
 	}
+	InputFileFlag = cli.StringFlag{
+		Name:  "inputfile",
+		Usage: "file containing input for the EVM",
+	}
 	VerbosityFlag = cli.IntFlag{
 		Name:  "verbosity",
 		Usage: "sets the verbosity level",
+	}
+	BenchFlag = cli.BoolFlag{
+		Name:  "bench",
+		Usage: "benchmark the execution",
 	}
 	CreateFlag = cli.BoolFlag{
 		Name:  "create",
@@ -102,7 +113,7 @@ var (
 		Name:  "receiver",
 		Usage: "The transaction receiver (execution context)",
 	}
-	DisableMemoryFlag = cli.BoolFlag{
+	DisableMemoryFlag = cli.BoolTFlag{
 		Name:  "nomemory",
 		Usage: "disable memory output",
 	}
@@ -110,10 +121,55 @@ var (
 		Name:  "nostack",
 		Usage: "disable stack output",
 	}
+	DisableStorageFlag = cli.BoolFlag{
+		Name:  "nostorage",
+		Usage: "disable storage output",
+	}
+	DisableReturnDataFlag = cli.BoolTFlag{
+		Name:  "noreturndata",
+		Usage: "enable return data output",
+	}
 )
+
+var stateTransitionCommand = cli.Command{
+	Name:    "transition",
+	Aliases: []string{"t8n"},
+	Usage:   "executes a full state transition",
+	Action:  t8ntool.Transition,
+	Flags: []cli.Flag{
+		t8ntool.TraceFlag,
+		t8ntool.TraceDisableMemoryFlag,
+		t8ntool.TraceDisableStackFlag,
+		t8ntool.TraceDisableReturnDataFlag,
+		t8ntool.OutputBasedir,
+		t8ntool.OutputAllocFlag,
+		t8ntool.OutputResultFlag,
+		t8ntool.OutputBodyFlag,
+		t8ntool.InputAllocFlag,
+		t8ntool.InputEnvFlag,
+		t8ntool.InputTxsFlag,
+		t8ntool.ForknameFlag,
+		t8ntool.ChainIDFlag,
+		t8ntool.RewardFlag,
+		t8ntool.VerbosityFlag,
+	},
+}
+var transactionCommand = cli.Command{
+	Name:    "transaction",
+	Aliases: []string{"t9n"},
+	Usage:   "performs transaction validation",
+	Action:  t8ntool.Transaction,
+	Flags: []cli.Flag{
+		t8ntool.InputTxsFlag,
+		t8ntool.ChainIDFlag,
+		t8ntool.ForknameFlag,
+		t8ntool.VerbosityFlag,
+	},
+}
 
 func init() {
 	app.Flags = []cli.Flag{
+		BenchFlag,
 		CreateFlag,
 		DebugFlag,
 		VerbosityFlag,
@@ -124,6 +180,7 @@ func init() {
 		ValueFlag,
 		DumpFlag,
 		InputFlag,
+		InputFileFlag,
 		MemProfileFlag,
 		CPUProfileFlag,
 		StatDumpFlag,
@@ -133,18 +190,27 @@ func init() {
 		ReceiverFlag,
 		DisableMemoryFlag,
 		DisableStackFlag,
+		DisableStorageFlag,
+		DisableReturnDataFlag,
 	}
 	app.Commands = []cli.Command{
 		compileCommand,
 		disasmCommand,
 		runCommand,
 		stateTestCommand,
+		stateTransitionCommand,
+		transactionCommand,
 	}
+	cli.CommandHelpTemplate = flags.OriginCommandHelpTemplate
 }
 
 func main() {
 	if err := app.Run(os.Args); err != nil {
+		code := 1
+		if ec, ok := err.(*t8ntool.NumberedError); ok {
+			code = ec.ExitCode()
+		}
 		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
+		os.Exit(code)
 	}
 }

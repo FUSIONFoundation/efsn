@@ -22,17 +22,17 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"github.com/FusionFoundation/efsn/consensus/datong"
+	"github.com/FusionFoundation/efsn/core/rawdb"
 	"math/big"
 
 	"github.com/FusionFoundation/efsn/common"
 	"github.com/FusionFoundation/efsn/common/hexutil"
 	"github.com/FusionFoundation/efsn/common/math"
-	"github.com/FusionFoundation/efsn/consensus/ethash"
 	"github.com/FusionFoundation/efsn/core"
 	"github.com/FusionFoundation/efsn/core/state"
 	"github.com/FusionFoundation/efsn/core/types"
 	"github.com/FusionFoundation/efsn/core/vm"
-	"github.com/FusionFoundation/efsn/ethdb"
 	"github.com/FusionFoundation/efsn/params"
 	"github.com/FusionFoundation/efsn/rlp"
 )
@@ -80,7 +80,8 @@ type btHeader struct {
 	Difficulty       *big.Int
 	GasLimit         uint64
 	GasUsed          uint64
-	Timestamp        *big.Int
+	Timestamp        uint64
+	BaseFeePerGas    *big.Int
 }
 
 type btHeaderMarshaling struct {
@@ -99,7 +100,7 @@ func (t *BlockTest) Run() error {
 	}
 
 	// import pre accounts & construct test genesis block & state root
-	db := ethdb.NewMemDatabase()
+	db := rawdb.NewMemoryDatabase()
 	gblock, err := t.genesis(config).Commit(db)
 	if err != nil {
 		return err
@@ -111,7 +112,7 @@ func (t *BlockTest) Run() error {
 		return fmt.Errorf("genesis block state root does not match test: computed=%x, test=%x", gblock.Root().Bytes()[:6], t.json.Genesis.StateRoot[:6])
 	}
 
-	chain, err := core.NewBlockChain(db, nil, config, ethash.NewShared(), vm.Config{}, nil)
+	chain, err := core.NewBlockChain(db, nil, config, datong.New(&params.DaTongConfig{Period: 15}, db), vm.Config{}, nil)
 	if err != nil {
 		return err
 	}
@@ -139,7 +140,7 @@ func (t *BlockTest) genesis(config *params.ChainConfig) *core.Genesis {
 	return &core.Genesis{
 		Config:     config,
 		Nonce:      t.json.Genesis.Nonce.Uint64(),
-		Timestamp:  t.json.Genesis.Timestamp.Uint64(),
+		Timestamp:  t.json.Genesis.Timestamp,
 		ParentHash: t.json.Genesis.ParentHash,
 		ExtraData:  t.json.Genesis.ExtraData,
 		GasLimit:   t.json.Genesis.GasLimit,
@@ -148,6 +149,7 @@ func (t *BlockTest) genesis(config *params.ChainConfig) *core.Genesis {
 		Mixhash:    t.json.Genesis.MixHash,
 		Coinbase:   t.json.Genesis.Coinbase,
 		Alloc:      t.json.Pre,
+		BaseFee:    t.json.Genesis.BaseFeePerGas,
 	}
 }
 
@@ -241,8 +243,8 @@ func validateHeader(h *btHeader, h2 *types.Header) error {
 	if h.GasUsed != h2.GasUsed {
 		return fmt.Errorf("GasUsed: want: %d have: %d", h.GasUsed, h2.GasUsed)
 	}
-	if h.Timestamp.Cmp(h2.Time) != 0 {
-		return fmt.Errorf("Timestamp: want: %v have: %v", h.Timestamp, h2.Time)
+	if h.Timestamp != h2.Time {
+		return fmt.Errorf("timestamp: want: %v have: %v", h.Timestamp, h2.Time)
 	}
 	return nil
 }
