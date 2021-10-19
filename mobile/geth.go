@@ -109,7 +109,7 @@ func NewNode(datadir string, config *NodeConfig) (stack *Node, _ error) {
 	}
 
 	if config.PprofAddress != "" {
-		debug.StartPProf(config.PprofAddress)
+		debug.StartPProf(config.PprofAddress, true)
 	}
 
 	// Create the empty networking stack
@@ -151,7 +151,7 @@ func NewNode(datadir string, config *NodeConfig) (stack *Node, _ error) {
 	}
 	// Register the Ethereum protocol if requested
 	if config.EthereumEnabled {
-		ethConf := ethconfig.DefaultConfig
+		ethConf := ethconfig.Defaults
 		ethConf.Genesis = genesis
 		ethConf.SyncMode = downloader.LightSync
 		ethConf.NetworkId = uint64(config.EthereumNetworkID)
