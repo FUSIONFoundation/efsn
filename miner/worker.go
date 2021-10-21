@@ -151,6 +151,8 @@ type worker struct {
 	resubmitIntervalCh chan time.Duration
 	resubmitAdjustCh   chan *intervalAdjust
 
+	wg sync.WaitGroup
+
 	current     *environment       // An environment for current running cycle.
 	unconfirmed *unconfirmedBlocks // A set of locally mined blocks pending canonicalness confirmations.
 
@@ -215,6 +217,7 @@ func newWorker(config *Config, chainConfig *params.ChainConfig, engine consensus
 		recommit = minRecommitInterval
 	}
 
+	worker.wg.Add(4)
 	go worker.mainLoop()
 	go worker.newWorkLoop(recommit)
 	go worker.resultLoop()
@@ -295,10 +298,12 @@ func (w *worker) isRunning() bool {
 func (w *worker) close() {
 	atomic.StoreInt32(&w.running, 0)
 	close(w.exitCh)
+	w.wg.Wait()
 }
 
 // newWorkLoop is a standalone goroutine to submit new mining work upon received events.
 func (w *worker) newWorkLoop(recommit time.Duration) {
+	defer w.wg.Done()
 	var (
 		interrupt   *int32
 		minRecommit = recommit // minimal resubmit interval specified by user.
@@ -415,6 +420,7 @@ func (w *worker) newWorkLoop(recommit time.Duration) {
 
 // mainLoop is a standalone goroutine to regenerate the sealing task based on the received event.
 func (w *worker) mainLoop() {
+	defer w.wg.Done()
 	defer w.txsSub.Unsubscribe()
 	defer w.chainHeadSub.Unsubscribe()
 	defer w.chainSideSub.Unsubscribe()
@@ -446,6 +452,10 @@ func (w *worker) mainLoop() {
 			// already included in the current mining block. These transactions will
 			// be automatically eliminated.
 			if !w.isRunning() && w.current != nil {
+				// If block is already full, abort
+				if gp := w.current.gasPool; gp != nil && gp.Gas() < params.TxGas {
+					continue
+				}
 				w.mu.RLock()
 				coinbase := w.coinbase
 				w.mu.RUnlock()
@@ -456,8 +466,13 @@ func (w *worker) mainLoop() {
 					txs[acc] = append(txs[acc], tx)
 				}
 				txset := types.NewTransactionsByPriceAndNonce(w.current.signer, txs, w.current.header.BaseFee)
+				tcount := w.current.tcount
 				w.commitTransactions(txset, coinbase, nil)
-				w.updateSnapshot()
+				// Only update the snapshot if any new transactons were added
+				// to the pending block
+				if tcount != w.current.tcount {
+					w.updateSnapshot()
+				}
 			} else {
 				// If we're mining, but nothing is being processed, wake on new transactions
 				if w.chainConfig.Clique != nil && w.chainConfig.Clique.Period == 0 {
@@ -482,6 +497,7 @@ func (w *worker) mainLoop() {
 // taskLoop is a standalone goroutine to fetch sealing task from the generator and
 // push them to consensus engine.
 func (w *worker) taskLoop() {
+	defer w.wg.Done()
 	var (
 		stopCh chan struct{}
 		prev   common.Hash
@@ -539,6 +555,7 @@ func (w *worker) taskLoop() {
 // resultLoop is a standalone goroutine to handle sealing result submitting
 // and flush relative data to the database.
 func (w *worker) resultLoop() {
+	defer w.wg.Done()
 	for {
 		select {
 		case block := <-w.resultCh:
@@ -809,10 +826,6 @@ func (w *worker) commitTransactions(txs *types.TransactionsByPriceAndNonce, coin
 
 // commitNewWork generates several new sealing tasks based on the parent block.
 func (w *worker) commitNewWork(interrupt *int32, noempty bool, timestamp int64) {
-	if w.isRunning() == false {
-		return
-	}
-
 	w.mu.RLock()
 	defer w.mu.RUnlock()
 
@@ -857,14 +870,17 @@ func (w *worker) commitNewWork(interrupt *int32, noempty bool, timestamp int64) 
 		}
 		header.Coinbase = w.coinbase
 	}
-	if err := w.engine.Prepare(w.chain, header); err != nil {
-		switch err {
-		case datong.ErrNoTicket:
-			common.DebugInfo("Miner doesn't have ticket", "number", parent.Number())
-		default:
-			log.Error("Failed to prepare header for mining", "err", err)
+	// Fusion use TPOS instead of POW, so only mining mode is required to calculate the difficulty, nonce,
+	if w.isRunning() {
+		if err := w.engine.Prepare(w.chain, header); err != nil {
+			switch err {
+			case datong.ErrNoTicket:
+				common.DebugInfo("Miner doesn't have ticket", "number", parent.Number())
+			default:
+				log.Error("Failed to prepare header for mining", "err", err)
+			}
+			return
 		}
-		return
 	}
 	// If we are care about TheDAO hard-fork check whether to override the extra-data or not
 	if daoBlock := w.chainConfig.DAOForkBlock; daoBlock != nil {
@@ -891,20 +907,17 @@ func (w *worker) commitNewWork(interrupt *int32, noempty bool, timestamp int64) 
 		misc.ApplyDAOHardFork(env.state)
 	}
 
+	// Create an empty block based on temporary copied state for
+	// sealing in advance without waiting block execution finished.
 	if !noempty {
-		// Create an empty block based on temporary copied state for sealing in advance without waiting block
-		// execution finished.
+		// todo Fusion TPOS will give a mix digest mismatch err,
 		//w.commit(nil, nil, false, tstart)
 	}
 
 	// Fill the block with all available pending transactions.
-	pending, err := w.eth.TxPool().Pending(true)
-	if err != nil {
-		log.Error("Failed to fetch pending transactions", "err", err)
-		return
-	}
+	pending := w.eth.TxPool().Pending(true)
 	// Short circuit if there is no available pending transactions
-	if noempty && len(pending) == 0 {
+	if len(pending) == 0 {
 		w.updateSnapshot()
 		return
 	}
@@ -934,15 +947,17 @@ func (w *worker) commitNewWork(interrupt *int32, noempty bool, timestamp int64) 
 // commit runs any post-transaction state modifications, assembles the final block
 // and commits new work if consensus engine is running.
 func (w *worker) commit(uncles []*types.Header, interval func(), update bool, start time.Time) error {
-	// Deep copy receipts here to avoid interaction between different tasks.
-	receipts := copyReceipts(w.current.receipts)
-	s := w.current.state.Copy()
-	block, err := w.engine.Finalize(w.chain, w.current.header, s, w.current.txs, uncles, receipts)
-	if err != nil {
-		log.Info("commit work in Finalize", "err", err)
-		return err
-	}
+	// Fusion use TPOS, only miner need to invoke Finalize to calculate the reward and deal with the ticket
 	if w.isRunning() {
+		// Deep copy receipts here to avoid interaction between different tasks.
+		receipts := copyReceipts(w.current.receipts)
+		s := w.current.state.Copy()
+		block, err := w.engine.Finalize(w.chain, w.current.header, s, w.current.txs, uncles, receipts)
+		if err != nil {
+			log.Info("commit work in Finalize", "err", err)
+			return err
+		}
+
 		if interval != nil {
 			interval()
 		}

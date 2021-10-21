@@ -458,7 +458,7 @@ func (dt *DaTong) Finalize(chain consensus.ChainReader, header *types.Header, st
 		header.Extra = append(header.Extra, make([]byte, extraSeal)...)
 	} else {
 		if header.MixDigest != hash {
-			return nil, fmt.Errorf("MixDigest mismatch, have:%v, want:%v", header.MixDigest, hash)
+			return nil, fmt.Errorf("MixDigest mismatch, have:%v, want:%v, header:%v", header.MixDigest.String(), hash.String(), header.Number)
 		}
 		if common.IsHeaderSnapCheckingEnabled(header.Number) {
 			if !bytes.Equal(getSnapData(header.Extra), snapBytes) {
