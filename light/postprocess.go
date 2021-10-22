@@ -144,6 +144,7 @@ func StoreChtRoot(db ethdb.Database, sectionIdx uint64, sectionHead, root common
 
 // ChtIndexerBackend implements core.ChainIndexerBackend.
 type ChtIndexerBackend struct {
+	disablePruning       bool
 	diskdb, trieTable    ethdb.Database
 	odr                  OdrBackend
 	triedb               *trie.Database
@@ -241,6 +242,51 @@ func (c *ChtIndexerBackend) Commit() error {
 	return nil
 }
 
+// PruneSections implements core.ChainIndexerBackend which deletes all
+// chain data(except hash<->number mappings) older than the specified
+// threshold.
+func (c *ChtIndexerBackend) Prune(threshold uint64) error {
+	// Short circuit if the light pruning is disabled.
+	if c.disablePruning {
+		return nil
+	}
+	t := time.Now()
+	// Always keep genesis header in database.
+	start, end := uint64(1), (threshold+1)*c.sectionSize
+
+	var batch = c.diskdb.NewBatch()
+	for {
+		numbers, hashes := rawdb.ReadAllCanonicalHashes(c.diskdb, start, end, 10240)
+		if len(numbers) == 0 {
+			break
+		}
+		for i := 0; i < len(numbers); i++ {
+			// Keep hash<->number mapping in database otherwise the hash based
+			// API(e.g. GetReceipt, GetLogs) will be broken.
+			//
+			// Storage size wise, the size of a mapping is ~41bytes. For one
+			// section is about 1.3MB which is acceptable.
+			//
+			// In order to totally get rid of this index, we need an additional
+			// flag to specify how many historical data light client can serve.
+			rawdb.DeleteCanonicalHash(batch, numbers[i])
+			rawdb.DeleteBlockWithoutNumber(batch, hashes[i], numbers[i])
+		}
+		if batch.ValueSize() > ethdb.IdealBatchSize {
+			if err := batch.Write(); err != nil {
+				return err
+			}
+			batch.Reset()
+		}
+		start = numbers[len(numbers)-1] + 1
+	}
+	if err := batch.Write(); err != nil {
+		return err
+	}
+	log.Debug("Prune history headers", "threshold", threshold, "elapsed", common.PrettyDuration(time.Since(t)))
+	return nil
+}
+
 var (
 	bloomTriePrefix      = []byte("bltRoot-") // bloomTriePrefix + bloomTrieNum (uint64 big endian) -> trie root hash
 	BloomTrieTablePrefix = "blt-"
@@ -263,6 +309,7 @@ func StoreBloomTrieRoot(db ethdb.Database, sectionIdx uint64, sectionHead, root 
 
 // BloomTrieIndexerBackend implements core.ChainIndexerBackend
 type BloomTrieIndexerBackend struct {
+	disablePruning    bool
 	diskdb, trieTable ethdb.Database
 	triedb            *trie.Database
 	odr               OdrBackend
@@ -403,5 +450,20 @@ func (b *BloomTrieIndexerBackend) Commit() error {
 	sectionHead := b.sectionHeads[b.bloomTrieRatio-1]
 	log.Info("Storing bloom trie", "section", b.section, "head", fmt.Sprintf("%064x", sectionHead), "root", fmt.Sprintf("%064x", root), "compression", float64(compSize)/float64(decompSize))
 	StoreBloomTrieRoot(b.diskdb, b.section, sectionHead, root)
+	return nil
+}
+
+// Prune implements core.ChainIndexerBackend which deletes all
+// bloombits which older than the specified threshold.
+func (b *BloomTrieIndexerBackend) Prune(threshold uint64) error {
+	// Short circuit if the light pruning is disabled.
+	if b.disablePruning {
+		return nil
+	}
+	start := time.Now()
+	for i := uint(0); i < types.BloomBitLength; i++ {
+		rawdb.DeleteBloombits(b.diskdb, i, 0, threshold*b.bloomTrieRatio+b.bloomTrieRatio)
+	}
+	log.Debug("Prune history bloombits", "threshold", threshold, "elapsed", common.PrettyDuration(time.Since(start)))
 	return nil
 }
