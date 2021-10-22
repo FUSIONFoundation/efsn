@@ -129,14 +129,13 @@ var AppHelpFlagGroups = []flagGroup{
 		Flags: []cli.Flag{
 			utils.IPCDisabledFlag,
 			utils.IPCPathFlag,
-
-			utils.RPCEnabledFlag,
-			utils.RPCListenAddrFlag,
-			utils.RPCPortFlag,
-			utils.RPCApiFlag,
-			utils.RPCCORSDomainFlag,
-			utils.RPCVirtualHostsFlag,
-
+			utils.HTTPEnabledFlag,
+			utils.HTTPListenAddrFlag,
+			utils.HTTPPortFlag,
+			utils.HTTPApiFlag,
+			utils.HTTPPathPrefixFlag,
+			utils.HTTPCORSDomainFlag,
+			utils.HTTPVirtualHostsFlag,
 			utils.WSEnabledFlag,
 			utils.WSListenAddrFlag,
 			utils.WSPortFlag,
