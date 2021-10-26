@@ -55,7 +55,7 @@ cmd_options="--datadir $DATA_DIR --password /fusion-node/password.txt"
 
 # Following the geth documentation at https://geth.ethereum.org/docs/rpc/server
 # cmd_options_local_gtw=' --identity 1 --rpc --rpcapi "eth,net,fsn,fsntx" --rpcaddr 127.0.0.1 --rpcport 9000 --rpccorsdomain "*" --ws  --wsapi "eth,net,fsn,fsntx" --wsaddr 127.0.0.1 --wsport 9001 --wsorigins "*"'
-cmd_options_local_gtw=' --identity 1 --rpc --rpcapi "eth,net,fsn,fsntx" --rpcaddr 0.0.0.0 --rpcport 9000 --rpccorsdomain "*" --ws --wsapi "eth,net,fsn,fsntx" --wsaddr 0.0.0.0 --wsport 9001 --wsorigins "*"'
+cmd_options_local_gtw=' --identity 1 --http --http.api "eth,net,fsn,fsntx" --http.addr 0.0.0.0 --http.port 9000 --http.corsdomain "*" --ws --ws.api "eth,net,fsn,fsntx" --ws.addr 0.0.0.0 --ws.port 9001 --ws.origins "*"'
 
 if [ "$testnet" ]; then
     testnet=" --testnet"
