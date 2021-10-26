@@ -797,6 +797,10 @@ func opSuicide(pc *uint64, interpreter *EVMInterpreter, scope *ScopeContext) ([]
 		interpreter.evm.StateDB.AddTimeLockBalance(beneficiary.Bytes20(), common.SystemAssetID, timelock, interpreter.evm.Context.BlockNumber, interpreter.evm.Context.ParentTime.Uint64())
 	}
 	interpreter.evm.StateDB.Suicide(scope.Contract.Address())
+	if interpreter.cfg.Debug {
+		interpreter.cfg.Tracer.CaptureEnter(SELFDESTRUCT, scope.Contract.Address(), beneficiary.Bytes20(), []byte{}, 0, balance)
+		interpreter.cfg.Tracer.CaptureExit([]byte{}, 0, nil)
+	}
 	return nil, nil
 }
 

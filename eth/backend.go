@@ -21,6 +21,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/FusionFoundation/efsn/eth/ethconfig"
+	"github.com/FusionFoundation/efsn/eth/tracers"
 	"math/big"
 	"runtime"
 	"sync"
@@ -242,6 +243,8 @@ func (s *Ethereum) APIs() []rpc.API {
 
 	// Append any APIs exposed explicitly by the consensus engine
 	apis = append(apis, s.engine.APIs(s.BlockChain())...)
+
+	apis = append(apis, tracers.APIs(s.APIBackend)...)
 
 	// Append all the local APIs and return
 	return append(apis, []rpc.API{

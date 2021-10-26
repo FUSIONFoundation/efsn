@@ -306,3 +306,11 @@ func (b *EthAPIBackend) IsMining() bool {
 func (b *EthAPIBackend) Coinbase() (common.Address, error) {
 	return b.eth.Etherbase()
 }
+
+func (b *EthAPIBackend) StateAtBlock(ctx context.Context, block *types.Block, reexec uint64, base *state.StateDB, checkLive bool) (*state.StateDB, error) {
+	return b.eth.stateAtBlock(block, reexec, base, checkLive)
+}
+
+func (b *EthAPIBackend) StateAtTransaction(ctx context.Context, block *types.Block, txIndex int, reexec uint64) (core.Message, vm.BlockContext, *state.StateDB, error) {
+	return b.eth.stateAtTransaction(block, txIndex, reexec)
+}
