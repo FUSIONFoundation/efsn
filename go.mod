@@ -1,6 +1,6 @@
-module github.com/FusionFoundation/efsn
+module github.com/FusionFoundation/efsn/v4
 
-go 1.16
+go 1.17
 
 require (
 	github.com/Azure/azure-pipeline-go v0.2.2 // indirect
