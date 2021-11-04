@@ -16,7 +16,7 @@
 
 package core
 
-import "github.com/FusionFoundation/efsn/common"
+import "github.com/FusionFoundation/efsn/v4/common"
 
 // BadHashes represent a set of manually tracked bad hashes (usually hard forks)
 var BadHashes = map[common.Hash]bool{

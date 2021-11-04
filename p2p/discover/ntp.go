@@ -25,7 +25,7 @@ import (
 	"sort"
 	"time"
 
-	"github.com/FusionFoundation/efsn/log"
+	"github.com/FusionFoundation/efsn/v4/log"
 )
 
 const (

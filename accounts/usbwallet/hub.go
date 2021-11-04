@@ -22,9 +22,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/FusionFoundation/efsn/accounts"
-	"github.com/FusionFoundation/efsn/event"
-	"github.com/FusionFoundation/efsn/log"
+	"github.com/FusionFoundation/efsn/v4/accounts"
+	"github.com/FusionFoundation/efsn/v4/event"
+	"github.com/FusionFoundation/efsn/v4/log"
 	"github.com/karalabe/hid"
 )
 

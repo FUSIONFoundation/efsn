@@ -24,8 +24,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/FusionFoundation/efsn/v4/log"
 	mapset "github.com/deckarep/golang-set"
-	"github.com/FusionFoundation/efsn/log"
 )
 
 // fileCache is a cache of files seen during scan of keystore.

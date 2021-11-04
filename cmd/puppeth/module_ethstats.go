@@ -25,7 +25,7 @@ import (
 	"strings"
 	"text/template"
 
-	"github.com/FusionFoundation/efsn/log"
+	"github.com/FusionFoundation/efsn/v4/log"
 )
 
 // ethstatsDockerfile is the Dockerfile required to build an ethstats backend

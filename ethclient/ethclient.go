@@ -24,11 +24,11 @@ import (
 	"fmt"
 	"math/big"
 
-	"github.com/FusionFoundation/efsn"
-	"github.com/FusionFoundation/efsn/common"
-	"github.com/FusionFoundation/efsn/common/hexutil"
-	"github.com/FusionFoundation/efsn/core/types"
-	"github.com/FusionFoundation/efsn/rpc"
+	"github.com/FusionFoundation/efsn/v4"
+	"github.com/FusionFoundation/efsn/v4/common"
+	"github.com/FusionFoundation/efsn/v4/common/hexutil"
+	"github.com/FusionFoundation/efsn/v4/core/types"
+	"github.com/FusionFoundation/efsn/v4/rpc"
 )
 
 // Client defines typed wrappers for the Ethereum RPC API.

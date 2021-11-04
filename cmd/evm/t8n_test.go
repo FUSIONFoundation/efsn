@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/FusionFoundation/efsn/internal/cmdtest"
+	"github.com/FusionFoundation/efsn/v4/internal/cmdtest"
 	"github.com/docker/docker/pkg/reexec"
 )
 

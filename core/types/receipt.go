@@ -24,11 +24,11 @@ import (
 	"math/big"
 	"unsafe"
 
-	"github.com/FusionFoundation/efsn/common"
-	"github.com/FusionFoundation/efsn/common/hexutil"
-	"github.com/FusionFoundation/efsn/crypto"
-	"github.com/FusionFoundation/efsn/params"
-	"github.com/FusionFoundation/efsn/rlp"
+	"github.com/FusionFoundation/efsn/v4/common"
+	"github.com/FusionFoundation/efsn/v4/common/hexutil"
+	"github.com/FusionFoundation/efsn/v4/crypto"
+	"github.com/FusionFoundation/efsn/v4/params"
+	"github.com/FusionFoundation/efsn/v4/rlp"
 )
 
 //go:generate gencodec -type Receipt -field-override receiptMarshaling -out gen_receipt_json.go

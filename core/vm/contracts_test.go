@@ -21,7 +21,7 @@ import (
 	"math/big"
 	"testing"
 
-	"github.com/FusionFoundation/efsn/common"
+	"github.com/FusionFoundation/efsn/v4/common"
 )
 
 // precompiledTest defines the input/output pairs for precompiled contract tests.

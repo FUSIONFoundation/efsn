@@ -22,19 +22,19 @@ package geth
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/FusionFoundation/efsn/eth/ethconfig"
+	"github.com/FusionFoundation/efsn/v4/eth/ethconfig"
 	"path/filepath"
 
-	"github.com/FusionFoundation/efsn/core"
-	"github.com/FusionFoundation/efsn/eth/downloader"
-	"github.com/FusionFoundation/efsn/ethclient"
-	"github.com/FusionFoundation/efsn/ethstats"
-	"github.com/FusionFoundation/efsn/internal/debug"
-	"github.com/FusionFoundation/efsn/les"
-	"github.com/FusionFoundation/efsn/node"
-	"github.com/FusionFoundation/efsn/p2p"
-	"github.com/FusionFoundation/efsn/p2p/nat"
-	"github.com/FusionFoundation/efsn/params"
+	"github.com/FusionFoundation/efsn/v4/core"
+	"github.com/FusionFoundation/efsn/v4/eth/downloader"
+	"github.com/FusionFoundation/efsn/v4/ethclient"
+	"github.com/FusionFoundation/efsn/v4/ethstats"
+	"github.com/FusionFoundation/efsn/v4/internal/debug"
+	"github.com/FusionFoundation/efsn/v4/les"
+	"github.com/FusionFoundation/efsn/v4/node"
+	"github.com/FusionFoundation/efsn/v4/p2p"
+	"github.com/FusionFoundation/efsn/v4/p2p/nat"
+	"github.com/FusionFoundation/efsn/v4/params"
 )
 
 // NodeConfig represents the collection of configuration values to fine tune the Geth

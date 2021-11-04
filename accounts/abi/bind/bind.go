@@ -30,8 +30,8 @@ import (
 	"text/template"
 	"unicode"
 
-	"github.com/FusionFoundation/efsn/accounts/abi"
-	"github.com/FusionFoundation/efsn/log"
+	"github.com/FusionFoundation/efsn/v4/accounts/abi"
+	"github.com/FusionFoundation/efsn/v4/log"
 )
 
 // Lang is a target programming language selector to generate bindings for.

@@ -22,7 +22,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/FusionFoundation/efsn/common"
+	"github.com/FusionFoundation/efsn/v4/common"
 )
 
 type keyStorePlain struct {

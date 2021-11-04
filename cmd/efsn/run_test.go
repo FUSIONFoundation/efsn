@@ -22,8 +22,8 @@ import (
 	"os"
 	"testing"
 
+	"github.com/FusionFoundation/efsn/v4/internal/cmdtest"
 	"github.com/docker/docker/pkg/reexec"
-	"github.com/FusionFoundation/efsn/internal/cmdtest"
 )
 
 func tmpdir(t *testing.T) string {

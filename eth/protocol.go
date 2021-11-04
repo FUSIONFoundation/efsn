@@ -21,11 +21,11 @@ import (
 	"io"
 	"math/big"
 
-	"github.com/FusionFoundation/efsn/common"
-	"github.com/FusionFoundation/efsn/core"
-	"github.com/FusionFoundation/efsn/core/types"
-	"github.com/FusionFoundation/efsn/event"
-	"github.com/FusionFoundation/efsn/rlp"
+	"github.com/FusionFoundation/efsn/v4/common"
+	"github.com/FusionFoundation/efsn/v4/core"
+	"github.com/FusionFoundation/efsn/v4/core/types"
+	"github.com/FusionFoundation/efsn/v4/event"
+	"github.com/FusionFoundation/efsn/v4/rlp"
 )
 
 // Constants to match up protocol versions and messages

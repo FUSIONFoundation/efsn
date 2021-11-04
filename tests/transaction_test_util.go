@@ -22,12 +22,12 @@ import (
 	"fmt"
 	"math/big"
 
-	"github.com/FusionFoundation/efsn/common"
-	"github.com/FusionFoundation/efsn/common/hexutil"
-	"github.com/FusionFoundation/efsn/common/math"
-	"github.com/FusionFoundation/efsn/core/types"
-	"github.com/FusionFoundation/efsn/params"
-	"github.com/FusionFoundation/efsn/rlp"
+	"github.com/FusionFoundation/efsn/v4/common"
+	"github.com/FusionFoundation/efsn/v4/common/hexutil"
+	"github.com/FusionFoundation/efsn/v4/common/math"
+	"github.com/FusionFoundation/efsn/v4/core/types"
+	"github.com/FusionFoundation/efsn/v4/params"
+	"github.com/FusionFoundation/efsn/v4/rlp"
 )
 
 // TransactionTest checks RLP decoding and sender derivation of transactions.

@@ -27,7 +27,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/FusionFoundation/efsn/params"
+	"github.com/FusionFoundation/efsn/v4/params"
 )
 
 const (

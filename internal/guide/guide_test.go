@@ -30,8 +30,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/FusionFoundation/efsn/accounts/keystore"
-	"github.com/FusionFoundation/efsn/core/types"
+	"github.com/FusionFoundation/efsn/v4/accounts/keystore"
+	"github.com/FusionFoundation/efsn/v4/core/types"
 )
 
 // Tests that the account management snippets work correctly.

@@ -6,7 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 
-	"github.com/FusionFoundation/efsn/common"
+	"github.com/FusionFoundation/efsn/v4/common"
 )
 
 // MarshalJSON marshals as JSON.

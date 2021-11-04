@@ -25,7 +25,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/FusionFoundation/efsn/log"
+	"github.com/FusionFoundation/efsn/v4/log"
 	"github.com/jackpal/go-nat-pmp"
 )
 

@@ -20,9 +20,9 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/FusionFoundation/efsn/node"
-	"github.com/FusionFoundation/efsn/p2p"
-	"github.com/FusionFoundation/efsn/rpc"
+	"github.com/FusionFoundation/efsn/v4/node"
+	"github.com/FusionFoundation/efsn/v4/p2p"
+	"github.com/FusionFoundation/efsn/v4/rpc"
 )
 
 // SampleService is a trivial network service that can be attached to a node for

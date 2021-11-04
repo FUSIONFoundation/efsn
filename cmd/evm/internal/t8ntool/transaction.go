@@ -24,14 +24,14 @@ import (
 	"os"
 	"strings"
 
-	"github.com/FusionFoundation/efsn/common"
-	"github.com/FusionFoundation/efsn/common/hexutil"
-	"github.com/FusionFoundation/efsn/core"
-	"github.com/FusionFoundation/efsn/core/types"
-	"github.com/FusionFoundation/efsn/log"
-	"github.com/FusionFoundation/efsn/params"
-	"github.com/FusionFoundation/efsn/rlp"
-	"github.com/FusionFoundation/efsn/tests"
+	"github.com/FusionFoundation/efsn/v4/common"
+	"github.com/FusionFoundation/efsn/v4/common/hexutil"
+	"github.com/FusionFoundation/efsn/v4/core"
+	"github.com/FusionFoundation/efsn/v4/core/types"
+	"github.com/FusionFoundation/efsn/v4/log"
+	"github.com/FusionFoundation/efsn/v4/params"
+	"github.com/FusionFoundation/efsn/v4/rlp"
+	"github.com/FusionFoundation/efsn/v4/tests"
 	"gopkg.in/urfave/cli.v1"
 )
 

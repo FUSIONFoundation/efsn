@@ -21,8 +21,8 @@ package geth
 import (
 	"errors"
 
-	ethereum "github.com/FusionFoundation/efsn"
-	"github.com/FusionFoundation/efsn/common"
+	ethereum "github.com/FusionFoundation/efsn/v4"
+	"github.com/FusionFoundation/efsn/v4/common"
 )
 
 // Subscription represents an event subscription where events are

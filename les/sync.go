@@ -20,9 +20,9 @@ import (
 	"context"
 	"time"
 
-	"github.com/FusionFoundation/efsn/core/rawdb"
-	"github.com/FusionFoundation/efsn/eth/downloader"
-	"github.com/FusionFoundation/efsn/light"
+	"github.com/FusionFoundation/efsn/v4/core/rawdb"
+	"github.com/FusionFoundation/efsn/v4/eth/downloader"
+	"github.com/FusionFoundation/efsn/v4/light"
 )
 
 // syncer is responsible for periodically synchronising with the network, both

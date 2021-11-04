@@ -26,9 +26,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/FusionFoundation/efsn/common"
-	"github.com/FusionFoundation/efsn/common/math"
-	"github.com/FusionFoundation/efsn/crypto"
+	"github.com/FusionFoundation/efsn/v4/common"
+	"github.com/FusionFoundation/efsn/v4/common/math"
+	"github.com/FusionFoundation/efsn/v4/crypto"
 )
 
 const jsondata = `

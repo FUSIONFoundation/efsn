@@ -17,14 +17,14 @@
 package node
 
 import (
-	"github.com/FusionFoundation/efsn/core/rawdb"
+	"github.com/FusionFoundation/efsn/v4/core/rawdb"
 	"reflect"
 
-	"github.com/FusionFoundation/efsn/accounts"
-	"github.com/FusionFoundation/efsn/ethdb"
-	"github.com/FusionFoundation/efsn/event"
-	"github.com/FusionFoundation/efsn/p2p"
-	"github.com/FusionFoundation/efsn/rpc"
+	"github.com/FusionFoundation/efsn/v4/accounts"
+	"github.com/FusionFoundation/efsn/v4/ethdb"
+	"github.com/FusionFoundation/efsn/v4/event"
+	"github.com/FusionFoundation/efsn/v4/p2p"
+	"github.com/FusionFoundation/efsn/v4/rpc"
 )
 
 // ServiceContext is a collection of service independent options inherited from

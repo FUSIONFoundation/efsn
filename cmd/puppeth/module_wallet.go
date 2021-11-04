@@ -25,7 +25,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/FusionFoundation/efsn/log"
+	"github.com/FusionFoundation/efsn/v4/log"
 )
 
 // walletDockerfile is the Dockerfile required to run a web wallet.

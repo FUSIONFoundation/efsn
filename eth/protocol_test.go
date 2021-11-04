@@ -18,17 +18,17 @@ package eth
 
 import (
 	"fmt"
-	"github.com/FusionFoundation/efsn/eth/ethconfig"
+	"github.com/FusionFoundation/efsn/v4/eth/ethconfig"
 	"sync"
 	"testing"
 	"time"
 
-	"github.com/FusionFoundation/efsn/common"
-	"github.com/FusionFoundation/efsn/core/types"
-	"github.com/FusionFoundation/efsn/crypto"
-	"github.com/FusionFoundation/efsn/eth/downloader"
-	"github.com/FusionFoundation/efsn/p2p"
-	"github.com/FusionFoundation/efsn/rlp"
+	"github.com/FusionFoundation/efsn/v4/common"
+	"github.com/FusionFoundation/efsn/v4/core/types"
+	"github.com/FusionFoundation/efsn/v4/crypto"
+	"github.com/FusionFoundation/efsn/v4/eth/downloader"
+	"github.com/FusionFoundation/efsn/v4/p2p"
+	"github.com/FusionFoundation/efsn/v4/rlp"
 )
 
 func init() {

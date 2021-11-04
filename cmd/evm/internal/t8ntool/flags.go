@@ -20,8 +20,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/FusionFoundation/efsn/core/vm"
-	"github.com/FusionFoundation/efsn/tests"
+	"github.com/FusionFoundation/efsn/v4/core/vm"
+	"github.com/FusionFoundation/efsn/v4/tests"
 	"gopkg.in/urfave/cli.v1"
 )
 

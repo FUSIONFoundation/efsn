@@ -25,12 +25,12 @@ import (
 	"os"
 	"strconv"
 
+	"github.com/FusionFoundation/efsn/v4/crypto"
+	"github.com/FusionFoundation/efsn/v4/node"
+	"github.com/FusionFoundation/efsn/v4/p2p"
+	"github.com/FusionFoundation/efsn/v4/p2p/discover"
+	"github.com/FusionFoundation/efsn/v4/rpc"
 	"github.com/docker/docker/pkg/reexec"
-	"github.com/FusionFoundation/efsn/crypto"
-	"github.com/FusionFoundation/efsn/node"
-	"github.com/FusionFoundation/efsn/p2p"
-	"github.com/FusionFoundation/efsn/p2p/discover"
-	"github.com/FusionFoundation/efsn/rpc"
 )
 
 // Node represents a node in a simulation network which is created by a

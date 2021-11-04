@@ -30,9 +30,9 @@ import (
 	"math/big"
 	"os"
 
-	"github.com/FusionFoundation/efsn/common"
-	"github.com/FusionFoundation/efsn/common/math"
-	"github.com/FusionFoundation/efsn/rlp"
+	"github.com/FusionFoundation/efsn/v4/common"
+	"github.com/FusionFoundation/efsn/v4/common/math"
+	"github.com/FusionFoundation/efsn/v4/rlp"
 	"golang.org/x/crypto/sha3"
 )
 

@@ -23,8 +23,8 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/FusionFoundation/efsn/common"
-	"github.com/FusionFoundation/efsn/rlp"
+	"github.com/FusionFoundation/efsn/v4/common"
+	"github.com/FusionFoundation/efsn/v4/rlp"
 )
 
 // from bcValidBlockTest.json, "SimpleTx"

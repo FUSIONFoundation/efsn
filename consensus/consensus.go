@@ -20,11 +20,11 @@ package consensus
 import (
 	"math/big"
 
-	"github.com/FusionFoundation/efsn/common"
-	"github.com/FusionFoundation/efsn/core/state"
-	"github.com/FusionFoundation/efsn/core/types"
-	"github.com/FusionFoundation/efsn/params"
-	"github.com/FusionFoundation/efsn/rpc"
+	"github.com/FusionFoundation/efsn/v4/common"
+	"github.com/FusionFoundation/efsn/v4/core/state"
+	"github.com/FusionFoundation/efsn/v4/core/types"
+	"github.com/FusionFoundation/efsn/v4/params"
+	"github.com/FusionFoundation/efsn/v4/rpc"
 )
 
 // ChainReader defines a small collection of methods needed to access the local

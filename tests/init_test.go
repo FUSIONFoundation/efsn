@@ -29,7 +29,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/FusionFoundation/efsn/params"
+	"github.com/FusionFoundation/efsn/v4/params"
 )
 
 var (

@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/FusionFoundation/efsn/log"
+	"github.com/FusionFoundation/efsn/v4/log"
 )
 
 // Enabled is checked by the constructor functions for all of the

@@ -10,16 +10,16 @@ import (
 	"sync"
 	"time"
 
-	"github.com/FusionFoundation/efsn/accounts"
-	"github.com/FusionFoundation/efsn/common"
-	"github.com/FusionFoundation/efsn/common/hexutil"
-	"github.com/FusionFoundation/efsn/consensus/datong"
-	"github.com/FusionFoundation/efsn/core/rawdb"
-	"github.com/FusionFoundation/efsn/core/state"
-	"github.com/FusionFoundation/efsn/core/types"
-	"github.com/FusionFoundation/efsn/log"
-	"github.com/FusionFoundation/efsn/rlp"
-	"github.com/FusionFoundation/efsn/rpc"
+	"github.com/FusionFoundation/efsn/v4/accounts"
+	"github.com/FusionFoundation/efsn/v4/common"
+	"github.com/FusionFoundation/efsn/v4/common/hexutil"
+	"github.com/FusionFoundation/efsn/v4/consensus/datong"
+	"github.com/FusionFoundation/efsn/v4/core/rawdb"
+	"github.com/FusionFoundation/efsn/v4/core/state"
+	"github.com/FusionFoundation/efsn/v4/core/types"
+	"github.com/FusionFoundation/efsn/v4/log"
+	"github.com/FusionFoundation/efsn/v4/rlp"
+	"github.com/FusionFoundation/efsn/v4/rpc"
 )
 
 var lastBlockOfBuyTickets = int64(0)

@@ -24,9 +24,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/FusionFoundation/efsn/crypto"
-	"github.com/FusionFoundation/efsn/p2p"
-	"github.com/FusionFoundation/efsn/rpc"
+	"github.com/FusionFoundation/efsn/v4/crypto"
+	"github.com/FusionFoundation/efsn/v4/p2p"
+	"github.com/FusionFoundation/efsn/v4/rpc"
 )
 
 var (

@@ -20,10 +20,10 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/FusionFoundation/efsn/v4/common"
+	"github.com/FusionFoundation/efsn/v4/core/state"
+	"github.com/FusionFoundation/efsn/v4/ethdb"
 	"github.com/davecgh/go-spew/spew"
-	"github.com/FusionFoundation/efsn/common"
-	"github.com/FusionFoundation/efsn/core/state"
-	"github.com/FusionFoundation/efsn/ethdb"
 )
 
 var dumper = spew.ConfigState{Indent: "    "}

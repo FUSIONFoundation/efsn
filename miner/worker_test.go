@@ -17,19 +17,19 @@
 package miner
 
 import (
-	"github.com/FusionFoundation/efsn/consensus/datong"
+	"github.com/FusionFoundation/efsn/v4/consensus/datong"
 	"math/big"
 	"testing"
 	"time"
 
-	"github.com/FusionFoundation/efsn/consensus"
-	"github.com/FusionFoundation/efsn/core"
-	"github.com/FusionFoundation/efsn/core/types"
-	"github.com/FusionFoundation/efsn/core/vm"
-	"github.com/FusionFoundation/efsn/crypto"
-	"github.com/FusionFoundation/efsn/ethdb"
-	"github.com/FusionFoundation/efsn/event"
-	"github.com/FusionFoundation/efsn/params"
+	"github.com/FusionFoundation/efsn/v4/consensus"
+	"github.com/FusionFoundation/efsn/v4/core"
+	"github.com/FusionFoundation/efsn/v4/core/types"
+	"github.com/FusionFoundation/efsn/v4/core/vm"
+	"github.com/FusionFoundation/efsn/v4/crypto"
+	"github.com/FusionFoundation/efsn/v4/ethdb"
+	"github.com/FusionFoundation/efsn/v4/event"
+	"github.com/FusionFoundation/efsn/v4/params"
 )
 
 var (

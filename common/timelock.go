@@ -6,7 +6,7 @@ import (
 	"math/big"
 	"sort"
 
-	"github.com/FusionFoundation/efsn/log"
+	"github.com/FusionFoundation/efsn/v4/log"
 )
 
 // TimeLockType wacom

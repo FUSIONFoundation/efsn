@@ -21,13 +21,13 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/FusionFoundation/efsn/common"
-	"github.com/FusionFoundation/efsn/core"
-	"github.com/FusionFoundation/efsn/core/state"
-	"github.com/FusionFoundation/efsn/core/types"
-	"github.com/FusionFoundation/efsn/core/vm"
-	"github.com/FusionFoundation/efsn/log"
-	"github.com/FusionFoundation/efsn/trie"
+	"github.com/FusionFoundation/efsn/v4/common"
+	"github.com/FusionFoundation/efsn/v4/core"
+	"github.com/FusionFoundation/efsn/v4/core/state"
+	"github.com/FusionFoundation/efsn/v4/core/types"
+	"github.com/FusionFoundation/efsn/v4/core/vm"
+	"github.com/FusionFoundation/efsn/v4/log"
+	"github.com/FusionFoundation/efsn/v4/trie"
 )
 
 // stateAtBlock retrieves the state database associated with a certain block.

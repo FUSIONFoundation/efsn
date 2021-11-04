@@ -23,10 +23,10 @@ import (
 	"io/ioutil"
 	"os"
 
-	"github.com/FusionFoundation/efsn/core/state"
-	"github.com/FusionFoundation/efsn/core/vm"
-	"github.com/FusionFoundation/efsn/log"
-	"github.com/FusionFoundation/efsn/tests"
+	"github.com/FusionFoundation/efsn/v4/core/state"
+	"github.com/FusionFoundation/efsn/v4/core/vm"
+	"github.com/FusionFoundation/efsn/v4/log"
+	"github.com/FusionFoundation/efsn/v4/tests"
 
 	"gopkg.in/urfave/cli.v1"
 )

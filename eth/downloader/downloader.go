@@ -25,16 +25,16 @@ import (
 	"sync/atomic"
 	"time"
 
-	ethereum "github.com/FusionFoundation/efsn"
-	"github.com/FusionFoundation/efsn/common"
-	"github.com/FusionFoundation/efsn/core/rawdb"
-	"github.com/FusionFoundation/efsn/core/types"
-	"github.com/FusionFoundation/efsn/ethdb"
-	"github.com/FusionFoundation/efsn/event"
-	"github.com/FusionFoundation/efsn/log"
-	"github.com/FusionFoundation/efsn/metrics"
-	"github.com/FusionFoundation/efsn/params"
-	"github.com/FusionFoundation/efsn/trie"
+	ethereum "github.com/FusionFoundation/efsn/v4"
+	"github.com/FusionFoundation/efsn/v4/common"
+	"github.com/FusionFoundation/efsn/v4/core/rawdb"
+	"github.com/FusionFoundation/efsn/v4/core/types"
+	"github.com/FusionFoundation/efsn/v4/ethdb"
+	"github.com/FusionFoundation/efsn/v4/event"
+	"github.com/FusionFoundation/efsn/v4/log"
+	"github.com/FusionFoundation/efsn/v4/metrics"
+	"github.com/FusionFoundation/efsn/v4/params"
+	"github.com/FusionFoundation/efsn/v4/trie"
 )
 
 var (

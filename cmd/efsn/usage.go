@@ -22,8 +22,8 @@ import (
 	"io"
 	"sort"
 
-	"github.com/FusionFoundation/efsn/cmd/utils"
-	"github.com/FusionFoundation/efsn/internal/debug"
+	"github.com/FusionFoundation/efsn/v4/cmd/utils"
+	"github.com/FusionFoundation/efsn/v4/internal/debug"
 	"gopkg.in/urfave/cli.v1"
 )
 

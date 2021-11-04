@@ -22,12 +22,12 @@ import (
 	"fmt"
 	"math/big"
 
-	ethereum "github.com/FusionFoundation/efsn"
-	"github.com/FusionFoundation/efsn/accounts/abi"
-	"github.com/FusionFoundation/efsn/common"
-	"github.com/FusionFoundation/efsn/core/types"
-	"github.com/FusionFoundation/efsn/crypto"
-	"github.com/FusionFoundation/efsn/event"
+	ethereum "github.com/FusionFoundation/efsn/v4"
+	"github.com/FusionFoundation/efsn/v4/accounts/abi"
+	"github.com/FusionFoundation/efsn/v4/common"
+	"github.com/FusionFoundation/efsn/v4/core/types"
+	"github.com/FusionFoundation/efsn/v4/crypto"
+	"github.com/FusionFoundation/efsn/v4/event"
 )
 
 // SignerFn is a signer function callback when a contract requires a method to

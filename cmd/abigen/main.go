@@ -24,8 +24,8 @@ import (
 	"os"
 	"strings"
 
-	"github.com/FusionFoundation/efsn/accounts/abi/bind"
-	"github.com/FusionFoundation/efsn/common/compiler"
+	"github.com/FusionFoundation/efsn/v4/accounts/abi/bind"
+	"github.com/FusionFoundation/efsn/v4/common/compiler"
 )
 
 var (

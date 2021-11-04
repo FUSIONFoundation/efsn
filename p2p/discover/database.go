@@ -27,9 +27,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/FusionFoundation/efsn/crypto"
-	"github.com/FusionFoundation/efsn/log"
-	"github.com/FusionFoundation/efsn/rlp"
+	"github.com/FusionFoundation/efsn/v4/crypto"
+	"github.com/FusionFoundation/efsn/v4/log"
+	"github.com/FusionFoundation/efsn/v4/rlp"
 	"github.com/syndtr/goleveldb/leveldb"
 	"github.com/syndtr/goleveldb/leveldb/errors"
 	"github.com/syndtr/goleveldb/leveldb/iterator"

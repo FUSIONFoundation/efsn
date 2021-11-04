@@ -20,9 +20,9 @@ import (
 	"math/big"
 	"testing"
 
-	"github.com/FusionFoundation/efsn/common"
-	"github.com/FusionFoundation/efsn/crypto"
-	"github.com/FusionFoundation/efsn/rlp"
+	"github.com/FusionFoundation/efsn/v4/common"
+	"github.com/FusionFoundation/efsn/v4/crypto"
+	"github.com/FusionFoundation/efsn/v4/rlp"
 )
 
 func TestEIP155Signing(t *testing.T) {

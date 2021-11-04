@@ -34,8 +34,8 @@ import (
 	"sort"
 	"strconv"
 
-	"github.com/FusionFoundation/efsn/core"
-	"github.com/FusionFoundation/efsn/rlp"
+	"github.com/FusionFoundation/efsn/v4/core"
+	"github.com/FusionFoundation/efsn/v4/rlp"
 )
 
 type allocItem struct{ Addr, Balance *big.Int }

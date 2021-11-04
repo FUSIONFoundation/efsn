@@ -21,7 +21,7 @@ import (
 	"math/rand"
 	"testing"
 
-	"github.com/FusionFoundation/efsn/common/hexutil"
+	"github.com/FusionFoundation/efsn/v4/common/hexutil"
 )
 
 // Tests that data bitset encoding and decoding works and is bijective.

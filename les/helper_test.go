@@ -26,20 +26,20 @@ import (
 	"testing"
 	"time"
 
-	"github.com/FusionFoundation/efsn/common"
+	"github.com/FusionFoundation/efsn/v4/common"
 
-	"github.com/FusionFoundation/efsn/core"
-	"github.com/FusionFoundation/efsn/core/types"
-	"github.com/FusionFoundation/efsn/core/vm"
-	"github.com/FusionFoundation/efsn/crypto"
-	"github.com/FusionFoundation/efsn/eth"
-	"github.com/FusionFoundation/efsn/ethdb"
-	"github.com/FusionFoundation/efsn/event"
-	"github.com/FusionFoundation/efsn/les/flowcontrol"
-	"github.com/FusionFoundation/efsn/light"
-	"github.com/FusionFoundation/efsn/p2p"
-	"github.com/FusionFoundation/efsn/p2p/discover"
-	"github.com/FusionFoundation/efsn/params"
+	"github.com/FusionFoundation/efsn/v4/core"
+	"github.com/FusionFoundation/efsn/v4/core/types"
+	"github.com/FusionFoundation/efsn/v4/core/vm"
+	"github.com/FusionFoundation/efsn/v4/crypto"
+	"github.com/FusionFoundation/efsn/v4/eth"
+	"github.com/FusionFoundation/efsn/v4/ethdb"
+	"github.com/FusionFoundation/efsn/v4/event"
+	"github.com/FusionFoundation/efsn/v4/les/flowcontrol"
+	"github.com/FusionFoundation/efsn/v4/light"
+	"github.com/FusionFoundation/efsn/v4/p2p"
+	"github.com/FusionFoundation/efsn/v4/p2p/discover"
+	"github.com/FusionFoundation/efsn/v4/params"
 )
 
 var (

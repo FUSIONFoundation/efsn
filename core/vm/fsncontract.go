@@ -4,8 +4,8 @@ import (
 	"errors"
 	"math/big"
 
-	"github.com/FusionFoundation/efsn/common"
-	"github.com/FusionFoundation/efsn/params"
+	"github.com/FusionFoundation/efsn/v4/common"
+	"github.com/FusionFoundation/efsn/v4/params"
 )
 
 var (

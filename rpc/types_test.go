@@ -20,7 +20,7 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/FusionFoundation/efsn/common/math"
+	"github.com/FusionFoundation/efsn/v4/common/math"
 )
 
 func TestBlockNumberJSONUnmarshal(t *testing.T) {

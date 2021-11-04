@@ -26,8 +26,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/FusionFoundation/efsn/common/mclock"
-	"github.com/FusionFoundation/efsn/light"
+	"github.com/FusionFoundation/efsn/v4/common/mclock"
+	"github.com/FusionFoundation/efsn/v4/light"
 )
 
 var (

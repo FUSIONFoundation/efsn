@@ -22,7 +22,7 @@ import (
 	"io/ioutil"
 	"strings"
 
-	"github.com/FusionFoundation/efsn/core/asm"
+	"github.com/FusionFoundation/efsn/v4/core/asm"
 	"gopkg.in/urfave/cli.v1"
 )
 

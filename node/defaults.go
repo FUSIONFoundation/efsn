@@ -22,9 +22,9 @@ import (
 	"path/filepath"
 	"runtime"
 
-	"github.com/FusionFoundation/efsn/p2p"
-	"github.com/FusionFoundation/efsn/p2p/nat"
-	"github.com/FusionFoundation/efsn/rpc"
+	"github.com/FusionFoundation/efsn/v4/p2p"
+	"github.com/FusionFoundation/efsn/v4/p2p/nat"
+	"github.com/FusionFoundation/efsn/v4/rpc"
 )
 
 const (

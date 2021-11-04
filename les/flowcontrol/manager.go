@@ -21,7 +21,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/FusionFoundation/efsn/common/mclock"
+	"github.com/FusionFoundation/efsn/v4/common/mclock"
 )
 
 const rcConst = 1000000

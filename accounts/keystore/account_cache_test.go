@@ -27,10 +27,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/FusionFoundation/efsn/v4/accounts"
+	"github.com/FusionFoundation/efsn/v4/common"
 	"github.com/cespare/cp"
 	"github.com/davecgh/go-spew/spew"
-	"github.com/FusionFoundation/efsn/accounts"
-	"github.com/FusionFoundation/efsn/common"
 )
 
 var (

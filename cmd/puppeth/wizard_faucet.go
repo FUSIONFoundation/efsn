@@ -20,8 +20,8 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/FusionFoundation/efsn/accounts/keystore"
-	"github.com/FusionFoundation/efsn/log"
+	"github.com/FusionFoundation/efsn/v4/accounts/keystore"
+	"github.com/FusionFoundation/efsn/v4/log"
 )
 
 // deployFaucet queries the user for various input on deploying a faucet, after

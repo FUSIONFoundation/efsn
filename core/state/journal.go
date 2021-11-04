@@ -19,7 +19,7 @@ package state
 import (
 	"math/big"
 
-	"github.com/FusionFoundation/efsn/common"
+	"github.com/FusionFoundation/efsn/v4/common"
 )
 
 // journalEntry is a modification entry in the state change journal that can be

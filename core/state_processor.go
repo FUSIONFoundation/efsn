@@ -18,14 +18,14 @@ package core
 
 import (
 	"fmt"
-	"github.com/FusionFoundation/efsn/common"
-	"github.com/FusionFoundation/efsn/consensus"
-	"github.com/FusionFoundation/efsn/consensus/misc"
-	"github.com/FusionFoundation/efsn/core/state"
-	"github.com/FusionFoundation/efsn/core/types"
-	"github.com/FusionFoundation/efsn/core/vm"
-	"github.com/FusionFoundation/efsn/crypto"
-	"github.com/FusionFoundation/efsn/params"
+	"github.com/FusionFoundation/efsn/v4/common"
+	"github.com/FusionFoundation/efsn/v4/consensus"
+	"github.com/FusionFoundation/efsn/v4/consensus/misc"
+	"github.com/FusionFoundation/efsn/v4/core/state"
+	"github.com/FusionFoundation/efsn/v4/core/types"
+	"github.com/FusionFoundation/efsn/v4/core/vm"
+	"github.com/FusionFoundation/efsn/v4/crypto"
+	"github.com/FusionFoundation/efsn/v4/params"
 	"math/big"
 )
 

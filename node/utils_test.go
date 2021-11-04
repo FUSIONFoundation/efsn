@@ -22,8 +22,8 @@ package node
 import (
 	"reflect"
 
-	"github.com/FusionFoundation/efsn/p2p"
-	"github.com/FusionFoundation/efsn/rpc"
+	"github.com/FusionFoundation/efsn/v4/p2p"
+	"github.com/FusionFoundation/efsn/v4/rpc"
 )
 
 // NoopService is a trivial implementation of the Service interface.

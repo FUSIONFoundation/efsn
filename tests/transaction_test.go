@@ -20,7 +20,7 @@ import (
 	"math/big"
 	"testing"
 
-	"github.com/FusionFoundation/efsn/params"
+	"github.com/FusionFoundation/efsn/v4/params"
 )
 
 func TestTransaction(t *testing.T) {

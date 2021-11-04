@@ -19,7 +19,7 @@
 package downloader
 
 import (
-	"github.com/FusionFoundation/efsn/metrics"
+	"github.com/FusionFoundation/efsn/v4/metrics"
 )
 
 var (

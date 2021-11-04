@@ -27,12 +27,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/FusionFoundation/efsn/event"
-	"github.com/FusionFoundation/efsn/node"
-	"github.com/FusionFoundation/efsn/p2p"
-	"github.com/FusionFoundation/efsn/p2p/discover"
-	"github.com/FusionFoundation/efsn/p2p/simulations/adapters"
-	"github.com/FusionFoundation/efsn/rpc"
+	"github.com/FusionFoundation/efsn/v4/event"
+	"github.com/FusionFoundation/efsn/v4/node"
+	"github.com/FusionFoundation/efsn/v4/p2p"
+	"github.com/FusionFoundation/efsn/v4/p2p/discover"
+	"github.com/FusionFoundation/efsn/v4/p2p/simulations/adapters"
+	"github.com/FusionFoundation/efsn/v4/rpc"
 )
 
 // testService implements the node.Service interface and provides protocols

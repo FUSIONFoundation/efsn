@@ -20,10 +20,10 @@ package accounts
 import (
 	"math/big"
 
-	ethereum "github.com/FusionFoundation/efsn"
-	"github.com/FusionFoundation/efsn/common"
-	"github.com/FusionFoundation/efsn/core/types"
-	"github.com/FusionFoundation/efsn/event"
+	ethereum "github.com/FusionFoundation/efsn/v4"
+	"github.com/FusionFoundation/efsn/v4/common"
+	"github.com/FusionFoundation/efsn/v4/core/types"
+	"github.com/FusionFoundation/efsn/v4/event"
 )
 
 // Account represents an Ethereum account located at a specific location defined

@@ -21,9 +21,9 @@ import (
 	"context"
 	"sync"
 
-	"github.com/FusionFoundation/efsn/internal/ethapi"
-	"github.com/FusionFoundation/efsn/log"
-	"github.com/FusionFoundation/efsn/rpc"
+	"github.com/FusionFoundation/efsn/v4/internal/ethapi"
+	"github.com/FusionFoundation/efsn/v4/log"
+	"github.com/FusionFoundation/efsn/v4/rpc"
 )
 
 type StdIOUI struct {

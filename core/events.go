@@ -17,8 +17,8 @@
 package core
 
 import (
-	"github.com/FusionFoundation/efsn/common"
-	"github.com/FusionFoundation/efsn/core/types"
+	"github.com/FusionFoundation/efsn/v4/common"
+	"github.com/FusionFoundation/efsn/v4/core/types"
 )
 
 // NewTxsEvent is posted when a batch of transactions enter the transaction pool.

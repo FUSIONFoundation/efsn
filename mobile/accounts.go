@@ -23,10 +23,10 @@ import (
 	"errors"
 	"time"
 
-	"github.com/FusionFoundation/efsn/accounts"
-	"github.com/FusionFoundation/efsn/accounts/keystore"
-	"github.com/FusionFoundation/efsn/common"
-	"github.com/FusionFoundation/efsn/crypto"
+	"github.com/FusionFoundation/efsn/v4/accounts"
+	"github.com/FusionFoundation/efsn/v4/accounts/keystore"
+	"github.com/FusionFoundation/efsn/v4/common"
+	"github.com/FusionFoundation/efsn/v4/crypto"
 )
 
 const (

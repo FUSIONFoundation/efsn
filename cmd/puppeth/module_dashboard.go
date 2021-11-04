@@ -26,7 +26,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/FusionFoundation/efsn/log"
+	"github.com/FusionFoundation/efsn/v4/log"
 )
 
 // dashboardContent is the actual dashboard HTML content to serve up when users

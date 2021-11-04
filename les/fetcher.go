@@ -22,13 +22,13 @@ import (
 	"sync"
 	"time"
 
-	"github.com/FusionFoundation/efsn/common"
-	"github.com/FusionFoundation/efsn/common/mclock"
-	"github.com/FusionFoundation/efsn/consensus"
-	"github.com/FusionFoundation/efsn/core/rawdb"
-	"github.com/FusionFoundation/efsn/core/types"
-	"github.com/FusionFoundation/efsn/light"
-	"github.com/FusionFoundation/efsn/log"
+	"github.com/FusionFoundation/efsn/v4/common"
+	"github.com/FusionFoundation/efsn/v4/common/mclock"
+	"github.com/FusionFoundation/efsn/v4/consensus"
+	"github.com/FusionFoundation/efsn/v4/core/rawdb"
+	"github.com/FusionFoundation/efsn/v4/core/types"
+	"github.com/FusionFoundation/efsn/v4/light"
+	"github.com/FusionFoundation/efsn/v4/log"
 )
 
 const (

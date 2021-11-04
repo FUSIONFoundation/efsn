@@ -23,8 +23,8 @@ import (
 	"sort"
 	"time"
 
-	"github.com/FusionFoundation/efsn/common"
-	"github.com/FusionFoundation/efsn/core/types"
+	"github.com/FusionFoundation/efsn/v4/common"
+	"github.com/FusionFoundation/efsn/v4/core/types"
 )
 
 // nonceHeap is a heap.Interface implementation over 64bit unsigned integers for

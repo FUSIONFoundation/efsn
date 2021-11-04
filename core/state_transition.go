@@ -19,21 +19,21 @@ package core
 import (
 	"encoding/json"
 	"fmt"
-	cmath "github.com/FusionFoundation/efsn/common/math"
+	cmath "github.com/FusionFoundation/efsn/v4/common/math"
 	"math"
 	"math/big"
 	"reflect"
 	"time"
 
-	"github.com/FusionFoundation/efsn/common"
-	"github.com/FusionFoundation/efsn/common/hexutil"
-	"github.com/FusionFoundation/efsn/consensus/datong"
-	"github.com/FusionFoundation/efsn/core/types"
-	"github.com/FusionFoundation/efsn/core/vm"
-	"github.com/FusionFoundation/efsn/crypto"
-	"github.com/FusionFoundation/efsn/log"
-	"github.com/FusionFoundation/efsn/params"
-	"github.com/FusionFoundation/efsn/rlp"
+	"github.com/FusionFoundation/efsn/v4/common"
+	"github.com/FusionFoundation/efsn/v4/common/hexutil"
+	"github.com/FusionFoundation/efsn/v4/consensus/datong"
+	"github.com/FusionFoundation/efsn/v4/core/types"
+	"github.com/FusionFoundation/efsn/v4/core/vm"
+	"github.com/FusionFoundation/efsn/v4/crypto"
+	"github.com/FusionFoundation/efsn/v4/log"
+	"github.com/FusionFoundation/efsn/v4/params"
+	"github.com/FusionFoundation/efsn/v4/rlp"
 )
 
 var emptyCodeHash = crypto.Keccak256Hash(nil)

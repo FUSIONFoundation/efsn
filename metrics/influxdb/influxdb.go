@@ -5,8 +5,8 @@ import (
 	uurl "net/url"
 	"time"
 
-	"github.com/FusionFoundation/efsn/log"
-	"github.com/FusionFoundation/efsn/metrics"
+	"github.com/FusionFoundation/efsn/v4/log"
+	"github.com/FusionFoundation/efsn/v4/metrics"
 	"github.com/influxdata/influxdb/client"
 )
 

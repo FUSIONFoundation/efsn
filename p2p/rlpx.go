@@ -35,11 +35,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/FusionFoundation/efsn/crypto"
-	"github.com/FusionFoundation/efsn/crypto/ecies"
-	"github.com/FusionFoundation/efsn/crypto/secp256k1"
-	"github.com/FusionFoundation/efsn/p2p/discover"
-	"github.com/FusionFoundation/efsn/rlp"
+	"github.com/FusionFoundation/efsn/v4/crypto"
+	"github.com/FusionFoundation/efsn/v4/crypto/ecies"
+	"github.com/FusionFoundation/efsn/v4/crypto/secp256k1"
+	"github.com/FusionFoundation/efsn/v4/p2p/discover"
+	"github.com/FusionFoundation/efsn/v4/rlp"
 	"github.com/golang/snappy"
 	"golang.org/x/crypto/sha3"
 )

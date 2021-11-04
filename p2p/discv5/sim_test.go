@@ -28,7 +28,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/FusionFoundation/efsn/common"
+	"github.com/FusionFoundation/efsn/v4/common"
 )
 
 // In this test, nodes try to randomly resolve each other.

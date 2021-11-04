@@ -21,11 +21,11 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/FusionFoundation/efsn/common"
-	"github.com/FusionFoundation/efsn/ethdb"
-	"github.com/FusionFoundation/efsn/ethdb/memorydb"
-	"github.com/FusionFoundation/efsn/log"
-	"github.com/FusionFoundation/efsn/rlp"
+	"github.com/FusionFoundation/efsn/v4/common"
+	"github.com/FusionFoundation/efsn/v4/ethdb"
+	"github.com/FusionFoundation/efsn/v4/ethdb/memorydb"
+	"github.com/FusionFoundation/efsn/v4/log"
+	"github.com/FusionFoundation/efsn/v4/rlp"
 )
 
 // Prove constructs a merkle proof for key. The result contains all encoded nodes

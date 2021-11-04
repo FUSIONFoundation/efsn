@@ -54,7 +54,7 @@ func TestBloom(t *testing.T) {
 import (
 	"testing"
 
-	"github.com/FusionFoundation/efsn/core/state"
+	"github.com/FusionFoundation/efsn/v4/core/state"
 )
 
 func TestBloom9(t *testing.T) {

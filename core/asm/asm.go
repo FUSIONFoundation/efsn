@@ -21,7 +21,7 @@ import (
 	"encoding/hex"
 	"fmt"
 
-	"github.com/FusionFoundation/efsn/core/vm"
+	"github.com/FusionFoundation/efsn/v4/core/vm"
 )
 
 // Iterator for disassembled EVM instructions

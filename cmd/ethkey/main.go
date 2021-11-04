@@ -20,7 +20,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/FusionFoundation/efsn/internal/flags"
+	"github.com/FusionFoundation/efsn/v4/internal/flags"
 	"gopkg.in/urfave/cli.v1"
 )
 

@@ -19,7 +19,7 @@ package rlp
 import (
 	"testing"
 
-	"github.com/FusionFoundation/efsn/common/hexutil"
+	"github.com/FusionFoundation/efsn/v4/common/hexutil"
 )
 
 // TestIterator tests some basic things about the ListIterator. A more

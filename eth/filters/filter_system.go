@@ -24,14 +24,14 @@ import (
 	"sync"
 	"time"
 
-	ethereum "github.com/FusionFoundation/efsn"
-	"github.com/FusionFoundation/efsn/common"
-	"github.com/FusionFoundation/efsn/core"
-	"github.com/FusionFoundation/efsn/core/rawdb"
-	"github.com/FusionFoundation/efsn/core/types"
-	"github.com/FusionFoundation/efsn/event"
-	"github.com/FusionFoundation/efsn/log"
-	"github.com/FusionFoundation/efsn/rpc"
+	ethereum "github.com/FusionFoundation/efsn/v4"
+	"github.com/FusionFoundation/efsn/v4/common"
+	"github.com/FusionFoundation/efsn/v4/core"
+	"github.com/FusionFoundation/efsn/v4/core/rawdb"
+	"github.com/FusionFoundation/efsn/v4/core/types"
+	"github.com/FusionFoundation/efsn/v4/event"
+	"github.com/FusionFoundation/efsn/v4/log"
+	"github.com/FusionFoundation/efsn/v4/rpc"
 )
 
 // Type determines the kind of filter and is used to put the filter in to

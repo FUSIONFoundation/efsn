@@ -25,8 +25,8 @@ import (
 	"math/big"
 	"reflect"
 
-	"github.com/FusionFoundation/efsn/accounts/abi"
-	"github.com/FusionFoundation/efsn/common"
+	"github.com/FusionFoundation/efsn/v4/accounts/abi"
+	"github.com/FusionFoundation/efsn/v4/common"
 )
 
 func verify(t *testing.T, jsondata, calldata string, exp []interface{}) {

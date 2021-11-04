@@ -22,7 +22,7 @@ import (
 	"os"
 	"runtime"
 
-	"github.com/FusionFoundation/efsn/log"
+	"github.com/FusionFoundation/efsn/v4/log"
 )
 
 func init() {

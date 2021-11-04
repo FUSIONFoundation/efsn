@@ -20,9 +20,9 @@ import (
 	"context"
 	"sync"
 
-	ethereum "github.com/FusionFoundation/efsn"
-	"github.com/FusionFoundation/efsn/event"
-	"github.com/FusionFoundation/efsn/rpc"
+	ethereum "github.com/FusionFoundation/efsn/v4"
+	"github.com/FusionFoundation/efsn/v4/event"
+	"github.com/FusionFoundation/efsn/v4/rpc"
 )
 
 // PublicDownloaderAPI provides an API which gives information about the current synchronisation status.
@@ -40,8 +40,8 @@ type PublicDownloaderAPI struct {
 // installSyncSubscription channel.
 func NewPublicDownloaderAPI(d *Downloader, m *event.TypeMux) *PublicDownloaderAPI {
 	api := &PublicDownloaderAPI{
-		d:   d,
-		mux: m,
+		d:                         d,
+		mux:                       m,
 		installSyncSubscription:   make(chan chan interface{}),
 		uninstallSyncSubscription: make(chan *uninstallSyncSubscriptionRequest),
 	}

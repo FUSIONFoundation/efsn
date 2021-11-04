@@ -22,9 +22,9 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/FusionFoundation/efsn/v4/common"
+	"github.com/FusionFoundation/efsn/v4/common/hexutil"
 	"github.com/davecgh/go-spew/spew"
-	"github.com/FusionFoundation/efsn/common"
-	"github.com/FusionFoundation/efsn/common/hexutil"
 )
 
 var unmarshalLogTests = map[string]struct {

@@ -20,7 +20,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/FusionFoundation/efsn/params"
+	"github.com/FusionFoundation/efsn/v4/params"
 )
 
 // VerifyGaslimit verifies the header gas limit according increase/decrease

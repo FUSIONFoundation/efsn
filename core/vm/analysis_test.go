@@ -19,7 +19,7 @@ package vm
 import (
 	"testing"
 
-	"github.com/FusionFoundation/efsn/crypto"
+	"github.com/FusionFoundation/efsn/v4/crypto"
 )
 
 func TestJumpDestAnalysis(t *testing.T) {

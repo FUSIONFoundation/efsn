@@ -20,7 +20,7 @@ import (
 	"bufio"
 	"errors"
 	"fmt"
-	"github.com/FusionFoundation/efsn/eth/ethconfig"
+	"github.com/FusionFoundation/efsn/v4/eth/ethconfig"
 	"io"
 	"os"
 	"reflect"
@@ -28,9 +28,9 @@ import (
 
 	cli "gopkg.in/urfave/cli.v1"
 
-	"github.com/FusionFoundation/efsn/cmd/utils"
-	"github.com/FusionFoundation/efsn/node"
-	"github.com/FusionFoundation/efsn/params"
+	"github.com/FusionFoundation/efsn/v4/cmd/utils"
+	"github.com/FusionFoundation/efsn/v4/node"
+	"github.com/FusionFoundation/efsn/v4/params"
 	"github.com/naoina/toml"
 )
 

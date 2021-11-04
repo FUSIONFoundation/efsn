@@ -17,7 +17,7 @@
 package rawdb
 
 import (
-	"github.com/FusionFoundation/efsn/ethdb"
+	"github.com/FusionFoundation/efsn/v4/ethdb"
 )
 
 // table is a wrapper around a database that prefixes each key access with a pre-

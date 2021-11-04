@@ -22,8 +22,8 @@ import (
 	"io/ioutil"
 	"strings"
 
-	"github.com/FusionFoundation/efsn/accounts/abi"
-	"github.com/FusionFoundation/efsn/common"
+	"github.com/FusionFoundation/efsn/v4/accounts/abi"
+	"github.com/FusionFoundation/efsn/v4/common"
 
 	"bytes"
 	"os"

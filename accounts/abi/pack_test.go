@@ -27,7 +27,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/FusionFoundation/efsn/common"
+	"github.com/FusionFoundation/efsn/v4/common"
 )
 
 // TestPack tests the general pack/unpack tests in packing_test.go

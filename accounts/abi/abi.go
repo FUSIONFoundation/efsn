@@ -23,8 +23,8 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/FusionFoundation/efsn/common"
-	"github.com/FusionFoundation/efsn/crypto"
+	"github.com/FusionFoundation/efsn/v4/common"
+	"github.com/FusionFoundation/efsn/v4/crypto"
 )
 
 // The ABI holds information about a contract's context and available

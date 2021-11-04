@@ -30,11 +30,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/FusionFoundation/efsn/crypto"
-	"github.com/FusionFoundation/efsn/crypto/ecies"
-	"github.com/FusionFoundation/efsn/p2p/discover"
-	"github.com/FusionFoundation/efsn/p2p/simulations/pipes"
-	"github.com/FusionFoundation/efsn/rlp"
+	"github.com/FusionFoundation/efsn/v4/crypto"
+	"github.com/FusionFoundation/efsn/v4/crypto/ecies"
+	"github.com/FusionFoundation/efsn/v4/p2p/discover"
+	"github.com/FusionFoundation/efsn/v4/p2p/simulations/pipes"
+	"github.com/FusionFoundation/efsn/v4/rlp"
 	"github.com/davecgh/go-spew/spew"
 	"golang.org/x/crypto/sha3"
 )

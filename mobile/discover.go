@@ -22,7 +22,7 @@ package geth
 import (
 	"errors"
 
-	"github.com/FusionFoundation/efsn/p2p/discv5"
+	"github.com/FusionFoundation/efsn/v4/p2p/discv5"
 )
 
 // Enode represents a host on the network.

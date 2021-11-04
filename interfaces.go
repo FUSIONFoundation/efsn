@@ -22,8 +22,8 @@ import (
 	"errors"
 	"math/big"
 
-	"github.com/FusionFoundation/efsn/common"
-	"github.com/FusionFoundation/efsn/core/types"
+	"github.com/FusionFoundation/efsn/v4/common"
+	"github.com/FusionFoundation/efsn/v4/core/types"
 )
 
 // NotFound is returned by API methods if the requested item does not exist.

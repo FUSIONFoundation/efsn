@@ -19,10 +19,10 @@ package les
 import (
 	"context"
 
-	"github.com/FusionFoundation/efsn/core"
-	"github.com/FusionFoundation/efsn/ethdb"
-	"github.com/FusionFoundation/efsn/light"
-	"github.com/FusionFoundation/efsn/log"
+	"github.com/FusionFoundation/efsn/v4/core"
+	"github.com/FusionFoundation/efsn/v4/ethdb"
+	"github.com/FusionFoundation/efsn/v4/light"
+	"github.com/FusionFoundation/efsn/v4/log"
 )
 
 // LesOdr implements light.OdrBackend

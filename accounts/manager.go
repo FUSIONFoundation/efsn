@@ -21,7 +21,7 @@ import (
 	"sort"
 	"sync"
 
-	"github.com/FusionFoundation/efsn/event"
+	"github.com/FusionFoundation/efsn/v4/event"
 )
 
 // Manager is an overarching account manager that can communicate with various

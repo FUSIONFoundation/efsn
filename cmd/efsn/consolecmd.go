@@ -24,10 +24,10 @@ import (
 	"strings"
 	"syscall"
 
-	"github.com/FusionFoundation/efsn/cmd/utils"
-	"github.com/FusionFoundation/efsn/console"
-	"github.com/FusionFoundation/efsn/node"
-	"github.com/FusionFoundation/efsn/rpc"
+	"github.com/FusionFoundation/efsn/v4/cmd/utils"
+	"github.com/FusionFoundation/efsn/v4/console"
+	"github.com/FusionFoundation/efsn/v4/node"
+	"github.com/FusionFoundation/efsn/v4/rpc"
 	"gopkg.in/urfave/cli.v1"
 )
 

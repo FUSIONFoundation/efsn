@@ -18,12 +18,12 @@ package rawdb
 
 import (
 	"encoding/json"
-	"github.com/FusionFoundation/efsn/ethdb"
+	"github.com/FusionFoundation/efsn/v4/ethdb"
 
-	"github.com/FusionFoundation/efsn/common"
-	"github.com/FusionFoundation/efsn/log"
-	"github.com/FusionFoundation/efsn/params"
-	"github.com/FusionFoundation/efsn/rlp"
+	"github.com/FusionFoundation/efsn/v4/common"
+	"github.com/FusionFoundation/efsn/v4/log"
+	"github.com/FusionFoundation/efsn/v4/params"
+	"github.com/FusionFoundation/efsn/v4/rlp"
 )
 
 // ReadDatabaseVersion retrieves the version number of the database.

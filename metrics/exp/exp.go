@@ -8,7 +8,7 @@ import (
 	"net/http"
 	"sync"
 
-	"github.com/FusionFoundation/efsn/metrics"
+	"github.com/FusionFoundation/efsn/v4/metrics"
 )
 
 type exp struct {

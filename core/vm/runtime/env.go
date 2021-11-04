@@ -17,8 +17,8 @@
 package runtime
 
 import (
-	"github.com/FusionFoundation/efsn/core"
-	"github.com/FusionFoundation/efsn/core/vm"
+	"github.com/FusionFoundation/efsn/v4/core"
+	"github.com/FusionFoundation/efsn/v4/core/vm"
 )
 
 func NewEnv(cfg *Config) *vm.EVM {

@@ -19,7 +19,7 @@ package types
 import (
 	"math/big"
 
-	"github.com/FusionFoundation/efsn/common"
+	"github.com/FusionFoundation/efsn/v4/common"
 )
 
 //go:generate gencodec -type AccessTuple -out gen_access_tuple.go

@@ -19,7 +19,7 @@ package core
 import (
 	"runtime"
 
-	"github.com/FusionFoundation/efsn/core/types"
+	"github.com/FusionFoundation/efsn/v4/core/types"
 )
 
 // senderCacher is a concurrent transaction sender recoverer anc cacher.

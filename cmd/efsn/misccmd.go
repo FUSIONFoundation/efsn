@@ -22,8 +22,8 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/FusionFoundation/efsn/cmd/utils"
-	"github.com/FusionFoundation/efsn/params"
+	"github.com/FusionFoundation/efsn/v4/cmd/utils"
+	"github.com/FusionFoundation/efsn/v4/params"
 	"gopkg.in/urfave/cli.v1"
 )
 

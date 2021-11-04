@@ -22,12 +22,12 @@ import (
 	"os"
 	"strings"
 
-	"github.com/FusionFoundation/efsn/common"
-	"github.com/FusionFoundation/efsn/internal/ethapi"
-	"github.com/FusionFoundation/efsn/internal/jsre/deps"
-	"github.com/FusionFoundation/efsn/log"
-	"github.com/FusionFoundation/efsn/signer/core"
-	"github.com/FusionFoundation/efsn/signer/storage"
+	"github.com/FusionFoundation/efsn/v4/common"
+	"github.com/FusionFoundation/efsn/v4/internal/ethapi"
+	"github.com/FusionFoundation/efsn/v4/internal/jsre/deps"
+	"github.com/FusionFoundation/efsn/v4/log"
+	"github.com/FusionFoundation/efsn/v4/signer/core"
+	"github.com/FusionFoundation/efsn/v4/signer/storage"
 	"github.com/robertkrimen/otto"
 )
 

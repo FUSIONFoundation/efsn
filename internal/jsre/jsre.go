@@ -26,7 +26,7 @@ import (
 	"math/rand"
 	"time"
 
-	"github.com/FusionFoundation/efsn/common"
+	"github.com/FusionFoundation/efsn/v4/common"
 	"github.com/dop251/goja"
 )
 

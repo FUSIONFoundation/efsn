@@ -17,8 +17,8 @@
 package vm
 
 import (
-	"github.com/FusionFoundation/efsn/common"
-	"github.com/FusionFoundation/efsn/common/math"
+	"github.com/FusionFoundation/efsn/v4/common"
+	"github.com/FusionFoundation/efsn/v4/common/math"
 	"github.com/holiman/uint256"
 )
 

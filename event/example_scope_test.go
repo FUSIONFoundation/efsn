@@ -20,7 +20,7 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/FusionFoundation/efsn/event"
+	"github.com/FusionFoundation/efsn/v4/event"
 )
 
 // This example demonstrates how SubscriptionScope can be used to control the lifetime of

@@ -26,14 +26,14 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/FusionFoundation/efsn/common"
-	"github.com/FusionFoundation/efsn/common/mclock"
-	"github.com/FusionFoundation/efsn/event"
-	"github.com/FusionFoundation/efsn/log"
-	"github.com/FusionFoundation/efsn/p2p/discover"
-	"github.com/FusionFoundation/efsn/p2p/discv5"
-	"github.com/FusionFoundation/efsn/p2p/nat"
-	"github.com/FusionFoundation/efsn/p2p/netutil"
+	"github.com/FusionFoundation/efsn/v4/common"
+	"github.com/FusionFoundation/efsn/v4/common/mclock"
+	"github.com/FusionFoundation/efsn/v4/event"
+	"github.com/FusionFoundation/efsn/v4/log"
+	"github.com/FusionFoundation/efsn/v4/p2p/discover"
+	"github.com/FusionFoundation/efsn/v4/p2p/discv5"
+	"github.com/FusionFoundation/efsn/v4/p2p/nat"
+	"github.com/FusionFoundation/efsn/v4/p2p/netutil"
 )
 
 const (

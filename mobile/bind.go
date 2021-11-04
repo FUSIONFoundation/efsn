@@ -22,10 +22,10 @@ import (
 	"math/big"
 	"strings"
 
-	"github.com/FusionFoundation/efsn/accounts/abi"
-	"github.com/FusionFoundation/efsn/accounts/abi/bind"
-	"github.com/FusionFoundation/efsn/common"
-	"github.com/FusionFoundation/efsn/core/types"
+	"github.com/FusionFoundation/efsn/v4/accounts/abi"
+	"github.com/FusionFoundation/efsn/v4/accounts/abi/bind"
+	"github.com/FusionFoundation/efsn/v4/common"
+	"github.com/FusionFoundation/efsn/v4/core/types"
 )
 
 // Signer is an interaface defining the callback when a contract requires a

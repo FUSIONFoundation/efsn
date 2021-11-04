@@ -22,8 +22,8 @@ import (
 	"os"
 	"strings"
 
-	"github.com/FusionFoundation/efsn/common/math"
-	"github.com/FusionFoundation/efsn/core/vm"
+	"github.com/FusionFoundation/efsn/v4/common/math"
+	"github.com/FusionFoundation/efsn/v4/core/vm"
 )
 
 // Compiler contains information about the parsed source

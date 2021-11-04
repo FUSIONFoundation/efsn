@@ -24,9 +24,9 @@ import (
 	"os"
 	"runtime"
 
-	"github.com/FusionFoundation/efsn/log"
-	"github.com/FusionFoundation/efsn/metrics"
-	"github.com/FusionFoundation/efsn/metrics/exp"
+	"github.com/FusionFoundation/efsn/v4/log"
+	"github.com/FusionFoundation/efsn/v4/metrics"
+	"github.com/FusionFoundation/efsn/v4/metrics/exp"
 	"github.com/fjl/memsize/memsizeui"
 	"github.com/mattn/go-colorable"
 	"github.com/mattn/go-isatty"

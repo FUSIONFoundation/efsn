@@ -30,9 +30,9 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/FusionFoundation/efsn/common"
-	"github.com/FusionFoundation/efsn/core"
-	"github.com/FusionFoundation/efsn/log"
+	"github.com/FusionFoundation/efsn/v4/common"
+	"github.com/FusionFoundation/efsn/v4/core"
+	"github.com/FusionFoundation/efsn/v4/log"
 	"golang.org/x/crypto/ssh/terminal"
 )
 

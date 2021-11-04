@@ -24,8 +24,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/FusionFoundation/efsn/common/mclock"
-	"github.com/FusionFoundation/efsn/ethdb"
+	"github.com/FusionFoundation/efsn/v4/common/mclock"
+	"github.com/FusionFoundation/efsn/v4/ethdb"
 )
 
 func TestFreeClientPoolL10C100(t *testing.T) {

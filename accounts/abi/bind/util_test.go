@@ -23,12 +23,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/FusionFoundation/efsn/accounts/abi/bind"
-	"github.com/FusionFoundation/efsn/accounts/abi/bind/backends"
-	"github.com/FusionFoundation/efsn/common"
-	"github.com/FusionFoundation/efsn/core"
-	"github.com/FusionFoundation/efsn/core/types"
-	"github.com/FusionFoundation/efsn/crypto"
+	"github.com/FusionFoundation/efsn/v4/accounts/abi/bind"
+	"github.com/FusionFoundation/efsn/v4/accounts/abi/bind/backends"
+	"github.com/FusionFoundation/efsn/v4/common"
+	"github.com/FusionFoundation/efsn/v4/core"
+	"github.com/FusionFoundation/efsn/v4/core/types"
+	"github.com/FusionFoundation/efsn/v4/crypto"
 )
 
 var testKey, _ = crypto.HexToECDSA("b71c71a67e1177ad4e901695e1b4b9ee17ae16c6668d313eac2f96dbcda3f291")

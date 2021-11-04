@@ -20,9 +20,9 @@ import (
 	"math/big"
 	"testing"
 
-	"github.com/FusionFoundation/efsn/core/vm"
-	"github.com/FusionFoundation/efsn/ethdb"
-	"github.com/FusionFoundation/efsn/params"
+	"github.com/FusionFoundation/efsn/v4/core/vm"
+	"github.com/FusionFoundation/efsn/v4/ethdb"
+	"github.com/FusionFoundation/efsn/v4/params"
 )
 
 // Tests that DAO-fork enabled clients can properly filter out fork-commencing

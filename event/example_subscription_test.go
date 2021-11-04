@@ -19,7 +19,7 @@ package event_test
 import (
 	"fmt"
 
-	"github.com/FusionFoundation/efsn/event"
+	"github.com/FusionFoundation/efsn/v4/event"
 )
 
 func ExampleNewSubscription() {

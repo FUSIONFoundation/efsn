@@ -24,7 +24,7 @@ import (
 	"math/big"
 	"strings"
 
-	"github.com/FusionFoundation/efsn/rlp"
+	"github.com/FusionFoundation/efsn/v4/rlp"
 )
 
 // RLPTest is the JSON structure of a single RLP test.

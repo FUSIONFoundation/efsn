@@ -24,12 +24,12 @@ import (
 	"net"
 	"time"
 
-	"github.com/FusionFoundation/efsn/common"
-	"github.com/FusionFoundation/efsn/common/mclock"
-	"github.com/FusionFoundation/efsn/crypto"
-	"github.com/FusionFoundation/efsn/log"
-	"github.com/FusionFoundation/efsn/p2p/netutil"
-	"github.com/FusionFoundation/efsn/rlp"
+	"github.com/FusionFoundation/efsn/v4/common"
+	"github.com/FusionFoundation/efsn/v4/common/mclock"
+	"github.com/FusionFoundation/efsn/v4/crypto"
+	"github.com/FusionFoundation/efsn/v4/log"
+	"github.com/FusionFoundation/efsn/v4/p2p/netutil"
+	"github.com/FusionFoundation/efsn/v4/rlp"
 	"golang.org/x/crypto/sha3"
 )
 

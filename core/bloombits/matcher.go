@@ -26,8 +26,8 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/FusionFoundation/efsn/common/bitutil"
-	"github.com/FusionFoundation/efsn/crypto"
+	"github.com/FusionFoundation/efsn/v4/common/bitutil"
+	"github.com/FusionFoundation/efsn/v4/crypto"
 )
 
 // bloomIndexes represents the bit indexes inside the bloom filter that belong

@@ -17,7 +17,7 @@
 package state
 
 import (
-	"github.com/FusionFoundation/efsn/common"
+	"github.com/FusionFoundation/efsn/v4/common"
 )
 
 type accessList struct {

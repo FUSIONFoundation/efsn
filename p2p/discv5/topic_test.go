@@ -21,8 +21,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/FusionFoundation/efsn/common"
-	"github.com/FusionFoundation/efsn/common/mclock"
+	"github.com/FusionFoundation/efsn/v4/common"
+	"github.com/FusionFoundation/efsn/v4/common/mclock"
 )
 
 func TestTopicRadius(t *testing.T) {

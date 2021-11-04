@@ -20,7 +20,7 @@ import (
 	"github.com/holiman/uint256"
 	"math/big"
 
-	"github.com/FusionFoundation/efsn/common"
+	"github.com/FusionFoundation/efsn/v4/common"
 )
 
 // ContractRef is a reference to the contract's backing object

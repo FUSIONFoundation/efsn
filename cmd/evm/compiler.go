@@ -21,7 +21,7 @@ import (
 	"fmt"
 	"io/ioutil"
 
-	"github.com/FusionFoundation/efsn/cmd/evm/internal/compiler"
+	"github.com/FusionFoundation/efsn/v4/cmd/evm/internal/compiler"
 
 	"gopkg.in/urfave/cli.v1"
 )

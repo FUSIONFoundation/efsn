@@ -22,7 +22,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/FusionFoundation/efsn/core/vm"
+	"github.com/FusionFoundation/efsn/v4/core/vm"
 )
 
 func TestState(t *testing.T) {

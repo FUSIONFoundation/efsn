@@ -20,8 +20,8 @@ import (
 	"fmt"
 	"math/big"
 
-	"github.com/FusionFoundation/efsn/core/types"
-	"github.com/FusionFoundation/efsn/params"
+	"github.com/FusionFoundation/efsn/v4/core/types"
+	"github.com/FusionFoundation/efsn/v4/params"
 )
 
 // VerifyEip1559Header verifies some header attributes which were changed in EIP-1559,

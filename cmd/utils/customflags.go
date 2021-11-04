@@ -27,7 +27,7 @@ import (
 	"path"
 	"strings"
 
-	"github.com/FusionFoundation/efsn/common/math"
+	"github.com/FusionFoundation/efsn/v4/common/math"
 	"gopkg.in/urfave/cli.v1"
 )
 

@@ -24,7 +24,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/FusionFoundation/efsn/common"
+	"github.com/FusionFoundation/efsn/v4/common"
 )
 
 // Type enumerator

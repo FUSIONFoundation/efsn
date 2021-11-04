@@ -23,7 +23,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/FusionFoundation/efsn/p2p/simulations/pipes"
+	"github.com/FusionFoundation/efsn/v4/p2p/simulations/pipes"
 )
 
 func TestTCPPipe(t *testing.T) {

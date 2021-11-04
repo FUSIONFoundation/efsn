@@ -17,7 +17,7 @@
 package vm
 
 import (
-	"github.com/FusionFoundation/efsn/params"
+	"github.com/FusionFoundation/efsn/v4/params"
 )
 
 type (

@@ -19,7 +19,7 @@ package node
 import (
 	"errors"
 	"fmt"
-	"github.com/FusionFoundation/efsn/core/rawdb"
+	"github.com/FusionFoundation/efsn/v4/core/rawdb"
 	"net"
 	"os"
 	"path/filepath"
@@ -27,13 +27,13 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/FusionFoundation/efsn/accounts"
-	"github.com/FusionFoundation/efsn/ethdb"
-	"github.com/FusionFoundation/efsn/event"
-	"github.com/FusionFoundation/efsn/internal/debug"
-	"github.com/FusionFoundation/efsn/log"
-	"github.com/FusionFoundation/efsn/p2p"
-	"github.com/FusionFoundation/efsn/rpc"
+	"github.com/FusionFoundation/efsn/v4/accounts"
+	"github.com/FusionFoundation/efsn/v4/ethdb"
+	"github.com/FusionFoundation/efsn/v4/event"
+	"github.com/FusionFoundation/efsn/v4/internal/debug"
+	"github.com/FusionFoundation/efsn/v4/log"
+	"github.com/FusionFoundation/efsn/v4/p2p"
+	"github.com/FusionFoundation/efsn/v4/rpc"
 	"github.com/prometheus/tsdb/fileutil"
 )
 

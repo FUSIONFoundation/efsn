@@ -19,9 +19,9 @@ package core
 import (
 	"container/list"
 
-	"github.com/FusionFoundation/efsn/core/types"
-	"github.com/FusionFoundation/efsn/ethdb"
-	"github.com/FusionFoundation/efsn/event"
+	"github.com/FusionFoundation/efsn/v4/core/types"
+	"github.com/FusionFoundation/efsn/v4/ethdb"
+	"github.com/FusionFoundation/efsn/v4/event"
 )
 
 // Implement our EthTest Manager

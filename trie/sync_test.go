@@ -20,8 +20,8 @@ import (
 	"bytes"
 	"testing"
 
-	"github.com/FusionFoundation/efsn/common"
-	"github.com/FusionFoundation/efsn/ethdb"
+	"github.com/FusionFoundation/efsn/v4/common"
+	"github.com/FusionFoundation/efsn/v4/ethdb"
 )
 
 // makeTestTrie create a sample test trie to test node-wise reconstruction.

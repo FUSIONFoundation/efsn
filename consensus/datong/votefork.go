@@ -3,8 +3,8 @@ package datong
 import (
 	"math/big"
 
-	"github.com/FusionFoundation/efsn/common"
-	"github.com/FusionFoundation/efsn/core/state"
+	"github.com/FusionFoundation/efsn/v4/common"
+	"github.com/FusionFoundation/efsn/v4/core/state"
 )
 
 //-------------------------- vote1 fork -------------------------

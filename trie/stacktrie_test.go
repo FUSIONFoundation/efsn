@@ -5,9 +5,9 @@ import (
 	"math/big"
 	"testing"
 
-	"github.com/FusionFoundation/efsn/common"
-	"github.com/FusionFoundation/efsn/crypto"
-	"github.com/FusionFoundation/efsn/ethdb/memorydb"
+	"github.com/FusionFoundation/efsn/v4/common"
+	"github.com/FusionFoundation/efsn/v4/crypto"
+	"github.com/FusionFoundation/efsn/v4/ethdb/memorydb"
 )
 
 func TestSizeBug(t *testing.T) {

@@ -22,7 +22,7 @@ import (
 	"math/big"
 	"time"
 
-	"github.com/FusionFoundation/efsn/rpc"
+	"github.com/FusionFoundation/efsn/v4/rpc"
 )
 
 // In this example, our client whishes to track the latest 'block number'

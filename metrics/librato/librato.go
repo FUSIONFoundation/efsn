@@ -7,7 +7,7 @@ import (
 	"regexp"
 	"time"
 
-	"github.com/FusionFoundation/efsn/metrics"
+	"github.com/FusionFoundation/efsn/v4/metrics"
 )
 
 // a regexp for extracting the unit from time.Duration.String

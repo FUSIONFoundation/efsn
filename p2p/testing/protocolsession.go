@@ -22,10 +22,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/FusionFoundation/efsn/log"
-	"github.com/FusionFoundation/efsn/p2p"
-	"github.com/FusionFoundation/efsn/p2p/discover"
-	"github.com/FusionFoundation/efsn/p2p/simulations/adapters"
+	"github.com/FusionFoundation/efsn/v4/log"
+	"github.com/FusionFoundation/efsn/v4/p2p"
+	"github.com/FusionFoundation/efsn/v4/p2p/discover"
+	"github.com/FusionFoundation/efsn/v4/p2p/simulations/adapters"
 )
 
 var errTimedOut = errors.New("timed out")

@@ -27,7 +27,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/FusionFoundation/efsn/p2p/discover"
+	"github.com/FusionFoundation/efsn/v4/p2p/discover"
 )
 
 func TestMocker(t *testing.T) {
