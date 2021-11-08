@@ -1466,9 +1466,7 @@ func AutoBuyTicket(enable bool) {
 		if err == nil {
 			fbase := common.FusionBaseArgs{From: coinbase}
 			args := common.BuyTicketArgs{FusionBaseArgs: fbase}
-			if _, err := fusionTransactionAPI.BuyTicket(context.TODO(), args); err != nil {
-				log.Warn("Failed Buying Ticket", "err", err)
-			}
+			fusionTransactionAPI.BuyTicket(context.TODO(), args)
 		}
 	}
 }
