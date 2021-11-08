@@ -917,7 +917,7 @@ func (w *worker) commitNewWork(interrupt *int32, noempty bool, timestamp int64) 
 	// Fill the block with all available pending transactions.
 	pending := w.eth.TxPool().Pending(true)
 	// Short circuit if there is no available pending transactions
-	if len(pending) == 0 {
+	if noempty && len(pending) == 0 {
 		w.updateSnapshot()
 		return
 	}
