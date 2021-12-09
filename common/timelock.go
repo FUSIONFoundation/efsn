@@ -520,6 +520,22 @@ func (u *TimeLockItem) MarshalJSON() ([]byte, error) {
 	})
 }
 
+func (u *TimeLockItem) UnmarshalJSON(input []byte) error {
+	temp := struct {
+		StartTime uint64
+		EndTime   uint64
+		Value     string
+	}{}
+	err := json.Unmarshal(input, &temp)
+	if err != nil {
+		return err
+	}
+	u.StartTime = temp.StartTime
+	u.EndTime = temp.EndTime
+	u.Value, _ = new(big.Int).SetString(temp.Value, 10)
+	return err
+}
+
 func (z *TimeLock) ToDisplay() *TimeLock {
 	t := z.Clone()
 	items := t.Items

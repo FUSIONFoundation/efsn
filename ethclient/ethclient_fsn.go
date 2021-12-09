@@ -3,7 +3,6 @@ package ethclient
 import (
 	"context"
 	"github.com/FusionFoundation/efsn/v4/common"
-	"github.com/FusionFoundation/efsn/v4/common/hexutil"
 	"math/big"
 )
 
@@ -18,10 +17,10 @@ func (ec *Client) GetBlockReward(ctx context.Context, blockNumber *big.Int) (str
 
 // AssetBalanceAt returns the wei balance of the given account.
 // The block number can be nil, in which case the balance is taken from the latest known block.
-func (ec *Client) AssetBalanceAt(ctx context.Context, assetId common.Hash, account common.Address, blockNumber *big.Int) (*big.Int, error) {
-	var result hexutil.Big
+func (ec *Client) AssetBalanceAt(ctx context.Context, assetId common.Hash, account common.Address, blockNumber *big.Int) (string, error) {
+	var result string
 	err := ec.c.CallContext(ctx, &result, "fsn_getBalance", assetId, account, toBlockNumArg(blockNumber))
-	return (*big.Int)(&result), err
+	return result, err
 }
 
 // AssetTimeLockBalanceAt returns the wei timelock balance of the given account.
