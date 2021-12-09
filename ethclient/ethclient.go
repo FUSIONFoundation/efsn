@@ -505,12 +505,3 @@ func toCallArg(msg ethereum.CallMsg) interface{} {
 	}
 	return arg
 }
-
-// GetBlockReward get the Total Reward from Block
-func (ec *Client) GetBlockReward(ctx context.Context, blockNumber *big.Int) (string, error) {
-	var reward string
-	if err := ec.c.CallContext(ctx, &reward, "fsn_getBlockReward", toBlockNumArg(blockNumber)); err != nil {
-		return "", err
-	}
-	return reward, nil
-}
