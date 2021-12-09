@@ -27,7 +27,7 @@ import (
 
 	"github.com/FusionFoundation/efsn/v4"
 	"github.com/FusionFoundation/efsn/v4/accounts/abi"
-	"github.com/FusionFoundation/efsn/v4/accounts/abi/bind"∂
+	"github.com/FusionFoundation/efsn/v4/accounts/abi/bind"
 	"github.com/FusionFoundation/efsn/v4/common"
 	"github.com/FusionFoundation/efsn/v4/common/math"
 	"github.com/FusionFoundation/efsn/v4/core"
