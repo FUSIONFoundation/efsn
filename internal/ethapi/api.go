@@ -37,6 +37,7 @@ import (
 	"github.com/FusionFoundation/efsn/v4/core/types"
 	"github.com/FusionFoundation/efsn/v4/core/vm"
 	"github.com/FusionFoundation/efsn/v4/crypto"
+	"github.com/FusionFoundation/efsn/v4/eth/tracers/logger"
 	"github.com/FusionFoundation/efsn/v4/log"
 	"github.com/FusionFoundation/efsn/v4/p2p"
 	"github.com/FusionFoundation/efsn/v4/params"
@@ -922,7 +923,7 @@ type StructLogRes struct {
 }
 
 // FormatLogs formats EVM returned structured logs for json output
-func FormatLogs(logs []vm.StructLog) []StructLogRes {
+func FormatLogs(logs []logger.StructLog) []StructLogRes {
 	formatted := make([]StructLogRes, len(logs))
 	for index, trace := range logs {
 		formatted[index] = StructLogRes{

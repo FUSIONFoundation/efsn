@@ -34,6 +34,7 @@ import (
 	"github.com/FusionFoundation/efsn/v4/core/types"
 	"github.com/FusionFoundation/efsn/v4/core/vm"
 	"github.com/FusionFoundation/efsn/v4/crypto"
+	"github.com/FusionFoundation/efsn/v4/eth/tracers/logger"
 	"github.com/FusionFoundation/efsn/v4/log"
 	"github.com/FusionFoundation/efsn/v4/params"
 	"github.com/FusionFoundation/efsn/v4/rlp"
@@ -89,10 +90,10 @@ func Transition(ctx *cli.Context) error {
 
 	var (
 		err     error
-		tracer  vm.Tracer
+		tracer  vm.EVMLogger
 		baseDir = ""
 	)
-	var getTracer func(txIndex int, txHash common.Hash) (vm.Tracer, error)
+	var getTracer func(txIndex int, txHash common.Hash) (vm.EVMLogger, error)
 
 	// If user specified a basedir, make sure it exists
 	if ctx.IsSet(OutputBasedir.Name) {
@@ -106,7 +107,7 @@ func Transition(ctx *cli.Context) error {
 	}
 	if ctx.Bool(TraceFlag.Name) {
 		// Configure the EVM logger
-		logConfig := &vm.LogConfig{
+		logConfig := &logger.Config{
 			DisableStack:     ctx.Bool(TraceDisableStackFlag.Name),
 			EnableMemory:     !ctx.Bool(TraceDisableMemoryFlag.Name),
 			EnableReturnData: !ctx.Bool(TraceDisableReturnDataFlag.Name),
@@ -119,7 +120,7 @@ func Transition(ctx *cli.Context) error {
 				prevFile.Close()
 			}
 		}()
-		getTracer = func(txIndex int, txHash common.Hash) (vm.Tracer, error) {
+		getTracer = func(txIndex int, txHash common.Hash) (vm.EVMLogger, error) {
 			if prevFile != nil {
 				prevFile.Close()
 			}
@@ -128,10 +129,10 @@ func Transition(ctx *cli.Context) error {
 				return nil, NewError(ErrorIO, fmt.Errorf("failed creating trace-file: %v", err))
 			}
 			prevFile = traceFile
-			return vm.NewJSONLogger(logConfig, traceFile), nil
+			return logger.NewJSONLogger(logConfig, traceFile), nil
 		}
 	} else {
-		getTracer = func(txIndex int, txHash common.Hash) (tracer vm.Tracer, err error) {
+		getTracer = func(txIndex int, txHash common.Hash) (tracer vm.EVMLogger, err error) {
 			return nil, nil
 		}
 	}

@@ -41,6 +41,10 @@ import (
 	"github.com/FusionFoundation/efsn/v4/metrics"
 	"github.com/FusionFoundation/efsn/v4/node"
 	gopsutil "github.com/shirou/gopsutil/mem"
+
+	// Force-load the tracer engines to trigger registration
+	_ "github.com/FusionFoundation/efsn/v4/eth/tracers/js"
+	_ "github.com/FusionFoundation/efsn/v4/eth/tracers/native"
 	"gopkg.in/urfave/cli.v1"
 )
 

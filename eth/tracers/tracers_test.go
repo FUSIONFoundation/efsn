@@ -17,124 +17,110 @@
 package tracers
 
 import (
-	"bytes"
-	"encoding/json"
-	"errors"
 	"math/big"
 	"testing"
-	"time"
 
 	"github.com/FusionFoundation/efsn/v4/common"
+	"github.com/FusionFoundation/efsn/v4/common/hexutil"
+	"github.com/FusionFoundation/efsn/v4/core"
+	"github.com/FusionFoundation/efsn/v4/core/rawdb"
+	"github.com/FusionFoundation/efsn/v4/core/types"
 	"github.com/FusionFoundation/efsn/v4/core/vm"
+	"github.com/FusionFoundation/efsn/v4/crypto"
+	"github.com/FusionFoundation/efsn/v4/eth/tracers/logger"
 	"github.com/FusionFoundation/efsn/v4/params"
+	"github.com/FusionFoundation/efsn/v4/tests"
 )
 
-type account struct{}
-
-func (account) SubBalance(amount *big.Int)                          {}
-func (account) AddBalance(amount *big.Int)                          {}
-func (account) SetAddress(common.Address)                           {}
-func (account) Value() *big.Int                                     { return nil }
-func (account) SetBalance(*big.Int)                                 {}
-func (account) SetNonce(uint64)                                     {}
-func (account) Balance() *big.Int                                   { return nil }
-func (account) Address() common.Address                             { return common.Address{} }
-func (account) ReturnGas(*big.Int)                                  {}
-func (account) SetCode(common.Hash, []byte)                         {}
-func (account) ForEachStorage(cb func(key, value common.Hash) bool) {}
-
-func runTrace(tracer *Tracer) (json.RawMessage, error) {
-	env := vm.NewEVM(vm.Context{BlockNumber: big.NewInt(1)}, nil, params.TestChainConfig, vm.Config{Debug: true, Tracer: tracer})
-
-	contract := vm.NewContract(account{}, account{}, big.NewInt(0), 10000)
-	contract.Code = []byte{byte(vm.PUSH1), 0x1, byte(vm.PUSH1), 0x1, 0x0}
-
-	_, err := env.Interpreter().Run(contract, []byte{}, false)
-	if err != nil {
-		return nil, err
-	}
-	return tracer.GetResult()
+// callTrace is the result of a callTracer run.
+type callTrace struct {
+	Type    string          `json:"type"`
+	From    common.Address  `json:"from"`
+	To      common.Address  `json:"to"`
+	Input   hexutil.Bytes   `json:"input"`
+	Output  hexutil.Bytes   `json:"output"`
+	Gas     *hexutil.Uint64 `json:"gas,omitempty"`
+	GasUsed *hexutil.Uint64 `json:"gasUsed,omitempty"`
+	Value   *hexutil.Big    `json:"value,omitempty"`
+	Error   string          `json:"error,omitempty"`
+	Calls   []callTrace     `json:"calls,omitempty"`
 }
 
-func TestTracing(t *testing.T) {
-	tracer, err := New("{count: 0, step: function() { this.count += 1; }, fault: function() {}, result: function() { return this.count; }}")
+func BenchmarkTransactionTrace(b *testing.B) {
+	key, _ := crypto.HexToECDSA("b71c71a67e1177ad4e901695e1b4b9ee17ae16c6668d313eac2f96dbcda3f291")
+	from := crypto.PubkeyToAddress(key.PublicKey)
+	gas := uint64(1000000) // 1M gas
+	to := common.HexToAddress("0x00000000000000000000000000000000deadbeef")
+	signer := types.LatestSignerForChainID(big.NewInt(1337))
+	tx, err := types.SignNewTx(key, signer,
+		&types.LegacyTx{
+			Nonce:    1,
+			GasPrice: big.NewInt(500),
+			Gas:      gas,
+			To:       &to,
+		})
 	if err != nil {
-		t.Fatal(err)
+		b.Fatal(err)
 	}
-
-	ret, err := runTrace(tracer)
+	txContext := vm.TxContext{
+		Origin:   from,
+		GasPrice: tx.GasPrice(),
+	}
+	context := vm.BlockContext{
+		CanTransfer: core.CanTransfer,
+		Transfer:    core.Transfer,
+		Coinbase:    common.Address{},
+		BlockNumber: new(big.Int).SetUint64(uint64(5)),
+		Time:        new(big.Int).SetUint64(uint64(5)),
+		Difficulty:  big.NewInt(0xffffffff),
+		GasLimit:    gas,
+		BaseFee:     big.NewInt(8),
+	}
+	alloc := core.GenesisAlloc{}
+	// The code pushes 'deadbeef' into memory, then the other params, and calls CREATE2, then returns
+	// the address
+	loop := []byte{
+		byte(vm.JUMPDEST), //  [ count ]
+		byte(vm.PUSH1), 0, // jumpdestination
+		byte(vm.JUMP),
+	}
+	alloc[common.HexToAddress("0x00000000000000000000000000000000deadbeef")] = core.GenesisAccount{
+		Nonce:   1,
+		Code:    loop,
+		Balance: big.NewInt(1),
+	}
+	alloc[from] = core.GenesisAccount{
+		Nonce:   1,
+		Code:    []byte{},
+		Balance: big.NewInt(500000000000000),
+	}
+	statedb := tests.MakePreState(rawdb.NewMemoryDatabase(), alloc)
+	// Create the tracer, the EVM environment and run it
+	tracer := logger.NewStructLogger(&logger.Config{
+		Debug: false,
+		//DisableStorage: true,
+		//EnableMemory: false,
+		//EnableReturnData: false,
+	})
+	evm := vm.NewEVM(context, txContext, statedb, params.AllEthashProtocolChanges, vm.Config{Debug: true, Tracer: tracer})
+	msg, err := tx.AsMessage(signer, nil)
 	if err != nil {
-		t.Fatal(err)
+		b.Fatalf("failed to prepare transaction for tracing: %v", err)
 	}
-	if !bytes.Equal(ret, []byte("3")) {
-		t.Errorf("Expected return value to be 3, got %s", string(ret))
-	}
-}
+	b.ResetTimer()
+	b.ReportAllocs()
 
-func TestStack(t *testing.T) {
-	tracer, err := New("{depths: [], step: function(log) { this.depths.push(log.stack.length()); }, fault: function() {}, result: function() { return this.depths; }}")
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	ret, err := runTrace(tracer)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !bytes.Equal(ret, []byte("[0,1,2]")) {
-		t.Errorf("Expected return value to be [0,1,2], got %s", string(ret))
-	}
-}
-
-func TestOpcodes(t *testing.T) {
-	tracer, err := New("{opcodes: [], step: function(log) { this.opcodes.push(log.op.toString()); }, fault: function() {}, result: function() { return this.opcodes; }}")
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	ret, err := runTrace(tracer)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !bytes.Equal(ret, []byte("[\"PUSH1\",\"PUSH1\",\"STOP\"]")) {
-		t.Errorf("Expected return value to be [\"PUSH1\",\"PUSH1\",\"STOP\"], got %s", string(ret))
-	}
-}
-
-func TestHalt(t *testing.T) {
-	t.Skip("duktape doesn't support abortion")
-
-	timeout := errors.New("stahp")
-	tracer, err := New("{step: function() { while(1); }, result: function() { return null; }}")
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	go func() {
-		time.Sleep(1 * time.Second)
-		tracer.Stop(timeout)
-	}()
-
-	if _, err = runTrace(tracer); err.Error() != "stahp    in server-side tracer function 'step'" {
-		t.Errorf("Expected timeout error, got %v", err)
-	}
-}
-
-func TestHaltBetweenSteps(t *testing.T) {
-	tracer, err := New("{step: function() {}, fault: function() {}, result: function() { return null; }}")
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	env := vm.NewEVM(vm.Context{BlockNumber: big.NewInt(1)}, nil, params.TestChainConfig, vm.Config{Debug: true, Tracer: tracer})
-	contract := vm.NewContract(&account{}, &account{}, big.NewInt(0), 0)
-
-	tracer.CaptureState(env, 0, 0, 0, 0, nil, nil, contract, 0, nil)
-	timeout := errors.New("stahp")
-	tracer.Stop(timeout)
-	tracer.CaptureState(env, 0, 0, 0, 0, nil, nil, contract, 0, nil)
-
-	if _, err := tracer.GetResult(); err.Error() != timeout.Error() {
-		t.Errorf("Expected timeout error, got %v", err)
+	for i := 0; i < b.N; i++ {
+		snap := statedb.Snapshot()
+		st := core.NewStateTransition(evm, msg, new(core.GasPool).AddGas(tx.Gas()))
+		_, err = st.TransitionDb()
+		if err != nil {
+			b.Fatal(err)
+		}
+		statedb.RevertToSnapshot(snap)
+		if have, want := len(tracer.StructLogs()), 244752; have != want {
+			b.Fatalf("trace wrong, want %d steps, have %d", want, have)
+		}
+		tracer.Reset()
 	}
 }
