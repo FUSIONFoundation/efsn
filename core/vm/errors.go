@@ -36,6 +36,10 @@ var (
 	ErrGasUintOverflow          = errors.New("gas uint64 overflow")
 	ErrInvalidCode              = errors.New("invalid code: must not begin with 0xef")
 
+	// errStopToken is an internal token indicating interpreter loop termination,
+	// never returned to outside callers.
+	errStopToken = errors.New("stop token")
+
 	// Fusion Error
 	ErrMustCallByContract      = errors.New("must call by contract")
 	ErrForbidCallByContract    = errors.New("forbid call by contract")
