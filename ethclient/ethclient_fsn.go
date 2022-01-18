@@ -49,7 +49,7 @@ type CallTrace struct {
 
 var callTracer = "callTracer"
 
-func (ec *Client) traceInternalTx(ctx context.Context, tx common.Hash) (*CallTrace, error) {
+func (ec *Client) TraceInternalTx(ctx context.Context, tx common.Hash) (*CallTrace, error) {
 	var result CallTrace
 	err := ec.c.CallContext(ctx, &result, "debug_traceTransaction", tx, &tracers.TraceConfig{Tracer: &callTracer})
 	return &result, err
