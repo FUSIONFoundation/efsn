@@ -48,9 +48,10 @@ type CallTrace struct {
 }
 
 var callTracer = "callTracer"
+var callTracerTimeout = "10s"
 
 func (ec *Client) TraceInternalTx(ctx context.Context, tx common.Hash) (*CallTrace, error) {
 	var result CallTrace
-	err := ec.c.CallContext(ctx, &result, "debug_traceTransaction", tx, &tracers.TraceConfig{Tracer: &callTracer})
+	err := ec.c.CallContext(ctx, &result, "debug_traceTransaction", tx, &tracers.TraceConfig{Tracer: &callTracer, Timeout: &callTracerTimeout})
 	return &result, err
 }
