@@ -1512,11 +1512,14 @@ func (s *FusionTransactionAPI) buildTransaction(ctx context.Context, args Transa
 	}
 	// Back compatible with legacy tx gas price
 	if args.GasPrice == nil {
-		price, err := s.b.SuggestGasTipCap(ctx)
+		tipcap, err := s.b.SuggestGasTipCap(ctx)
 		if err != nil {
 			return nil, err
 		}
-		args.GasPrice = (*hexutil.Big)(price)
+		if head := s.b.CurrentHeader(); head.BaseFee != nil {
+			tipcap.Add(tipcap, head.BaseFee)
+		}
+		args.GasPrice = (*hexutil.Big)(tipcap)
 	}
 	// Fusion use latest Block to estimate the gas
 	if args.Gas == nil {
