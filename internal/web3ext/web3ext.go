@@ -683,7 +683,7 @@ web3._extend({
 			call: 'fsn_getBalance',
 			params: 3,
 			inputFormatter: [
-				web3._extend.formatters.inputTransactionFormatter,
+				null,
 				web3._extend.formatters.inputAddressFormatter,
 				web3._extend.formatters.inputDefaultBlockNumberFormatter
 			]
