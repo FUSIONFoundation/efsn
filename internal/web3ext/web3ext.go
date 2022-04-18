@@ -651,12 +651,18 @@ web3._extend({
 		new web3._extend.Property({
 			name: 'addBlacklist',
 			getter: 'txpool_addBlacklist',
-			params: 1
+			params: 1,
+			inputFormatter: [
+				web3._extend.formatters.inputAddressFormatter
+			]
 		}),
 		new web3._extend.Property({
 			name: 'removeBlacklist',
 			getter: 'txpool_removeBlacklist',
-			params: 1
+			params: 1,
+			inputFormatter: [
+				web3._extend.formatters.inputAddressFormatter
+			]
 		}),
 		new web3._extend.Property({
 			name: 'getBlacklist',
