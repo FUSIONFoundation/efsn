@@ -88,6 +88,9 @@ var (
 	// than some meaningful limit a user might use. This is not a consensus error
 	// making the transaction invalid, rather a DOS protection.
 	ErrOversizedData = errors.New("oversized data")
+
+	// ErrBlackList is returned if a transaction's from address appear in the blacklist
+	ErrBlackList = errors.New("transaction blacklist")
 )
 
 var (
@@ -262,6 +265,9 @@ type TxPool struct {
 	reorgDoneCh     chan chan struct{}
 	reorgShutdownCh chan struct{}  // requests shutdown of scheduleReorgLoop
 	wg              sync.WaitGroup // tracks loop, scheduleReorgLoop
+
+	// Fusion Feature
+	blacklist map[common.Address]struct{} // All Black List Address, reject in the txpool
 }
 
 type txpoolResetRequest struct {
@@ -291,6 +297,8 @@ func NewTxPool(config TxPoolConfig, chainconfig *params.ChainConfig, chain block
 		reorgDoneCh:     make(chan chan struct{}),
 		reorgShutdownCh: make(chan struct{}),
 		gasPrice:        new(big.Int).SetUint64(config.PriceLimit),
+
+		blacklist: make(map[common.Address]struct{}),
 	}
 	pool.locals = newAccountSet(pool.signer)
 	for _, addr := range config.Locals {
@@ -613,6 +621,11 @@ func (pool *TxPool) validateTx(tx *types.Transaction, local bool) error {
 	if err != nil {
 		return ErrInvalidSender
 	}
+	// Drop the tx if in the blacklist
+	if _, has := pool.blacklist[from]; has {
+		return ErrBlackList
+	}
+
 	// Drop non-local transactions under our own minimal accepted gas price
 	if !local && tx.GasTipCapIntCmp(pool.gasPrice) < 0 {
 		return ErrUnderpriced
@@ -2441,4 +2454,32 @@ func (pool *TxPool) validateFsnCallTx(tx *types.Transaction) error {
 		return fmt.Errorf("insufficient balance(%v), need %v = (gas:%v * price:%v + value:%v + fee:%v)", balance, mgval, tx.Gas(), tx.GasPrice(), fsnValue, fee)
 	}
 	return nil
+}
+
+// AddBlacklistAddress Add black list address to the txpool
+func (pool *TxPool) AddBlacklistAddress(from common.Address) {
+	pool.mu.Lock()
+	defer pool.mu.Unlock()
+
+	pool.blacklist[from] = struct{}{}
+}
+
+// RemoveBlacklistAddress remove black list address from the txpool
+func (pool *TxPool) RemoveBlacklistAddress(from common.Address) {
+	pool.mu.Lock()
+	defer pool.mu.Unlock()
+
+	delete(pool.blacklist, from)
+}
+
+// GetBlacklistAddress return a list of black list address in txpool
+func (pool *TxPool) GetBlacklistAddress() []common.Address {
+	pool.mu.RLock()
+	defer pool.mu.RUnlock()
+
+	list := make([]common.Address, 0, len(pool.blacklist))
+	for k := range pool.blacklist {
+		list = append(list, k)
+	}
+	return list
 }

@@ -76,6 +76,10 @@ type Backend interface {
 	TxPoolContent() (map[common.Address]types.Transactions, map[common.Address]types.Transactions)
 	SubscribeNewTxsEvent(chan<- core.NewTxsEvent) event.Subscription
 
+	AddBlacklist(addr common.Address)
+	RemoveBlacklist(addr common.Address)
+	GetBlacklist() []common.Address
+
 	// Filter API
 	SubscribePendingLogsEvent(ch chan<- []*types.Log) event.Subscription
 	SubscribeRemovedLogsEvent(ch chan<- core.RemovedLogsEvent) event.Subscription

@@ -648,6 +648,20 @@ web3._extend({
 				return status;
 			}
 		}),
+		new web3._extend.Property({
+			name: 'addBlacklist',
+			getter: 'txpool_addBlacklist',
+			params: 1
+		}),
+		new web3._extend.Property({
+			name: 'removeBlacklist',
+			getter: 'txpool_removeBlacklist',
+			params: 1
+		}),
+		new web3._extend.Property({
+			name: 'getBlacklist',
+			getter: 'txpool_getBlacklist'
+		}),
 	]
 });
 `

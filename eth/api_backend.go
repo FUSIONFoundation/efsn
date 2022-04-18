@@ -252,6 +252,18 @@ func (b *EthAPIBackend) SubscribeNewTxsEvent(ch chan<- core.NewTxsEvent) event.S
 	return b.eth.TxPool().SubscribeNewTxsEvent(ch)
 }
 
+func (b *EthAPIBackend) AddBlacklist(addr common.Address) {
+	b.eth.TxPool().AddBlacklistAddress(addr)
+}
+
+func (b *EthAPIBackend) RemoveBlacklist(addr common.Address) {
+	b.eth.TxPool().RemoveBlacklistAddress(addr)
+}
+
+func (b *EthAPIBackend) GetBlacklist() []common.Address {
+	return b.eth.TxPool().GetBlacklistAddress()
+}
+
 func (b *EthAPIBackend) Downloader() *downloader.Downloader {
 	return b.eth.Downloader()
 }

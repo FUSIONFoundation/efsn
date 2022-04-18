@@ -180,6 +180,20 @@ func (s *PublicTxPoolAPI) Inspect() map[string]map[string]map[string]string {
 	return content
 }
 
+func (s *PublicTxPoolAPI) AddBlacklist(addr common.Address) error {
+	s.b.AddBlacklist(addr)
+	return nil
+}
+
+func (s *PublicTxPoolAPI) RemoveBlacklist(addr common.Address) error {
+	s.b.RemoveBlacklist(addr)
+	return nil
+}
+
+func (s *PublicTxPoolAPI) GetBlacklist() []common.Address {
+	return s.b.GetBlacklist()
+}
+
 // PublicAccountAPI provides an API to access accounts managed by this node.
 // It offers only methods that can retrieve accounts.
 type PublicAccountAPI struct {

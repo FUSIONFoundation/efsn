@@ -199,6 +199,16 @@ func (b *LesApiBackend) SubscribeNewTxsEvent(ch chan<- core.NewTxsEvent) event.S
 	return b.eth.txPool.SubscribeNewTxsEvent(ch)
 }
 
+func (b *LesApiBackend) AddBlacklist(addr common.Address) {
+}
+
+func (b *LesApiBackend) RemoveBlacklist(addr common.Address) {
+}
+
+func (b *LesApiBackend) GetBlacklist() []common.Address {
+	return []common.Address{}
+}
+
 func (b *LesApiBackend) SubscribeChainEvent(ch chan<- core.ChainEvent) event.Subscription {
 	return b.eth.blockchain.SubscribeChainEvent(ch)
 }
