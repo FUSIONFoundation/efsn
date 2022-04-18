@@ -180,14 +180,14 @@ func (s *PublicTxPoolAPI) Inspect() map[string]map[string]map[string]string {
 	return content
 }
 
-func (s *PublicTxPoolAPI) AddBlacklist(addr common.Address) error {
+func (s *PublicTxPoolAPI) AddBlacklist(addr common.Address) bool {
 	s.b.AddBlacklist(addr)
-	return nil
+	return true
 }
 
-func (s *PublicTxPoolAPI) RemoveBlacklist(addr common.Address) error {
+func (s *PublicTxPoolAPI) RemoveBlacklist(addr common.Address) bool {
 	s.b.RemoveBlacklist(addr)
-	return nil
+	return true
 }
 
 func (s *PublicTxPoolAPI) GetBlacklist() []common.Address {
