@@ -628,7 +628,24 @@ web3._extend({
 const TxPool_JS = `
 web3._extend({
 	property: 'txpool',
-	methods: [],
+	methods: [
+		new web3._extend.Method({
+			name: 'addBlacklist',
+			call: 'txpool_addBlacklist',
+			params: 1,
+			inputFormatter: [web3._extend.formatters.inputAddressFormatter]
+		}),
+		new web3._extend.Property({
+			name: 'removeBlacklist',
+			call: 'txpool_removeBlacklist',
+			params: 1,
+			inputFormatter: [web3._extend.formatters.inputAddressFormatter]
+		}),
+		new web3._extend.Property({
+			name: 'getBlacklist',
+			call: 'txpool_getBlacklist'
+		}),
+	],
 	properties:
 	[
 		new web3._extend.Property({
@@ -647,26 +664,6 @@ web3._extend({
 				status.queued = web3._extend.utils.toDecimal(status.queued);
 				return status;
 			}
-		}),
-		new web3._extend.Property({
-			name: 'addBlacklist',
-			getter: 'txpool_addBlacklist',
-			params: 1,
-			inputFormatter: [
-				web3._extend.formatters.inputAddressFormatter
-			]
-		}),
-		new web3._extend.Property({
-			name: 'removeBlacklist',
-			getter: 'txpool_removeBlacklist',
-			params: 1,
-			inputFormatter: [
-				web3._extend.formatters.inputAddressFormatter
-			]
-		}),
-		new web3._extend.Property({
-			name: 'getBlacklist',
-			getter: 'txpool_getBlacklist'
 		}),
 	]
 });
