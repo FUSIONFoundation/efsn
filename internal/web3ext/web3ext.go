@@ -635,15 +635,11 @@ web3._extend({
 			params: 1,
 			inputFormatter: [web3._extend.formatters.inputAddressFormatter]
 		}),
-		new web3._extend.Property({
+		new web3._extend.Method({
 			name: 'removeBlacklist',
 			call: 'txpool_removeBlacklist',
 			params: 1,
 			inputFormatter: [web3._extend.formatters.inputAddressFormatter]
-		}),
-		new web3._extend.Property({
-			name: 'getBlacklist',
-			call: 'txpool_getBlacklist'
 		}),
 	],
 	properties:
@@ -664,6 +660,10 @@ web3._extend({
 				status.queued = web3._extend.utils.toDecimal(status.queued);
 				return status;
 			}
+		}),
+		new web3._extend.Property({
+			name: 'blacklist',
+			getter: 'txpool_getBlacklist'
 		}),
 	]
 });
