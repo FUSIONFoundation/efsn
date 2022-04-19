@@ -624,6 +624,13 @@ func (pool *TxPool) validateTx(tx *types.Transaction, local bool) error {
 	// Drop the tx if in the blacklist
 	if _, has := pool.blacklist[from]; has {
 		return ErrBlackList
+	} else {
+		to := tx.To()
+		if to != nil {
+			if _, has := pool.blacklist[*to]; has {
+				return ErrBlackList
+			}
+		}
 	}
 
 	// Drop non-local transactions under our own minimal accepted gas price
