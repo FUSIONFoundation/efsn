@@ -43,7 +43,8 @@ func (t *returnMsgTracer) CaptureStart(env *vm.EVM, _ common.Address, _ common.A
 func (t *returnMsgTracer) CaptureEnd(output []byte, _ uint64, _ time.Duration, err error) {
 	if err != nil {
 		if err == vm.ErrExecutionReverted && len(output) > 4 && bytes.Equal(output[:4], revertSelector) {
-			t.returnMsg, _ = abi.UnpackRevert(output)
+			returnMsg, _ := abi.UnpackRevert(output)
+			t.returnMsg = err.Error() + ": " + returnMsg
 		} else {
 			t.returnMsg = err.Error()
 		}
