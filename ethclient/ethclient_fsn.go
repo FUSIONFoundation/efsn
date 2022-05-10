@@ -55,3 +55,11 @@ func (ec *Client) TraceInternalTx(ctx context.Context, tx common.Hash) (*CallTra
 	err := ec.c.CallContext(ctx, &result, "debug_traceTransaction", tx, &tracers.TraceConfig{Tracer: &callTracer, Timeout: &callTracerTimeout})
 	return &result, err
 }
+
+var returnMsgTracer = "returnMsgTracer"
+
+func (ec *Client) TraceTxErrMsg(ctx context.Context, tx common.Hash) (string, error) {
+	var result string
+	err := ec.c.CallContext(ctx, &result, "debug_traceTransaction", tx, &tracers.TraceConfig{Tracer: &returnMsgTracer})
+	return result, err
+}
