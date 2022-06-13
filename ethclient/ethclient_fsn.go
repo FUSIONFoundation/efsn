@@ -2,6 +2,7 @@ package ethclient
 
 import (
 	"context"
+	ethereum "github.com/FusionFoundation/efsn/v4"
 	"github.com/FusionFoundation/efsn/v4/common"
 	"github.com/FusionFoundation/efsn/v4/common/hexutil"
 	"github.com/FusionFoundation/efsn/v4/eth/tracers"
@@ -61,5 +62,23 @@ var returnMsgTracer = "returnMsgTracer"
 func (ec *Client) TraceTxErrMsg(ctx context.Context, tx common.Hash) (string, error) {
 	var result string
 	err := ec.c.CallContext(ctx, &result, "debug_traceTransaction", tx, &tracers.TraceConfig{Tracer: &returnMsgTracer})
+	return result, err
+}
+
+func (ec *Client) GetSwap(ctx context.Context, swapID common.Hash, blockNumber *big.Int) (*common.Swap, error) {
+	var result *common.Swap
+	err := ec.c.CallContext(ctx, &result, "fsn_getSwap", swapID, toBlockNumArg(blockNumber))
+	if err == nil && result == nil {
+		return nil, ethereum.NotFound
+	}
+	return result, err
+}
+
+func (ec *Client) GetMultiSwap(ctx context.Context, swapID common.Hash, blockNumber *big.Int) (*common.MultiSwap, error) {
+	var result *common.MultiSwap
+	err := ec.c.CallContext(ctx, &result, "fsn_getMultiSwap", swapID, toBlockNumArg(blockNumber))
+	if err == nil && result == nil {
+		return nil, ethereum.NotFound
+	}
 	return result, err
 }
