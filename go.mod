@@ -27,7 +27,7 @@ require (
 	github.com/holiman/uint256 v1.2.0
 	github.com/huin/goupnp v1.0.3
 	github.com/influxdata/influxdb v1.8.3
-	github.com/jackpal/go-nat-pmp v1.0.2-0.20160603034137-1fa385a6f458
+	github.com/jackpal/go-nat-pmp v1.0.2
 	github.com/julienschmidt/httprouter v1.2.0
 	github.com/karalabe/hid v0.0.0-20180420081245-2b4488a37358
 	github.com/kylelemons/godebug v1.1.0 // indirect
