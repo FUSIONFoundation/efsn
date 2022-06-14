@@ -12,7 +12,7 @@ require (
 	github.com/cespare/cp v0.1.0
 	github.com/davecgh/go-spew v1.1.1
 	github.com/deckarep/golang-set v0.0.0-20180603214616-504e848d77ea
-	github.com/docker/docker v1.4.2-0.20180625184442-8e610b2b55bf
+	github.com/docker/docker v1.6.2
 	github.com/dop251/goja v0.0.0-20211011172007-d99e4b8cbf48
 	github.com/fatih/color v1.7.0
 	github.com/fjl/memsize v0.0.0-20190710130421-bcb5799ab5e5
@@ -54,7 +54,6 @@ require (
 	gopkg.in/olebedev/go-duktape.v3 v3.0.0-20200619000410-60c24ae608a6
 	gopkg.in/sourcemap.v1 v1.0.5 // indirect
 	gopkg.in/urfave/cli.v1 v1.20.0
-	gotest.tools v2.2.0+incompatible // indirect
 )
 
 require (
