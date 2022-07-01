@@ -19,6 +19,7 @@ package ethapi
 
 import (
 	"context"
+	ethereum "github.com/FusionFoundation/efsn/v4"
 	"math/big"
 	"time"
 
@@ -29,7 +30,6 @@ import (
 	"github.com/FusionFoundation/efsn/v4/core/state"
 	"github.com/FusionFoundation/efsn/v4/core/types"
 	"github.com/FusionFoundation/efsn/v4/core/vm"
-	"github.com/FusionFoundation/efsn/v4/eth/downloader"
 	"github.com/FusionFoundation/efsn/v4/ethdb"
 	"github.com/FusionFoundation/efsn/v4/event"
 	"github.com/FusionFoundation/efsn/v4/params"
@@ -40,8 +40,8 @@ import (
 // both full and light clients) with access to necessary functions.
 type Backend interface {
 	// General Ethereum API
-	Downloader() *downloader.Downloader
-	ProtocolVersion() int
+	SyncProgress() ethereum.SyncProgress
+
 	SuggestGasTipCap(ctx context.Context) (*big.Int, error)
 	ChainDb() ethdb.Database
 	AccountManager() *accounts.Manager
@@ -61,7 +61,7 @@ type Backend interface {
 	StateAndHeaderByNumber(ctx context.Context, number rpc.BlockNumber) (*state.StateDB, *types.Header, error)
 	StateAndHeaderByNumberOrHash(ctx context.Context, blockNrOrHash rpc.BlockNumberOrHash) (*state.StateDB, *types.Header, error)
 	GetReceipts(ctx context.Context, blockHash common.Hash) (types.Receipts, error)
-	GetTd(blockHash common.Hash) *big.Int
+	GetTd(ctx context.Context, hash common.Hash) *big.Int
 	GetEVM(ctx context.Context, msg core.Message, state *state.StateDB, header *types.Header, vmConfig *vm.Config) (*vm.EVM, func() error, error)
 	SubscribeChainEvent(ch chan<- core.ChainEvent) event.Subscription
 	SubscribeChainHeadEvent(ch chan<- core.ChainHeadEvent) event.Subscription

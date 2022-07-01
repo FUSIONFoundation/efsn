@@ -22,10 +22,14 @@ import (
 	"os/user"
 	"time"
 
+	"github.com/FusionFoundation/efsn/v4/consensus"
+	"github.com/FusionFoundation/efsn/v4/consensus/datong"
 	"github.com/FusionFoundation/efsn/v4/core"
 	"github.com/FusionFoundation/efsn/v4/eth/downloader"
 	"github.com/FusionFoundation/efsn/v4/eth/gasprice"
+	"github.com/FusionFoundation/efsn/v4/ethdb"
 	"github.com/FusionFoundation/efsn/v4/miner"
+	"github.com/FusionFoundation/efsn/v4/node"
 	"github.com/FusionFoundation/efsn/v4/params"
 )
 
@@ -131,4 +135,13 @@ type Config struct {
 	// RPCTxFeeCap is the global transaction fee(price * gaslimit) cap for
 	// send-transction variants. The unit is ether.
 	RPCTxFeeCap float64
+}
+
+// CreateConsensusEngine creates a consensus engine for the given chain configuration.
+func CreateConsensusEngine(stack *node.Node, chainConfig *params.ChainConfig, db ethdb.Database) consensus.Engine {
+	// Fusion Ticket POS engine
+	if chainConfig.DaTong != nil {
+		return datong.New(chainConfig.DaTong, db)
+	}
+	return nil
 }

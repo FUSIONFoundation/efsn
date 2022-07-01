@@ -21,6 +21,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/FusionFoundation/efsn/v4/rpc"
 	"io/ioutil"
 	"math/big"
 	"reflect"
@@ -90,24 +91,33 @@ type SignerAPI struct {
 
 // Metadata about a request
 type Metadata struct {
-	Remote string `json:"remote"`
-	Local  string `json:"local"`
-	Scheme string `json:"scheme"`
+	Remote    string `json:"remote"`
+	Local     string `json:"local"`
+	Scheme    string `json:"scheme"`
+	UserAgent string `json:"User-Agent"`
+	Origin    string `json:"Origin"`
 }
 
 // MetadataFromContext extracts Metadata from a given context.Context
 func MetadataFromContext(ctx context.Context) Metadata {
-	m := Metadata{"NA", "NA", "NA"} // batman
+	info := rpc.PeerInfoFromContext(ctx)
 
-	if v := ctx.Value("remote"); v != nil {
-		m.Remote = v.(string)
+	m := Metadata{"NA", "NA", "NA", "", ""} // batman
+
+	if info.Transport != "" {
+		if info.Transport == "http" {
+			m.Scheme = info.HTTP.Version
+		}
+		m.Scheme = info.Transport
 	}
-	if v := ctx.Value("scheme"); v != nil {
-		m.Scheme = v.(string)
+	if info.RemoteAddr != "" {
+		m.Remote = info.RemoteAddr
 	}
-	if v := ctx.Value("local"); v != nil {
-		m.Local = v.(string)
+	if info.HTTP.Host != "" {
+		m.Local = info.HTTP.Host
 	}
+	m.Origin = info.HTTP.Origin
+	m.UserAgent = info.HTTP.UserAgent
 	return m
 }
 

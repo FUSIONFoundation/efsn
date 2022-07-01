@@ -115,8 +115,6 @@ type serverPool struct {
 	db     ethdb.Database
 	dbKey  []byte
 	server *p2p.Server
-	quit   chan struct{}
-	wg     *sync.WaitGroup
 	connWg sync.WaitGroup
 
 	topic discv5.Topic
@@ -137,14 +135,15 @@ type serverPool struct {
 	knownSelect, newSelect     *weightedRandomSelect
 	knownSelected, newSelected int
 	fastDiscover               bool
+
+	closeCh chan struct{}
+	wg      sync.WaitGroup
 }
 
 // newServerPool creates a new serverPool instance
-func newServerPool(db ethdb.Database, quit chan struct{}, wg *sync.WaitGroup) *serverPool {
+func newServerPool(db ethdb.Database) *serverPool {
 	pool := &serverPool{
 		db:           db,
-		quit:         quit,
-		wg:           wg,
 		entries:      make(map[discover.NodeID]*poolEntry),
 		timeout:      make(chan *poolEntry, 1),
 		adjustStats:  make(chan poolStatAdjust, 100),
@@ -152,6 +151,7 @@ func newServerPool(db ethdb.Database, quit chan struct{}, wg *sync.WaitGroup) *s
 		connCh:       make(chan *connReq),
 		disconnCh:    make(chan *disconnReq),
 		registerCh:   make(chan *registerReq),
+		closeCh:      make(chan struct{}),
 		knownSelect:  newWeightedRandomSelect(),
 		newSelect:    newWeightedRandomSelect(),
 		fastDiscover: true,
@@ -165,7 +165,6 @@ func (pool *serverPool) start(server *p2p.Server, topic discv5.Topic) {
 	pool.server = server
 	pool.topic = topic
 	pool.dbKey = append([]byte("serverPool/"), []byte(topic)...)
-	pool.wg.Add(1)
 	pool.loadNodes()
 
 	if pool.server.DiscV5 != nil {
@@ -175,7 +174,13 @@ func (pool *serverPool) start(server *p2p.Server, topic discv5.Topic) {
 		go pool.server.DiscV5.SearchTopic(pool.topic, pool.discSetPeriod, pool.discNodes, pool.discLookups)
 	}
 	pool.checkDial()
+	pool.wg.Add(1)
 	go pool.eventLoop()
+}
+
+func (pool *serverPool) stop() {
+	close(pool.closeCh)
+	pool.wg.Wait()
 }
 
 // connect should be called upon any incoming connection. If the connection has been
@@ -188,7 +193,7 @@ func (pool *serverPool) connect(p *peer, ip net.IP, port uint16) *poolEntry {
 	req := &connReq{p: p, ip: ip, port: port, result: make(chan *poolEntry, 1)}
 	select {
 	case pool.connCh <- req:
-	case <-pool.quit:
+	case <-pool.closeCh:
 		return nil
 	}
 	return <-req.result
@@ -200,7 +205,7 @@ func (pool *serverPool) registered(entry *poolEntry) {
 	req := &registerReq{entry: entry, done: make(chan struct{})}
 	select {
 	case pool.registerCh <- req:
-	case <-pool.quit:
+	case <-pool.closeCh:
 		return
 	}
 	<-req.done
@@ -212,7 +217,7 @@ func (pool *serverPool) registered(entry *poolEntry) {
 func (pool *serverPool) disconnect(entry *poolEntry) {
 	stopped := false
 	select {
-	case <-pool.quit:
+	case <-pool.closeCh:
 		stopped = true
 	default:
 	}
@@ -259,6 +264,7 @@ func (pool *serverPool) adjustResponseTime(entry *poolEntry, time time.Duration,
 
 // eventLoop handles pool events and mutex locking for all internal functions
 func (pool *serverPool) eventLoop() {
+	defer pool.wg.Done()
 	lookupCnt := 0
 	var convTime mclock.AbsTime
 	if pool.discSetPeriod != nil {
@@ -379,7 +385,7 @@ func (pool *serverPool) eventLoop() {
 			// Handle peer disconnection requests.
 			disconnect(req, req.stopped)
 
-		case <-pool.quit:
+		case <-pool.closeCh:
 			if pool.discSetPeriod != nil {
 				close(pool.discSetPeriod)
 			}
@@ -395,7 +401,6 @@ func (pool *serverPool) eventLoop() {
 				disconnect(req, true)
 			}
 			pool.saveNodes()
-			pool.wg.Done()
 			return
 		}
 	}
@@ -495,10 +500,10 @@ func (pool *serverPool) setRetryDial(entry *poolEntry) {
 	entry.delayedRetry = true
 	go func() {
 		select {
-		case <-pool.quit:
+		case <-pool.closeCh:
 		case <-time.After(delay):
 			select {
-			case <-pool.quit:
+			case <-pool.closeCh:
 			case pool.enableRetry <- entry:
 			}
 		}
@@ -564,10 +569,10 @@ func (pool *serverPool) dial(entry *poolEntry, knownSelected bool) {
 	go func() {
 		pool.server.AddPeer(discover.NewNode(entry.id, addr.ip, addr.port, addr.port))
 		select {
-		case <-pool.quit:
+		case <-pool.closeCh:
 		case <-time.After(dialTimeout):
 			select {
-			case <-pool.quit:
+			case <-pool.closeCh:
 			case pool.timeout <- entry:
 			}
 		}

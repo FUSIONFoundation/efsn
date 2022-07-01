@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"github.com/FusionFoundation/efsn/v4/eth/ethconfig"
 	"math/big"
+	"sync"
 
 	"github.com/FusionFoundation/efsn/v4/common"
 	"github.com/FusionFoundation/efsn/v4/core"
@@ -37,6 +38,9 @@ type lesCommons struct {
 	chainDb                      ethdb.Database
 	protocolManager              *ProtocolManager
 	chtIndexer, bloomTrieIndexer *core.ChainIndexer
+
+	closeCh chan struct{}
+	wg      sync.WaitGroup
 }
 
 // NodeInfo represents a short summary of the Ethereum sub-protocol metadata

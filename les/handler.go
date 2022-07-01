@@ -28,7 +28,6 @@ import (
 
 	"github.com/FusionFoundation/efsn/v4/common"
 	"github.com/FusionFoundation/efsn/v4/common/mclock"
-	"github.com/FusionFoundation/efsn/v4/consensus"
 	"github.com/FusionFoundation/efsn/v4/core"
 	"github.com/FusionFoundation/efsn/v4/core/rawdb"
 	"github.com/FusionFoundation/efsn/v4/core/state"
@@ -115,9 +114,9 @@ type ProtocolManager struct {
 
 	// channels for fetcher, syncer, txsyncLoop
 	newPeerCh   chan *peer
-	quitSync    chan struct{}
 	noMorePeers chan struct{}
 
+	closeCh chan struct{}
 	// wait group is used for graceful shutdowns during downloading
 	// and processing
 	wg *sync.WaitGroup
@@ -125,7 +124,7 @@ type ProtocolManager struct {
 
 // NewProtocolManager returns a new ethereum sub protocol manager. The Ethereum sub protocol manages peers capable
 // with the ethereum network.
-func NewProtocolManager(chainConfig *params.ChainConfig, indexerConfig *light.IndexerConfig, lightSync bool, networkId uint64, mux *event.TypeMux, engine consensus.Engine, peers *peerSet, blockchain BlockChain, txpool txPool, chainDb ethdb.Database, odr *LesOdr, txrelay *LesTxRelay, serverPool *serverPool, quitSync chan struct{}, wg *sync.WaitGroup) (*ProtocolManager, error) {
+func NewProtocolManager(chainConfig *params.ChainConfig, indexerConfig *light.IndexerConfig, lightSync bool, networkId uint64, mux *event.TypeMux, peers *peerSet, blockchain BlockChain, txpool txPool, chainDb ethdb.Database, odr *LesOdr, txrelay *LesTxRelay, serverPool *serverPool, wg *sync.WaitGroup) (*ProtocolManager, error) {
 	// Create the protocol manager with the base fields
 	manager := &ProtocolManager{
 		lightSync:   lightSync,
@@ -141,9 +140,9 @@ func NewProtocolManager(chainConfig *params.ChainConfig, indexerConfig *light.In
 		serverPool:  serverPool,
 		peers:       peers,
 		newPeerCh:   make(chan *peer),
-		quitSync:    quitSync,
 		wg:          wg,
 		noMorePeers: make(chan struct{}),
+		closeCh:     make(chan struct{}),
 	}
 	if odr != nil {
 		manager.retriever = odr.retriever
@@ -193,7 +192,7 @@ func (pm *ProtocolManager) Stop() {
 	// After this send has completed, no new peers will be accepted.
 	pm.noMorePeers <- struct{}{}
 
-	close(pm.quitSync) // quits syncer, fetcher
+	close(pm.closeCh) // quits syncer, fetcher
 	if pm.clientPool != nil {
 		pm.clientPool.stop()
 	}
@@ -228,7 +227,7 @@ func (pm *ProtocolManager) runPeer(version uint, p *p2p.Peer, rw p2p.MsgReadWrit
 			pm.serverPool.disconnect(entry)
 		}
 		return err
-	case <-pm.quitSync:
+	case <-pm.closeCh:
 		if entry != nil {
 			pm.serverPool.disconnect(entry)
 		}

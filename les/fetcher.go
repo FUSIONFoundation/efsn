@@ -131,7 +131,7 @@ func (f *lightFetcher) syncLoop() {
 	defer f.pm.wg.Done()
 	for {
 		select {
-		case <-f.pm.quitSync:
+		case <-f.pm.closeCh:
 			return
 		// when a new announce is received, request loop keeps running until
 		// no further requests are necessary or possible

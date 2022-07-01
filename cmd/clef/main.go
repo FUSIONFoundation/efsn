@@ -177,12 +177,12 @@ func init() {
 		configdirFlag,
 		utils.NetworkIdFlag,
 		utils.LightKDFFlag,
-		utils.NoUSBFlag,
-		utils.RPCListenAddrFlag,
-		utils.RPCVirtualHostsFlag,
+		utils.USBFlag,
+		utils.HTTPListenAddrFlag,
+		utils.HTTPVirtualHostsFlag,
 		utils.IPCDisabledFlag,
 		utils.IPCPathFlag,
-		utils.RPCEnabledFlag,
+		utils.HTTPEnabledFlag,
 		rpcPortFlag,
 		signerSecretFlag,
 		dBFlag,
@@ -382,7 +382,7 @@ func signer(c *cli.Context) error {
 	apiImpl := core.NewSignerAPI(
 		c.Int64(utils.NetworkIdFlag.Name),
 		c.String(keystoreFlag.Name),
-		c.Bool(utils.NoUSBFlag.Name),
+		!c.Bool(utils.USBFlag.Name),
 		ui, db,
 		c.Bool(utils.LightKDFFlag.Name))
 
@@ -408,22 +408,29 @@ func signer(c *cli.Context) error {
 			Service:   api,
 			Version:   "1.0"},
 	}
-	if c.Bool(utils.RPCEnabledFlag.Name) {
+	if c.Bool(utils.HTTPEnabledFlag.Name) {
 
-		vhosts := splitAndTrim(c.GlobalString(utils.RPCVirtualHostsFlag.Name))
-		cors := splitAndTrim(c.GlobalString(utils.RPCCORSDomainFlag.Name))
+		vhosts := splitAndTrim(c.GlobalString(utils.HTTPVirtualHostsFlag.Name))
+		cors := splitAndTrim(c.GlobalString(utils.HTTPCORSDomainFlag.Name))
+
+		srv := rpc.NewServer()
+		err := node.RegisterApis(rpcAPI, []string{"account"}, srv, false)
+		if err != nil {
+			utils.Fatalf("Could not register API: %w", err)
+		}
+		handler := node.NewHTTPHandlerStack(srv, cors, vhosts, nil)
 
 		// start http server
-		httpEndpoint := fmt.Sprintf("%s:%d", c.String(utils.RPCListenAddrFlag.Name), c.Int(rpcPortFlag.Name))
-		listener, _, err := rpc.StartHTTPEndpoint(httpEndpoint, rpcAPI, []string{"account"}, cors, vhosts, rpc.DefaultHTTPTimeouts)
+		httpEndpoint := fmt.Sprintf("%s:%d", c.String(utils.HTTPListenAddrFlag.Name), c.Int(rpcPortFlag.Name))
+		httpServer, addr, err := node.StartHTTPEndpoint(httpEndpoint, rpc.DefaultHTTPTimeouts, handler)
 		if err != nil {
 			utils.Fatalf("Could not start RPC api: %v", err)
 		}
-		extapiURL = fmt.Sprintf("http://%s", httpEndpoint)
+		extapiURL = fmt.Sprintf("http://%v/", addr)
 		log.Info("HTTP endpoint opened", "url", extapiURL)
 
 		defer func() {
-			listener.Close()
+			httpServer.Shutdown(context.Background())
 			log.Info("HTTP endpoint closed", "url", httpEndpoint)
 		}()
 

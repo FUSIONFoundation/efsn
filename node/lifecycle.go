@@ -1,4 +1,4 @@
-// Copyright 2016 The go-ethereum Authors
+// Copyright 2020 The go-ethereum Authors
 // This file is part of the go-ethereum library.
 //
 // The go-ethereum library is free software: you can redistribute it and/or modify
@@ -14,30 +14,18 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with the go-ethereum library. If not, see <http://www.gnu.org/licenses/>.
 
-package rpc
+package node
 
-import (
-	"strings"
-	"testing"
-)
+// Lifecycle encompasses the behavior of services that can be started and stopped
+// on the node. Lifecycle management is delegated to the node, but it is the
+// responsibility of the service-specific package to configure and register the
+// service on the node using the `RegisterLifecycle` method.
+type Lifecycle interface {
+	// Start is called after all services have been constructed and the networking
+	// layer was also initialized to spawn any goroutines required by the service.
+	Start() error
 
-func TestNewID(t *testing.T) {
-	hexchars := "0123456789ABCDEFabcdef"
-	for i := 0; i < 100; i++ {
-		id := string(NewID())
-		if !strings.HasPrefix(id, "0x") {
-			t.Fatalf("invalid ID prefix, want '0x...', got %s", id)
-		}
-
-		id = id[2:]
-		if len(id) == 0 || len(id) > 32 {
-			t.Fatalf("invalid ID length, want len(id) > 0 && len(id) <= 32), got %d", len(id))
-		}
-
-		for i := 0; i < len(id); i++ {
-			if strings.IndexByte(hexchars, id[i]) == -1 {
-				t.Fatalf("unexpected byte, want any valid hex char, got %c", id[i])
-			}
-		}
-	}
+	// Stop terminates all goroutines belonging to the service, blocking until they
+	// are all terminated.
+	Stop() error
 }
