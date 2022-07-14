@@ -42,7 +42,7 @@ require (
 	github.com/rs/cors v1.7.0
 	github.com/shirou/gopsutil v3.21.4-0.20210419000835-c7a38de76ee5+incompatible
 	github.com/stretchr/testify v1.7.2
-	github.com/syndtr/goleveldb v1.0.1-0.20220614013038-64ee5596c38a
+	github.com/syndtr/goleveldb v1.0.1-0.20210819022825-2ae1ddf74ef7
 	golang.org/x/crypto v0.0.0-20210921155107-089bfa567519
 	golang.org/x/net v0.0.0-20220607020251-c690dde0001d // indirect
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c // indirect
