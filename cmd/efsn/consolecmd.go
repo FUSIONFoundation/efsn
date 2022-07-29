@@ -17,18 +17,12 @@
 package main
 
 import (
-	"fmt"
-	"os"
-	"os/signal"
-	"path/filepath"
-	"strings"
-	"syscall"
-
 	"github.com/FusionFoundation/efsn/v4/cmd/utils"
 	"github.com/FusionFoundation/efsn/v4/console"
 	"github.com/FusionFoundation/efsn/v4/node"
 	"github.com/FusionFoundation/efsn/v4/rpc"
 	"gopkg.in/urfave/cli.v1"
+	"strings"
 )
 
 var (
@@ -58,18 +52,6 @@ The Geth console is an interactive shell for the JavaScript runtime environment
 which exposes a node admin interface as well as the Ðapp JavaScript API.
 See https://github.com/FusionFoundation/efsn/wiki/JavaScript-Console.
 This command allows to open a console on a running efsn node.`,
-	}
-
-	javascriptCommand = cli.Command{
-		Action:    utils.MigrateFlags(ephemeralConsole),
-		Name:      "js",
-		Usage:     "Execute the specified JavaScript files",
-		ArgsUsage: "<jsfile> [jsfile...]",
-		Flags:     append(nodeFlags, consoleFlags...),
-		Category:  "CONSOLE COMMANDS",
-		Description: `
-The JavaScript VM exposes a node admin interface as well as the Ðapp
-JavaScript API. See https://github.com/FusionFoundation/efsn/wiki/JavaScript-Console`,
 	}
 )
 
@@ -117,18 +99,9 @@ func remoteConsole(ctx *cli.Context) error {
 	// Attach to a remotely running efsn instance and start the JavaScript console
 	endpoint := ctx.Args().First()
 	if endpoint == "" {
-		path := node.DefaultDataDir()
-		if ctx.GlobalIsSet(utils.DataDirFlag.Name) {
-			path = ctx.GlobalString(utils.DataDirFlag.Name)
-		}
-		if path != "" {
-			if ctx.GlobalBool(utils.TestnetFlag.Name) {
-				path = filepath.Join(path, "testnet")
-			} else if ctx.GlobalBool(utils.DevnetFlag.Name) {
-				path = filepath.Join(path, "devnet")
-			}
-		}
-		endpoint = fmt.Sprintf("%s/efsn.ipc", path)
+		cfg := defaultNodeConfig()
+		utils.SetDataDir(ctx, &cfg)
+		endpoint = cfg.IPCEndpoint()
 	}
 	client, err := dialRPC(endpoint)
 	if err != nil {
@@ -171,50 +144,4 @@ func dialRPC(endpoint string) (*rpc.Client, error) {
 		endpoint = endpoint[4:]
 	}
 	return rpc.Dial(endpoint)
-}
-
-// ephemeralConsole starts a new efsn node, attaches an ephemeral JavaScript
-// console to it, executes each of the files specified as arguments and tears
-// everything down.
-func ephemeralConsole(ctx *cli.Context) error {
-	// Create and start the node based on the CLI flags
-	stack, backend := makeFullNode(ctx)
-	startNode(ctx, stack, backend)
-	defer stack.Close()
-
-	// Attach to the newly started node and start the JavaScript console
-	client, err := stack.Attach()
-	if err != nil {
-		utils.Fatalf("Failed to attach to the inproc efsn: %v", err)
-	}
-	config := console.Config{
-		DataDir: utils.MakeDataDir(ctx),
-		DocRoot: ctx.GlobalString(utils.JSpathFlag.Name),
-		Client:  client,
-		Preload: utils.MakeConsolePreloads(ctx),
-	}
-
-	console, err := console.New(config)
-	if err != nil {
-		utils.Fatalf("Failed to start the JavaScript console: %v", err)
-	}
-	defer console.Stop(false)
-
-	// Evaluate each of the specified JavaScript files
-	for _, file := range ctx.Args() {
-		if err = console.Execute(file); err != nil {
-			utils.Fatalf("Failed to execute %s: %v", file, err)
-		}
-	}
-	// Wait for pending callbacks, but stop for Ctrl-C.
-	abort := make(chan os.Signal, 1)
-	signal.Notify(abort, syscall.SIGINT, syscall.SIGTERM)
-
-	go func() {
-		<-abort
-		os.Exit(0)
-	}()
-	console.Stop(true)
-
-	return nil
 }

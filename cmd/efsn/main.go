@@ -183,7 +183,6 @@ func init() {
 		// See consolecmd.go:
 		consoleCommand,
 		attachCommand,
-		javascriptCommand,
 		// See misccmd.go:
 		versionCommand,
 		bugCommand,
