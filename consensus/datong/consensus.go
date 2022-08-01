@@ -53,7 +53,7 @@ var (
 
 // SignerFn is a signer callback function to request a hash to be signed by a
 // backing account.
-type SignerFn func(accounts.Account, []byte) ([]byte, error)
+type SignerFn func(accounts.Account, string, []byte) ([]byte, error)
 
 var (
 	extraVanity         = 32
@@ -99,7 +99,7 @@ func (dt *DaTong) Author(header *types.Header) (common.Address, error) {
 
 func VerifySignature(header *types.Header) error {
 	signature := header.Extra[len(header.Extra)-extraSeal:]
-	pubkey, err := crypto.Ecrecover(sigHash(header).Bytes(), signature)
+	pubkey, err := crypto.Ecrecover(sigHash(header), signature)
 	if err != nil {
 		return err
 	}
@@ -497,7 +497,7 @@ func (dt *DaTong) Seal(chain consensus.ChainReader, block *types.Block, results 
 		return errc
 	}
 
-	sighash, err := signFn(accounts.Account{Address: header.Coinbase}, sigHash(header).Bytes())
+	sighash, err := signFn(accounts.Account{Address: header.Coinbase}, "", sigRlp(header))
 	if err != nil {
 		return err
 	}
@@ -746,9 +746,8 @@ func (dt *DaTong) getAllTickets(chain consensus.ChainReader, header *types.Heade
 	return tickets, nil
 }
 
-func sigHash(header *types.Header) (hash common.Hash) {
-	hasher := sha3.NewLegacyKeccak256()
-	rlp.Encode(hasher, []interface{}{
+func sigRlp(header *types.Header) (result []byte) {
+	result, _ = rlp.EncodeToBytes([]interface{}{
 		header.ParentHash,
 		header.UncleHash,
 		header.Coinbase,
@@ -765,8 +764,11 @@ func sigHash(header *types.Header) (hash common.Hash) {
 		header.MixDigest,
 		header.Nonce,
 	})
-	hasher.Sum(hash[:0])
-	return hash
+	return
+}
+
+func sigHash(header *types.Header) (result []byte) {
+	return crypto.Keccak256(sigRlp(header))
 }
 
 func getSnapDataByHeader(header *types.Header) []byte {

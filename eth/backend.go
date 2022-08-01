@@ -384,7 +384,7 @@ func (s *Ethereum) StartMining(threads int) error {
 				log.Error("Etherbase account unavailable locally", "err", err)
 				return fmt.Errorf("signer missing: %v", err)
 			}
-			datong.Authorize(eb, wallet.SignHash)
+			datong.Authorize(eb, wallet.SignData)
 		}
 
 		// If mining is started, we can disable the transaction rejection mechanism

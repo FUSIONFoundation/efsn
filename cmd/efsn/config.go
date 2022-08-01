@@ -193,7 +193,7 @@ func setAccountManagerBackends(stack *node.Node) error {
 			am.AddBackend(ledgerhub)
 		}
 		// Start a USB hub for Trezor hardware wallets
-		if trezorhub, err := usbwallet.NewTrezorHub(); err != nil {
+		if trezorhub, err := usbwallet.NewTrezorHubWithHID(); err != nil {
 			log.Warn(fmt.Sprintf("Failed to start Trezor hub, disabling: %v", err))
 		} else {
 			am.AddBackend(trezorhub)
