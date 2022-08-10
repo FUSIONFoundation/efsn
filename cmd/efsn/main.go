@@ -63,7 +63,6 @@ var (
 		utils.BootnodesFlag,
 		utils.BootnodesV4Flag,
 		utils.BootnodesV5Flag,
-		utils.DataDirFlag,
 		utils.KeyStoreDirFlag,
 		utils.USBFlag,
 		utils.TxPoolLocalsFlag,
@@ -110,13 +109,11 @@ var (
 		utils.NodeKeyHexFlag,
 		utils.DeveloperFlag,
 		utils.DeveloperPeriodFlag,
-		utils.TestnetFlag,
 		utils.DevnetFlag,
 		utils.DevnetAddrFlag,
 		utils.VMEnableDebugFlag,
 		utils.NetworkIdFlag,
 		utils.EthStatsURLFlag,
-		utils.MetricsEnabledFlag,
 		utils.FakePoWFlag,
 		utils.NoCompactionFlag,
 		utils.GpoBlocksFlag,
@@ -126,7 +123,7 @@ var (
 		utils.ResyncFromHeightFlag,
 		utils.CheckPointsFileFlag,
 		configFileFlag,
-	})
+	}, utils.NetworkFlags, utils.DatabasePathFlags)
 
 	rpcFlags = []cli.Flag{
 		utils.HTTPEnabledFlag,
