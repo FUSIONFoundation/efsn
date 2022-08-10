@@ -19,39 +19,38 @@ package main
 import (
 	"github.com/FusionFoundation/efsn/v4/cmd/utils"
 	"github.com/FusionFoundation/efsn/v4/console"
+	"github.com/FusionFoundation/efsn/v4/internal/flags"
 	"github.com/FusionFoundation/efsn/v4/node"
 	"github.com/FusionFoundation/efsn/v4/rpc"
-	"gopkg.in/urfave/cli.v1"
+	"github.com/urfave/cli/v2"
 	"strings"
 )
 
 var (
 	consoleFlags = []cli.Flag{utils.JSpathFlag, utils.ExecFlag, utils.PreloadJSFlag}
 
-	consoleCommand = cli.Command{
-		Action:   utils.MigrateFlags(localConsole),
-		Name:     "console",
-		Usage:    "Start an interactive JavaScript environment",
-		Flags:    append(append(nodeFlags, rpcFlags...), consoleFlags...),
-		Category: "CONSOLE COMMANDS",
+	consoleCommand = &cli.Command{
+		Action: localConsole,
+		Name:   "console",
+		Usage:  "Start an interactive JavaScript environment",
+		Flags:  flags.Merge(nodeFlags, rpcFlags, consoleFlags),
 		Description: `
 The Geth console is an interactive shell for the JavaScript runtime environment
 which exposes a node admin interface as well as the Ðapp JavaScript API.
-See https://github.com/FusionFoundation/efsn/wiki/JavaScript-Console.`,
+See https://geth.ethereum.org/docs/interface/javascript-console.`,
 	}
 
-	attachCommand = cli.Command{
-		Action:    utils.MigrateFlags(remoteConsole),
+	attachCommand = &cli.Command{
+		Action:    remoteConsole,
 		Name:      "attach",
 		Usage:     "Start an interactive JavaScript environment (connect to node)",
 		ArgsUsage: "[endpoint]",
-		Flags:     append(consoleFlags, utils.DataDirFlag),
-		Category:  "CONSOLE COMMANDS",
+		Flags:     flags.Merge([]cli.Flag{utils.DataDirFlag}, consoleFlags),
 		Description: `
 The Geth console is an interactive shell for the JavaScript runtime environment
 which exposes a node admin interface as well as the Ðapp JavaScript API.
-See https://github.com/FusionFoundation/efsn/wiki/JavaScript-Console.
-This command allows to open a console on a running efsn node.`,
+See https://geth.ethereum.org/docs/interface/javascript-console.
+This command allows to open a console on a running geth node.`,
 	}
 )
 
@@ -59,6 +58,7 @@ This command allows to open a console on a running efsn node.`,
 // same time.
 func localConsole(ctx *cli.Context) error {
 	// Create and start the node based on the CLI flags
+	prepare(ctx)
 	stack, backend := makeFullNode(ctx)
 	startNode(ctx, stack, backend)
 	defer stack.Close()
@@ -70,11 +70,10 @@ func localConsole(ctx *cli.Context) error {
 	}
 	config := console.Config{
 		DataDir: utils.MakeDataDir(ctx),
-		DocRoot: ctx.GlobalString(utils.JSpathFlag.Name),
+		DocRoot: ctx.String(utils.JSpathFlag.Name),
 		Client:  client,
 		Preload: utils.MakeConsolePreloads(ctx),
 	}
-
 	console, err := console.New(config)
 	if err != nil {
 		utils.Fatalf("Failed to start the JavaScript console: %v", err)
@@ -82,20 +81,31 @@ func localConsole(ctx *cli.Context) error {
 	defer console.Stop(false)
 
 	// If only a short execution was requested, evaluate and return
-	if script := ctx.GlobalString(utils.ExecFlag.Name); script != "" {
+	if script := ctx.String(utils.ExecFlag.Name); script != "" {
 		console.Evaluate(script)
 		return nil
 	}
-	// Otherwise print the welcome screen and enter interactive mode
+
+	// Track node shutdown and stop the console when it goes down.
+	// This happens when SIGTERM is sent to the process.
+	go func() {
+		stack.Wait()
+		//console.StopInteractive()
+	}()
+
+	// Print the welcome screen and enter interactive mode.
 	console.Welcome()
 	console.Interactive()
-
 	return nil
 }
 
 // remoteConsole will connect to a remote efsn instance, attaching a JavaScript
 // console to it.
 func remoteConsole(ctx *cli.Context) error {
+	if ctx.Args().Len() > 1 {
+		utils.Fatalf("invalid command-line: too many arguments")
+	}
+
 	// Attach to a remotely running efsn instance and start the JavaScript console
 	endpoint := ctx.Args().First()
 	if endpoint == "" {
@@ -109,18 +119,17 @@ func remoteConsole(ctx *cli.Context) error {
 	}
 	config := console.Config{
 		DataDir: utils.MakeDataDir(ctx),
-		DocRoot: ctx.GlobalString(utils.JSpathFlag.Name),
+		DocRoot: ctx.String(utils.JSpathFlag.Name),
 		Client:  client,
 		Preload: utils.MakeConsolePreloads(ctx),
 	}
-
 	console, err := console.New(config)
 	if err != nil {
 		utils.Fatalf("Failed to start the JavaScript console: %v", err)
 	}
 	defer console.Stop(false)
 
-	if script := ctx.GlobalString(utils.ExecFlag.Name); script != "" {
+	if script := ctx.String(utils.ExecFlag.Name); script != "" {
 		console.Evaluate(script)
 		return nil
 	}
@@ -128,7 +137,6 @@ func remoteConsole(ctx *cli.Context) error {
 	// Otherwise print the welcome screen and enter interactive mode
 	console.Welcome()
 	console.Interactive()
-
 	return nil
 }
 

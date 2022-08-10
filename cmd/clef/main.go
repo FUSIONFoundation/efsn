@@ -44,7 +44,7 @@ import (
 	"github.com/FusionFoundation/efsn/v4/signer/core"
 	"github.com/FusionFoundation/efsn/v4/signer/rules"
 	"github.com/FusionFoundation/efsn/v4/signer/storage"
-	cli "gopkg.in/urfave/cli.v1"
+	cli "github.com/urfave/cli/v2"
 )
 
 // ExternalAPIVersion -- see extapi_changelog.md

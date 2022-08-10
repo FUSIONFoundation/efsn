@@ -19,9 +19,8 @@ package main
 
 import (
 	"fmt"
-	"math"
+	"github.com/FusionFoundation/efsn/v4/internal/flags"
 	"os"
-	godebug "runtime/debug"
 	"sort"
 	"strconv"
 	"strings"
@@ -40,12 +39,10 @@ import (
 	"github.com/FusionFoundation/efsn/v4/log"
 	"github.com/FusionFoundation/efsn/v4/metrics"
 	"github.com/FusionFoundation/efsn/v4/node"
-	gopsutil "github.com/shirou/gopsutil/mem"
-
 	// Force-load the tracer engines to trigger registration
 	_ "github.com/FusionFoundation/efsn/v4/eth/tracers/js"
 	_ "github.com/FusionFoundation/efsn/v4/eth/tracers/native"
-	"gopkg.in/urfave/cli.v1"
+	"github.com/urfave/cli/v2"
 )
 
 const (
@@ -57,9 +54,9 @@ var (
 	gitCommit = ""
 	gitDate   = ""
 	// The app that holds all commands and flags.
-	app = utils.NewApp(gitCommit, gitDate, "the efsn command line interface")
+	app = flags.NewApp(gitCommit, gitDate, "the efsn command line interface")
 	// flags that configure the node
-	nodeFlags = []cli.Flag{
+	nodeFlags = flags.Merge([]cli.Flag{
 		utils.IdentityFlag,
 		utils.UnlockedAccountFlag,
 		utils.PasswordFileFlag,
@@ -82,14 +79,15 @@ var (
 		utils.TxPoolLifetimeFlag,
 		utils.SyncModeFlag,
 		utils.GCModeFlag,
-		utils.LightServFlag,
-		utils.LightPeersFlag,
+		utils.LightServeFlag,
+		utils.LightMaxPeersFlag,
 		utils.LightKDFFlag,
 		utils.CacheFlag,
 		utils.CacheDatabaseFlag,
 		utils.CacheTrieFlag,
 		utils.CacheGCFlag,
 		utils.CachePreimagesFlag,
+		utils.FDLimitFlag,
 		utils.ListenPortFlag,
 		utils.MaxPeersFlag,
 		utils.MaxPendingPeersFlag,
@@ -102,7 +100,7 @@ var (
 		utils.MinerEtherbaseFlag,
 		utils.MinerExtraDataFlag,
 		utils.MinerRecommitIntervalFlag,
-		utils.MinerNoVerfiyFlag,
+		utils.MinerNoVerifyFlag,
 		utils.AutoBuyTicketsEnabledFlag,
 		utils.NATFlag,
 		utils.NoDiscoverFlag,
@@ -123,10 +121,12 @@ var (
 		utils.NoCompactionFlag,
 		utils.GpoBlocksFlag,
 		utils.GpoPercentileFlag,
+		utils.GpoMaxGasPriceFlag,
+		utils.GpoIgnoreGasPriceFlag,
 		utils.ResyncFromHeightFlag,
 		utils.CheckPointsFileFlag,
 		configFileFlag,
-	}
+	})
 
 	rpcFlags = []cli.Flag{
 		utils.HTTPEnabledFlag,
@@ -154,12 +154,20 @@ var (
 	}
 
 	metricsFlags = []cli.Flag{
+		utils.MetricsEnabledFlag,
+		utils.MetricsEnabledExpensiveFlag,
+		utils.MetricsHTTPFlag,
+		utils.MetricsPortFlag,
 		utils.MetricsEnableInfluxDBFlag,
 		utils.MetricsInfluxDBEndpointFlag,
 		utils.MetricsInfluxDBDatabaseFlag,
 		utils.MetricsInfluxDBUsernameFlag,
 		utils.MetricsInfluxDBPasswordFlag,
-		utils.MetricsInfluxDBHostTagFlag,
+		utils.MetricsInfluxDBTagsFlag,
+		utils.MetricsEnableInfluxDBV2Flag,
+		utils.MetricsInfluxDBTokenFlag,
+		utils.MetricsInfluxDBBucketFlag,
+		utils.MetricsInfluxDBOrganizationFlag,
 	}
 )
 
@@ -168,7 +176,7 @@ func init() {
 	app.Action = geth
 	app.HideVersion = true // we have a command to print the version
 	app.Copyright = "Copyright 2017-2022 The Fusion Foundation Authors"
-	app.Commands = []cli.Command{
+	app.Commands = []*cli.Command{
 		// See chaincmd.go:
 		initCommand,
 		importCommand,
@@ -185,7 +193,6 @@ func init() {
 		attachCommand,
 		// See misccmd.go:
 		versionCommand,
-		bugCommand,
 		licenseCommand,
 		// See config.go
 		dumpConfigCommand,
@@ -196,43 +203,17 @@ func init() {
 	}
 	sort.Sort(cli.CommandsByName(app.Commands))
 
-	app.Flags = append(app.Flags, nodeFlags...)
-	app.Flags = append(app.Flags, rpcFlags...)
-	app.Flags = append(app.Flags, consoleFlags...)
-	app.Flags = append(app.Flags, debug.Flags...)
-	app.Flags = append(app.Flags, metricsFlags...)
+	app.Flags = flags.Merge(
+		nodeFlags,
+		rpcFlags,
+		consoleFlags,
+		debug.Flags,
+		metricsFlags,
+	)
 
 	app.Before = func(ctx *cli.Context) error {
-		if err := debug.Setup(ctx); err != nil {
-			return err
-		}
-		// Cap the cache allowance and tune the garbage collector
-		mem, err := gopsutil.VirtualMemory()
-		if err == nil {
-			if 32<<(^uintptr(0)>>63) == 32 && mem.Total > 2*1024*1024*1024 {
-				log.Warn("Lowering memory allowance on 32bit arch", "available", mem.Total/1024/1024, "addressable", 2*1024)
-				mem.Total = 2 * 1024 * 1024 * 1024
-			}
-			allowance := int(mem.Total / 1024 / 1024 / 3)
-			if cache := ctx.GlobalInt(utils.CacheFlag.Name); cache > allowance {
-				log.Warn("Sanitizing cache to Go's GC limits", "provided", cache, "updated", allowance)
-				ctx.GlobalSet(utils.CacheFlag.Name, strconv.Itoa(allowance))
-			}
-		}
-		// Ensure Go's GC ignores the database cache for trigger percentage
-		cache := ctx.GlobalInt(utils.CacheFlag.Name)
-		gogc := math.Max(20, math.Min(100, 100/(float64(cache)/1024)))
-
-		log.Debug("Sanitizing Go's GC trigger", "percent", int(gogc))
-		godebug.SetGCPercent(int(gogc))
-
-		// Start metrics export if enabled
-		utils.SetupMetrics(ctx)
-
-		// Start system runtime metrics collection
-		go metrics.CollectProcessMetrics(3 * time.Second)
-
-		return nil
+		flags.MigrateGlobalFlags(ctx)
+		return debug.Setup(ctx)
 	}
 
 	app.After = func(ctx *cli.Context) error {
@@ -249,13 +230,71 @@ func main() {
 	}
 }
 
+// prepare manipulates memory cache allowance and setups metric system.
+// This function should be called before launching devp2p stack.
+func prepare(ctx *cli.Context) {
+	// If we're running a known preset, log it for convenience.
+	switch {
+	case ctx.IsSet(utils.TestnetFlag.Name):
+		log.Info("Starting Fusion on testnet...")
+
+	case ctx.IsSet(utils.DevnetFlag.Name):
+		log.Info("Starting Fusion on devnet...")
+
+	case ctx.IsSet(utils.DeveloperFlag.Name):
+		log.Info("Starting efsn in ephemeral dev mode...")
+		log.Warn(`You are running efsn in --dev mode. Please note the following:
+
+  1. This mode is only intended for fast, iterative development without assumptions on
+     security or persistence.
+  2. The database is created in memory unless specified otherwise. Therefore, shutting down
+     your computer or losing power will wipe your entire block data and chain state for
+     your dev environment.
+  3. A random, pre-allocated developer account will be available and unlocked as
+     eth.coinbase, which can be used for testing. The random dev account is temporary,
+     stored on a ramdisk, and will be lost if your machine is restarted.
+  4. Mining is enabled by default. However, the client will only seal blocks if transactions
+     are pending in the mempool. The miner's minimum accepted gas price is 1.
+  5. Networking is disabled; there is no listen-address, the maximum number of peers is set
+     to 0, and discovery is disabled.
+`)
+
+	case !ctx.IsSet(utils.NetworkIdFlag.Name):
+		log.Info("Starting efsn on Fusion mainnet...")
+	}
+	// If we're a full node on mainnet without --cache specified, bump default cache allowance
+	if ctx.String(utils.SyncModeFlag.Name) != "light" && !ctx.IsSet(utils.CacheFlag.Name) && !ctx.IsSet(utils.NetworkIdFlag.Name) {
+		// Make sure we're not on any supported preconfigured testnet either
+		if !ctx.IsSet(utils.TestnetFlag.Name) &&
+			!ctx.IsSet(utils.DevnetFlag.Name) &&
+			!ctx.IsSet(utils.DeveloperFlag.Name) {
+			// Nope, we're really on mainnet. Bump that cache up!
+			log.Info("Bumping default cache on mainnet", "provided", ctx.Int(utils.CacheFlag.Name), "updated", 4096)
+			ctx.Set(utils.CacheFlag.Name, strconv.Itoa(4096))
+		}
+	}
+	// If we're running a light client on any network, drop the cache to some meaningfully low amount
+	if ctx.String(utils.SyncModeFlag.Name) == "light" && !ctx.IsSet(utils.CacheFlag.Name) {
+		log.Info("Dropping default light client cache", "provided", ctx.Int(utils.CacheFlag.Name), "updated", 128)
+		ctx.Set(utils.CacheFlag.Name, strconv.Itoa(128))
+	}
+
+	// Start metrics export if enabled
+	utils.SetupMetrics(ctx)
+
+	// Start system runtime metrics collection
+	go metrics.CollectProcessMetrics(3 * time.Second)
+}
+
 // efsn is the main entry point into the system if no special subcommand is ran.
 // It creates a default node based on the command line arguments and runs it in
 // blocking mode, waiting for it to be shut down.
 func geth(ctx *cli.Context) error {
-	if args := ctx.Args(); len(args) > 0 {
+	if args := ctx.Args().Slice(); len(args) > 0 {
 		return fmt.Errorf("invalid command: %q", args[0])
 	}
+
+	prepare(ctx)
 	stack, backend := makeFullNode(ctx)
 	defer stack.Close()
 
@@ -271,38 +310,31 @@ func startNode(ctx *cli.Context, stack *node.Node, backend ethapi.Backend) {
 	debug.Memsize.Add("node", stack)
 
 	// add more log and checking in devnet
-	if ctx.GlobalBool(utils.DevnetFlag.Name) {
+	if ctx.Bool(utils.DevnetFlag.Name) {
 		common.InitDevnet()
-	} else if ctx.GlobalBool(utils.TestnetFlag.Name) {
+	} else if ctx.Bool(utils.TestnetFlag.Name) {
 		common.InitTestnet()
 	}
-	datong.InitCheckPoints(ctx.GlobalString(utils.CheckPointsFileFlag.Name))
+	datong.InitCheckPoints(ctx.String(utils.CheckPointsFileFlag.Name))
 
 	// Start up the node itself
 	utils.StartNode(stack)
 
 	// Unlock any account specifically requested
-	ks := stack.AccountManager().Backends(keystore.KeyStoreType)[0].(*keystore.KeyStore)
+	unlockAccounts(ctx, stack)
 
-	passwords := utils.MakePasswordList(ctx)
-	unlocks := strings.Split(ctx.GlobalString(utils.UnlockedAccountFlag.Name), ",")
-	for i, account := range unlocks {
-		if trimmed := strings.TrimSpace(account); trimmed != "" {
-			unlockAccount(ctx, ks, trimmed, i, passwords)
-		}
-	}
 	// Register wallet event handlers to open and auto-derive wallets
 	events := make(chan accounts.WalletEvent, 16)
 	stack.AccountManager().Subscribe(events)
 
-	go func() {
-		// Create a chain state reader for self-derivation
-		rpcClient, err := stack.Attach()
-		if err != nil {
-			utils.Fatalf("Failed to attach to self: %v", err)
-		}
-		ethClient := ethclient.NewClient(rpcClient)
+	// Create a chain state reader for self-derivation
+	rpcClient, err := stack.Attach()
+	if err != nil {
+		utils.Fatalf("Failed to attach to self: %v", err)
+	}
+	ethClient := ethclient.NewClient(rpcClient)
 
+	go func() {
 		// Open any wallets already attached
 		for _, wallet := range stack.AccountManager().Wallets() {
 			if err := wallet.Open(""); err != nil {
@@ -334,14 +366,16 @@ func startNode(ctx *cli.Context, stack *node.Node, backend ethapi.Backend) {
 			}
 		}
 	}()
+
 	// Start auto buy tickets
-	go ethapi.AutoBuyTicket(ctx.GlobalBool(utils.AutoBuyTicketsEnabledFlag.Name))
+	go ethapi.AutoBuyTicket(ctx.Bool(utils.AutoBuyTicketsEnabledFlag.Name))
 	// Start report illegal
 	go ethapi.ReportIllegal()
+
 	// Start auxiliary services if enabled
-	if ctx.GlobalBool(utils.MiningEnabledFlag.Name) || ctx.GlobalBool(utils.DeveloperFlag.Name) {
+	if ctx.Bool(utils.MiningEnabledFlag.Name) || ctx.Bool(utils.DeveloperFlag.Name) {
 		// Mining only makes sense if a full Ethereum node is running
-		if ctx.GlobalString(utils.SyncModeFlag.Name) == "light" {
+		if ctx.String(utils.SyncModeFlag.Name) == "light" {
 			utils.Fatalf("Light clients do not support mining")
 		}
 		ethBackend, ok := backend.(*eth.EthAPIBackend)
@@ -349,12 +383,33 @@ func startNode(ctx *cli.Context, stack *node.Node, backend ethapi.Backend) {
 			utils.Fatalf("Ethereum service not running")
 		}
 		// Set the gas price to the limits from the CLI and start mining
-		gasprice := utils.GlobalBig(ctx, utils.MinerGasPriceFlag.Name)
+		gasprice := flags.GlobalBig(ctx, utils.MinerGasPriceFlag.Name)
 		ethBackend.TxPool().SetGasPrice(gasprice)
 
-		threads := ctx.GlobalInt(utils.MinerThreadsFlag.Name)
+		threads := ctx.Int(utils.MinerThreadsFlag.Name)
 		if err := ethBackend.StartMining(threads); err != nil {
 			utils.Fatalf("Failed to start mining: %v", err)
 		}
+	}
+}
+
+// unlockAccounts unlocks any account specifically requested.
+func unlockAccounts(ctx *cli.Context, stack *node.Node) {
+	var unlocks []string
+	inputs := strings.Split(ctx.String(utils.UnlockedAccountFlag.Name), ",")
+	for _, input := range inputs {
+		if trimmed := strings.TrimSpace(input); trimmed != "" {
+			unlocks = append(unlocks, trimmed)
+		}
+	}
+	// Short circuit if there is no account to unlock.
+	if len(unlocks) == 0 {
+		return
+	}
+
+	ks := stack.AccountManager().Backends(keystore.KeyStoreType)[0].(*keystore.KeyStore)
+	passwords := utils.MakePasswordList(ctx)
+	for i, account := range unlocks {
+		unlockAccount(ks, account, i, passwords)
 	}
 }

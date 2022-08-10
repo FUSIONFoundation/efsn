@@ -7,29 +7,26 @@ import (
 	"math/big"
 	"strconv"
 
-	"github.com/FusionFoundation/efsn/v4/cmd/utils"
 	"github.com/FusionFoundation/efsn/v4/common"
 	"github.com/FusionFoundation/efsn/v4/common/hexutil"
 	"github.com/FusionFoundation/efsn/v4/consensus/datong"
 	"github.com/FusionFoundation/efsn/v4/core/types"
 	"github.com/FusionFoundation/efsn/v4/rlp"
 
-	"gopkg.in/urfave/cli.v1"
+	"github.com/urfave/cli/v2"
 )
 
 var (
-	rawTxCommand = cli.Command{
-		Name:     "rawtx",
-		Usage:    "Process raw transaction",
-		Category: "RAWTX COMMANDS",
+	rawTxCommand = &cli.Command{
+		Name:  "rawtx",
+		Usage: "Process raw transaction",
 		Description: `
-
 Process raw transaction.`,
-		Subcommands: []cli.Command{
+		Subcommands: []*cli.Command{
 			{
 				Name:      "decodeRawTx",
 				Usage:     "Decode transaction from rawtx hex data",
-				Action:    utils.MigrateFlags(decodeRawTx),
+				Action:    decodeRawTx,
 				Flags:     []cli.Flag{},
 				ArgsUsage: "<hexstr> [decodeinput]",
 				Description: `
@@ -39,7 +36,7 @@ decodeinput defaults to true, you can specify false to ignore it.`,
 			{
 				Name:      "decodeTxInput",
 				Usage:     "Decode fsn call param from tx input hex data",
-				Action:    utils.MigrateFlags(decodeTxInput),
+				Action:    decodeTxInput,
 				Flags:     []cli.Flag{},
 				ArgsUsage: "<hexstr>",
 				Description: `
@@ -48,7 +45,7 @@ rawtx decodeTxInput <hexstr>`,
 			{
 				Name:      "decodeLogData",
 				Usage:     "Decode log data from tx receipt log hex data",
-				Action:    utils.MigrateFlags(decodeLogData),
+				Action:    decodeLogData,
 				Flags:     []cli.Flag{},
 				ArgsUsage: "<hexstr>",
 				Description: `
@@ -57,7 +54,7 @@ rawtx decodeLogData <hexstr>`,
 			{
 				Name:      "sendAsset",
 				Usage:     "Create a 'sendAsset' raw transaction",
-				Action:    utils.MigrateFlags(createSendAssetRawTx),
+				Action:    createSendAssetRawTx,
 				Flags:     []cli.Flag{},
 				ArgsUsage: "<asset> <to> <value>",
 				Description: `
@@ -66,7 +63,7 @@ rawtx sendAsset <asset> <to> <value>`,
 			{
 				Name:      "assetToTimeLock",
 				Usage:     "Create a 'assetToTimeLock' raw transaction",
-				Action:    utils.MigrateFlags(createAssetToTimeLockRawTx),
+				Action:    createAssetToTimeLockRawTx,
 				Flags:     []cli.Flag{},
 				ArgsUsage: "<asset> <to> <start> <end> <value>",
 				Description: `
@@ -75,7 +72,7 @@ rawtx assetToTimeLock <asset> <to> <start> <end> <value>`,
 			{
 				Name:      "timeLockToTimeLock",
 				Usage:     "Create a 'timeLockToTimeLock' raw transaction",
-				Action:    utils.MigrateFlags(createTimeLockToTimeLockRawTx),
+				Action:    createTimeLockToTimeLockRawTx,
 				Flags:     []cli.Flag{},
 				ArgsUsage: "<asset> <to> <start> <end> <value>",
 				Description: `
@@ -84,7 +81,7 @@ rawtx timeLockToTimeLock <asset> <to> <start> <end> <value>`,
 			{
 				Name:      "timeLockToAsset",
 				Usage:     "Create a 'timeLockToAsset' raw transaction",
-				Action:    utils.MigrateFlags(createTimeLockToAssetRawTx),
+				Action:    createTimeLockToAssetRawTx,
 				Flags:     []cli.Flag{},
 				ArgsUsage: "<asset> <to> <value>",
 				Description: `
@@ -93,7 +90,7 @@ rawtx timeLockToAsset <asset> <to> <value>`,
 			{
 				Name:      "genNotation",
 				Usage:     "Create a 'genNotation' raw transaction",
-				Action:    utils.MigrateFlags(createGenNotationRawTx),
+				Action:    createGenNotationRawTx,
 				Flags:     []cli.Flag{},
 				ArgsUsage: "",
 				Description: `
@@ -102,7 +99,7 @@ rawtx genNotation`,
 			{
 				Name:      "buyTicket",
 				Usage:     "Create a 'buyTicket' raw transaction",
-				Action:    utils.MigrateFlags(createBuyTicketRawTx),
+				Action:    createBuyTicketRawTx,
 				Flags:     []cli.Flag{},
 				ArgsUsage: "<start> <end>",
 				Description: `
@@ -158,11 +155,11 @@ func printRawTx(tx *types.Transaction) error {
 
 func decodeRawTx(ctx *cli.Context) error {
 	args := ctx.Args()
-	if len(args) < 1 || len(args) > 2 {
+	if args.Len() < 1 || args.Len() > 2 {
 		return fmt.Errorf("wrong number of arguments")
 	}
 	decodeInput := true
-	if len(args) > 1 && args[1] == "false" {
+	if args.Len() > 1 && args.Get(1) == "false" {
 		decodeInput = false
 	}
 	data, err := hexutil.Decode(args.First())
@@ -179,7 +176,7 @@ func decodeRawTx(ctx *cli.Context) error {
 
 func decodeTxInput(ctx *cli.Context) error {
 	args := ctx.Args()
-	if len(args) != 1 {
+	if args.Len() != 1 {
 		return fmt.Errorf("wrong number of arguments")
 	}
 	data, err := hexutil.Decode(args.First())
@@ -200,7 +197,7 @@ func decodeTxInput(ctx *cli.Context) error {
 
 func decodeLogData(ctx *cli.Context) error {
 	args := ctx.Args()
-	if len(args) != 1 {
+	if args.Len() != 1 {
 		return fmt.Errorf("wrong number of arguments")
 	}
 	data, err := hexutil.Decode(args.First())
@@ -246,14 +243,14 @@ func toRawTx(funcType common.FSNCallFunc, funcParam ParamInterface) (*types.Tran
 
 func createSendAssetRawTx(ctx *cli.Context) error {
 	args := ctx.Args()
-	if len(args) != 3 {
+	if args.Len() != 3 {
 		return fmt.Errorf("wrong number of arguments")
 	}
-	asset := common.HexToHash(args[0])
-	to := common.HexToAddress(args[1])
-	value, ok := new(big.Int).SetString(args[2], 0)
+	asset := common.HexToHash(args.First())
+	to := common.HexToAddress(args.Get(1))
+	value, ok := new(big.Int).SetString(args.Get(2), 0)
 	if !ok {
-		return fmt.Errorf(args[2] + " is not a right big number")
+		return fmt.Errorf(args.Get(2) + " is not a right big number")
 	}
 
 	param := common.SendAssetParam{
@@ -270,22 +267,22 @@ func createSendAssetRawTx(ctx *cli.Context) error {
 
 func createAssetToTimeLockRawTx(ctx *cli.Context) error {
 	args := ctx.Args()
-	if len(args) != 5 {
+	if args.Len() != 5 {
 		return fmt.Errorf("wrong number of arguments")
 	}
-	asset := common.HexToHash(args[0])
-	to := common.HexToAddress(args[1])
-	start, err := strconv.ParseUint(args[2], 0, 64)
+	asset := common.HexToHash(args.First())
+	to := common.HexToAddress(args.Get(1))
+	start, err := strconv.ParseUint(args.Get(2), 0, 64)
 	if err != nil {
 		return fmt.Errorf("Invalid start number: %v", err)
 	}
-	end, err := strconv.ParseUint(args[3], 0, 64)
+	end, err := strconv.ParseUint(args.Get(3), 0, 64)
 	if err != nil {
 		return fmt.Errorf("Invalid end number: %v", err)
 	}
-	value, ok := new(big.Int).SetString(args[4], 0)
+	value, ok := new(big.Int).SetString(args.Get(4), 0)
 	if !ok {
-		return fmt.Errorf(args[4] + " is not a right big number")
+		return fmt.Errorf(args.Get(4) + " is not a right big number")
 	}
 
 	param := common.TimeLockParam{
@@ -305,22 +302,22 @@ func createAssetToTimeLockRawTx(ctx *cli.Context) error {
 
 func createTimeLockToTimeLockRawTx(ctx *cli.Context) error {
 	args := ctx.Args()
-	if len(args) != 5 {
+	if args.Len() != 5 {
 		return fmt.Errorf("wrong number of arguments")
 	}
-	asset := common.HexToHash(args[0])
-	to := common.HexToAddress(args[1])
-	start, err := strconv.ParseUint(args[2], 0, 64)
+	asset := common.HexToHash(args.First())
+	to := common.HexToAddress(args.Get(1))
+	start, err := strconv.ParseUint(args.Get(2), 0, 64)
 	if err != nil {
 		return fmt.Errorf("Invalid start number: %v", err)
 	}
-	end, err := strconv.ParseUint(args[3], 0, 64)
+	end, err := strconv.ParseUint(args.Get(3), 0, 64)
 	if err != nil {
 		return fmt.Errorf("Invalid end number: %v", err)
 	}
-	value, ok := new(big.Int).SetString(args[4], 0)
+	value, ok := new(big.Int).SetString(args.Get(4), 0)
 	if !ok {
-		return fmt.Errorf(args[4] + " is not a right big number")
+		return fmt.Errorf(args.Get(4) + " is not a right big number")
 	}
 
 	param := common.TimeLockParam{
@@ -340,14 +337,14 @@ func createTimeLockToTimeLockRawTx(ctx *cli.Context) error {
 
 func createTimeLockToAssetRawTx(ctx *cli.Context) error {
 	args := ctx.Args()
-	if len(args) != 3 {
+	if args.Len() != 3 {
 		return fmt.Errorf("wrong number of arguments")
 	}
-	asset := common.HexToHash(args[0])
-	to := common.HexToAddress(args[1])
-	value, ok := new(big.Int).SetString(args[2], 0)
+	asset := common.HexToHash(args.First())
+	to := common.HexToAddress(args.Get(1))
+	value, ok := new(big.Int).SetString(args.Get(2), 0)
 	if !ok {
-		return fmt.Errorf(args[2] + " is not a right big number")
+		return fmt.Errorf(args.Get(2) + " is not a right big number")
 	}
 
 	param := common.TimeLockParam{
@@ -375,14 +372,14 @@ func createGenNotationRawTx(ctx *cli.Context) error {
 
 func createBuyTicketRawTx(ctx *cli.Context) error {
 	args := ctx.Args()
-	if len(args) != 2 {
+	if args.Len() != 2 {
 		return fmt.Errorf("wrong number of arguments")
 	}
-	start, err := strconv.ParseUint(args[0], 0, 64)
+	start, err := strconv.ParseUint(args.First(), 0, 64)
 	if err != nil {
 		return fmt.Errorf("Invalid start number: %v", err)
 	}
-	end, err := strconv.ParseUint(args[1], 0, 64)
+	end, err := strconv.ParseUint(args.Get(1), 0, 64)
 	if err != nil {
 		return fmt.Errorf("Invalid end number: %v", err)
 	}

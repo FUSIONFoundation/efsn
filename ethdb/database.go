@@ -37,8 +37,8 @@ type KeyValueWriter interface {
 	Delete(key []byte) error
 }
 
-// Stater wraps the Stat method of a backing data store.
-type Stater interface {
+// KeyValueStater wraps the Stat method of a backing data store.
+type KeyValueStater interface {
 	// Stat returns a particular internal stat of the database.
 	Stat(property string) (string, error)
 }
@@ -101,6 +101,11 @@ type AncientWriter interface {
 
 	// Sync flushes all in-memory ancient store data to disk.
 	Sync() error
+
+	// MigrateTable processes and migrates entries of a given table to a new format.
+	// The second argument is a function that takes a raw entry and returns it
+	// in the newest format.
+	//MigrateTable(string, func([]byte) ([]byte, error)) error
 }
 
 // Reader contains the methods required to read data from both key-value as well as
@@ -115,6 +120,12 @@ type Reader interface {
 type Writer interface {
 	KeyValueWriter
 	AncientWriter
+}
+
+// Stater contains the methods required to retrieve states from both key-value as well as
+// immutable ancient data.
+type Stater interface {
+	KeyValueStater
 }
 
 // AncientStore contains all the methods required to allow handling different

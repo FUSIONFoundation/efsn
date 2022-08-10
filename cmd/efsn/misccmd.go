@@ -22,28 +22,25 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/FusionFoundation/efsn/v4/cmd/utils"
 	"github.com/FusionFoundation/efsn/v4/params"
-	"gopkg.in/urfave/cli.v1"
+	"github.com/urfave/cli/v2"
 )
 
 var (
-	versionCommand = cli.Command{
-		Action:    utils.MigrateFlags(version),
+	versionCommand = &cli.Command{
+		Action:    version,
 		Name:      "version",
 		Usage:     "Print version numbers",
 		ArgsUsage: " ",
-		Category:  "MISCELLANEOUS COMMANDS",
 		Description: `
 The output of this command is supposed to be machine-readable.
 `,
 	}
-	licenseCommand = cli.Command{
-		Action:    utils.MigrateFlags(license),
+	licenseCommand = &cli.Command{
+		Action:    license,
 		Name:      "license",
 		Usage:     "Display license information",
 		ArgsUsage: " ",
-		Category:  "MISCELLANEOUS COMMANDS",
 	}
 )
 
@@ -65,12 +62,12 @@ func version(ctx *cli.Context) error {
 }
 
 func license(_ *cli.Context) error {
-	fmt.Println(`Geth is free software: you can redistribute it and/or modify
+	fmt.Println(`efsn is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation, either version 3 of the License, or
 (at your option) any later version.
 
-Geth is distributed in the hope that it will be useful,
+efsn is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 GNU General Public License for more details.

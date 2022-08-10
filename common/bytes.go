@@ -17,7 +17,11 @@
 // Package common contains various helper functions.
 package common
 
-import "encoding/hex"
+import (
+	"encoding/hex"
+	"errors"
+	"github.com/FusionFoundation/efsn/v4/common/hexutil"
+)
 
 // ToHex returns the hex representation of b, prefixed with '0x'.
 // For empty slices, the return value is "0x0".
@@ -102,6 +106,15 @@ func Hex2BytesFixed(str string, flen int) []byte {
 	hh := make([]byte, flen)
 	copy(hh[flen-len(h):flen], h)
 	return hh
+}
+
+// ParseHexOrString tries to hexdecode b, but if the prefix is missing, it instead just returns the raw bytes
+func ParseHexOrString(str string) ([]byte, error) {
+	b, err := hexutil.Decode(str)
+	if errors.Is(err, hexutil.ErrMissingPrefix) {
+		return []byte(str), nil
+	}
+	return b, err
 }
 
 // RightPadBytes zero-pads slice to the right up to length l.
