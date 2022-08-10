@@ -50,6 +50,7 @@ import (
 	"github.com/FusionFoundation/efsn/v4/les"
 	"github.com/FusionFoundation/efsn/v4/log"
 	"github.com/FusionFoundation/efsn/v4/metrics"
+	"github.com/FusionFoundation/efsn/v4/metrics/exp"
 	"github.com/FusionFoundation/efsn/v4/metrics/influxdb"
 	"github.com/FusionFoundation/efsn/v4/miner"
 	"github.com/FusionFoundation/efsn/v4/node"
@@ -1521,9 +1522,9 @@ func SetupMetrics(ctx *cli.Context) {
 			username = ctx.String(MetricsInfluxDBUsernameFlag.Name)
 			password = ctx.String(MetricsInfluxDBPasswordFlag.Name)
 
-			//token        = ctx.String(MetricsInfluxDBTokenFlag.Name)
-			//bucket       = ctx.String(MetricsInfluxDBBucketFlag.Name)
-			//organization = ctx.String(MetricsInfluxDBOrganizationFlag.Name)
+			token        = ctx.String(MetricsInfluxDBTokenFlag.Name)
+			bucket       = ctx.String(MetricsInfluxDBBucketFlag.Name)
+			organization = ctx.String(MetricsInfluxDBOrganizationFlag.Name)
 		)
 
 		if enableExport {
@@ -1532,17 +1533,17 @@ func SetupMetrics(ctx *cli.Context) {
 			log.Info("Enabling metrics export to InfluxDB")
 			go influxdb.InfluxDBWithTags(metrics.DefaultRegistry, 10*time.Second, endpoint, database, username, password, "efsn.", tagsMap)
 		} else if enableExportV2 {
-			//tagsMap := SplitTagsFlag(ctx.String(MetricsInfluxDBTagsFlag.Name))
+			tagsMap := SplitTagsFlag(ctx.String(MetricsInfluxDBTagsFlag.Name))
 
 			log.Info("Enabling metrics export to InfluxDB (v2)")
 
-			//go influxdb.InfluxDBV2WithTags(metrics.DefaultRegistry, 10*time.Second, endpoint, token, bucket, organization, "geth.", tagsMap)
+			go influxdb.InfluxDBV2WithTags(metrics.DefaultRegistry, 10*time.Second, endpoint, token, bucket, organization, "efsn.", tagsMap)
 		}
 
 		if ctx.IsSet(MetricsHTTPFlag.Name) {
 			address := fmt.Sprintf("%s:%d", ctx.String(MetricsHTTPFlag.Name), ctx.Int(MetricsPortFlag.Name))
 			log.Info("Enabling stand-alone metrics HTTP endpoint", "address", address)
-			//exp.Setup(address)
+			exp.Setup(address)
 		}
 	}
 }
