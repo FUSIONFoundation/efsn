@@ -22,11 +22,11 @@ package geth
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/FusionFoundation/efsn/v4/eth/ethconfig"
 	"path/filepath"
 
 	"github.com/FusionFoundation/efsn/v4/core"
 	"github.com/FusionFoundation/efsn/v4/eth/downloader"
+	"github.com/FusionFoundation/efsn/v4/eth/ethconfig"
 	"github.com/FusionFoundation/efsn/v4/ethclient"
 	"github.com/FusionFoundation/efsn/v4/ethstats"
 	"github.com/FusionFoundation/efsn/v4/internal/debug"
@@ -90,6 +90,22 @@ func NewNodeConfig() *NodeConfig {
 	return &config
 }
 
+// AddBootstrapNode adds an additional bootstrap node to the node config.
+func (conf *NodeConfig) AddBootstrapNode(node *Enode) {
+	conf.BootstrapNodes.Append(node)
+}
+
+// EncodeJSON encodes a NodeConfig into a JSON data dump.
+func (conf *NodeConfig) EncodeJSON() (string, error) {
+	data, err := json.Marshal(conf)
+	return string(data), err
+}
+
+// String returns a printable representation of the node config.
+func (conf *NodeConfig) String() string {
+	return encodeOrError(conf)
+}
+
 // Node represents a Geth Ethereum node instance.
 type Node struct {
 	node *node.Node
@@ -127,6 +143,7 @@ func NewNode(datadir string, config *NodeConfig) (stack *Node, _ error) {
 			MaxPeers:         config.MaxPeers,
 		},
 	}
+
 	rawStack, err := node.New(nodeConf)
 	if err != nil {
 		return nil, err
@@ -156,19 +173,13 @@ func NewNode(datadir string, config *NodeConfig) (stack *Node, _ error) {
 		ethConf.SyncMode = downloader.LightSync
 		ethConf.NetworkId = uint64(config.EthereumNetworkID)
 		ethConf.DatabaseCache = config.EthereumDatabaseCache
-		if err := rawStack.Register(func(ctx *node.ServiceContext) (node.Service, error) {
-			return les.New(ctx, &ethConf)
-		}); err != nil {
+		lesBackend, err := les.New(rawStack, &ethConf)
+		if err != nil {
 			return nil, fmt.Errorf("ethereum init: %v", err)
 		}
 		// If netstats reporting is requested, do it
 		if config.EthereumNetStats != "" {
-			if err := rawStack.Register(func(ctx *node.ServiceContext) (node.Service, error) {
-				var lesServ *les.LightEthereum
-				ctx.Service(&lesServ)
-
-				return ethstats.New(config.EthereumNetStats, nil, lesServ)
-			}); err != nil {
+			if err := ethstats.New(rawStack, lesBackend.ApiBackend, lesBackend.Engine(), config.EthereumNetStats); err != nil {
 				return nil, fmt.Errorf("netstats init: %v", err)
 			}
 		}
@@ -176,15 +187,16 @@ func NewNode(datadir string, config *NodeConfig) (stack *Node, _ error) {
 	return &Node{rawStack}, nil
 }
 
-// Start creates a live P2P node and starts running it.
-func (n *Node) Start() error {
-	return n.node.Start()
+// Close terminates a running node along with all it's services, tearing internal state
+// down. It is not possible to restart a closed node.
+func (n *Node) Close() error {
+	return n.node.Close()
 }
 
-// Stop terminates a running node along with all it's services. If the node was
-// not started, an error is returned.
-func (n *Node) Stop() error {
-	return n.node.Stop()
+// Start creates a live P2P node and starts running it.
+func (n *Node) Start() error {
+	// TODO: recreate the node so it can be started multiple times
+	return n.node.Start()
 }
 
 // GetEthereumClient retrieves a client to access the Ethereum subsystem.

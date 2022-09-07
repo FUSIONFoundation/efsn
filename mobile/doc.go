@@ -14,17 +14,17 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with the go-ethereum library. If not, see <http://www.gnu.org/licenses/>.
 
-// Package efsn contains the simplified mobile APIs to go-ethereum.
+// Package geth contains the simplified mobile APIs to go-ethereum.
 //
 // The scope of this package is *not* to allow writing a custom Ethereum client
 // with pieces plucked from go-ethereum, rather to allow writing native dapps on
 // mobile platforms. Keep this in mind when using or extending this package!
 //
-// API limitations
+// # API limitations
 //
 // Since gomobile cannot bridge arbitrary types between Go and Android/iOS, the
 // exposed APIs need to be manually wrapped into simplified types, with custom
-// constructors and getters/setters to ensure that they can be meaninfully used
+// constructors and getters/setters to ensure that they can be meaningfully used
 // from Java/ObjC too.
 //
 // With this in mind, please try to limit the scope of this package and only add

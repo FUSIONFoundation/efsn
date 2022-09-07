@@ -17,7 +17,6 @@
 package geth
 
 import (
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -25,7 +24,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/FusionFoundation/efsn/v4/internal/build"
+	"github.com/cespare/cp"
 )
 
 // androidTestClass is a Java class to do some lightweight tests against the Android
@@ -40,7 +39,7 @@ import android.test.MoreAsserts;
 import java.math.BigInteger;
 import java.util.Arrays;
 
-import org.ethereum.efsn.*;
+import org.ethereum.geth.*;
 
 public class AndroidTest extends InstrumentationTestCase {
 	public AndroidTest() {}
@@ -184,11 +183,7 @@ func TestAndroid(t *testing.T) {
 		t.Logf("initialization took %v", time.Since(start))
 	}
 	// Create and switch to a temporary workspace
-	workspace, err := ioutil.TempDir("", "efsn-android-")
-	if err != nil {
-		t.Fatalf("failed to create temporary workspace: %v", err)
-	}
-	defer os.RemoveAll(workspace)
+	workspace := t.TempDir()
 
 	pwd, err := os.Getwd()
 	if err != nil {
@@ -207,21 +202,21 @@ func TestAndroid(t *testing.T) {
 		}
 	}
 	// Generate the mobile bindings for Geth and add the tester class
-	gobind := exec.Command("gomobile", "bind", "-javapkg", "org.ethereum", "github.com/FusionFoundation/efsn/v4/mobile")
+	gobind := exec.Command("gomobile", "bind", "-javapkg", "org.ethereum", "github.com/ethereum/go-ethereum/mobile")
 	if output, err := gobind.CombinedOutput(); err != nil {
 		t.Logf("%s", output)
 		t.Fatalf("failed to run gomobile bind: %v", err)
 	}
-	build.CopyFile(filepath.Join("libs", "efsn.aar"), "efsn.aar", os.ModePerm)
+	cp.CopyFile(filepath.Join("libs", "geth.aar"), "geth.aar")
 
-	if err = ioutil.WriteFile(filepath.Join("src", "androidTest", "java", "org", "ethereum", "gethtest", "AndroidTest.java"), []byte(androidTestClass), os.ModePerm); err != nil {
+	if err = os.WriteFile(filepath.Join("src", "androidTest", "java", "org", "ethereum", "gethtest", "AndroidTest.java"), []byte(androidTestClass), os.ModePerm); err != nil {
 		t.Fatalf("failed to write Android test class: %v", err)
 	}
 	// Finish creating the project and run the tests via gradle
-	if err = ioutil.WriteFile(filepath.Join("src", "main", "AndroidManifest.xml"), []byte(androidManifest), os.ModePerm); err != nil {
+	if err = os.WriteFile(filepath.Join("src", "main", "AndroidManifest.xml"), []byte(androidManifest), os.ModePerm); err != nil {
 		t.Fatalf("failed to write Android manifest: %v", err)
 	}
-	if err = ioutil.WriteFile("build.gradle", []byte(gradleConfig), os.ModePerm); err != nil {
+	if err = os.WriteFile("build.gradle", []byte(gradleConfig), os.ModePerm); err != nil {
 		t.Fatalf("failed to write gradle build file: %v", err)
 	}
 	if output, err := exec.Command("gradle", "connectedAndroidTest").CombinedOutput(); err != nil {
@@ -261,6 +256,6 @@ repositories {
 }
 dependencies {
     compile 'com.android.support:appcompat-v7:19.0.0'
-    compile(name: "efsn", ext: "aar")
+    compile(name: "geth", ext: "aar")
 }
 `
