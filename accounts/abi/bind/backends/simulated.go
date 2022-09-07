@@ -46,7 +46,11 @@ import (
 // This nil assignment ensures compile time that SimulatedBackend implements bind.ContractBackend.
 var _ bind.ContractBackend = (*SimulatedBackend)(nil)
 
-var errBlockNumberUnsupported = errors.New("SimulatedBackend cannot access blocks other than the latest block")
+var (
+	errBlockNumberUnsupported  = errors.New("simulatedBackend cannot access blocks other than the latest block")
+	errBlockDoesNotExist       = errors.New("block does not exist in blockchain")
+	errTransactionDoesNotExist = errors.New("transaction does not exist")
+)
 
 // SimulatedBackend implements bind.ContractBackend, simulating a blockchain in
 // the background. Its main purpose is to allow easily testing contract bindings.
@@ -164,7 +168,149 @@ func (b *SimulatedBackend) TransactionReceipt(ctx context.Context, txHash common
 	defer b.mu.Unlock()
 
 	receipt, _, _, _ := rawdb.ReadReceipt(b.database, txHash, b.config)
+	if receipt == nil {
+		return nil, ethereum.NotFound
+	}
 	return receipt, nil
+}
+
+// TransactionByHash checks the pool of pending transactions in addition to the
+// blockchain. The isPending return value indicates whether the transaction has been
+// mined yet. Note that the transaction may not be part of the canonical chain even if
+// it's not pending.
+func (b *SimulatedBackend) TransactionByHash(ctx context.Context, txHash common.Hash) (*types.Transaction, bool, error) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+
+	tx := b.pendingBlock.Transaction(txHash)
+	if tx != nil {
+		return tx, true, nil
+	}
+	tx, _, _, _ = rawdb.ReadTransaction(b.database, txHash)
+	if tx != nil {
+		return tx, false, nil
+	}
+	return nil, false, ethereum.NotFound
+}
+
+// BlockByHash retrieves a block based on the block hash.
+func (b *SimulatedBackend) BlockByHash(ctx context.Context, hash common.Hash) (*types.Block, error) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+
+	return b.blockByHash(ctx, hash)
+}
+
+// blockByHash retrieves a block based on the block hash without Locking.
+func (b *SimulatedBackend) blockByHash(ctx context.Context, hash common.Hash) (*types.Block, error) {
+	if hash == b.pendingBlock.Hash() {
+		return b.pendingBlock, nil
+	}
+
+	block := b.blockchain.GetBlockByHash(hash)
+	if block != nil {
+		return block, nil
+	}
+
+	return nil, errBlockDoesNotExist
+}
+
+// BlockByNumber retrieves a block from the database by number, caching it
+// (associated with its hash) if found.
+func (b *SimulatedBackend) BlockByNumber(ctx context.Context, number *big.Int) (*types.Block, error) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+
+	return b.blockByNumber(ctx, number)
+}
+
+// blockByNumber retrieves a block from the database by number, caching it
+// (associated with its hash) if found without Lock.
+func (b *SimulatedBackend) blockByNumber(ctx context.Context, number *big.Int) (*types.Block, error) {
+	if number == nil || number.Cmp(b.pendingBlock.Number()) == 0 {
+		return b.blockchain.CurrentBlock(), nil
+	}
+
+	block := b.blockchain.GetBlockByNumber(uint64(number.Int64()))
+	if block == nil {
+		return nil, errBlockDoesNotExist
+	}
+
+	return block, nil
+}
+
+// HeaderByHash returns a block header from the current canonical chain.
+func (b *SimulatedBackend) HeaderByHash(ctx context.Context, hash common.Hash) (*types.Header, error) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+
+	if hash == b.pendingBlock.Hash() {
+		return b.pendingBlock.Header(), nil
+	}
+
+	header := b.blockchain.GetHeaderByHash(hash)
+	if header == nil {
+		return nil, errBlockDoesNotExist
+	}
+
+	return header, nil
+}
+
+// HeaderByNumber returns a block header from the current canonical chain. If number is
+// nil, the latest known header is returned.
+func (b *SimulatedBackend) HeaderByNumber(ctx context.Context, block *big.Int) (*types.Header, error) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+
+	if block == nil || block.Cmp(b.pendingBlock.Number()) == 0 {
+		return b.blockchain.CurrentHeader(), nil
+	}
+
+	return b.blockchain.GetHeaderByNumber(uint64(block.Int64())), nil
+}
+
+// TransactionCount returns the number of transactions in a given block.
+func (b *SimulatedBackend) TransactionCount(ctx context.Context, blockHash common.Hash) (uint, error) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+
+	if blockHash == b.pendingBlock.Hash() {
+		return uint(b.pendingBlock.Transactions().Len()), nil
+	}
+
+	block := b.blockchain.GetBlockByHash(blockHash)
+	if block == nil {
+		return uint(0), errBlockDoesNotExist
+	}
+
+	return uint(block.Transactions().Len()), nil
+}
+
+// TransactionInBlock returns the transaction for a specific block at a specific index.
+func (b *SimulatedBackend) TransactionInBlock(ctx context.Context, blockHash common.Hash, index uint) (*types.Transaction, error) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+
+	if blockHash == b.pendingBlock.Hash() {
+		transactions := b.pendingBlock.Transactions()
+		if uint(len(transactions)) < index+1 {
+			return nil, errTransactionDoesNotExist
+		}
+
+		return transactions[index], nil
+	}
+
+	block := b.blockchain.GetBlockByHash(blockHash)
+	if block == nil {
+		return nil, errBlockDoesNotExist
+	}
+
+	transactions := block.Transactions()
+	if uint(len(transactions)) < index+1 {
+		return nil, errTransactionDoesNotExist
+	}
+
+	return transactions[index], nil
 }
 
 // PendingCodeAt returns the code associated with an account in the pending state.
@@ -217,8 +363,20 @@ func (b *SimulatedBackend) PendingNonceAt(ctx context.Context, account common.Ad
 }
 
 // SuggestGasPrice implements ContractTransactor.SuggestGasPrice. Since the simulated
-// chain doens't have miners, we just return a gas price of 1 for any call.
+// chain doesn't have miners, we just return a gas price of 1 for any call.
 func (b *SimulatedBackend) SuggestGasPrice(ctx context.Context) (*big.Int, error) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+
+	if b.pendingBlock.Header().BaseFee != nil {
+		return b.pendingBlock.Header().BaseFee, nil
+	}
+	return big.NewInt(1), nil
+}
+
+// SuggestGasTipCap implements ContractTransactor.SuggestGasTipCap. Since the simulated
+// chain doesn't have miners, we just return a gas tip of 1 for any call.
+func (b *SimulatedBackend) SuggestGasTipCap(ctx context.Context) (*big.Int, error) {
 	return big.NewInt(1), nil
 }
 
