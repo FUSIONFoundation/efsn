@@ -246,7 +246,7 @@ func (c *ChainConfig) String() string {
 	banner += fmt.Sprintf(" - Berlin:                      %-8v (https://github.com/ethereum/execution-specs/blob/master/network-upgrades/mainnet-upgrades/berlin.md)\n", c.BerlinBlock)
 	banner += fmt.Sprintf(" - London:                      %-8v (https://github.com/ethereum/execution-specs/blob/master/network-upgrades/mainnet-upgrades/london.md)\n", c.LondonBlock)
 	if c.EcoBlock != nil {
-		banner += fmt.Sprintf(" - Eco:                      %-8v\n", c.EcoBlock)
+		banner += fmt.Sprintf(" - Fusion Eco:                  %-8v\n", c.EcoBlock)
 	}
 	banner += "\n"
 
