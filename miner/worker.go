@@ -853,7 +853,7 @@ func (w *worker) commitNewWork(interrupt *int32, noempty bool, timestamp int64) 
 	header := &types.Header{
 		ParentHash: parent.Hash(),
 		Number:     num.Add(num, common.Big1),
-		GasLimit:   core.CalcGasLimit(parent.GasUsed(), parent.GasLimit(), w.config.GasFloor, w.config.GasCeil),
+		GasLimit:   core.CalcGasLimit(parent.GasLimit(), w.config.GasCeil),
 		Extra:      w.extra,
 		Time:       uint64(timestamp),
 		Difficulty: common.Big0,
@@ -861,11 +861,11 @@ func (w *worker) commitNewWork(interrupt *int32, noempty bool, timestamp int64) 
 	// Set baseFee and GasLimit if we are on an EIP-1559 chain
 	if w.chainConfig.IsLondon(header.Number) {
 		header.BaseFee = misc.CalcBaseFee(w.chainConfig, parent.Header())
-		// Fusion don't require double the Block GasLimit
-		//if !w.chainConfig.IsLondon(parent.Number()) {
-		//	parentGasLimit := parent.GasLimit() * params.ElasticityMultiplier
-		//	header.GasLimit = core.CalcGasLimit(parentGasLimit, w.gasCeil)
-		//}
+		// Fusion double the Block GasLimit after ECO Hardfork
+		if w.chainConfig.IsEco(header.Number) && !w.chainConfig.IsEco(parent.Number()) {
+			parentGasLimit := parent.GasLimit() * params.ElasticityMultiplier
+			header.GasLimit = core.CalcGasLimit(parentGasLimit, w.config.GasCeil)
+		}
 	}
 	// Only set the coinbase if our consensus engine is running (avoid spurious block rewards)
 	if w.isRunning() {

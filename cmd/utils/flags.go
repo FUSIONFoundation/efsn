@@ -310,12 +310,6 @@ var (
 		Usage:    "Comma separated HTTP URL list to notify of new work packages",
 		Category: flags.MinerCategory,
 	}
-	MinerGasTargetFlag = &cli.Uint64Flag{
-		Name:     "miner.gastarget",
-		Usage:    "Target gas floor for mined blocks",
-		Value:    ethconfig.Defaults.Miner.GasFloor,
-		Category: flags.MinerCategory,
-	}
 	MinerGasLimitFlag = &cli.Uint64Flag{
 		Name:     "miner.gaslimit",
 		Usage:    "Target gas ceiling for mined blocks",
@@ -1252,9 +1246,6 @@ func setMiner(ctx *cli.Context, cfg *miner.Config) {
 	}
 	if ctx.IsSet(MinerExtraDataFlag.Name) {
 		cfg.ExtraData = []byte(ctx.String(MinerExtraDataFlag.Name))
-	}
-	if ctx.IsSet(MinerGasTargetFlag.Name) {
-		cfg.GasFloor = ctx.Uint64(MinerGasTargetFlag.Name)
 	}
 	if ctx.IsSet(MinerGasLimitFlag.Name) {
 		cfg.GasCeil = ctx.Uint64(MinerGasLimitFlag.Name)

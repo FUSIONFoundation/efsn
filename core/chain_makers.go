@@ -255,18 +255,18 @@ func makeHeader(chain consensus.ChainReader, parent *types.Block, state *state.S
 			Difficulty: parent.Difficulty(),
 			UncleHash:  parent.UncleHash(),
 		}),
-		GasLimit: CalcGasLimit(parent.GasUsed(), parent.GasLimit(), parent.GasLimit(), parent.GasLimit()),
+		GasLimit: parent.GasLimit(),
 		Number:   new(big.Int).Add(parent.Number(), common.Big1),
 		Time:     time,
 	}
 
 	if chain.Config().IsLondon(header.Number) {
 		header.BaseFee = misc.CalcBaseFee(chain.Config(), parent.Header())
-		// Fusion don't require double the Block GasLimit
-		//if !chain.Config().IsLondon(parent.Number()) {
-		//	parentGasLimit := parent.GasLimit() * params.ElasticityMultiplier
-		//	header.GasLimit = CalcGasLimit(parentGasLimit, parentGasLimit)
-		//}
+		// Fusion double the Block GasLimit after ECO Hardfork
+		if chain.Config().IsEco(header.Number) && !chain.Config().IsEco(parent.Number()) {
+			parentGasLimit := parent.GasLimit() * params.ElasticityMultiplier
+			header.GasLimit = CalcGasLimit(parentGasLimit, parentGasLimit)
+		}
 	}
 	return header
 }
