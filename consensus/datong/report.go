@@ -178,7 +178,7 @@ func punishTimeLock(state vm.StateDB, miner common.Address, value *big.Int, heig
 	needTimelock := common.NewTimeLock(needItem)
 	timelockBalance := state.GetTimeLockBalance(common.SystemAssetID, miner)
 	if timelockBalance.Cmp(needTimelock) >= 0 {
-		state.SubTimeLockBalance(miner, common.SystemAssetID, needTimelock, height, timestamp)
+		state.SubTimeLockBalance(miner, common.SystemAssetID, needTimelock, timestamp)
 	} else {
 		var leftItems []*common.TimeLockItem
 		for i, item := range timelockBalance.Items {

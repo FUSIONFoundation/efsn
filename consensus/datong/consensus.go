@@ -414,7 +414,7 @@ func (dt *DaTong) Finalize(chain consensus.ChainReader, header *types.Header, st
 			EndTime:   ticket.ExpireTime,
 			Value:     ticket.Value(),
 		})
-		headerState.AddTimeLockBalance(ticket.Owner, common.SystemAssetID, value, header.Number, header.Time)
+		headerState.AddTimeLockBalance(ticket.Owner, common.SystemAssetID, value, header.Time)
 	}
 
 	deleteTicket := func(ticket *common.Ticket, logType ticketLogType, returnBack bool) {
@@ -440,7 +440,7 @@ func (dt *DaTong) Finalize(chain consensus.ChainReader, header *types.Header, st
 	}
 
 	if common.IsVote1ForkBlock(header.Number) {
-		ApplyVote1HardFork(headerState, header.Number, parent.Time)
+		ApplyVote1HardFork(headerState, parent.Time)
 	}
 
 	hash, err := headerState.UpdateTickets(header.Number, parent.Time)

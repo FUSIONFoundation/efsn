@@ -467,17 +467,17 @@ func (s *StateDB) SetBalance(addr common.Address, assetID common.Hash, amount *b
 	}
 }
 
-func (s *StateDB) AddTimeLockBalance(addr common.Address, assetID common.Hash, amount *common.TimeLock, blockNumber *big.Int, timestamp uint64) {
+func (s *StateDB) AddTimeLockBalance(addr common.Address, assetID common.Hash, amount *common.TimeLock, timestamp uint64) {
 	stateObject := s.GetOrNewStateObject(addr)
 	if stateObject != nil {
-		stateObject.AddTimeLockBalance(assetID, amount, blockNumber, timestamp)
+		stateObject.AddTimeLockBalance(assetID, amount, timestamp)
 	}
 }
 
-func (s *StateDB) SubTimeLockBalance(addr common.Address, assetID common.Hash, amount *common.TimeLock, blockNumber *big.Int, timestamp uint64) {
+func (s *StateDB) SubTimeLockBalance(addr common.Address, assetID common.Hash, amount *common.TimeLock, timestamp uint64) {
 	stateObject := s.GetOrNewStateObject(addr)
 	if stateObject != nil {
-		stateObject.SubTimeLockBalance(assetID, amount, blockNumber, timestamp)
+		stateObject.SubTimeLockBalance(assetID, amount, timestamp)
 	}
 }
 
@@ -567,14 +567,14 @@ func (s *StateDB) Suicide(addr common.Address) bool {
 	return true
 }
 
-func (s *StateDB) TransferAll(from, to common.Address, blockNumber *big.Int, timestamp uint64) {
+func (s *StateDB) TransferAll(from, to common.Address, timestamp uint64) {
 	fromObject := s.getStateObject(from)
 	if fromObject == nil {
 		return
 	}
 
 	// remove tickets
-	s.ClearTickets(from, to, blockNumber, timestamp)
+	s.ClearTickets(from, to, timestamp)
 
 	// burn notation
 	s.BurnNotation(from)
@@ -590,7 +590,7 @@ func (s *StateDB) TransferAll(from, to common.Address, blockNumber *big.Int, tim
 	for i, v := range fromObject.data.TimeLockBalancesVal {
 		k := fromObject.data.TimeLockBalancesHash[i]
 		fromObject.SetTimeLockBalance(k, new(common.TimeLock))
-		s.AddTimeLockBalance(to, k, v, blockNumber, timestamp)
+		s.AddTimeLockBalance(to, k, v, timestamp)
 	}
 }
 
@@ -667,7 +667,7 @@ func (s *StateDB) setStateObject(object *stateObject) {
 	s.stateObjects[object.Address()] = object
 }
 
-// Retrieve a state object or create a new state object if nil.
+// GetOrNewStateObject retrieves a state object or create a new state object if nil.
 func (s *StateDB) GetOrNewStateObject(addr common.Address) *stateObject {
 	stateObject := s.getStateObject(addr)
 	if stateObject == nil {
@@ -701,8 +701,8 @@ func (s *StateDB) createObject(addr common.Address) (newobj, prev *stateObject) 
 // CreateAccount is called during the EVM CREATE operation. The situation might arise that
 // a contract does the following:
 //
-//   1. sends funds to sha(account ++ (nonce + 1))
-//   2. tx_create(sha(account ++ nonce)) (note that this gets the address of 1)
+//  1. sends funds to sha(account ++ (nonce + 1))
+//  2. tx_create(sha(account ++ nonce)) (note that this gets the address of 1)
 //
 // Carrying over the balance ensures that Ether doesn't disappear.
 func (s *StateDB) CreateAccount(addr common.Address) {
@@ -1353,7 +1353,7 @@ func (s *StateDB) UpdateTickets(blockNumber *big.Int, timestamp uint64) (common.
 	return hash, nil
 }
 
-func (s *StateDB) ClearTickets(from, to common.Address, blockNumber *big.Int, timestamp uint64) {
+func (s *StateDB) ClearTickets(from, to common.Address, timestamp uint64) {
 	tickets, err := s.AllTickets()
 	if err != nil {
 		return
@@ -1371,7 +1371,7 @@ func (s *StateDB) ClearTickets(from, to common.Address, blockNumber *big.Int, ti
 				EndTime:   ticket.ExpireTime,
 				Value:     ticket.Value(),
 			})
-			s.AddTimeLockBalance(to, common.SystemAssetID, value, blockNumber, timestamp)
+			s.AddTimeLockBalance(to, common.SystemAssetID, value, timestamp)
 		}
 		tickets = append(tickets[:i], tickets[i+1:]...)
 		s.tickets = tickets

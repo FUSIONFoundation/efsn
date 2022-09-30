@@ -49,8 +49,10 @@ The state transitioning model does all the necessary work to work out a valid ne
 3) Create a new state object if the recipient is \0*32
 4) Value transfer
 == If contract creation ==
-  4a) Attempt to run transaction data
-  4b) If valid, use result as code for the new state object
+
+	4a) Attempt to run transaction data
+	4b) If valid, use result as code for the new state object
+
 == end ==
 5) Run Script section
 6) Derive new state root
@@ -272,13 +274,13 @@ func (st *StateTransition) preCheck() error {
 // TransitionDb will transition the state by applying the current message and
 // returning the evm execution result with following fields.
 //
-// - used gas:
-//      total gas used (including gas being refunded)
-// - returndata:
-//      the returned data from evm
-// - concrete execution error:
-//      various **EVM** error which aborts the execution,
-//      e.g. ErrOutOfGas, ErrExecutionReverted
+//   - used gas:
+//     total gas used (including gas being refunded)
+//   - returndata:
+//     the returned data from evm
+//   - concrete execution error:
+//     various **EVM** error which aborts the execution,
+//     e.g. ErrOutOfGas, ErrExecutionReverted
 //
 // However if any consensus issue encountered, return the error directly with
 // nil evm execution result.
@@ -508,13 +510,13 @@ func (st *StateTransition) handleFsnCall(param *common.FSNCallParam) error {
 				Value:     new(big.Int).SetBytes(timeLockParam.Value.Bytes()),
 			})
 			if st.msg.From() == timeLockParam.To {
-				st.state.AddTimeLockBalance(timeLockParam.To, timeLockParam.AssetID, totalValue, height, timestamp)
+				st.state.AddTimeLockBalance(timeLockParam.To, timeLockParam.AssetID, totalValue, timestamp)
 			} else {
 				surplusValue := new(common.TimeLock).Sub(totalValue, needValue)
 				if !surplusValue.IsEmpty() {
-					st.state.AddTimeLockBalance(st.msg.From(), timeLockParam.AssetID, surplusValue, height, timestamp)
+					st.state.AddTimeLockBalance(st.msg.From(), timeLockParam.AssetID, surplusValue, timestamp)
 				}
-				st.state.AddTimeLockBalance(timeLockParam.To, timeLockParam.AssetID, needValue, height, timestamp)
+				st.state.AddTimeLockBalance(timeLockParam.To, timeLockParam.AssetID, needValue, timestamp)
 			}
 
 			st.addLog(common.TimeLockFunc, timeLockParam, common.NewKeyValue("LockType", "AssetToTimeLock"), common.NewKeyValue("AssetID", timeLockParam.AssetID))
@@ -524,8 +526,8 @@ func (st *StateTransition) handleFsnCall(param *common.FSNCallParam) error {
 				st.addLog(common.TimeLockFunc, timeLockParam, common.NewKeyValue("LockType", "TimeLockToTimeLock"), common.NewKeyValue("Error", "not enough time lock balance"))
 				return fmt.Errorf("not enough time lock balance")
 			}
-			st.state.SubTimeLockBalance(st.msg.From(), timeLockParam.AssetID, needValue, height, timestamp)
-			st.state.AddTimeLockBalance(timeLockParam.To, timeLockParam.AssetID, needValue, height, timestamp)
+			st.state.SubTimeLockBalance(st.msg.From(), timeLockParam.AssetID, needValue, timestamp)
+			st.state.AddTimeLockBalance(timeLockParam.To, timeLockParam.AssetID, needValue, timestamp)
 			st.addLog(common.TimeLockFunc, timeLockParam, common.NewKeyValue("LockType", "TimeLockToTimeLock"), common.NewKeyValue("AssetID", timeLockParam.AssetID))
 			return nil
 		case common.TimeLockToAsset:
@@ -533,7 +535,7 @@ func (st *StateTransition) handleFsnCall(param *common.FSNCallParam) error {
 				st.addLog(common.TimeLockFunc, timeLockParam, common.NewKeyValue("LockType", "TimeLockToAsset"), common.NewKeyValue("Error", "not enough time lock balance"))
 				return fmt.Errorf("not enough time lock balance")
 			}
-			st.state.SubTimeLockBalance(st.msg.From(), timeLockParam.AssetID, needValue, height, timestamp)
+			st.state.SubTimeLockBalance(st.msg.From(), timeLockParam.AssetID, needValue, timestamp)
 			st.state.AddBalance(timeLockParam.To, timeLockParam.AssetID, timeLockParam.Value)
 			st.addLog(common.TimeLockFunc, timeLockParam, common.NewKeyValue("LockType", "TimeLockToAsset"), common.NewKeyValue("AssetID", timeLockParam.AssetID))
 			return nil
@@ -552,20 +554,20 @@ func (st *StateTransition) handleFsnCall(param *common.FSNCallParam) error {
 				}
 				if timeLockValue.Sign() > 0 {
 					subTimeLock := common.GetTimeLock(timeLockValue, start, end)
-					st.state.SubTimeLockBalance(st.msg.From(), timeLockParam.AssetID, subTimeLock, height, timestamp)
+					st.state.SubTimeLockBalance(st.msg.From(), timeLockParam.AssetID, subTimeLock, timestamp)
 				}
 				useAssetAmount := new(big.Int).Sub(timeLockParam.Value, timeLockValue)
 				st.state.SubBalance(st.msg.From(), timeLockParam.AssetID, useAssetAmount)
 				surplus := common.GetSurplusTimeLock(useAssetAmount, start, end, timestamp)
 				if !surplus.IsEmpty() {
-					st.state.AddTimeLockBalance(st.msg.From(), timeLockParam.AssetID, surplus, height, timestamp)
+					st.state.AddTimeLockBalance(st.msg.From(), timeLockParam.AssetID, surplus, timestamp)
 				}
 			} else {
-				st.state.SubTimeLockBalance(st.msg.From(), timeLockParam.AssetID, needValue, height, timestamp)
+				st.state.SubTimeLockBalance(st.msg.From(), timeLockParam.AssetID, needValue, timestamp)
 			}
 
 			if !common.IsWholeAsset(start, end, timestamp) {
-				st.state.AddTimeLockBalance(timeLockParam.To, timeLockParam.AssetID, needValue, height, timestamp)
+				st.state.AddTimeLockBalance(timeLockParam.To, timeLockParam.AssetID, needValue, timestamp)
 			} else {
 				st.state.AddBalance(timeLockParam.To, timeLockParam.AssetID, timeLockParam.Value)
 			}
@@ -643,11 +645,11 @@ func (st *StateTransition) handleFsnCall(param *common.FSNCallParam) error {
 			})
 			surplusValue := new(common.TimeLock).Sub(totalValue, needValue)
 			if !surplusValue.IsEmpty() {
-				st.state.AddTimeLockBalance(from, common.SystemAssetID, surplusValue, height, timestamp)
+				st.state.AddTimeLockBalance(from, common.SystemAssetID, surplusValue, timestamp)
 			}
 
 		} else {
-			st.state.SubTimeLockBalance(from, common.SystemAssetID, needValue, height, timestamp)
+			st.state.SubTimeLockBalance(from, common.SystemAssetID, needValue, timestamp)
 		}
 
 		if err := st.state.AddTicket(ticket); err != nil {
@@ -816,7 +818,7 @@ func (st *StateTransition) handleFsnCall(param *common.FSNCallParam) error {
 						EndTime:   common.TimeLockForever,
 						Value:     total,
 					})
-					st.state.AddTimeLockBalance(st.msg.From(), makeSwapParam.FromAssetID, totalValue, height, timestamp)
+					st.state.AddTimeLockBalance(st.msg.From(), makeSwapParam.FromAssetID, totalValue, timestamp)
 
 				}
 			}
@@ -830,7 +832,7 @@ func (st *StateTransition) handleFsnCall(param *common.FSNCallParam) error {
 			if useAsset == true {
 				st.state.SubBalance(st.msg.From(), makeSwapParam.FromAssetID, total)
 			} else {
-				st.state.SubTimeLockBalance(st.msg.From(), makeSwapParam.FromAssetID, needValue, height, timestamp)
+				st.state.SubTimeLockBalance(st.msg.From(), makeSwapParam.FromAssetID, needValue, timestamp)
 			}
 		}
 		st.addLog(common.MakeSwapFunc, makeSwapParam, common.NewKeyValue("SwapID", swap.ID))
@@ -877,7 +879,7 @@ func (st *StateTransition) handleFsnCall(param *common.FSNCallParam) error {
 					Value:     total,
 				})
 				if err := needValue.IsValid(); err == nil {
-					st.state.AddTimeLockBalance(st.msg.From(), swap.FromAssetID, needValue, height, timestamp)
+					st.state.AddTimeLockBalance(st.msg.From(), swap.FromAssetID, needValue, timestamp)
 				}
 			}
 		}
@@ -979,7 +981,7 @@ func (st *StateTransition) handleFsnCall(param *common.FSNCallParam) error {
 					EndTime:   common.TimeLockForever,
 					Value:     toTotal,
 				})
-				st.state.AddTimeLockBalance(st.msg.From(), swap.ToAssetID, totalValue, height, timestamp)
+				st.state.AddTimeLockBalance(st.msg.From(), swap.ToAssetID, totalValue, timestamp)
 
 			}
 		}
@@ -1005,8 +1007,8 @@ func (st *StateTransition) handleFsnCall(param *common.FSNCallParam) error {
 			st.state.SubBalance(st.msg.From(), swap.ToAssetID, toTotal)
 		} else {
 			if err := toNeedValue.IsValid(); err == nil {
-				st.state.AddTimeLockBalance(swap.Owner, swap.ToAssetID, toNeedValue, height, timestamp)
-				st.state.SubTimeLockBalance(st.msg.From(), swap.ToAssetID, toNeedValue, height, timestamp)
+				st.state.AddTimeLockBalance(swap.Owner, swap.ToAssetID, toNeedValue, timestamp)
+				st.state.SubTimeLockBalance(st.msg.From(), swap.ToAssetID, toNeedValue, timestamp)
 			}
 		}
 
@@ -1026,7 +1028,7 @@ func (st *StateTransition) handleFsnCall(param *common.FSNCallParam) error {
 				//st.state.SubBalance(swap.Owner, swap.FromAssetID, fromTotal)
 			} else {
 				if err := fromNeedValue.IsValid(); err == nil {
-					st.state.AddTimeLockBalance(st.msg.From(), swap.FromAssetID, fromNeedValue, height, timestamp)
+					st.state.AddTimeLockBalance(st.msg.From(), swap.FromAssetID, fromNeedValue, timestamp)
 				}
 				// the owner of the swap already had their timelock balance taken away
 				// in MakeSwapFunc
@@ -1080,7 +1082,7 @@ func (st *StateTransition) handleFsnCall(param *common.FSNCallParam) error {
 				})
 
 				if err := needValue.IsValid(); err == nil {
-					st.state.AddTimeLockBalance(st.msg.From(), swap.FromAssetID[i], needValue, height, timestamp)
+					st.state.AddTimeLockBalance(st.msg.From(), swap.FromAssetID[i], needValue, timestamp)
 				}
 			}
 		}
@@ -1220,7 +1222,7 @@ func (st *StateTransition) handleFsnCall(param *common.FSNCallParam) error {
 						EndTime:   common.TimeLockForever,
 						Value:     total[i],
 					})
-					st.state.AddTimeLockBalance(st.msg.From(), makeSwapParam.FromAssetID[i], totalValue, height, timestamp)
+					st.state.AddTimeLockBalance(st.msg.From(), makeSwapParam.FromAssetID[i], totalValue, timestamp)
 				}
 			}
 
@@ -1228,7 +1230,7 @@ func (st *StateTransition) handleFsnCall(param *common.FSNCallParam) error {
 			if useAsset[i] == true {
 				st.state.SubBalance(st.msg.From(), makeSwapParam.FromAssetID[i], total[i])
 			} else {
-				st.state.SubTimeLockBalance(st.msg.From(), makeSwapParam.FromAssetID[i], needValue[i], height, timestamp)
+				st.state.SubTimeLockBalance(st.msg.From(), makeSwapParam.FromAssetID[i], needValue[i], timestamp)
 			}
 		}
 
@@ -1385,9 +1387,9 @@ func (st *StateTransition) handleFsnCall(param *common.FSNCallParam) error {
 						EndTime:   common.TimeLockForever,
 						Value:     toTotal[i],
 					})
-					st.state.AddTimeLockBalance(st.msg.From(), swap.ToAssetID[i], totalValue, height, timestamp)
+					st.state.AddTimeLockBalance(st.msg.From(), swap.ToAssetID[i], totalValue, timestamp)
 				}
-				st.state.SubTimeLockBalance(st.msg.From(), swap.ToAssetID[i], toNeedValue[i], height, timestamp)
+				st.state.SubTimeLockBalance(st.msg.From(), swap.ToAssetID[i], toNeedValue[i], timestamp)
 			}
 		}
 
@@ -1419,7 +1421,7 @@ func (st *StateTransition) handleFsnCall(param *common.FSNCallParam) error {
 				st.state.AddBalance(swap.Owner, swap.ToAssetID[i], toTotal[i])
 			} else {
 				if err := toNeedValue[i].IsValid(); err == nil {
-					st.state.AddTimeLockBalance(swap.Owner, swap.ToAssetID[i], toNeedValue[i], height, timestamp)
+					st.state.AddTimeLockBalance(swap.Owner, swap.ToAssetID[i], toNeedValue[i], timestamp)
 				}
 			}
 		}
@@ -1434,7 +1436,7 @@ func (st *StateTransition) handleFsnCall(param *common.FSNCallParam) error {
 				//st.state.SubBalance(swap.Owner, swap.FromAssetID, fromTotal)
 			} else {
 				if err := fromNeedValue[i].IsValid(); err == nil {
-					st.state.AddTimeLockBalance(st.msg.From(), swap.FromAssetID[i], fromNeedValue[i], height, timestamp)
+					st.state.AddTimeLockBalance(st.msg.From(), swap.FromAssetID[i], fromNeedValue[i], timestamp)
 				}
 				// the owner of the swap already had their timelock balance taken away
 				// in MakeMultiSwapFunc

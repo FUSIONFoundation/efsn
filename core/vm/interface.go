@@ -30,8 +30,8 @@ type StateDB interface {
 	SubBalance(common.Address, common.Hash, *big.Int)
 	AddBalance(common.Address, common.Hash, *big.Int)
 	GetBalance(common.Hash, common.Address) *big.Int
-	SubTimeLockBalance(common.Address, common.Hash, *common.TimeLock, *big.Int, uint64)
-	AddTimeLockBalance(common.Address, common.Hash, *common.TimeLock, *big.Int, uint64)
+	SubTimeLockBalance(common.Address, common.Hash, *common.TimeLock, uint64)
+	AddTimeLockBalance(common.Address, common.Hash, *common.TimeLock, uint64)
 	SetTimeLockBalance(common.Address, common.Hash, *common.TimeLock)
 	GetTimeLockBalance(common.Hash, common.Address) *common.TimeLock
 	TransferNotation(notation uint64, from common.Address, to common.Address) error

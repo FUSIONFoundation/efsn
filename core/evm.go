@@ -177,7 +177,7 @@ func TransferTimeLock(db vm.StateDB, sender, recipient common.Address, p *common
 		db.SubBalance(sender, p.AssetID, p.Value)
 		surplus := common.GetSurplusTimeLock(p.Value, p.StartTime, p.EndTime, p.Timestamp)
 		if !surplus.IsEmpty() {
-			db.AddTimeLockBalance(sender, p.AssetID, surplus, p.BlockNumber, p.Timestamp)
+			db.AddTimeLockBalance(sender, p.AssetID, surplus, p.Timestamp)
 		}
 	} else {
 		timeLockBalance := db.GetTimeLockBalance(p.AssetID, sender)
@@ -192,21 +192,21 @@ func TransferTimeLock(db vm.StateDB, sender, recipient common.Address, p *common
 			}
 			if timeLockValue.Sign() > 0 {
 				subTimeLock := common.GetTimeLock(timeLockValue, p.StartTime, p.EndTime)
-				db.SubTimeLockBalance(sender, p.AssetID, subTimeLock, p.BlockNumber, p.Timestamp)
+				db.SubTimeLockBalance(sender, p.AssetID, subTimeLock, p.Timestamp)
 			}
 			useAssetAmount := new(big.Int).Sub(p.Value, timeLockValue)
 			db.SubBalance(sender, p.AssetID, useAssetAmount)
 			surplus := common.GetSurplusTimeLock(useAssetAmount, p.StartTime, p.EndTime, p.Timestamp)
 			if !surplus.IsEmpty() {
-				db.AddTimeLockBalance(sender, p.AssetID, surplus, p.BlockNumber, p.Timestamp)
+				db.AddTimeLockBalance(sender, p.AssetID, surplus, p.Timestamp)
 			}
 		} else {
-			db.SubTimeLockBalance(sender, p.AssetID, timelock, p.BlockNumber, p.Timestamp)
+			db.SubTimeLockBalance(sender, p.AssetID, timelock, p.Timestamp)
 		}
 	}
 
 	if p.Flag.IsToTimeLock() || !common.IsWholeAsset(p.StartTime, p.EndTime, p.Timestamp) {
-		db.AddTimeLockBalance(recipient, p.AssetID, timelock, p.BlockNumber, p.Timestamp)
+		db.AddTimeLockBalance(recipient, p.AssetID, timelock, p.Timestamp)
 	} else {
 		db.AddBalance(recipient, p.AssetID, p.Value)
 	}

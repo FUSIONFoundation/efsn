@@ -490,7 +490,7 @@ func (s *stateObject) timeLockAssetIndex(assetID common.Hash) int {
 }
 
 // AddTimeLockBalance wacom
-func (s *stateObject) AddTimeLockBalance(assetID common.Hash, amount *common.TimeLock, blockNumber *big.Int, timestamp uint64) {
+func (s *stateObject) AddTimeLockBalance(assetID common.Hash, amount *common.TimeLock, timestamp uint64) {
 	if amount.IsEmpty() {
 		if s.empty() {
 			s.touch()
@@ -509,7 +509,7 @@ func (s *stateObject) AddTimeLockBalance(assetID common.Hash, amount *common.Tim
 }
 
 // SubTimeLockBalance wacom
-func (s *stateObject) SubTimeLockBalance(assetID common.Hash, amount *common.TimeLock, blockNumber *big.Int, timestamp uint64) {
+func (s *stateObject) SubTimeLockBalance(assetID common.Hash, amount *common.TimeLock, timestamp uint64) {
 	if amount.IsEmpty() {
 		return
 	}
