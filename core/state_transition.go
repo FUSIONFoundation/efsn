@@ -311,6 +311,7 @@ func (st *StateTransition) TransitionDb() (*ExecutionResult, error) {
 	homestead := st.evm.ChainConfig().IsHomestead(st.evm.Context.BlockNumber)
 	istanbul := st.evm.ChainConfig().IsIstanbul(st.evm.Context.BlockNumber)
 	london := st.evm.ChainConfig().IsLondon(st.evm.Context.BlockNumber)
+	fusionEco := st.evm.ChainConfig().IsEco(st.evm.Context.BlockNumber) // Fusion ECO hardfork
 	contractCreation := msg.To() == nil
 
 	// Check clauses 4-5, subtract intrinsic gas if everything is correct
@@ -364,6 +365,23 @@ func (st *StateTransition) TransitionDb() (*ExecutionResult, error) {
 		// After EIP-3529: refunds are capped to gasUsed / 5
 		st.refundGas(params.RefundQuotientEIP3529)
 	}
+
+	// Fusion ECO hardfork, move the mature timelock FSN to Asset
+	if fusionEco {
+		// Process From Address
+		st.state.ProcessMatureFSN(msg.From(), st.evm.Context.ParentTime.Uint64(), st.evm.Context.BlockNumber.Uint64())
+		// Process To Address if EOA address
+		if !contractCreation {
+			toAddr := st.to()
+			if toAddr != common.FSNCallAddress && !toAddr.IsSpecialKeyAddress() && toAddr != (common.Address{}) {
+				// EOA Check
+				if codeHash := st.state.GetCodeHash(toAddr); codeHash == emptyCodeHash || codeHash == (common.Hash{}) {
+					st.state.ProcessMatureFSN(toAddr, st.evm.Context.ParentTime.Uint64(), st.evm.Context.BlockNumber.Uint64())
+				}
+			}
+		}
+	}
+
 	effectiveTip := st.gasPrice
 	if london {
 		effectiveTip = cmath.BigMin(st.gasTipCap, new(big.Int).Sub(st.gasFeeCap, st.evm.Context.BaseFee))

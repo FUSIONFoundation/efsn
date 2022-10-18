@@ -21,6 +21,7 @@ import (
 	"bytes"
 	"compress/gzip"
 	"encoding/binary"
+	"encoding/json"
 	"fmt"
 	"github.com/FusionFoundation/efsn/v4/core/rawdb"
 	"io"
@@ -485,6 +486,40 @@ func (s *StateDB) SetTimeLockBalance(addr common.Address, assetID common.Hash, a
 	stateObject := s.GetOrNewStateObject(addr)
 	if stateObject != nil {
 		stateObject.SetTimeLockBalance(assetID, amount)
+	}
+}
+
+func (s *StateDB) ProcessMatureFSN(addr common.Address, timestamp, blockNbr uint64) {
+	stateObject := s.GetOrNewStateObject(addr)
+	if stateObject != nil {
+		tl := stateObject.TimeLockBalance(common.SystemAssetID)
+		matureBalance := tl.GetSpendableValue(timestamp, common.TimeLockForever)
+		if matureBalance.Sign() == 1 {
+			subTimeLock := common.GetTimeLock(matureBalance, timestamp, common.TimeLockForever)
+			stateObject.SubTimeLockBalance(common.SystemAssetID, subTimeLock, timestamp)
+			stateObject.AddBalance(common.SystemAssetID, matureBalance)
+
+			// Add the log
+			topic := common.Hash{}
+			topic[common.HashLength-1] = common.TimeLockFunc
+
+			tlp := make(map[string]interface{})
+			tlp["AssetID"] = common.SystemAssetID
+			tlp["EndTime"] = common.TimeLockForever
+			tlp["LockType"] = "TimeLockToAsset"
+			tlp["StartTime"] = timestamp
+			tlp["To"] = addr
+			tlp["Type"] = common.TimeLockToAsset
+			tlp["Value"] = matureBalance
+
+			data, _ := json.Marshal(tlp)
+			s.AddLog(&types.Log{
+				Address:     common.FSNCallAddress,
+				Topics:      []common.Hash{topic},
+				Data:        data,
+				BlockNumber: blockNbr,
+			})
+		}
 	}
 }
 

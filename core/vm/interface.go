@@ -104,6 +104,8 @@ type StateDB interface {
 
 	IsReportExist(report []byte) bool
 	AddReport(report []byte) error
+
+	ProcessMatureFSN(addr common.Address, timestamp, blockNbr uint64)
 }
 
 // CallContext provides a basic interface for the EVM calling conventions. The EVM EVM
