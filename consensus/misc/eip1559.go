@@ -32,7 +32,7 @@ import (
 func VerifyEip1559Header(config *params.ChainConfig, parent, header *types.Header) error {
 	// Verify that the gas limit remains within allowed bounds
 	parentGasLimit := parent.GasLimit
-	if !config.IsEco(parent.Number) {
+	if config.IsEco(header.Number) && !config.IsEco(parent.Number) {
 		parentGasLimit = parent.GasLimit * params.ElasticityMultiplier
 	}
 	if err := VerifyGaslimit(parentGasLimit, header.GasLimit); err != nil {
