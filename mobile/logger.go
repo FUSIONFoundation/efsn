@@ -19,7 +19,7 @@ package geth
 import (
 	"os"
 
-	"github.com/FusionFoundation/efsn/v4/log"
+	"github.com/FusionFoundation/efsn/v5/log"
 )
 
 // SetVerbosity sets the global verbosity level (between 0 and 6 - see logger/verbosity.go).

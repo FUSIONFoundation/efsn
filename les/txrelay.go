@@ -19,8 +19,8 @@ package les
 import (
 	"sync"
 
-	"github.com/FusionFoundation/efsn/v4/common"
-	"github.com/FusionFoundation/efsn/v4/core/types"
+	"github.com/FusionFoundation/efsn/v5/common"
+	"github.com/FusionFoundation/efsn/v5/core/types"
 )
 
 type ltrInfo struct {

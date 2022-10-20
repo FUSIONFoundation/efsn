@@ -22,7 +22,7 @@ package keystore
 import (
 	"time"
 
-	"github.com/FusionFoundation/efsn/v4/log"
+	"github.com/FusionFoundation/efsn/v5/log"
 	"github.com/rjeczalik/notify"
 )
 

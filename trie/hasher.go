@@ -19,8 +19,8 @@ package trie
 import (
 	"sync"
 
-	"github.com/FusionFoundation/efsn/v4/crypto"
-	"github.com/FusionFoundation/efsn/v4/rlp"
+	"github.com/FusionFoundation/efsn/v5/crypto"
+	"github.com/FusionFoundation/efsn/v5/rlp"
 	"golang.org/x/crypto/sha3"
 )
 

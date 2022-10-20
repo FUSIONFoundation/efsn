@@ -21,8 +21,8 @@ import (
 	"errors"
 	"math/big"
 
-	"github.com/FusionFoundation/efsn/v4/common"
-	"github.com/FusionFoundation/efsn/v4/common/hexutil"
+	"github.com/FusionFoundation/efsn/v5/common"
+	"github.com/FusionFoundation/efsn/v5/common/hexutil"
 )
 
 // txJSON is the JSON representation of transactions.

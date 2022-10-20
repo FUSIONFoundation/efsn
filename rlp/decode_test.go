@@ -27,7 +27,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/FusionFoundation/efsn/v4/common/math"
+	"github.com/FusionFoundation/efsn/v5/common/math"
 )
 
 func TestStreamKind(t *testing.T) {

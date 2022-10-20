@@ -26,13 +26,13 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/ethereum/go-ethereum/accounts/keystore"
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/common/hexutil"
-	"github.com/ethereum/go-ethereum/common/math"
-	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/ethereum/go-ethereum/signer/core"
-	"github.com/ethereum/go-ethereum/signer/core/apitypes"
+	"github.com/FusionFoundation/efsn/v5/accounts/keystore"
+	"github.com/FusionFoundation/efsn/v5/common"
+	"github.com/FusionFoundation/efsn/v5/common/hexutil"
+	"github.com/FusionFoundation/efsn/v5/common/math"
+	"github.com/FusionFoundation/efsn/v5/crypto"
+	"github.com/FusionFoundation/efsn/v5/signer/core"
+	"github.com/FusionFoundation/efsn/v5/signer/core/apitypes"
 )
 
 var typesStandard = apitypes.Types{

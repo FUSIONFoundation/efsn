@@ -24,10 +24,10 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/FusionFoundation/efsn/v4/common/hexutil"
-	"github.com/FusionFoundation/efsn/v4/console/prompt"
-	"github.com/FusionFoundation/efsn/v4/internal/ethapi"
-	"github.com/FusionFoundation/efsn/v4/log"
+	"github.com/FusionFoundation/efsn/v5/common/hexutil"
+	"github.com/FusionFoundation/efsn/v5/console/prompt"
+	"github.com/FusionFoundation/efsn/v5/internal/ethapi"
+	"github.com/FusionFoundation/efsn/v5/log"
 )
 
 type CommandlineUI struct {

@@ -23,14 +23,14 @@ import (
 	"testing"
 	"time"
 
-	"github.com/FusionFoundation/efsn/v4/common"
-	"github.com/FusionFoundation/efsn/v4/common/bitutil"
-	"github.com/FusionFoundation/efsn/v4/core/bloombits"
-	"github.com/FusionFoundation/efsn/v4/core/rawdb"
-	"github.com/FusionFoundation/efsn/v4/core/types"
-	"github.com/FusionFoundation/efsn/v4/ethdb"
-	"github.com/FusionFoundation/efsn/v4/event"
-	"github.com/FusionFoundation/efsn/v4/node"
+	"github.com/FusionFoundation/efsn/v5/common"
+	"github.com/FusionFoundation/efsn/v5/common/bitutil"
+	"github.com/FusionFoundation/efsn/v5/core/bloombits"
+	"github.com/FusionFoundation/efsn/v5/core/rawdb"
+	"github.com/FusionFoundation/efsn/v5/core/types"
+	"github.com/FusionFoundation/efsn/v5/ethdb"
+	"github.com/FusionFoundation/efsn/v5/event"
+	"github.com/FusionFoundation/efsn/v5/node"
 )
 
 func BenchmarkBloomBits512(b *testing.B) {

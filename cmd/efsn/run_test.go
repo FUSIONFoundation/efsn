@@ -23,8 +23,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/FusionFoundation/efsn/v4/internal/cmdtest"
-	"github.com/FusionFoundation/efsn/v4/rpc"
+	"github.com/FusionFoundation/efsn/v5/internal/cmdtest"
+	"github.com/FusionFoundation/efsn/v5/rpc"
 	"github.com/docker/docker/pkg/reexec"
 )
 

@@ -7,8 +7,8 @@ import (
 	"errors"
 	"math/big"
 
-	"github.com/FusionFoundation/efsn/v4/common"
-	"github.com/FusionFoundation/efsn/v4/common/math"
+	"github.com/FusionFoundation/efsn/v5/common"
+	"github.com/FusionFoundation/efsn/v5/common/math"
 )
 
 var _ = (*stEnvMarshaling)(nil)

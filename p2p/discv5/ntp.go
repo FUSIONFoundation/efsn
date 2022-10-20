@@ -26,7 +26,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/FusionFoundation/efsn/v4/log"
+	"github.com/FusionFoundation/efsn/v5/log"
 )
 
 const (

@@ -24,11 +24,11 @@ import (
 	"math/big"
 	"os"
 
-	"github.com/FusionFoundation/efsn/v4/accounts"
-	"github.com/FusionFoundation/efsn/v4/accounts/keystore"
-	"github.com/FusionFoundation/efsn/v4/common"
-	"github.com/FusionFoundation/efsn/v4/common/math"
-	"github.com/FusionFoundation/efsn/v4/crypto"
+	"github.com/FusionFoundation/efsn/v5/accounts"
+	"github.com/FusionFoundation/efsn/v5/accounts/keystore"
+	"github.com/FusionFoundation/efsn/v5/common"
+	"github.com/FusionFoundation/efsn/v5/common/math"
+	"github.com/FusionFoundation/efsn/v5/crypto"
 )
 
 // SignerUIAPI implements methods Clef provides for a UI to query, in the bidirectional communication

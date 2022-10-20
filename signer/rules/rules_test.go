@@ -22,14 +22,14 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/FusionFoundation/efsn/v4/accounts"
-	"github.com/FusionFoundation/efsn/v4/common"
-	"github.com/FusionFoundation/efsn/v4/common/hexutil"
-	"github.com/FusionFoundation/efsn/v4/core/types"
-	"github.com/FusionFoundation/efsn/v4/internal/ethapi"
-	"github.com/FusionFoundation/efsn/v4/signer/core"
-	"github.com/FusionFoundation/efsn/v4/signer/core/apitypes"
-	"github.com/FusionFoundation/efsn/v4/signer/storage"
+	"github.com/FusionFoundation/efsn/v5/accounts"
+	"github.com/FusionFoundation/efsn/v5/common"
+	"github.com/FusionFoundation/efsn/v5/common/hexutil"
+	"github.com/FusionFoundation/efsn/v5/core/types"
+	"github.com/FusionFoundation/efsn/v5/internal/ethapi"
+	"github.com/FusionFoundation/efsn/v5/signer/core"
+	"github.com/FusionFoundation/efsn/v5/signer/core/apitypes"
+	"github.com/FusionFoundation/efsn/v5/signer/storage"
 )
 
 const JS = `

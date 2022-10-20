@@ -22,9 +22,9 @@ import (
 	"math/big"
 	"time"
 
-	"github.com/FusionFoundation/efsn/v4/common"
-	"github.com/FusionFoundation/efsn/v4/common/math"
-	"github.com/FusionFoundation/efsn/v4/core/vm"
+	"github.com/FusionFoundation/efsn/v5/common"
+	"github.com/FusionFoundation/efsn/v5/common/math"
+	"github.com/FusionFoundation/efsn/v5/core/vm"
 )
 
 type JSONLogger struct {

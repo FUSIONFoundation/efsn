@@ -24,11 +24,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/FusionFoundation/efsn/v4/common"
-	"github.com/FusionFoundation/efsn/v4/core/state"
-	"github.com/FusionFoundation/efsn/v4/core/vm"
-	"github.com/FusionFoundation/efsn/v4/eth/tracers"
-	"github.com/FusionFoundation/efsn/v4/params"
+	"github.com/FusionFoundation/efsn/v5/common"
+	"github.com/FusionFoundation/efsn/v5/core/state"
+	"github.com/FusionFoundation/efsn/v5/core/vm"
+	"github.com/FusionFoundation/efsn/v5/eth/tracers"
+	"github.com/FusionFoundation/efsn/v5/params"
 )
 
 type account struct{}

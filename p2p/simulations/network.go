@@ -24,11 +24,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/FusionFoundation/efsn/v4/event"
-	"github.com/FusionFoundation/efsn/v4/log"
-	"github.com/FusionFoundation/efsn/v4/p2p"
-	"github.com/FusionFoundation/efsn/v4/p2p/discover"
-	"github.com/FusionFoundation/efsn/v4/p2p/simulations/adapters"
+	"github.com/FusionFoundation/efsn/v5/event"
+	"github.com/FusionFoundation/efsn/v5/log"
+	"github.com/FusionFoundation/efsn/v5/p2p"
+	"github.com/FusionFoundation/efsn/v5/p2p/discover"
+	"github.com/FusionFoundation/efsn/v5/p2p/simulations/adapters"
 )
 
 var DialBanTimeout = 200 * time.Millisecond

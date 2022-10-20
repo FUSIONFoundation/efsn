@@ -16,7 +16,7 @@
 
 package bind
 
-import "github.com/FusionFoundation/efsn/v4/accounts/abi"
+import "github.com/FusionFoundation/efsn/v5/accounts/abi"
 
 // tmplData is the data structure required to fill the binding template.
 type tmplData struct {
@@ -92,12 +92,12 @@ import (
 	"strings"
 	"errors"
 
-	ethereum "github.com/FusionFoundation/efsn/v4"
-	"github.com/FusionFoundation/efsn/v4/accounts/abi"
-	"github.com/FusionFoundation/efsn/v4/accounts/abi/bind"
-	"github.com/FusionFoundation/efsn/v4/common"
-	"github.com/FusionFoundation/efsn/v4/core/types"
-	"github.com/FusionFoundation/efsn/v4/event"
+	ethereum "github.com/FusionFoundation/efsn/v5"
+	"github.com/FusionFoundation/efsn/v5/accounts/abi"
+	"github.com/FusionFoundation/efsn/v5/accounts/abi/bind"
+	"github.com/FusionFoundation/efsn/v5/common"
+	"github.com/FusionFoundation/efsn/v5/core/types"
+	"github.com/FusionFoundation/efsn/v5/event"
 )
 
 // Reference imports to suppress errors if they are not otherwise used.

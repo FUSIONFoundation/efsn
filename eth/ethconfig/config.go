@@ -22,15 +22,15 @@ import (
 	"os/user"
 	"time"
 
-	"github.com/FusionFoundation/efsn/v4/consensus"
-	"github.com/FusionFoundation/efsn/v4/consensus/datong"
-	"github.com/FusionFoundation/efsn/v4/core"
-	"github.com/FusionFoundation/efsn/v4/eth/downloader"
-	"github.com/FusionFoundation/efsn/v4/eth/gasprice"
-	"github.com/FusionFoundation/efsn/v4/ethdb"
-	"github.com/FusionFoundation/efsn/v4/miner"
-	"github.com/FusionFoundation/efsn/v4/node"
-	"github.com/FusionFoundation/efsn/v4/params"
+	"github.com/FusionFoundation/efsn/v5/consensus"
+	"github.com/FusionFoundation/efsn/v5/consensus/datong"
+	"github.com/FusionFoundation/efsn/v5/core"
+	"github.com/FusionFoundation/efsn/v5/eth/downloader"
+	"github.com/FusionFoundation/efsn/v5/eth/gasprice"
+	"github.com/FusionFoundation/efsn/v5/ethdb"
+	"github.com/FusionFoundation/efsn/v5/miner"
+	"github.com/FusionFoundation/efsn/v5/node"
+	"github.com/FusionFoundation/efsn/v5/params"
 )
 
 // FullNodeGPO contains default gasprice oracle settings for full node.

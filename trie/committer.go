@@ -21,8 +21,8 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/FusionFoundation/efsn/v4/common"
-	"github.com/FusionFoundation/efsn/v4/crypto"
+	"github.com/FusionFoundation/efsn/v5/common"
+	"github.com/FusionFoundation/efsn/v5/crypto"
 	"golang.org/x/crypto/sha3"
 )
 

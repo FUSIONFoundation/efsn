@@ -29,11 +29,11 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/FusionFoundation/efsn/v4/event"
-	"github.com/FusionFoundation/efsn/v4/p2p"
-	"github.com/FusionFoundation/efsn/v4/p2p/discover"
-	"github.com/FusionFoundation/efsn/v4/p2p/simulations/adapters"
-	"github.com/FusionFoundation/efsn/v4/rpc"
+	"github.com/FusionFoundation/efsn/v5/event"
+	"github.com/FusionFoundation/efsn/v5/p2p"
+	"github.com/FusionFoundation/efsn/v5/p2p/discover"
+	"github.com/FusionFoundation/efsn/v5/p2p/simulations/adapters"
+	"github.com/FusionFoundation/efsn/v5/rpc"
 	"github.com/gorilla/websocket"
 	"github.com/julienschmidt/httprouter"
 )

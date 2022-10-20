@@ -21,7 +21,7 @@ import (
 	"math/big"
 	"sort"
 
-	"github.com/FusionFoundation/efsn/v4/params"
+	"github.com/FusionFoundation/efsn/v5/params"
 )
 
 // Forks table defines supported forks and their chain config.

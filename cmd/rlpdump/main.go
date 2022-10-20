@@ -26,7 +26,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/FusionFoundation/efsn/v4/rlp"
+	"github.com/FusionFoundation/efsn/v5/rlp"
 )
 
 var (

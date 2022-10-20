@@ -20,8 +20,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/FusionFoundation/efsn/v4/common"
-	"github.com/FusionFoundation/efsn/v4/crypto"
+	"github.com/FusionFoundation/efsn/v5/common"
+	"github.com/FusionFoundation/efsn/v5/crypto"
 )
 
 // Event is an event potentially triggered by the EVM's LOG mechanism. The Event

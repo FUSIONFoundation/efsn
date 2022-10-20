@@ -19,7 +19,7 @@ package trie
 import (
 	"fmt"
 
-	"github.com/FusionFoundation/efsn/v4/common"
+	"github.com/FusionFoundation/efsn/v5/common"
 )
 
 // MissingNodeError is returned by the trie functions (TryGet, TryUpdate, TryDelete)

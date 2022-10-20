@@ -19,14 +19,14 @@ package state
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/FusionFoundation/efsn/v4/common/hexutil"
-	"github.com/FusionFoundation/efsn/v4/log"
+	"github.com/FusionFoundation/efsn/v5/common/hexutil"
+	"github.com/FusionFoundation/efsn/v5/log"
 	"math/big"
 	"time"
 
-	"github.com/FusionFoundation/efsn/v4/common"
-	"github.com/FusionFoundation/efsn/v4/rlp"
-	"github.com/FusionFoundation/efsn/v4/trie"
+	"github.com/FusionFoundation/efsn/v5/common"
+	"github.com/FusionFoundation/efsn/v5/rlp"
+	"github.com/FusionFoundation/efsn/v5/trie"
 )
 
 // DumpConfig is a set of options to control what portions of the state will be

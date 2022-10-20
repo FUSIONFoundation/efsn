@@ -19,7 +19,7 @@ package main
 import (
 	"fmt"
 
-	"github.com/FusionFoundation/efsn/v4/log"
+	"github.com/FusionFoundation/efsn/v5/log"
 )
 
 // ensureVirtualHost checks whether a reverse-proxy is running on the specified

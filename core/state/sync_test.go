@@ -21,10 +21,10 @@ import (
 	"math/big"
 	"testing"
 
-	"github.com/FusionFoundation/efsn/v4/common"
-	"github.com/FusionFoundation/efsn/v4/crypto"
-	"github.com/FusionFoundation/efsn/v4/ethdb"
-	"github.com/FusionFoundation/efsn/v4/trie"
+	"github.com/FusionFoundation/efsn/v5/common"
+	"github.com/FusionFoundation/efsn/v5/crypto"
+	"github.com/FusionFoundation/efsn/v5/ethdb"
+	"github.com/FusionFoundation/efsn/v5/trie"
 )
 
 // testAccount is the data associated with an account used by the state tests.

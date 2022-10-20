@@ -18,17 +18,17 @@ package les
 
 import (
 	"fmt"
-	"github.com/FusionFoundation/efsn/v4/eth/ethconfig"
+	"github.com/FusionFoundation/efsn/v5/eth/ethconfig"
 	"math/big"
 	"sync"
 
-	"github.com/FusionFoundation/efsn/v4/common"
-	"github.com/FusionFoundation/efsn/v4/core"
-	"github.com/FusionFoundation/efsn/v4/ethdb"
-	"github.com/FusionFoundation/efsn/v4/light"
-	"github.com/FusionFoundation/efsn/v4/p2p"
-	"github.com/FusionFoundation/efsn/v4/p2p/discover"
-	"github.com/FusionFoundation/efsn/v4/params"
+	"github.com/FusionFoundation/efsn/v5/common"
+	"github.com/FusionFoundation/efsn/v5/core"
+	"github.com/FusionFoundation/efsn/v5/ethdb"
+	"github.com/FusionFoundation/efsn/v5/light"
+	"github.com/FusionFoundation/efsn/v5/p2p"
+	"github.com/FusionFoundation/efsn/v5/p2p/discover"
+	"github.com/FusionFoundation/efsn/v5/params"
 )
 
 // lesCommons contains fields needed by both server and client.

@@ -30,22 +30,22 @@ import (
 	"sync"
 	"time"
 
-	ethereum "github.com/FusionFoundation/efsn/v4"
-	"github.com/FusionFoundation/efsn/v4/common"
-	"github.com/FusionFoundation/efsn/v4/common/mclock"
-	"github.com/FusionFoundation/efsn/v4/consensus"
-	"github.com/FusionFoundation/efsn/v4/consensus/datong"
-	"github.com/FusionFoundation/efsn/v4/core"
-	"github.com/FusionFoundation/efsn/v4/core/state"
-	"github.com/FusionFoundation/efsn/v4/core/types"
-	"github.com/FusionFoundation/efsn/v4/eth"
-	"github.com/FusionFoundation/efsn/v4/event"
-	"github.com/FusionFoundation/efsn/v4/les"
-	"github.com/FusionFoundation/efsn/v4/log"
-	"github.com/FusionFoundation/efsn/v4/miner"
-	"github.com/FusionFoundation/efsn/v4/node"
-	"github.com/FusionFoundation/efsn/v4/p2p"
-	"github.com/FusionFoundation/efsn/v4/rpc"
+	ethereum "github.com/FusionFoundation/efsn/v5"
+	"github.com/FusionFoundation/efsn/v5/common"
+	"github.com/FusionFoundation/efsn/v5/common/mclock"
+	"github.com/FusionFoundation/efsn/v5/consensus"
+	"github.com/FusionFoundation/efsn/v5/consensus/datong"
+	"github.com/FusionFoundation/efsn/v5/core"
+	"github.com/FusionFoundation/efsn/v5/core/state"
+	"github.com/FusionFoundation/efsn/v5/core/types"
+	"github.com/FusionFoundation/efsn/v5/eth"
+	"github.com/FusionFoundation/efsn/v5/event"
+	"github.com/FusionFoundation/efsn/v5/les"
+	"github.com/FusionFoundation/efsn/v5/log"
+	"github.com/FusionFoundation/efsn/v5/miner"
+	"github.com/FusionFoundation/efsn/v5/node"
+	"github.com/FusionFoundation/efsn/v5/p2p"
+	"github.com/FusionFoundation/efsn/v5/rpc"
 	"github.com/gorilla/websocket"
 )
 
@@ -108,13 +108,14 @@ type Service struct {
 // websocket.
 //
 // From Gorilla websocket docs:
-//   Connections support one concurrent reader and one concurrent writer.
-//   Applications are responsible for ensuring that no more than one goroutine calls the write methods
-//     - NextWriter, SetWriteDeadline, WriteMessage, WriteJSON, EnableWriteCompression, SetCompressionLevel
-//   concurrently and that no more than one goroutine calls the read methods
-//     - NextReader, SetReadDeadline, ReadMessage, ReadJSON, SetPongHandler, SetPingHandler
-//   concurrently.
-//   The Close and WriteControl methods can be called concurrently with all other methods.
+//
+//	Connections support one concurrent reader and one concurrent writer.
+//	Applications are responsible for ensuring that no more than one goroutine calls the write methods
+//	  - NextWriter, SetWriteDeadline, WriteMessage, WriteJSON, EnableWriteCompression, SetCompressionLevel
+//	concurrently and that no more than one goroutine calls the read methods
+//	  - NextReader, SetReadDeadline, ReadMessage, ReadJSON, SetPongHandler, SetPingHandler
+//	concurrently.
+//	The Close and WriteControl methods can be called concurrently with all other methods.
 type connWrapper struct {
 	conn *websocket.Conn
 

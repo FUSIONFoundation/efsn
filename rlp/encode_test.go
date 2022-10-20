@@ -27,7 +27,7 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/FusionFoundation/efsn/v4/common/math"
+	"github.com/FusionFoundation/efsn/v5/common/math"
 )
 
 type testEncoder struct {

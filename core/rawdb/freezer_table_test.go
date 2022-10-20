@@ -28,7 +28,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/FusionFoundation/efsn/v4/metrics"
+	"github.com/FusionFoundation/efsn/v5/metrics"
 )
 
 func init() {

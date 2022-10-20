@@ -26,7 +26,7 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/FusionFoundation/efsn/v4/common/hexutil"
+	"github.com/FusionFoundation/efsn/v5/common/hexutil"
 	"golang.org/x/crypto/sha3"
 )
 

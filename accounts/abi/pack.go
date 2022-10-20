@@ -22,8 +22,8 @@ import (
 	"math/big"
 	"reflect"
 
-	"github.com/FusionFoundation/efsn/v4/common"
-	"github.com/FusionFoundation/efsn/v4/common/math"
+	"github.com/FusionFoundation/efsn/v5/common"
+	"github.com/FusionFoundation/efsn/v5/common/math"
 )
 
 // packBytesSlice packs the given bytes as [L, V] as the canonical representation

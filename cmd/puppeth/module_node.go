@@ -26,8 +26,8 @@ import (
 	"strings"
 	"text/template"
 
-	"github.com/FusionFoundation/efsn/v4/common"
-	"github.com/FusionFoundation/efsn/v4/log"
+	"github.com/FusionFoundation/efsn/v5/common"
+	"github.com/FusionFoundation/efsn/v5/log"
 )
 
 // nodeDockerfile is the Dockerfile required to run an Ethereum node.

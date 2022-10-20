@@ -21,9 +21,9 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/FusionFoundation/efsn/v4/accounts/keystore"
-	"github.com/FusionFoundation/efsn/v4/common"
-	"github.com/FusionFoundation/efsn/v4/log"
+	"github.com/FusionFoundation/efsn/v5/accounts/keystore"
+	"github.com/FusionFoundation/efsn/v5/common"
+	"github.com/FusionFoundation/efsn/v5/log"
 )
 
 // deployNode creates a new node configuration based on some user input.

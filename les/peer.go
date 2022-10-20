@@ -25,13 +25,13 @@ import (
 	"sync"
 	"time"
 
-	"github.com/FusionFoundation/efsn/v4/common"
-	"github.com/FusionFoundation/efsn/v4/core/types"
-	"github.com/FusionFoundation/efsn/v4/eth"
-	"github.com/FusionFoundation/efsn/v4/les/flowcontrol"
-	"github.com/FusionFoundation/efsn/v4/light"
-	"github.com/FusionFoundation/efsn/v4/p2p"
-	"github.com/FusionFoundation/efsn/v4/rlp"
+	"github.com/FusionFoundation/efsn/v5/common"
+	"github.com/FusionFoundation/efsn/v5/core/types"
+	"github.com/FusionFoundation/efsn/v5/eth"
+	"github.com/FusionFoundation/efsn/v5/les/flowcontrol"
+	"github.com/FusionFoundation/efsn/v5/light"
+	"github.com/FusionFoundation/efsn/v5/p2p"
+	"github.com/FusionFoundation/efsn/v5/rlp"
 )
 
 var (

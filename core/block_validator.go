@@ -19,14 +19,14 @@ package core
 import (
 	"fmt"
 
-	"github.com/FusionFoundation/efsn/v4/common"
-	"github.com/FusionFoundation/efsn/v4/consensus"
-	"github.com/FusionFoundation/efsn/v4/consensus/datong"
-	"github.com/FusionFoundation/efsn/v4/core/state"
-	"github.com/FusionFoundation/efsn/v4/core/types"
-	"github.com/FusionFoundation/efsn/v4/params"
-	"github.com/FusionFoundation/efsn/v4/rlp"
-	"github.com/FusionFoundation/efsn/v4/trie"
+	"github.com/FusionFoundation/efsn/v5/common"
+	"github.com/FusionFoundation/efsn/v5/consensus"
+	"github.com/FusionFoundation/efsn/v5/consensus/datong"
+	"github.com/FusionFoundation/efsn/v5/core/state"
+	"github.com/FusionFoundation/efsn/v5/core/types"
+	"github.com/FusionFoundation/efsn/v5/params"
+	"github.com/FusionFoundation/efsn/v5/rlp"
+	"github.com/FusionFoundation/efsn/v5/trie"
 )
 
 // BlockValidator is responsible for validating block headers, uncles and

@@ -20,13 +20,13 @@ import (
 	"context"
 	"time"
 
-	"github.com/FusionFoundation/efsn/v4/common"
-	"github.com/FusionFoundation/efsn/v4/common/bitutil"
-	"github.com/FusionFoundation/efsn/v4/core"
-	"github.com/FusionFoundation/efsn/v4/core/bloombits"
-	"github.com/FusionFoundation/efsn/v4/core/rawdb"
-	"github.com/FusionFoundation/efsn/v4/core/types"
-	"github.com/FusionFoundation/efsn/v4/ethdb"
+	"github.com/FusionFoundation/efsn/v5/common"
+	"github.com/FusionFoundation/efsn/v5/common/bitutil"
+	"github.com/FusionFoundation/efsn/v5/core"
+	"github.com/FusionFoundation/efsn/v5/core/bloombits"
+	"github.com/FusionFoundation/efsn/v5/core/rawdb"
+	"github.com/FusionFoundation/efsn/v5/core/types"
+	"github.com/FusionFoundation/efsn/v5/ethdb"
 )
 
 const (

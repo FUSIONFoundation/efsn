@@ -23,9 +23,9 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/FusionFoundation/efsn/v4/common"
-	"github.com/FusionFoundation/efsn/v4/core/rawdb"
-	"github.com/FusionFoundation/efsn/v4/params"
+	"github.com/FusionFoundation/efsn/v5/common"
+	"github.com/FusionFoundation/efsn/v5/core/rawdb"
+	"github.com/FusionFoundation/efsn/v5/params"
 )
 
 // Genesis block for nodes which don't care about the DAO fork (i.e. not configured)

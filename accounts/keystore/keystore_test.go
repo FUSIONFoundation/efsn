@@ -26,9 +26,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/FusionFoundation/efsn/v4/accounts"
-	"github.com/FusionFoundation/efsn/v4/common"
-	"github.com/FusionFoundation/efsn/v4/event"
+	"github.com/FusionFoundation/efsn/v5/accounts"
+	"github.com/FusionFoundation/efsn/v5/common"
+	"github.com/FusionFoundation/efsn/v5/event"
 )
 
 var testSigData = make([]byte, 32)

@@ -20,9 +20,9 @@ import (
 	"math/big"
 	"time"
 
-	"github.com/FusionFoundation/efsn/v4/common"
-	"github.com/FusionFoundation/efsn/v4/core/types"
-	"github.com/FusionFoundation/efsn/v4/core/vm"
+	"github.com/FusionFoundation/efsn/v5/common"
+	"github.com/FusionFoundation/efsn/v5/core/types"
+	"github.com/FusionFoundation/efsn/v5/core/vm"
 )
 
 // accessList is an accumulator for the set of accounts and storage slots an EVM

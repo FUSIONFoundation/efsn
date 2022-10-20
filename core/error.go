@@ -19,7 +19,7 @@ package core
 import (
 	"errors"
 
-	"github.com/FusionFoundation/efsn/v4/core/types"
+	"github.com/FusionFoundation/efsn/v5/core/types"
 )
 
 var (

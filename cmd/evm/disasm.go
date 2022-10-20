@@ -22,7 +22,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/FusionFoundation/efsn/v4/core/asm"
+	"github.com/FusionFoundation/efsn/v5/core/asm"
 	"github.com/urfave/cli/v2"
 )
 

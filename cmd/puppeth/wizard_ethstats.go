@@ -20,7 +20,7 @@ import (
 	"fmt"
 	"sort"
 
-	"github.com/FusionFoundation/efsn/v4/log"
+	"github.com/FusionFoundation/efsn/v5/log"
 )
 
 // deployEthstats queries the user for various input on deploying an ethstats

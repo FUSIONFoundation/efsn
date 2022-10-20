@@ -24,12 +24,12 @@ import (
 	"strings"
 	"sync"
 
-	ethereum "github.com/FusionFoundation/efsn/v4"
-	"github.com/FusionFoundation/efsn/v4/accounts/abi"
-	"github.com/FusionFoundation/efsn/v4/common"
-	"github.com/FusionFoundation/efsn/v4/core/types"
-	"github.com/FusionFoundation/efsn/v4/crypto"
-	"github.com/FusionFoundation/efsn/v4/event"
+	ethereum "github.com/FusionFoundation/efsn/v5"
+	"github.com/FusionFoundation/efsn/v5/accounts/abi"
+	"github.com/FusionFoundation/efsn/v5/common"
+	"github.com/FusionFoundation/efsn/v5/core/types"
+	"github.com/FusionFoundation/efsn/v5/crypto"
+	"github.com/FusionFoundation/efsn/v5/event"
 )
 
 // SignerFn is a signer function callback when a contract requires a method to

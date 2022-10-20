@@ -21,7 +21,7 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/FusionFoundation/efsn/v4/log"
+	"github.com/FusionFoundation/efsn/v5/log"
 )
 
 // Handler returns a log handler which logs to the unit test log of t.

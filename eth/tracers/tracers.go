@@ -21,8 +21,8 @@ import (
 	"encoding/json"
 	"errors"
 
-	"github.com/FusionFoundation/efsn/v4/common"
-	"github.com/FusionFoundation/efsn/v4/core/vm"
+	"github.com/FusionFoundation/efsn/v5/common"
+	"github.com/FusionFoundation/efsn/v5/core/vm"
 )
 
 // Context contains some contextual infos for a transaction execution that is not

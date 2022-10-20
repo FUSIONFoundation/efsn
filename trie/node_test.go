@@ -20,7 +20,7 @@ import (
 	"bytes"
 	"testing"
 
-	"github.com/FusionFoundation/efsn/v4/rlp"
+	"github.com/FusionFoundation/efsn/v5/rlp"
 )
 
 func newTestFullNode(v []byte) []interface{} {

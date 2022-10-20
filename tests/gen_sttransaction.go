@@ -6,8 +6,8 @@ import (
 	"encoding/json"
 	"math/big"
 
-	"github.com/FusionFoundation/efsn/v4/common/hexutil"
-	"github.com/FusionFoundation/efsn/v4/common/math"
+	"github.com/FusionFoundation/efsn/v5/common/hexutil"
+	"github.com/FusionFoundation/efsn/v5/common/math"
 )
 
 var _ = (*stTransactionMarshaling)(nil)

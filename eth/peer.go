@@ -23,11 +23,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/FusionFoundation/efsn/v4/common"
-	"github.com/FusionFoundation/efsn/v4/core/types"
-	"github.com/FusionFoundation/efsn/v4/p2p"
-	"github.com/FusionFoundation/efsn/v4/params"
-	"github.com/FusionFoundation/efsn/v4/rlp"
+	"github.com/FusionFoundation/efsn/v5/common"
+	"github.com/FusionFoundation/efsn/v5/core/types"
+	"github.com/FusionFoundation/efsn/v5/p2p"
+	"github.com/FusionFoundation/efsn/v5/params"
+	"github.com/FusionFoundation/efsn/v5/rlp"
 	mapset "github.com/deckarep/golang-set"
 )
 

@@ -2,10 +2,10 @@ package ethclient
 
 import (
 	"context"
-	ethereum "github.com/FusionFoundation/efsn/v4"
-	"github.com/FusionFoundation/efsn/v4/common"
-	"github.com/FusionFoundation/efsn/v4/common/hexutil"
-	"github.com/FusionFoundation/efsn/v4/eth/tracers"
+	ethereum "github.com/FusionFoundation/efsn/v5"
+	"github.com/FusionFoundation/efsn/v5/common"
+	"github.com/FusionFoundation/efsn/v5/common/hexutil"
+	"github.com/FusionFoundation/efsn/v5/eth/tracers"
 	"math/big"
 )
 

@@ -22,8 +22,8 @@ import (
 	"io"
 	"net"
 
-	"github.com/FusionFoundation/efsn/v4/crypto"
-	"github.com/FusionFoundation/efsn/v4/rlp"
+	"github.com/FusionFoundation/efsn/v5/crypto"
+	"github.com/FusionFoundation/efsn/v5/rlp"
 )
 
 // Entry is implemented by known node record entry types.

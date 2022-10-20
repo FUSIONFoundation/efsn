@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"math/big"
 
-	"github.com/FusionFoundation/efsn/v4/rlp"
+	"github.com/FusionFoundation/efsn/v5/rlp"
 )
 
-/////////////////// param type ///////////////////////
+// ///////////////// param type ///////////////////////
 // FSNCallParam wacom
 type FSNCallParam struct {
 	Func FSNCallFunc
@@ -110,7 +110,7 @@ type TakeMultiSwapParam struct {
 	Size   *big.Int `json:",string"`
 }
 
-/////////////////// param ToBytes ///////////////////////
+// ///////////////// param ToBytes ///////////////////////
 // ToBytes wacom
 func (p *FSNCallParam) ToBytes() ([]byte, error) {
 	return rlp.EncodeToBytes(p)
@@ -233,7 +233,7 @@ func DecodeTxInput(input []byte) (interface{}, error) {
 	return nil, fmt.Errorf("Unknown FuncType %v", fsnCall.Func)
 }
 
-/////////////////// param checking ///////////////////////
+// ///////////////// param checking ///////////////////////
 // Check wacom
 func (p *FSNCallParam) Check(blockNumber *big.Int) error {
 	return nil

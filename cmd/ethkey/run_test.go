@@ -21,7 +21,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/FusionFoundation/efsn/v4/internal/cmdtest"
+	"github.com/FusionFoundation/efsn/v5/internal/cmdtest"
 	"github.com/docker/docker/pkg/reexec"
 )
 

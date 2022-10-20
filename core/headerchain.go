@@ -26,14 +26,14 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/FusionFoundation/efsn/v4/common"
-	"github.com/FusionFoundation/efsn/v4/consensus"
-	"github.com/FusionFoundation/efsn/v4/consensus/datong"
-	"github.com/FusionFoundation/efsn/v4/core/rawdb"
-	"github.com/FusionFoundation/efsn/v4/core/types"
-	"github.com/FusionFoundation/efsn/v4/ethdb"
-	"github.com/FusionFoundation/efsn/v4/log"
-	"github.com/FusionFoundation/efsn/v4/params"
+	"github.com/FusionFoundation/efsn/v5/common"
+	"github.com/FusionFoundation/efsn/v5/consensus"
+	"github.com/FusionFoundation/efsn/v5/consensus/datong"
+	"github.com/FusionFoundation/efsn/v5/core/rawdb"
+	"github.com/FusionFoundation/efsn/v5/core/types"
+	"github.com/FusionFoundation/efsn/v5/ethdb"
+	"github.com/FusionFoundation/efsn/v5/log"
+	"github.com/FusionFoundation/efsn/v5/params"
 	lru "github.com/hashicorp/golang-lru"
 )
 

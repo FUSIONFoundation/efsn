@@ -23,9 +23,9 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/FusionFoundation/efsn/v4/accounts"
-	"github.com/FusionFoundation/efsn/v4/event"
-	"github.com/FusionFoundation/efsn/v4/log"
+	"github.com/FusionFoundation/efsn/v5/accounts"
+	"github.com/FusionFoundation/efsn/v5/event"
+	"github.com/FusionFoundation/efsn/v5/log"
 	"github.com/karalabe/usb"
 )
 

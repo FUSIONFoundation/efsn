@@ -22,7 +22,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/FusionFoundation/efsn/v4/common/mclock"
+	"github.com/FusionFoundation/efsn/v5/common/mclock"
 )
 
 const (

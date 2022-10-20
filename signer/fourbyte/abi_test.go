@@ -22,8 +22,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/FusionFoundation/efsn/v4/accounts/abi"
-	"github.com/FusionFoundation/efsn/v4/common"
+	"github.com/FusionFoundation/efsn/v5/accounts/abi"
+	"github.com/FusionFoundation/efsn/v5/common"
 )
 
 func verify(t *testing.T, jsondata, calldata string, exp []interface{}) {

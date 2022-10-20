@@ -22,8 +22,8 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/FusionFoundation/efsn/v4/common"
-	"github.com/FusionFoundation/efsn/v4/common/hexutil"
+	"github.com/FusionFoundation/efsn/v5/common"
+	"github.com/FusionFoundation/efsn/v5/common/hexutil"
 	"github.com/davecgh/go-spew/spew"
 )
 

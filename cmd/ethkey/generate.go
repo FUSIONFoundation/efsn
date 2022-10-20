@@ -22,9 +22,9 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/FusionFoundation/efsn/v4/accounts/keystore"
-	"github.com/FusionFoundation/efsn/v4/cmd/utils"
-	"github.com/FusionFoundation/efsn/v4/crypto"
+	"github.com/FusionFoundation/efsn/v5/accounts/keystore"
+	"github.com/FusionFoundation/efsn/v5/cmd/utils"
+	"github.com/FusionFoundation/efsn/v5/crypto"
 	"github.com/google/uuid"
 	"github.com/urfave/cli/v2"
 )

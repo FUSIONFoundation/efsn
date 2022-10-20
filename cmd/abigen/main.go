@@ -24,12 +24,12 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/FusionFoundation/efsn/v4/accounts/abi/bind"
-	"github.com/FusionFoundation/efsn/v4/cmd/utils"
-	"github.com/FusionFoundation/efsn/v4/common/compiler"
-	"github.com/FusionFoundation/efsn/v4/crypto"
-	"github.com/FusionFoundation/efsn/v4/internal/flags"
-	"github.com/FusionFoundation/efsn/v4/log"
+	"github.com/FusionFoundation/efsn/v5/accounts/abi/bind"
+	"github.com/FusionFoundation/efsn/v5/cmd/utils"
+	"github.com/FusionFoundation/efsn/v5/common/compiler"
+	"github.com/FusionFoundation/efsn/v5/crypto"
+	"github.com/FusionFoundation/efsn/v5/internal/flags"
+	"github.com/FusionFoundation/efsn/v5/log"
 	"github.com/urfave/cli/v2"
 )
 

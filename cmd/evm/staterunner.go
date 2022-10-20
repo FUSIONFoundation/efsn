@@ -22,11 +22,11 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/FusionFoundation/efsn/v4/core/state"
-	"github.com/FusionFoundation/efsn/v4/core/vm"
-	"github.com/FusionFoundation/efsn/v4/eth/tracers/logger"
-	"github.com/FusionFoundation/efsn/v4/log"
-	"github.com/FusionFoundation/efsn/v4/tests"
+	"github.com/FusionFoundation/efsn/v5/core/state"
+	"github.com/FusionFoundation/efsn/v5/core/vm"
+	"github.com/FusionFoundation/efsn/v5/eth/tracers/logger"
+	"github.com/FusionFoundation/efsn/v5/log"
+	"github.com/FusionFoundation/efsn/v5/tests"
 
 	"github.com/urfave/cli/v2"
 )

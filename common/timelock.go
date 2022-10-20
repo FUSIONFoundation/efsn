@@ -6,7 +6,7 @@ import (
 	"math/big"
 	"sort"
 
-	"github.com/FusionFoundation/efsn/v4/log"
+	"github.com/FusionFoundation/efsn/v5/log"
 )
 
 // TimeLockType wacom
@@ -213,7 +213,7 @@ func intersectionSub(x, y *TimeLockItem) *TimeLockItem {
 	}
 }
 
-/////////////////////////////// TimeLock ///////////////////////////
+// ///////////////////////////// TimeLock ///////////////////////////
 // TimeLock wacom
 type TimeLock struct {
 	Items []*TimeLockItem

@@ -21,7 +21,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/FusionFoundation/efsn/v4/cmd/evm/internal/compiler"
+	"github.com/FusionFoundation/efsn/v5/cmd/evm/internal/compiler"
 
 	"github.com/urfave/cli/v2"
 )

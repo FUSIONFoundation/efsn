@@ -23,7 +23,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/FusionFoundation/efsn/v4/common"
+	"github.com/FusionFoundation/efsn/v5/common"
 )
 
 const testSectionSize = 4096

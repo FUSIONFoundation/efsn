@@ -21,7 +21,7 @@ import (
 	"sort"
 	"sync"
 
-	"github.com/FusionFoundation/efsn/v4/event"
+	"github.com/FusionFoundation/efsn/v5/event"
 )
 
 // managerSubBufferSize determines how many incoming wallet events

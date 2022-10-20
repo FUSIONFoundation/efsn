@@ -30,8 +30,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/FusionFoundation/efsn/v4/common"
-	"github.com/FusionFoundation/efsn/v4/crypto"
+	"github.com/FusionFoundation/efsn/v5/common"
+	"github.com/FusionFoundation/efsn/v5/crypto"
 )
 
 // Node represents a host on the network.
@@ -133,8 +133,8 @@ var incompleteNodeURL = regexp.MustCompile("(?i)^(?:enode://)?([0-9a-f]+)$")
 //
 // For incomplete nodes, the designator must look like one of these
 //
-//    enode://<hex node id>
-//    <hex node id>
+//	enode://<hex node id>
+//	<hex node id>
 //
 // For complete nodes, the node ID is encoded in the username portion
 // of the URL, separated from the host by an @ sign. The hostname can
@@ -147,7 +147,7 @@ var incompleteNodeURL = regexp.MustCompile("(?i)^(?:enode://)?([0-9a-f]+)$")
 // a node with IP address 10.3.58.6, TCP listening port 40404
 // and UDP discovery port 40402.
 //
-//    enode://<hex node id>@10.3.58.6:40404?discport=40402
+//	enode://<hex node id>@10.3.58.6:40404?discport=40402
 func ParseNode(rawurl string) (*Node, error) {
 	if m := incompleteNodeURL.FindStringSubmatch(rawurl); m != nil {
 		id, err := HexID(m[1])

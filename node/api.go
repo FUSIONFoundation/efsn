@@ -21,13 +21,13 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/FusionFoundation/efsn/v4/common/hexutil"
-	"github.com/FusionFoundation/efsn/v4/crypto"
-	"github.com/FusionFoundation/efsn/v4/internal/debug"
-	"github.com/FusionFoundation/efsn/v4/log"
-	"github.com/FusionFoundation/efsn/v4/p2p"
-	"github.com/FusionFoundation/efsn/v4/p2p/discover"
-	"github.com/FusionFoundation/efsn/v4/rpc"
+	"github.com/FusionFoundation/efsn/v5/common/hexutil"
+	"github.com/FusionFoundation/efsn/v5/crypto"
+	"github.com/FusionFoundation/efsn/v5/internal/debug"
+	"github.com/FusionFoundation/efsn/v5/log"
+	"github.com/FusionFoundation/efsn/v5/p2p"
+	"github.com/FusionFoundation/efsn/v5/p2p/discover"
+	"github.com/FusionFoundation/efsn/v5/rpc"
 )
 
 // apis returns the collection of built-in RPC APIs.

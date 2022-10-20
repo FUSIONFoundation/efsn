@@ -24,12 +24,12 @@ import (
 
 	"github.com/davecgh/go-spew/spew"
 
-	"github.com/FusionFoundation/efsn/v4/core"
-	"github.com/FusionFoundation/efsn/v4/core/state"
-	"github.com/FusionFoundation/efsn/v4/core/vm"
-	"github.com/FusionFoundation/efsn/v4/ethdb"
-	"github.com/FusionFoundation/efsn/v4/params"
-	"github.com/FusionFoundation/efsn/v4/trie"
+	"github.com/FusionFoundation/efsn/v5/core"
+	"github.com/FusionFoundation/efsn/v5/core/state"
+	"github.com/FusionFoundation/efsn/v5/core/vm"
+	"github.com/FusionFoundation/efsn/v5/ethdb"
+	"github.com/FusionFoundation/efsn/v5/params"
+	"github.com/FusionFoundation/efsn/v5/trie"
 )
 
 func TestNodeIterator(t *testing.T) {

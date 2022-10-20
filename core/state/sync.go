@@ -19,10 +19,10 @@ package state
 import (
 	"bytes"
 
-	"github.com/FusionFoundation/efsn/v4/common"
-	"github.com/FusionFoundation/efsn/v4/ethdb"
-	"github.com/FusionFoundation/efsn/v4/rlp"
-	"github.com/FusionFoundation/efsn/v4/trie"
+	"github.com/FusionFoundation/efsn/v5/common"
+	"github.com/FusionFoundation/efsn/v5/ethdb"
+	"github.com/FusionFoundation/efsn/v5/rlp"
+	"github.com/FusionFoundation/efsn/v5/trie"
 )
 
 // NewStateSync create a new state trie download scheduler.

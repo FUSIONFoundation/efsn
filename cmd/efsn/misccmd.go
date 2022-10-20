@@ -22,7 +22,7 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/FusionFoundation/efsn/v4/params"
+	"github.com/FusionFoundation/efsn/v5/params"
 	"github.com/urfave/cli/v2"
 )
 

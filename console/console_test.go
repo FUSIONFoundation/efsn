@@ -20,20 +20,20 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"github.com/FusionFoundation/efsn/v4/console/prompt"
-	"github.com/FusionFoundation/efsn/v4/eth/ethconfig"
+	"github.com/FusionFoundation/efsn/v5/console/prompt"
+	"github.com/FusionFoundation/efsn/v5/eth/ethconfig"
 	"io/ioutil"
 	"os"
 	"strings"
 	"testing"
 	"time"
 
-	"github.com/FusionFoundation/efsn/v4/common"
+	"github.com/FusionFoundation/efsn/v5/common"
 
-	"github.com/FusionFoundation/efsn/v4/core"
-	"github.com/FusionFoundation/efsn/v4/eth"
-	"github.com/FusionFoundation/efsn/v4/internal/jsre"
-	"github.com/FusionFoundation/efsn/v4/node"
+	"github.com/FusionFoundation/efsn/v5/core"
+	"github.com/FusionFoundation/efsn/v5/eth"
+	"github.com/FusionFoundation/efsn/v5/internal/jsre"
+	"github.com/FusionFoundation/efsn/v5/node"
 )
 
 const (

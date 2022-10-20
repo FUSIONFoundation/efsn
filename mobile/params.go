@@ -21,9 +21,9 @@ package geth
 import (
 	"encoding/json"
 
-	"github.com/FusionFoundation/efsn/v4/core"
-	"github.com/FusionFoundation/efsn/v4/p2p/discv5"
-	"github.com/FusionFoundation/efsn/v4/params"
+	"github.com/FusionFoundation/efsn/v5/core"
+	"github.com/FusionFoundation/efsn/v5/p2p/discv5"
+	"github.com/FusionFoundation/efsn/v5/params"
 )
 
 // MainnetGenesis returns the JSON spec to use for the main Ethereum network. It

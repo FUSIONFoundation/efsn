@@ -21,7 +21,7 @@ import (
 	"math/big"
 	"testing"
 
-	"github.com/FusionFoundation/efsn/v4/common/hexutil"
+	"github.com/FusionFoundation/efsn/v5/common/hexutil"
 )
 
 func TestBytesPadding(t *testing.T) {

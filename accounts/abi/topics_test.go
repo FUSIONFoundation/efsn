@@ -21,8 +21,8 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/FusionFoundation/efsn/v4/common"
-	"github.com/FusionFoundation/efsn/v4/crypto"
+	"github.com/FusionFoundation/efsn/v5/common"
+	"github.com/FusionFoundation/efsn/v5/crypto"
 )
 
 func TestMakeTopics(t *testing.T) {

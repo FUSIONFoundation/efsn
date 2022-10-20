@@ -19,21 +19,20 @@
 // Here is an example of creating a 2 node network with the first node
 // connected to the second:
 //
-//     $ p2psim node create
-//     Created node01
+//	$ p2psim node create
+//	Created node01
 //
-//     $ p2psim node start node01
-//     Started node01
+//	$ p2psim node start node01
+//	Started node01
 //
-//     $ p2psim node create
-//     Created node02
+//	$ p2psim node create
+//	Created node02
 //
-//     $ p2psim node start node02
-//     Started node02
+//	$ p2psim node start node02
+//	Started node02
 //
-//     $ p2psim node connect node01 node02
-//     Connected node01 to node02
-//
+//	$ p2psim node connect node01 node02
+//	Connected node01 to node02
 package main
 
 import (
@@ -45,13 +44,13 @@ import (
 	"strings"
 	"text/tabwriter"
 
-	"github.com/FusionFoundation/efsn/v4/crypto"
-	"github.com/FusionFoundation/efsn/v4/internal/flags"
-	"github.com/FusionFoundation/efsn/v4/p2p"
-	"github.com/FusionFoundation/efsn/v4/p2p/discover"
-	"github.com/FusionFoundation/efsn/v4/p2p/simulations"
-	"github.com/FusionFoundation/efsn/v4/p2p/simulations/adapters"
-	"github.com/FusionFoundation/efsn/v4/rpc"
+	"github.com/FusionFoundation/efsn/v5/crypto"
+	"github.com/FusionFoundation/efsn/v5/internal/flags"
+	"github.com/FusionFoundation/efsn/v5/p2p"
+	"github.com/FusionFoundation/efsn/v5/p2p/discover"
+	"github.com/FusionFoundation/efsn/v5/p2p/simulations"
+	"github.com/FusionFoundation/efsn/v5/p2p/simulations/adapters"
+	"github.com/FusionFoundation/efsn/v5/rpc"
 	"github.com/urfave/cli/v2"
 )
 

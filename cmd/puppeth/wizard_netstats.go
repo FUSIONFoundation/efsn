@@ -23,8 +23,8 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/FusionFoundation/efsn/v4/core"
-	"github.com/FusionFoundation/efsn/v4/log"
+	"github.com/FusionFoundation/efsn/v5/core"
+	"github.com/FusionFoundation/efsn/v5/log"
 	"github.com/olekukonko/tablewriter"
 )
 

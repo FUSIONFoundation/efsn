@@ -20,7 +20,7 @@ package common
 import (
 	"encoding/hex"
 	"errors"
-	"github.com/FusionFoundation/efsn/v4/common/hexutil"
+	"github.com/FusionFoundation/efsn/v5/common/hexutil"
 )
 
 // ToHex returns the hex representation of b, prefixed with '0x'.

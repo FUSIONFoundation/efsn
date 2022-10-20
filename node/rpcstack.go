@@ -28,8 +28,8 @@ import (
 	"sync"
 	"sync/atomic"
 
-	"github.com/FusionFoundation/efsn/v4/log"
-	"github.com/FusionFoundation/efsn/v4/rpc"
+	"github.com/FusionFoundation/efsn/v5/log"
+	"github.com/FusionFoundation/efsn/v5/rpc"
 	"github.com/rs/cors"
 )
 

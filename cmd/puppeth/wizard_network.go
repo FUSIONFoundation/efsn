@@ -20,7 +20,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/FusionFoundation/efsn/v4/log"
+	"github.com/FusionFoundation/efsn/v5/log"
 )
 
 // manageServers displays a list of servers the user can disconnect from, and an

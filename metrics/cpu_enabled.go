@@ -20,7 +20,7 @@
 package metrics
 
 import (
-	"github.com/FusionFoundation/efsn/v4/log"
+	"github.com/FusionFoundation/efsn/v5/log"
 	"github.com/shirou/gopsutil/cpu"
 )
 

@@ -17,11 +17,11 @@
 package main
 
 import (
-	"github.com/FusionFoundation/efsn/v4/cmd/utils"
-	"github.com/FusionFoundation/efsn/v4/console"
-	"github.com/FusionFoundation/efsn/v4/internal/flags"
-	"github.com/FusionFoundation/efsn/v4/node"
-	"github.com/FusionFoundation/efsn/v4/rpc"
+	"github.com/FusionFoundation/efsn/v5/cmd/utils"
+	"github.com/FusionFoundation/efsn/v5/console"
+	"github.com/FusionFoundation/efsn/v5/internal/flags"
+	"github.com/FusionFoundation/efsn/v5/node"
+	"github.com/FusionFoundation/efsn/v5/rpc"
 	"github.com/urfave/cli/v2"
 	"strings"
 )

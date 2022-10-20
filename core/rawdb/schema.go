@@ -21,8 +21,8 @@ import (
 	"bytes"
 	"encoding/binary"
 
-	"github.com/FusionFoundation/efsn/v4/common"
-	"github.com/FusionFoundation/efsn/v4/metrics"
+	"github.com/FusionFoundation/efsn/v5/common"
+	"github.com/FusionFoundation/efsn/v5/metrics"
 )
 
 // The fields below define the low level database schema prefixing.

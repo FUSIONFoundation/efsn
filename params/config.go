@@ -20,7 +20,7 @@ import (
 	"fmt"
 	"math/big"
 
-	"github.com/FusionFoundation/efsn/v4/common"
+	"github.com/FusionFoundation/efsn/v5/common"
 )
 
 // Genesis hashes to enforce below configs on.

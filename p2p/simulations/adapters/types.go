@@ -25,11 +25,11 @@ import (
 	"os"
 	"strconv"
 
-	"github.com/FusionFoundation/efsn/v4/crypto"
-	"github.com/FusionFoundation/efsn/v4/node"
-	"github.com/FusionFoundation/efsn/v4/p2p"
-	"github.com/FusionFoundation/efsn/v4/p2p/discover"
-	"github.com/FusionFoundation/efsn/v4/rpc"
+	"github.com/FusionFoundation/efsn/v5/crypto"
+	"github.com/FusionFoundation/efsn/v5/node"
+	"github.com/FusionFoundation/efsn/v5/p2p"
+	"github.com/FusionFoundation/efsn/v5/p2p/discover"
+	"github.com/FusionFoundation/efsn/v5/rpc"
 	"github.com/docker/docker/pkg/reexec"
 	"github.com/gorilla/websocket"
 )
@@ -40,7 +40,6 @@ import (
 // * SimNode    - An in-memory node
 // * ExecNode   - A child process node
 // * DockerNode - A Docker container node
-//
 type Node interface {
 	// Addr returns the node's address (e.g. an Enode URL)
 	Addr() []byte

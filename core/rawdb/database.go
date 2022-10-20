@@ -24,11 +24,11 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/FusionFoundation/efsn/v4/common"
-	"github.com/FusionFoundation/efsn/v4/ethdb"
-	"github.com/FusionFoundation/efsn/v4/ethdb/leveldb"
-	"github.com/FusionFoundation/efsn/v4/ethdb/memorydb"
-	"github.com/FusionFoundation/efsn/v4/log"
+	"github.com/FusionFoundation/efsn/v5/common"
+	"github.com/FusionFoundation/efsn/v5/ethdb"
+	"github.com/FusionFoundation/efsn/v5/ethdb/leveldb"
+	"github.com/FusionFoundation/efsn/v5/ethdb/memorydb"
+	"github.com/FusionFoundation/efsn/v5/log"
 	"github.com/olekukonko/tablewriter"
 )
 

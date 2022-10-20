@@ -23,8 +23,8 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/FusionFoundation/efsn/v4/common"
-	"github.com/FusionFoundation/efsn/v4/ethdb"
+	"github.com/FusionFoundation/efsn/v5/common"
+	"github.com/FusionFoundation/efsn/v5/ethdb"
 )
 
 var (

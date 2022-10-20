@@ -22,7 +22,7 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/FusionFoundation/efsn/v4/ethdb"
+	"github.com/FusionFoundation/efsn/v5/ethdb"
 )
 
 // TestDatabaseSuite runs a suite of tests against a KeyValueStore database

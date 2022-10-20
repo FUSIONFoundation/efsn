@@ -24,13 +24,13 @@ import (
 	"net"
 	"os"
 
-	"github.com/FusionFoundation/efsn/v4/cmd/utils"
-	"github.com/FusionFoundation/efsn/v4/crypto"
-	"github.com/FusionFoundation/efsn/v4/log"
-	"github.com/FusionFoundation/efsn/v4/p2p/discover"
-	"github.com/FusionFoundation/efsn/v4/p2p/discv5"
-	"github.com/FusionFoundation/efsn/v4/p2p/nat"
-	"github.com/FusionFoundation/efsn/v4/p2p/netutil"
+	"github.com/FusionFoundation/efsn/v5/cmd/utils"
+	"github.com/FusionFoundation/efsn/v5/crypto"
+	"github.com/FusionFoundation/efsn/v5/log"
+	"github.com/FusionFoundation/efsn/v5/p2p/discover"
+	"github.com/FusionFoundation/efsn/v5/p2p/discv5"
+	"github.com/FusionFoundation/efsn/v5/p2p/nat"
+	"github.com/FusionFoundation/efsn/v5/p2p/netutil"
 )
 
 func main() {

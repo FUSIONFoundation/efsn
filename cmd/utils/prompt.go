@@ -20,7 +20,7 @@ package utils
 import (
 	"fmt"
 
-	"github.com/FusionFoundation/efsn/v4/console/prompt"
+	"github.com/FusionFoundation/efsn/v5/console/prompt"
 )
 
 // GetPassPhrase displays the given text(prompt) to the user and requests some textual

@@ -21,7 +21,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/FusionFoundation/efsn/v4/log"
+	"github.com/FusionFoundation/efsn/v5/log"
 )
 
 // deployExplorer creates a new block explorer based on some user input.

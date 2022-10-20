@@ -26,7 +26,7 @@ import (
 	"unicode"
 	"unicode/utf8"
 
-	"github.com/FusionFoundation/efsn/v4/common"
+	"github.com/FusionFoundation/efsn/v5/common"
 )
 
 // Type enumerator

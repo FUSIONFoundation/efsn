@@ -21,7 +21,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/FusionFoundation/efsn/v4/common/mclock"
+	"github.com/FusionFoundation/efsn/v5/common/mclock"
 )
 
 const fcTimeConst = time.Millisecond

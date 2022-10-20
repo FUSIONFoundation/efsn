@@ -19,8 +19,8 @@ package core
 import (
 	"sync"
 
-	"github.com/FusionFoundation/efsn/v4/common"
-	"github.com/FusionFoundation/efsn/v4/core/state"
+	"github.com/FusionFoundation/efsn/v5/common"
+	"github.com/FusionFoundation/efsn/v5/core/state"
 )
 
 // txNoncer is a tiny virtual state database to manage the executable nonces of

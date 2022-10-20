@@ -20,8 +20,8 @@ import (
 	"fmt"
 	"sort"
 
-	"github.com/FusionFoundation/efsn/v4/common"
-	"github.com/FusionFoundation/efsn/v4/params"
+	"github.com/FusionFoundation/efsn/v5/common"
+	"github.com/FusionFoundation/efsn/v5/params"
 	"github.com/holiman/uint256"
 )
 

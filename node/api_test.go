@@ -25,7 +25,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/FusionFoundation/efsn/v4/rpc"
+	"github.com/FusionFoundation/efsn/v5/rpc"
 	"github.com/stretchr/testify/assert"
 )
 

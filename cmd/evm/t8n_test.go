@@ -24,8 +24,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/FusionFoundation/efsn/v4/cmd/evm/internal/t8ntool"
-	"github.com/FusionFoundation/efsn/v4/internal/cmdtest"
+	"github.com/FusionFoundation/efsn/v5/cmd/evm/internal/t8ntool"
+	"github.com/FusionFoundation/efsn/v5/internal/cmdtest"
 	"github.com/docker/docker/pkg/reexec"
 )
 

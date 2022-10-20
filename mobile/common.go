@@ -24,8 +24,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/FusionFoundation/efsn/v4/common"
-	"github.com/FusionFoundation/efsn/v4/common/hexutil"
+	"github.com/FusionFoundation/efsn/v5/common"
+	"github.com/FusionFoundation/efsn/v5/common/hexutil"
 )
 
 // Hash represents the 32 byte Keccak256 hash of arbitrary data.

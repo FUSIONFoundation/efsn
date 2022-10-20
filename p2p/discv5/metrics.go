@@ -1,6 +1,6 @@
 package discv5
 
-import "github.com/FusionFoundation/efsn/v4/metrics"
+import "github.com/FusionFoundation/efsn/v5/metrics"
 
 var (
 	ingressTrafficMeter = metrics.NewRegisteredMeter("discv5/InboundTraffic", nil)

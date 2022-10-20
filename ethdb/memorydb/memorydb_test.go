@@ -19,8 +19,8 @@ package memorydb
 import (
 	"testing"
 
-	"github.com/FusionFoundation/efsn/v4/ethdb"
-	"github.com/FusionFoundation/efsn/v4/ethdb/dbtest"
+	"github.com/FusionFoundation/efsn/v5/ethdb"
+	"github.com/FusionFoundation/efsn/v5/ethdb/dbtest"
 )
 
 func TestMemoryDB(t *testing.T) {

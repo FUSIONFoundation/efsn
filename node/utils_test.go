@@ -20,8 +20,8 @@
 package node
 
 import (
-	"github.com/FusionFoundation/efsn/v4/p2p"
-	"github.com/FusionFoundation/efsn/v4/rpc"
+	"github.com/FusionFoundation/efsn/v5/p2p"
+	"github.com/FusionFoundation/efsn/v5/rpc"
 )
 
 // NoopLifecycle is a trivial implementation of the Service interface.

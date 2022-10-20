@@ -20,8 +20,8 @@ import (
 	"bytes"
 	"testing"
 
-	"github.com/FusionFoundation/efsn/v4/common"
-	"github.com/FusionFoundation/efsn/v4/ethdb"
+	"github.com/FusionFoundation/efsn/v5/common"
+	"github.com/FusionFoundation/efsn/v5/ethdb"
 )
 
 // Tests that the node iterator indeed walks over the entire database contents.

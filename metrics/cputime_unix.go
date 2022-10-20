@@ -22,7 +22,7 @@ package metrics
 import (
 	syscall "golang.org/x/sys/unix"
 
-	"github.com/FusionFoundation/efsn/v4/log"
+	"github.com/FusionFoundation/efsn/v5/log"
 )
 
 // getProcessCPUTime retrieves the process' CPU time since program startup.

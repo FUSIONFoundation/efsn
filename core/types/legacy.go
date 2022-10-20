@@ -19,7 +19,7 @@ package types
 import (
 	"errors"
 
-	"github.com/FusionFoundation/efsn/v4/rlp"
+	"github.com/FusionFoundation/efsn/v5/rlp"
 )
 
 // IsLegacyStoredReceipts tries to parse the RLP-encoded blob

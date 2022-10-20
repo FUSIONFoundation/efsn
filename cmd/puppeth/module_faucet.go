@@ -26,8 +26,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/FusionFoundation/efsn/v4/common"
-	"github.com/FusionFoundation/efsn/v4/log"
+	"github.com/FusionFoundation/efsn/v5/common"
+	"github.com/FusionFoundation/efsn/v5/log"
 )
 
 // faucetDockerfile is the Dockerfile required to build a faucet container to

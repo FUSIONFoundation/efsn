@@ -27,12 +27,12 @@ import (
 	"io"
 	"math/big"
 
-	"github.com/FusionFoundation/efsn/v4/accounts"
-	"github.com/FusionFoundation/efsn/v4/accounts/usbwallet/internal/trezor"
-	"github.com/FusionFoundation/efsn/v4/common"
-	"github.com/FusionFoundation/efsn/v4/common/hexutil"
-	"github.com/FusionFoundation/efsn/v4/core/types"
-	"github.com/FusionFoundation/efsn/v4/log"
+	"github.com/FusionFoundation/efsn/v5/accounts"
+	"github.com/FusionFoundation/efsn/v5/accounts/usbwallet/internal/trezor"
+	"github.com/FusionFoundation/efsn/v5/common"
+	"github.com/FusionFoundation/efsn/v5/common/hexutil"
+	"github.com/FusionFoundation/efsn/v5/core/types"
+	"github.com/FusionFoundation/efsn/v5/log"
 	"github.com/golang/protobuf/proto"
 )
 
@@ -80,13 +80,13 @@ func (w *trezorDriver) Status() (string, error) {
 
 // Open implements usbwallet.driver, attempting to initialize the connection to
 // the Trezor hardware wallet. Initializing the Trezor is a two phase operation:
-//  * The first phase is to initialize the connection and read the wallet's
-//    features. This phase is invoked is the provided passphrase is empty. The
-//    device will display the pinpad as a result and will return an appropriate
-//    error to notify the user that a second open phase is needed.
-//  * The second phase is to unlock access to the Trezor, which is done by the
-//    user actually providing a passphrase mapping a keyboard keypad to the pin
-//    number of the user (shuffled according to the pinpad displayed).
+//   - The first phase is to initialize the connection and read the wallet's
+//     features. This phase is invoked is the provided passphrase is empty. The
+//     device will display the pinpad as a result and will return an appropriate
+//     error to notify the user that a second open phase is needed.
+//   - The second phase is to unlock access to the Trezor, which is done by the
+//     user actually providing a passphrase mapping a keyboard keypad to the pin
+//     number of the user (shuffled according to the pinpad displayed).
 func (w *trezorDriver) Open(device io.ReadWriter, passphrase string) error {
 	w.device, w.failure = device, nil
 

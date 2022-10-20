@@ -30,9 +30,9 @@ import (
 
 	check "gopkg.in/check.v1"
 
-	"github.com/FusionFoundation/efsn/v4/common"
-	"github.com/FusionFoundation/efsn/v4/core/types"
-	"github.com/FusionFoundation/efsn/v4/ethdb"
+	"github.com/FusionFoundation/efsn/v5/common"
+	"github.com/FusionFoundation/efsn/v5/core/types"
+	"github.com/FusionFoundation/efsn/v5/ethdb"
 )
 
 // Tests that updating a state trie does not leak any database writes prior to

@@ -19,8 +19,8 @@ package les
 import (
 	"time"
 
-	"github.com/FusionFoundation/efsn/v4/common/bitutil"
-	"github.com/FusionFoundation/efsn/v4/light"
+	"github.com/FusionFoundation/efsn/v5/common/bitutil"
+	"github.com/FusionFoundation/efsn/v5/light"
 )
 
 const (

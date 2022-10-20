@@ -19,7 +19,7 @@ package downloader
 import (
 	"fmt"
 
-	"github.com/FusionFoundation/efsn/v4/core/types"
+	"github.com/FusionFoundation/efsn/v5/core/types"
 )
 
 // peerDropFn is a callback type for dropping a peer detected as malicious.

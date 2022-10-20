@@ -16,7 +16,7 @@
 
 package downloader
 
-import "github.com/FusionFoundation/efsn/v4/core/types"
+import "github.com/FusionFoundation/efsn/v5/core/types"
 
 type DoneEvent struct {
 	Latest *types.Header

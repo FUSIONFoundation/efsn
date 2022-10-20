@@ -19,8 +19,8 @@ package trie
 import (
 	"testing"
 
-	"github.com/FusionFoundation/efsn/v4/common"
-	"github.com/FusionFoundation/efsn/v4/ethdb/memorydb"
+	"github.com/FusionFoundation/efsn/v5/common"
+	"github.com/FusionFoundation/efsn/v5/ethdb/memorydb"
 )
 
 // Tests that the trie database returns a missing trie node error if attempting

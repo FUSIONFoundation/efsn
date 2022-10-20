@@ -24,11 +24,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/FusionFoundation/efsn/v4/accounts/usbwallet"
-	"github.com/FusionFoundation/efsn/v4/common/hexutil"
-	"github.com/FusionFoundation/efsn/v4/console/prompt"
-	"github.com/FusionFoundation/efsn/v4/internal/jsre"
-	"github.com/FusionFoundation/efsn/v4/rpc"
+	"github.com/FusionFoundation/efsn/v5/accounts/usbwallet"
+	"github.com/FusionFoundation/efsn/v5/common/hexutil"
+	"github.com/FusionFoundation/efsn/v5/console/prompt"
+	"github.com/FusionFoundation/efsn/v5/internal/jsre"
+	"github.com/FusionFoundation/efsn/v5/rpc"
 	"github.com/dop251/goja"
 )
 

@@ -25,7 +25,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/FusionFoundation/efsn/v4/log"
+	"github.com/FusionFoundation/efsn/v5/log"
 )
 
 // explorerDockerfile is the Dockerfile required to run a block explorer.

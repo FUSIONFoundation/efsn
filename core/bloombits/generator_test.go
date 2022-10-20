@@ -21,7 +21,7 @@ import (
 	"math/rand"
 	"testing"
 
-	"github.com/FusionFoundation/efsn/v4/core/types"
+	"github.com/FusionFoundation/efsn/v5/core/types"
 )
 
 // Tests that batched bloom bits are correctly rotated from the input bloom

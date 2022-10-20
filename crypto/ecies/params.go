@@ -42,7 +42,7 @@ import (
 	"fmt"
 	"hash"
 
-	ethcrypto "github.com/FusionFoundation/efsn/v4/crypto"
+	ethcrypto "github.com/FusionFoundation/efsn/v5/crypto"
 )
 
 var (

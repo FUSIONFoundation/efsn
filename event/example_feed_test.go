@@ -19,7 +19,7 @@ package event_test
 import (
 	"fmt"
 
-	"github.com/FusionFoundation/efsn/v4/event"
+	"github.com/FusionFoundation/efsn/v5/event"
 )
 
 func ExampleFeed_acknowledgedEvents() {

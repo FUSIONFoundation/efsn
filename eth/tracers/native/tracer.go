@@ -27,9 +27,11 @@ Aside from implementing the tracer, it also needs to register itself, using the
 Example:
 
 ```golang
-func init() {
-	register("noopTracerNative", newNoopTracer)
-}
+
+	func init() {
+		register("noopTracerNative", newNoopTracer)
+	}
+
 ```
 */
 package native
@@ -37,7 +39,7 @@ package native
 import (
 	"errors"
 
-	"github.com/FusionFoundation/efsn/v4/eth/tracers"
+	"github.com/FusionFoundation/efsn/v5/eth/tracers"
 )
 
 // init registers itself this packages as a lookup for tracers.

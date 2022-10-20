@@ -19,7 +19,7 @@ package ethapi
 import (
 	"sync"
 
-	"github.com/FusionFoundation/efsn/v4/common"
+	"github.com/FusionFoundation/efsn/v5/common"
 )
 
 type AddrLocker struct {

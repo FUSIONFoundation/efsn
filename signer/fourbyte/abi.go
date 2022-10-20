@@ -22,8 +22,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/FusionFoundation/efsn/v4/accounts/abi"
-	"github.com/FusionFoundation/efsn/v4/common"
+	"github.com/FusionFoundation/efsn/v5/accounts/abi"
+	"github.com/FusionFoundation/efsn/v5/common"
 )
 
 // decodedCallData is an internal type to represent a method call parsed according

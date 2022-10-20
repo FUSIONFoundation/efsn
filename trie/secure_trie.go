@@ -19,8 +19,8 @@ package trie
 import (
 	"fmt"
 
-	"github.com/FusionFoundation/efsn/v4/common"
-	"github.com/FusionFoundation/efsn/v4/log"
+	"github.com/FusionFoundation/efsn/v5/common"
+	"github.com/FusionFoundation/efsn/v5/log"
 )
 
 // SecureTrie wraps a trie with key hashing. In a secure trie, all

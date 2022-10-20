@@ -19,7 +19,7 @@ package params
 import (
 	"math/big"
 
-	"github.com/FusionFoundation/efsn/v4/common"
+	"github.com/FusionFoundation/efsn/v5/common"
 )
 
 // DAOForkBlockExtra is the block header extra-data field to set for the DAO fork

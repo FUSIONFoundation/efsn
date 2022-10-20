@@ -22,7 +22,7 @@ import (
 	"errors"
 	"math/big"
 
-	"github.com/FusionFoundation/efsn/v4/common"
+	"github.com/FusionFoundation/efsn/v5/common"
 )
 
 // A BigInt represents a signed multi-precision integer.

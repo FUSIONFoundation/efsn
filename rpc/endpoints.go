@@ -20,7 +20,7 @@ import (
 	"net"
 	"strings"
 
-	"github.com/FusionFoundation/efsn/v4/log"
+	"github.com/FusionFoundation/efsn/v5/log"
 )
 
 // StartIPCEndpoint starts an IPC endpoint.

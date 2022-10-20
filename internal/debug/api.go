@@ -34,7 +34,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/FusionFoundation/efsn/v4/log"
+	"github.com/FusionFoundation/efsn/v5/log"
 )
 
 // Handler is the global debugging handler.

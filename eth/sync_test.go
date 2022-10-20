@@ -21,9 +21,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/FusionFoundation/efsn/v4/eth/downloader"
-	"github.com/FusionFoundation/efsn/v4/p2p"
-	"github.com/FusionFoundation/efsn/v4/p2p/discover"
+	"github.com/FusionFoundation/efsn/v5/eth/downloader"
+	"github.com/FusionFoundation/efsn/v5/p2p"
+	"github.com/FusionFoundation/efsn/v5/p2p/discover"
 )
 
 // Tests that fast sync gets disabled as soon as a real block is successfully

@@ -25,12 +25,12 @@ import (
 
 	"github.com/dop251/goja"
 
-	"github.com/FusionFoundation/efsn/v4/common"
-	"github.com/FusionFoundation/efsn/v4/common/hexutil"
-	"github.com/FusionFoundation/efsn/v4/core/vm"
-	"github.com/FusionFoundation/efsn/v4/crypto"
-	"github.com/FusionFoundation/efsn/v4/eth/tracers"
-	jsassets "github.com/FusionFoundation/efsn/v4/eth/tracers/js/internal/tracers"
+	"github.com/FusionFoundation/efsn/v5/common"
+	"github.com/FusionFoundation/efsn/v5/common/hexutil"
+	"github.com/FusionFoundation/efsn/v5/core/vm"
+	"github.com/FusionFoundation/efsn/v5/crypto"
+	"github.com/FusionFoundation/efsn/v5/eth/tracers"
+	jsassets "github.com/FusionFoundation/efsn/v5/eth/tracers/js/internal/tracers"
 )
 
 var assetTracers = make(map[string]string)

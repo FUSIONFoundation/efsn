@@ -19,9 +19,9 @@ package core
 import (
 	"context"
 
-	"github.com/FusionFoundation/efsn/v4/internal/ethapi"
-	"github.com/FusionFoundation/efsn/v4/log"
-	"github.com/FusionFoundation/efsn/v4/rpc"
+	"github.com/FusionFoundation/efsn/v5/internal/ethapi"
+	"github.com/FusionFoundation/efsn/v5/log"
+	"github.com/FusionFoundation/efsn/v5/rpc"
 )
 
 type StdIOUI struct {

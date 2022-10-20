@@ -23,11 +23,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/FusionFoundation/efsn/v4/common/mclock"
-	"github.com/FusionFoundation/efsn/v4/common/prque"
-	"github.com/FusionFoundation/efsn/v4/ethdb"
-	"github.com/FusionFoundation/efsn/v4/log"
-	"github.com/FusionFoundation/efsn/v4/rlp"
+	"github.com/FusionFoundation/efsn/v5/common/mclock"
+	"github.com/FusionFoundation/efsn/v5/common/prque"
+	"github.com/FusionFoundation/efsn/v5/ethdb"
+	"github.com/FusionFoundation/efsn/v5/log"
+	"github.com/FusionFoundation/efsn/v5/rlp"
 )
 
 // freeClientPool implements a client database that limits the connection time

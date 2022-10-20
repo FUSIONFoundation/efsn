@@ -5,10 +5,10 @@ package ethconfig
 import (
 	"time"
 
-	"github.com/FusionFoundation/efsn/v4/core"
-	"github.com/FusionFoundation/efsn/v4/eth/downloader"
-	"github.com/FusionFoundation/efsn/v4/eth/gasprice"
-	"github.com/FusionFoundation/efsn/v4/miner"
+	"github.com/FusionFoundation/efsn/v5/core"
+	"github.com/FusionFoundation/efsn/v5/eth/downloader"
+	"github.com/FusionFoundation/efsn/v5/eth/gasprice"
+	"github.com/FusionFoundation/efsn/v5/miner"
 )
 
 // MarshalTOML marshals as TOML.

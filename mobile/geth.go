@@ -24,17 +24,17 @@ import (
 	"fmt"
 	"path/filepath"
 
-	"github.com/FusionFoundation/efsn/v4/core"
-	"github.com/FusionFoundation/efsn/v4/eth/downloader"
-	"github.com/FusionFoundation/efsn/v4/eth/ethconfig"
-	"github.com/FusionFoundation/efsn/v4/ethclient"
-	"github.com/FusionFoundation/efsn/v4/ethstats"
-	"github.com/FusionFoundation/efsn/v4/internal/debug"
-	"github.com/FusionFoundation/efsn/v4/les"
-	"github.com/FusionFoundation/efsn/v4/node"
-	"github.com/FusionFoundation/efsn/v4/p2p"
-	"github.com/FusionFoundation/efsn/v4/p2p/nat"
-	"github.com/FusionFoundation/efsn/v4/params"
+	"github.com/FusionFoundation/efsn/v5/core"
+	"github.com/FusionFoundation/efsn/v5/eth/downloader"
+	"github.com/FusionFoundation/efsn/v5/eth/ethconfig"
+	"github.com/FusionFoundation/efsn/v5/ethclient"
+	"github.com/FusionFoundation/efsn/v5/ethstats"
+	"github.com/FusionFoundation/efsn/v5/internal/debug"
+	"github.com/FusionFoundation/efsn/v5/les"
+	"github.com/FusionFoundation/efsn/v5/node"
+	"github.com/FusionFoundation/efsn/v5/p2p"
+	"github.com/FusionFoundation/efsn/v5/p2p/nat"
+	"github.com/FusionFoundation/efsn/v5/params"
 )
 
 // NodeConfig represents the collection of configuration values to fine tune the Geth

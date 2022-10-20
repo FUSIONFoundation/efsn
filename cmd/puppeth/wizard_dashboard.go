@@ -19,7 +19,7 @@ package main
 import (
 	"fmt"
 
-	"github.com/FusionFoundation/efsn/v4/log"
+	"github.com/FusionFoundation/efsn/v5/log"
 )
 
 // deployDashboard queries the user for various input on deploying a web-service

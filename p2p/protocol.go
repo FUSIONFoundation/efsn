@@ -19,7 +19,7 @@ package p2p
 import (
 	"fmt"
 
-	"github.com/FusionFoundation/efsn/v4/p2p/discover"
+	"github.com/FusionFoundation/efsn/v5/p2p/discover"
 )
 
 // Protocol represents a P2P subprotocol implementation.

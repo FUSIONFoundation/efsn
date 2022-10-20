@@ -22,8 +22,8 @@ import (
 	"math/big"
 	"os"
 
-	"github.com/FusionFoundation/efsn/v4/cmd/evm/internal/t8ntool"
-	"github.com/FusionFoundation/efsn/v4/internal/flags"
+	"github.com/FusionFoundation/efsn/v5/cmd/evm/internal/t8ntool"
+	"github.com/FusionFoundation/efsn/v5/internal/flags"
 	"github.com/urfave/cli/v2"
 )
 

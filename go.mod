@@ -1,4 +1,4 @@
-module github.com/FusionFoundation/efsn/v4
+module github.com/FusionFoundation/efsn/v5
 
 go 1.17
 
@@ -39,7 +39,6 @@ require (
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/prometheus/tsdb v0.7.1
 	github.com/rjeczalik/notify v0.9.1
-	github.com/robertkrimen/otto v0.0.0-20210614181706-373ff5438452
 	github.com/rs/cors v1.7.0
 	github.com/shirou/gopsutil v3.21.4-0.20210419000835-c7a38de76ee5+incompatible
 	github.com/stretchr/testify v1.7.2
@@ -51,7 +50,6 @@ require (
 	golang.org/x/sys v0.0.0-20220520151302-bc2c85ada10a
 	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c
 	gopkg.in/natefinch/npipe.v2 v2.0.0-20160621034901-c1b8fa8bdcce
-	gopkg.in/sourcemap.v1 v1.0.5 // indirect
 )
 
 require (

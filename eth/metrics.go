@@ -17,8 +17,8 @@
 package eth
 
 import (
-	"github.com/FusionFoundation/efsn/v4/metrics"
-	"github.com/FusionFoundation/efsn/v4/p2p"
+	"github.com/FusionFoundation/efsn/v5/metrics"
+	"github.com/FusionFoundation/efsn/v5/p2p"
 )
 
 var (

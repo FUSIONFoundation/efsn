@@ -22,7 +22,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/FusionFoundation/efsn/v4/common"
+	"github.com/FusionFoundation/efsn/v5/common"
 )
 
 // Strings represents s slice of strs.

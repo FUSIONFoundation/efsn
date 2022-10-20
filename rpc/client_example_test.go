@@ -21,8 +21,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/FusionFoundation/efsn/v4/common/hexutil"
-	"github.com/FusionFoundation/efsn/v4/rpc"
+	"github.com/FusionFoundation/efsn/v5/common/hexutil"
+	"github.com/FusionFoundation/efsn/v5/rpc"
 )
 
 // In this example, our client wishes to track the latest 'block number'

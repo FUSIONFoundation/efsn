@@ -24,8 +24,8 @@ import (
 	"runtime"
 	"testing"
 
-	"github.com/FusionFoundation/efsn/v4/crypto"
-	"github.com/FusionFoundation/efsn/v4/p2p"
+	"github.com/FusionFoundation/efsn/v5/crypto"
+	"github.com/FusionFoundation/efsn/v5/p2p"
 )
 
 // Tests that datadirs can be successfully created, be them manually configured
