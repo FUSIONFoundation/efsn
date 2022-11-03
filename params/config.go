@@ -46,7 +46,7 @@ var (
 		IstanbulBlock:       big.NewInt(5_800_000),
 		BerlinBlock:         big.NewInt(5_800_000),
 		LondonBlock:         big.NewInt(5_800_000),
-		EcoBlock:            nil,
+		EcoBlock:            big.NewInt(8_250_000),
 
 		DaTong: &DaTongConfig{
 			Period: 15,
