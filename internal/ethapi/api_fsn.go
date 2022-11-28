@@ -319,10 +319,8 @@ func (s *PublicFusionAPI) GetTransactionAndReceipt(ctx context.Context, hash com
 	}
 	receipt := receipts[index]
 
-	var signer types.Signer = types.FrontierSigner{}
-	if tx.Protected() {
-		signer = types.NewEIP155Signer(tx.ChainId())
-	}
+	bigblock := new(big.Int).SetUint64(blockNumber)
+	signer := types.MakeSigner(s.b.ChainConfig(), bigblock)
 	from, _ := types.Sender(signer, tx)
 
 	if isFsnCall && len(receipt.Logs) > 0 && len(receipt.Logs[0].Topics) > 0 {
