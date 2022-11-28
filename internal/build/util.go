@@ -134,37 +134,11 @@ func CopyFile(dst, src string, mode os.FileMode) {
 // so that go commands executed by build use the same version of Go as the 'host' that runs
 // build code. e.g.
 //
-//     /usr/lib/go-1.11/bin/go run build/ci.go ...
+//	/usr/lib/go-1.11/bin/go run build/ci.go ...
 //
 // runs using go 1.11 and invokes go 1.11 tools from the same GOROOT. This is also important
 // because runtime.Version checks on the host should match the tools that are run.
 func GoTool(tool string, args ...string) *exec.Cmd {
 	args = append([]string{tool}, args...)
 	return exec.Command(filepath.Join(runtime.GOROOT(), "bin", "go"), args...)
-}
-
-// ExpandPackagesNoVendor expands a cmd/go import path pattern, skipping
-// vendored packages.
-func ExpandPackagesNoVendor(patterns []string) []string {
-	expand := false
-	for _, pkg := range patterns {
-		if strings.Contains(pkg, "...") {
-			expand = true
-		}
-	}
-	if expand {
-		cmd := GoTool("list", patterns...)
-		out, err := cmd.CombinedOutput()
-		if err != nil {
-			log.Fatalf("package listing failed: %v\n%s", err, string(out))
-		}
-		var packages []string
-		for _, line := range strings.Split(string(out), "\n") {
-			if !strings.Contains(line, "/vendor/") {
-				packages = append(packages, strings.TrimSpace(line))
-			}
-		}
-		return packages
-	}
-	return patterns
 }

@@ -293,7 +293,6 @@ func doTest(cmdline []string) {
 	if len(flag.CommandLine.Args()) > 0 {
 		packages = flag.CommandLine.Args()
 	}
-	packages = build.ExpandPackagesNoVendor(packages)
 
 	// Run analysis tools before the tests.
 	build.MustRun(goTool("vet", packages...))
