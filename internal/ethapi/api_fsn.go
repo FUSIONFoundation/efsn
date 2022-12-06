@@ -566,7 +566,14 @@ func (s *PublicFusionAPI) GetBlockReward(ctx context.Context, blockNr rpc.BlockN
 	}
 	for _, tx := range block.Transactions() {
 		if gasUsed, ok := gasUses[tx.Hash()]; ok {
-			gasReward := new(big.Int).Mul(tx.GasPrice(), new(big.Int).SetUint64(gasUsed))
+			var gasPrice *big.Int
+			if tx.Type() == types.DynamicFeeTxType {
+				baseFee := block.BaseFee()
+				gasPrice = new(big.Int).Add(baseFee, tx.EffectiveGasTipValue(baseFee))
+			} else {
+				gasPrice = tx.GasPrice()
+			}
+			gasReward := new(big.Int).Mul(gasPrice, new(big.Int).SetUint64(gasUsed))
 			if gasReward.Sign() > 0 {
 				// transaction gas reward
 				reward.Add(reward, gasReward)
