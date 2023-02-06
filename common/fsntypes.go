@@ -1,6 +1,7 @@
 package common
 
 import (
+	"encoding/json"
 	"fmt"
 	"math/big"
 )
@@ -182,6 +183,28 @@ type Asset struct {
 	Total       *big.Int `json:",string"`
 	CanChange   bool
 	Description string
+}
+
+func (u *Asset) MarshalJSON() ([]byte, error) {
+	return json.Marshal(&struct {
+		ID          Hash
+		Owner       Address
+		Name        string
+		Symbol      string
+		Decimals    uint8
+		Total       string
+		CanChange   bool
+		Description string
+	}{
+		ID:          u.ID,
+		Owner:       u.Owner,
+		Name:        u.Name,
+		Symbol:      u.Symbol,
+		Decimals:    u.Decimals,
+		Total:       u.Total.String(),
+		CanChange:   u.CanChange,
+		Description: u.Description,
+	})
 }
 
 // SystemAsset wacom
