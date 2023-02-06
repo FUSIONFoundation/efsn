@@ -83,8 +83,19 @@ func (ec *Client) GetMultiSwap(ctx context.Context, swapID common.Hash, blockNum
 	return result, err
 }
 
-func (ec *Client) GetAsset(ctx context.Context, assetId common.Hash, blockNumber *big.Int) (*common.Asset, error) {
-	var result *common.Asset
+type Asset struct {
+	ID          common.Hash
+	Owner       common.Address
+	Name        string
+	Symbol      string
+	Decimals    uint8
+	Total       string
+	CanChange   bool
+	Description string
+}
+
+func (ec *Client) GetAsset(ctx context.Context, assetId common.Hash, blockNumber *big.Int) (*Asset, error) {
+	var result *Asset
 	err := ec.c.CallContext(ctx, &result, "fsn_getAsset", assetId, toBlockNumArg(blockNumber))
 	if err == nil && result == nil {
 		return nil, ethereum.NotFound
