@@ -156,11 +156,6 @@ func (s *PublicFusionAPI) GetAddressByNotation(ctx context.Context, notation uin
 	return address, nil
 }
 
-// AllNotation wacom
-func (s *PublicFusionAPI) AllNotation(ctx context.Context, blockNr rpc.BlockNumber) (map[common.Address]uint64, error) {
-	return nil, fmt.Errorf("AllNotations has been depreciated please use api.fusionnetwork.io")
-}
-
 // GetAsset wacom
 func (s *PublicFusionAPI) GetAsset(ctx context.Context, assetID common.Hash, blockNr rpc.BlockNumber) (*common.Asset, error) {
 	state, _, err := s.b.StateAndHeaderByNumber(ctx, blockNr)
@@ -178,21 +173,6 @@ func (s *PublicFusionAPI) GetAsset(ctx context.Context, assetID common.Hash, blo
 		}
 	}
 	return nil, fmt.Errorf("Asset not found")
-}
-
-// AllAssets wacom
-func (s *PublicFusionAPI) AllAssets(ctx context.Context, blockNr rpc.BlockNumber) (map[common.Hash]common.Asset, error) {
-	return nil, fmt.Errorf("AllAssets has been depreciated, use api.fusionnetwork.io")
-}
-
-// AllAssetsByAddress wacom
-func (s *PublicFusionAPI) AllAssetsByAddress(ctx context.Context, address common.Address, blockNr rpc.BlockNumber) (map[common.Hash]common.Asset, error) {
-	return nil, fmt.Errorf("AllAssetsByAddress has been depreciated, use api.fusionnetwork.io")
-}
-
-// AssetExistForAddress wacom
-func (s *PublicFusionAPI) AssetExistForAddress(ctx context.Context, assetName string, address common.Address, blockNr rpc.BlockNumber) (common.Hash, error) {
-	return common.Hash{}, fmt.Errorf("AllAssetsByAddress has been depreciated, use api.fusionnetwork.io")
 }
 
 func (s *PublicFusionAPI) getAllTickets(ctx context.Context, blockNr rpc.BlockNumber) (common.TicketsDataSlice, error) {
@@ -487,16 +467,6 @@ func (s *PublicFusionAPI) GetMultiSwap(ctx context.Context, swapID common.Hash, 
 		}
 	}
 	return nil, fmt.Errorf("MultiSwap not found")
-}
-
-// AllSwaps wacom
-func (s *PublicFusionAPI) AllSwaps(ctx context.Context, blockNr rpc.BlockNumber) (map[common.Hash]common.Swap, error) {
-	return nil, fmt.Errorf("AllSwaps has been depreciated please use api.fusionnetwork.io")
-}
-
-// AllSwapsByAddress wacom
-func (s *PublicFusionAPI) AllSwapsByAddress(ctx context.Context, address common.Address, blockNr rpc.BlockNumber) (map[common.Hash]common.Swap, error) {
-	return nil, fmt.Errorf("AllSwapsByAddress has been depreciated please use api.fusionnetwork.io")
 }
 
 type Summary struct {

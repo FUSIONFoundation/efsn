@@ -1068,11 +1068,6 @@ func (s *StateDB) GetNotation(addr common.Address) uint64 {
 	return 0
 }
 
-// AllNotation wacom
-func (s *StateDB) AllNotation() ([]common.Address, error) {
-	return nil, fmt.Errorf("AllNotations has been depreciated please use api.fusionnetwork.io")
-}
-
 // GenNotation wacom
 func (s *StateDB) GenNotation(addr common.Address) error {
 	stateObject := s.GetOrNewStateObject(addr)
@@ -1206,11 +1201,6 @@ func (s *StateDB) CalcNotationDisplay(notation uint64) uint64 {
 	}
 	check := (notation ^ 8192 ^ 13 + 73/76798669*708583737978) % 100
 	return (notation*100 + check)
-}
-
-// AllAssets wacom
-func (s *StateDB) AllAssets() (map[common.Hash]common.Asset, error) {
-	return nil, fmt.Errorf("All assets has been depreciated, use api.fusionnetwork.io")
 }
 
 type assetPersist struct {
@@ -1412,11 +1402,6 @@ func (s *StateDB) ClearTickets(from, to common.Address, timestamp uint64) {
 		s.tickets = tickets
 		break
 	}
-}
-
-// AllSwaps wacom
-func (s *StateDB) AllSwaps() (map[common.Hash]common.Swap, error) {
-	return nil, fmt.Errorf("AllSwaps has been depreciated please use api.fusionnetwork.io")
 }
 
 /** swaps

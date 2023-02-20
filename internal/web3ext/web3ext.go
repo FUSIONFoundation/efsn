@@ -686,14 +686,6 @@ web3._extend({
 			]
 		}),
 		new web3._extend.Method({
-			name: 'allNotation',
-			call: 'fsn_allNotation',
-			params: 1,
-			inputFormatter: [
-				web3._extend.formatters.inputDefaultBlockNumberFormatter
-			]
-		}),
-		new web3._extend.Method({
 			name: 'genNotation',
 			call: 'fsn_genNotation',
 			params: 2,
@@ -723,14 +715,6 @@ web3._extend({
 					return web3._extend.formatters.inputTransactionFormatter(options)
 				},
 				null
-			]
-		}),
-		new web3._extend.Method({
-			name: 'allAssets',
-			call: 'fsn_allAssets',
-			params: 1,
-			inputFormatter: [
-				web3._extend.formatters.inputDefaultBlockNumberFormatter
 			]
 		}),
 		new web3._extend.Method({
@@ -825,25 +809,6 @@ web3._extend({
 			params: 1,
 		}),
 		new web3._extend.Method({
-			name: 'allAssetsByAddress',
-			call: 'fsn_allAssetsByAddress',
-			params: 2,
-			inputFormatter: [
-				web3._extend.formatters.inputAddressFormatter,
-				web3._extend.formatters.inputDefaultBlockNumberFormatter
-			]
-		}),
-		new web3._extend.Method({
-			name: 'assetExistForAddress',
-			call: 'fsn_assetExistForAddress',
-			params: 3,
-			inputFormatter: [
-				null,
-				web3._extend.formatters.inputAddressFormatter,
-				web3._extend.formatters.inputDefaultBlockNumberFormatter
-			]
-		}),
-		new web3._extend.Method({
 			name: 'totalNumberOfTickets',
 			call: 'fsn_totalNumberOfTickets',
 			params: 1,
@@ -893,23 +858,6 @@ web3._extend({
 			inputFormatter: [
 				web3._extend.formatters.inputTransactionFormatter,
 				null
-			]
-		}),
-		new web3._extend.Method({
-			name: 'allSwaps',
-			call: 'fsn_allSwaps',
-			params: 1,
-			inputFormatter: [
-				web3._extend.formatters.inputDefaultBlockNumberFormatter
-			]
-		}),
-		new web3._extend.Method({
-			name: 'allSwapsByAddress',
-			call: 'fsn_allSwapsByAddress',
-			params: 2,
-			inputFormatter: [
-				web3._extend.formatters.inputAddressFormatter,
-				web3._extend.formatters.inputDefaultBlockNumberFormatter
 			]
 		}),
 		new web3._extend.Method({
