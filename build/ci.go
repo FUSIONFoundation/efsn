@@ -76,7 +76,6 @@ var (
 		executablePath("bootnode"),
 		executablePath("evm"),
 		executablePath("efsn"),
-		executablePath("puppeth"),
 		executablePath("rlpdump"),
 	}
 
@@ -97,10 +96,6 @@ var (
 		{
 			BinaryName:  "efsn",
 			Description: "Ethereum CLI client.",
-		},
-		{
-			BinaryName:  "puppeth",
-			Description: "Ethereum private network manager.",
 		},
 		{
 			BinaryName:  "rlpdump",
