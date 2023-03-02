@@ -104,7 +104,7 @@ func (ec *Client) GetAsset(ctx context.Context, assetId common.Hash, blockNumber
 }
 
 func (ec *Client) NotationAt(ctx context.Context, account common.Address, blockNumber *big.Int) (uint64, error) {
-	var result hexutil.Uint64
+	var result uint64
 	err := ec.c.CallContext(ctx, &result, "fsn_getNotation", account, toBlockNumArg(blockNumber))
-	return uint64(result), err
+	return result, err
 }
