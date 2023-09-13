@@ -33,7 +33,6 @@ import (
 
 	"github.com/FusionFoundation/efsn/v5/common"
 	"github.com/FusionFoundation/efsn/v5/crypto"
-	"github.com/FusionFoundation/efsn/v5/crypto/secp256k1"
 )
 
 const NodeIDBits = 512
@@ -334,7 +333,7 @@ func (id NodeID) Pubkey() (*ecdsa.PublicKey, error) {
 // recoverNodeID computes the public key used to sign the
 // given hash from the signature.
 func recoverNodeID(hash, sig []byte) (id NodeID, err error) {
-	pubkey, err := secp256k1.RecoverPubkey(hash, sig)
+	pubkey, err := crypto.Ecrecover(hash, sig)
 	if err != nil {
 		return id, err
 	}

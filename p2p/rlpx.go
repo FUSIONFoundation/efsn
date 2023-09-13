@@ -37,7 +37,6 @@ import (
 
 	"github.com/FusionFoundation/efsn/v5/crypto"
 	"github.com/FusionFoundation/efsn/v5/crypto/ecies"
-	"github.com/FusionFoundation/efsn/v5/crypto/secp256k1"
 	"github.com/FusionFoundation/efsn/v5/p2p/discover"
 	"github.com/FusionFoundation/efsn/v5/rlp"
 	"github.com/golang/snappy"
@@ -407,7 +406,7 @@ func (h *encHandshake) handleAuthMsg(msg *authMsgV4, prv *ecdsa.PrivateKey) erro
 		return err
 	}
 	signedMsg := xor(token, h.initNonce)
-	remoteRandomPub, err := secp256k1.RecoverPubkey(signedMsg, msg.Signature[:])
+	remoteRandomPub, err := crypto.Ecrecover(signedMsg, msg.Signature[:])
 	if err != nil {
 		return err
 	}
