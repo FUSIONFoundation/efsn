@@ -1317,6 +1317,9 @@ func (d *Downloader) fetchParts(deliveryCh chan dataPack, deliver func(dataPack)
 
 	update := make(chan struct{}, 1)
 
+	head := d.blockchain.CurrentBlock()
+	ourTD := d.blockchain.GetTd(head.Hash(), head.NumberU64())
+
 	// Prepare the queue and fetch block parts until the block header fetcher's done
 	finished := false
 	for {
@@ -1428,6 +1431,10 @@ func (d *Downloader) fetchParts(deliveryCh chan dataPack, deliver func(dataPack)
 			idles, total := idle()
 			pendCount := pending()
 			for _, peer := range idles {
+				_, peerTD := peer.peer.Head()
+				if peerTD.Cmp(ourTD) <= 0 {
+					continue
+				}
 				// Short circuit if throttling activated
 				if throttled {
 					break
